@@ -817,9 +817,10 @@ with tab_data:
 # ==========================================================================
 with tab_log:
     st.header("Session build log")
-    st.caption("Transcript of the chat session in which this app was designed "
-               "and built (2026-09-16), reconstructed from the session "
-               "record. User messages are quoted verbatim as recorded; "
-               "assistant replies are summarized faithfully.")
+    st.caption("Verbatim transcript of the chat session in which this app was "
+               "designed and built (2026-09-16), recovered from the "
+               "conversation record, starting from the very first message. "
+               "Bracketed notes mark interactive widgets, which don't "
+               "survive as text.")
     _tp = Path(__file__).parent / "docs" / "session_transcript.md"
     st.markdown(_tp.read_text(encoding="utf-8"))
