@@ -6,6 +6,7 @@ with full per-calculation provenance: data sources, assumptions,
 out-of-range behavior, and model limitations are shown next to every result.
 """
 import math
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -103,8 +104,9 @@ def _fmt_species(f: str) -> str:
         label += "  ·  298 K only"
     return label
 
-tab_pure, tab_mix, tab_rxn, tab_theory, tab_data = st.tabs(
-    ["Pure species", "Mixtures", "Reactions", "Theory", "Data & provenance"])
+tab_pure, tab_mix, tab_rxn, tab_theory, tab_data, tab_log = st.tabs(
+    ["Pure species", "Mixtures", "Reactions", "Theory", "Data & provenance",
+     "💬 Build log"])
 
 # ==========================================================================
 # PURE SPECIES
@@ -809,3 +811,15 @@ with tab_data:
                            "janaf_phase_changes.csv", "text/csv")
     st.caption("Downloads carry the same provenance columns as the app; "
                "cite the original NIST references for publication use.")
+
+# ==========================================================================
+# BUILD LOG (session transcript)
+# ==========================================================================
+with tab_log:
+    st.header("Session build log")
+    st.caption("Transcript of the chat session in which this app was designed "
+               "and built (2026-09-16), reconstructed from the session "
+               "record. User messages are quoted verbatim as recorded; "
+               "assistant replies are summarized faithfully.")
+    _tp = Path(__file__).parent / "docs" / "session_transcript.md"
+    st.markdown(_tp.read_text(encoding="utf-8"))
