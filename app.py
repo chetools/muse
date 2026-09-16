@@ -514,12 +514,12 @@ def page_calculator():
 
     with tab1:
         st.plotly_chart(fig_yx_diagram(r["y_in"], r["y_out"], r["x_in"],
-                                       r["m"], r["LG"]), use_container_width=True)
+                                       r["m"], r["LG"]), width="stretch")
         st.caption(f"Pinch at x* = y_in/m = {r['y_in']/r['m']:.4f}; "
                    f"x_out = {r['x_in'] + (r['y_in']-r['y_out'])/r['LG']:.4f}.")
     with tab2:
         st.plotly_chart(fig_gpdc(r["F_LV"], r["Y_op"], r["pack"]["Fp"]),
-                        use_container_width=True)
+                        width="stretch")
         st.caption(f"F_LV = {r['F_LV']:.4f}, Y_oper = {r['Y_op']:.4f}, "
                    f"Y_flood = {r['Y_flood']:.4f} → "
                    f"Y/Y_flood = {r['Y_op']/r['Y_flood']:.2%}. "
@@ -528,7 +528,7 @@ def page_calculator():
     with tab3:
         st.plotly_chart(fig_axial_profile(r["y_in"], r["y_out"], r["x_in"],
                                           r["m"], r["LG"], r["H_OG"], r["Z"]),
-                        use_container_width=True)
+                        width="stretch")
     with tab4:
         pcts = np.linspace(0.5, 0.85, 8)
         Ds, Zts, dPs = [], [], []
@@ -537,7 +537,7 @@ def page_calculator():
             rr = size_absorber(pp)
             Ds.append(rr["D"]); Zts.append(rr["Z"]); dPs.append(rr["dp_mbar"])
         st.plotly_chart(fig_sensitivity(pcts * 100, Ds, Zts, dPs),
-                        use_container_width=True)
+                        width="stretch")
 
     # --- step-by-step calculation audit trail ---
     with st.expander("Show step-by-step calculations"):
@@ -665,7 +665,7 @@ def page_correlations():
                 "parallel to the flood line on log–log axes, anchored at incipient "
                 "flooding by the **Kister–Gill (1991)** correlation:")
     st.latex(r"\Delta p_{\text{flood}} = 0.115\,F_p^{0.7}"
-             r"\quad\text{(inches H₂O per ft, }F_p\text{ in ft}^{-1}\text{)}")
+             r"\quad\text{(inches }\mathrm{H_2O}\text{ per ft, }F_p\text{ in ft}^{-1}\text{)}")
     st.latex(r"\Delta p = \Delta p_{\text{flood}}\,"
              r"\left(\frac{Y}{Y_{\text{flood}}}\right)^{2.36}")
     st.markdown("with 1 in H₂O/ft = 817.3 Pa/m. The exponent 2.36 follows from the "
@@ -690,7 +690,7 @@ def page_correlations():
                         "a_t (m²/m³)": v["a_t"], "Void fraction": v["eps"],
                         "Size (mm)": v["dp"] * 1000}
                        for k, v in PACKINGS.items()])
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width="stretch", hide_index=True)
 
     st.subheader("Onda mass-transfer correlations (1968)")
     st.markdown("Onda, Takeuchi & Okumura correlated the **wetted area** and the "
@@ -798,7 +798,7 @@ def page_example():
                 "Correlations page.)")
 
     st.plotly_chart(fig_yx_diagram(r["y_in"], r["y_out"], r["x_in"], r["m"], r["LG"]),
-                    use_container_width=True)
+                    width="stretch")
 
 
 # ----------------------------------------------------------------------------
