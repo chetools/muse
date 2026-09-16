@@ -20,6 +20,7 @@ from janaf import (
     ideal_gas_mixture, pr_fugacity, ideal_solution_mixture,
     nrtl_gamma_binary, lookup_kij_pr, lookup_nrtl,
     parse_reaction, reaction_properties, reaction_grid,
+    balance_reaction, format_reaction, BalanceError,
 )
 
 st.set_page_config(page_title="JANAF Thermo Calculator",
@@ -436,23 +437,11 @@ with tab_mix:
 # ==========================================================================
 # REACTIONS
 # ==========================================================================
-with tab_rxn:
-    st.header("Reaction thermodynamics")
-    rxn_in = st.text_input(
-        "Reaction", "2 H2(gas) + O2(gas) -> 2 H2O(gas)",
-        help="Format: '2 H2(gas) + O2(gas) -> 2 H2O(gas)'. Phase in "
-             "parentheses optional (default gas).", key="rxn_expr")
-    c1, c2 = st.columns(2)
-    with c1:
-        rxn_T = st.number_input("T (K)", value=1000.0, min_value=0.1,
-                                key="rxn_T")
-    with c2:
-        do_sweep = st.checkbox("Sweep temperature", value=True, key="rxn_sweep")
-    provr = Provenance()
-    recr = provr.new("Reaction", reaction=rxn_in, T_K=rxn_T)
+def _render_reaction_results(terms, label, T, do_sweep, prov):
+    """Single-point properties + optional sweep for parsed/balanced terms."""
+    rec = prov.new("Reaction", reaction=label, T_K=T)
     try:
-        terms = parse_reaction(rxn_in)
-        r = reaction_properties(terms, rxn_T, recr)
+        r = reaction_properties(terms, T, rec)
         m1, m2, m3, m4, m5 = st.columns(5)
         m1.metric("ΔrH°", f"{r['dH']/1000:.3f} kJ/mol")
         m2.metric("ΔrS°", f"{r['dS']:.3f} J/mol/K")
@@ -462,20 +451,20 @@ with tab_rxn:
         with st.expander("Species contributions"):
             st.dataframe(r["contributions"].round(4), width="stretch")
         if do_sweep:
-            Tgrid = np.linspace(max(300.0, rxn_T*0.5), rxn_T*1.5, 120)
+            Tgrid = np.linspace(max(300.0, T*0.5), T*1.5, 120)
             valid = []
-            for T in Tgrid:
+            for Tg in Tgrid:
                 ok = True
                 for _nu, f, ph in terms:
                     try:
-                        get_segment(f, ph, float(T))
+                        get_segment(f, ph, float(Tg))
                     except OutOfRangeError:
                         ok = False
                         break
                 if ok:
-                    valid.append(float(T))
+                    valid.append(float(Tg))
             if valid:
-                recs = provr.new(
+                recs = prov.new(
                     "Reaction temperature sweep",
                     T_range_K=f"{min(valid):.0f}–{max(valid):.0f}")
                 rg = reaction_grid(terms, np.array(valid), recs)
@@ -500,10 +489,92 @@ with tab_rxn:
                 st.plotly_chart(fig, width="stretch")
             else:
                 st.warning("No common valid temperature range for all species.")
-                recr.oor("No common valid T range across species in reaction.")
+                rec.oor("No common valid T range across species in reaction.")
     except (ValueError, OutOfRangeError) as e:
         st.error(str(e))
-        recr.oor(str(e))
+        rec.oor(str(e))
+
+
+with tab_rxn:
+    st.header("Reaction thermodynamics")
+
+    # ---- reaction builder ----
+    st.subheader("Reaction builder")
+    st.caption("Pick reactants and products from the species with data; "
+               "stoichiometry is balanced automatically. The base species "
+               "gets stoichiometric coefficient 1.")
+    _opt_labels, _opt_map = [], {}
+    for _f in _catalog()["formula"]:
+        for _ph in phases_for(_f):
+            _lab = f"{_f} ({_ph})"
+            _opt_labels.append(_lab)
+            _opt_map[_lab] = (_f, _ph)
+    c1, c2 = st.columns(2)
+    with c1:
+        b_react = st.multiselect("Reactants", _opt_labels, key="bld_reactants")
+    with c2:
+        b_prod = st.multiselect(
+            "Products", [l for l in _opt_labels if l not in b_react],
+            key="bld_products")
+    if b_react and b_prod:
+        b_all = b_react + b_prod
+        c3, c4, c5 = st.columns(3)
+        with c3:
+            b_base = st.selectbox(
+                "Base species (stoichiometry = 1)", b_all, key="bld_base")
+        with c4:
+            b_T = st.number_input("T (K)", value=1000.0, min_value=0.1,
+                                  key="bld_T")
+        with c5:
+            b_sweep = st.checkbox("Sweep temperature", value=True,
+                                  key="bld_sweep")
+        if st.button("⚖️ Balance & calculate", key="bld_go"):
+            try:
+                _terms, _notes = balance_reaction(
+                    [_opt_map[l] for l in b_react],
+                    [_opt_map[l] for l in b_prod],
+                    _opt_map[b_base])
+                st.session_state["bld_terms"] = _terms
+                st.session_state["bld_label"] = format_reaction(_terms)
+                st.session_state["bld_notes"] = _notes
+                st.session_state["bld_error"] = None
+            except BalanceError as e:
+                st.session_state["bld_terms"] = None
+                st.session_state["bld_error"] = str(e)
+        if st.session_state.get("bld_error"):
+            st.error("⚠️ " + st.session_state["bld_error"])
+        elif st.session_state.get("bld_terms"):
+            st.success(f"Balanced: **{st.session_state['bld_label']}**")
+            for _n in st.session_state.get("bld_notes", []):
+                st.warning(_n)
+            _provb = Provenance()
+            _render_reaction_results(st.session_state["bld_terms"],
+                                     st.session_state["bld_label"],
+                                     b_T, b_sweep, _provb)
+            prov_box(_provb)
+    else:
+        st.info("Select at least one reactant and one product to balance.")
+
+    st.divider()
+    st.subheader("Manual entry")
+    rxn_in = st.text_input(
+        "Reaction", "2 H2(gas) + O2(gas) -> 2 H2O(gas)",
+        help="Format: '2 H2(gas) + O2(gas) -> 2 H2O(gas)'. Phase in "
+             "parentheses optional (default gas).", key="rxn_expr")
+    c1, c2 = st.columns(2)
+    with c1:
+        rxn_T = st.number_input("T (K)", value=1000.0, min_value=0.1,
+                                key="rxn_T")
+    with c2:
+        do_sweep = st.checkbox("Sweep temperature", value=True, key="rxn_sweep")
+    provr = Provenance()
+    try:
+        terms = parse_reaction(rxn_in)
+    except (ValueError, OutOfRangeError) as e:
+        st.error(str(e))
+        terms = None
+    if terms is not None:
+        _render_reaction_results(terms, rxn_in, rxn_T, do_sweep, provr)
     prov_box(provr)
 
 # ==========================================================================
@@ -619,6 +690,16 @@ with tab_theory:
         "requested phase. For non-standard conditions, "
         "ΔrG = ΔrG° + RT ln Q with activities/fugacities from the mixture "
         "models above.")
+    st.markdown(
+        "**Automatic balancing.** For chosen reactants/products the engine "
+        "builds the integer element–species composition matrix A and solves "
+        "Aν = 0 (null space via SVD). A unique solution is scaled so the "
+        "base species has |ν| = 1 and converted to exact rational "
+        "coefficients (verified symbolically); if the unique solution would "
+        "put a species on the wrong side, or no solution exists, balancing "
+        "is refused with an explanation. Species sets with several "
+        "independent balances are resolved to one sparse valid solution by "
+        "linear programming (minimizing Σ|νᵢ|) and flagged as non-unique.")
 
     st.subheader("8. Vapor pressure (Antoine equation)")
     st.latex(r"\log_{10}\!\left(\frac{P}{\mathrm{bar}}\right) = "
