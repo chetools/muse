@@ -17,7 +17,40 @@ import numpy as np
 import pandas as pd
 
 from .provenance import CalcRecord
-from .shomate import R, pure_properties
+from .shomate import R, OutOfRangeError, pure_properties
+
+
+def composition(formula: str) -> dict[str, float]:
+    """Parse a chemical formula into {element: count}.
+
+    Handles structural prefixes like 'n-C4H10' and two-letter symbols
+    ('Cl2', 'SiH4'). Parenthesized groups are not needed for this
+    species list and are rejected.
+    """
+    f = re.sub(r"^[a-z]+-", "", formula)  # strip 'n-', 'iso-', ...
+    if "(" in f or ")" in f:
+        raise ValueError(f"Cannot parse formula with parentheses: '{formula}'")
+    comp: dict[str, float] = {}
+    for el, n in re.findall(r"([A-Z][a-z]?)(\d*)", f):
+        comp[el] = comp.get(el, 0.0) + (float(n) if n else 1.0)
+    if not comp:
+        raise ValueError(f"Could not parse formula: '{formula}'")
+    return comp
+
+
+def _check_balance(terms) -> None:
+    """Raise ValueError if the reaction is not atom-balanced."""
+    totals: dict[str, float] = {}
+    for nu, formula, _phase in terms:
+        for el, n in composition(formula).items():
+            totals[el] = totals.get(el, 0.0) + nu * n
+    imbalanced = {el: t for el, t in totals.items() if abs(t) > 1e-9}
+    if imbalanced:
+        detail = ", ".join(f"{el}: {t:+.3g}" for el, t in
+                            sorted(imbalanced.items()))
+        raise ValueError(
+            f"Reaction is not atom-balanced (net {detail}). "
+            "Balance the equation before computing reaction properties.")
 
 
 def parse_reaction(expr: str):
@@ -25,6 +58,7 @@ def parse_reaction(expr: str):
 
     Species may carry an explicit phase in parentheses; default phase gas.
     Returns list of (stoich_coeff_signed, formula, phase).
+    Raises ValueError if the reaction is not atom-balanced.
     """
     sides = re.split(r"->|=", expr)
     if len(sides) != 2:
@@ -42,6 +76,7 @@ def parse_reaction(expr: str):
             terms.append((sgn * coef, m.group(2), (m.group(3) or "gas").lower()))
     if not terms:
         raise ValueError("No species found in reaction.")
+    _check_balance(terms)
     return terms
 
 
@@ -80,8 +115,14 @@ def reaction_properties(terms, T: float,
 def reaction_grid(terms, Tgrid: np.ndarray,
                   prov: CalcRecord | None = None) -> pd.DataFrame:
     rows = []
+    skipped = 0
     for T in Tgrid:
-        r = reaction_properties(terms, float(T))
+        try:
+            r = reaction_properties(terms, float(T))
+        except OutOfRangeError:
+            skipped += 1
+            r = {"dH": math.nan, "dS": math.nan, "dG": math.nan,
+                 "K": math.nan, "log10K": math.nan}
         rows.append({"T": float(T), "ΔrH° (kJ/mol)": r["dH"] / 1000.0,
                      "ΔrS° (J/mol/K)": r["dS"],
                      "ΔrG° (kJ/mol)": r["dG"] / 1000.0,
@@ -89,4 +130,7 @@ def reaction_grid(terms, Tgrid: np.ndarray,
     if prov is not None:
         prov.source("NIST WebBook (SRD 69) via reaction-property records; "
                     "out-of-range species data excluded (no extrapolation).")
+        if skipped:
+            prov.oor(f"{skipped} grid points outside species validity ranges "
+                     "excluded (shown as gaps).")
     return pd.DataFrame(rows)

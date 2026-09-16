@@ -92,6 +92,17 @@ def ideal_gas_mixture(species: list[str], y: list[float], T: float,
     y = np.asarray(y, dtype=float)
     y = y / y.sum()
     rows = [pure_properties(s, "gas", T, P_bar) for s in species]
+    missing = [r["formula"] for yi, r in zip(y, rows)
+               if yi > 0 and not (math.isfinite(r["Cp"])
+                                  and math.isfinite(r["S"])
+                                  and math.isfinite(r["dfH_298"])
+                                  and math.isfinite(r["H_minus_H298"]))]
+    if missing:
+        raise ValueError(
+            "Ideal-gas mixture: temperature-dependent properties unavailable "
+            f"for {', '.join(sorted(set(missing)))} at {T:g} K "
+            "(298.15 K reference data only or out of range); "
+            "mixture properties cannot be computed.")
     Cp = float(sum(yi * r["Cp"] for yi, r in zip(y, rows)))
     H = float(sum(yi * (r["dfH_298"] + r["H_minus_H298"])
                   for yi, r in zip(y, rows)))

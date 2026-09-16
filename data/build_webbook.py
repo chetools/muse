@@ -47,7 +47,7 @@ RAW_DIR = DATA_DIR / "raw"
 # species: (formula, pretty name, CAS)
 # Elements whose gas phase is the standard reference state: ΔfH° ≡ 0
 # by definition (the WebBook does not tabulate it).
-ELEMENT_STANDARD = {"N2", "O2", "H2", "Cl2", "Ar", "He"}
+ELEMENT_STANDARD = {"N2", "O2", "H2", "Cl2", "F2", "Ar", "He"}
 
 SPECIES = [
     ("N2", "Nitrogen", "7727-37-9"),
@@ -74,6 +74,26 @@ SPECIES = [
     ("He", "Helium", "7440-59-7"),
     ("CH3OH", "Methanol", "67-56-1"),
     ("C2H5OH", "Ethanol", "64-17-5"),
+    ("C2H2", "Acetylene", "74-86-2"),
+    ("HCN", "Hydrogen cyanide", "74-90-8"),
+    ("O3", "Ozone", "10028-15-6"),
+    ("HF", "Hydrogen fluoride", "7664-39-3"),
+    ("F2", "Fluorine", "7782-41-4"),
+    ("HBr", "Hydrogen bromide", "10035-10-6"),
+    ("HI", "Hydrogen iodide", "10034-85-2"),
+    ("COS", "Carbonyl sulfide", "463-58-1"),
+    ("CS2", "Carbon disulfide", "75-15-0"),
+    ("SF6", "Sulfur hexafluoride", "2551-62-4"),
+    ("SO3", "Sulfur trioxide", "7446-11-9"),
+    ("N2H4", "Hydrazine", "302-01-2"),
+    ("N2O4", "Dinitrogen tetroxide", "10544-72-6"),
+    ("HNO3", "Nitric acid", "7697-37-2"),
+    ("H2O2", "Hydrogen peroxide", "7722-84-1"),
+    ("PH3", "Phosphine", "7803-51-2"),
+    ("SiH4", "Silane", "7803-62-5"),
+    ("BF3", "Boron trifluoride", "7637-07-2"),
+    ("C6H6", "Benzene", "71-43-2"),
+    ("C7H8", "Toluene", "108-88-3"),
 ]
 
 # mask -> section label (hex masks as used by cbook.cgi)
@@ -437,13 +457,15 @@ def build(no_fetch: bool = False, only: str | None = None):
         row["retrieved"] = retrieved
         phase_rows.append(row)
 
+        n_ant_before = len(antoine_rows)
         for a in parse_antoine(pages["4"]):
             antoine_rows.append({"formula": formula, **a,
                                  "source_url": row["source_url"],
                                  "retrieved": retrieved})
         prov_rows.append({"formula": formula, "section": "phase_change",
                           "source_url": row["source_url"],
-                          "n_segments": len(antoine_rows), "retrieved": retrieved})
+                          "n_segments": len(antoine_rows) - n_ant_before,
+                          "retrieved": retrieved})
 
     # --- write artifacts ---
     dfc = pd.DataFrame(coeff_rows)

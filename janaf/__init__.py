@@ -24,7 +24,8 @@ from .shomate import (
 from .mixtures import (ideal_gas_mixture, pr_fugacity, ideal_solution_mixture,
                      nrtl_gamma, nrtl_gamma_binary)
 from .binary import lookup_kij_pr, lookup_nrtl, get_omega
-from .reactions import parse_reaction, reaction_properties, reaction_grid
+from .reactions import (parse_reaction, reaction_properties,
+                        reaction_grid, composition, _check_balance)
 
 __all__ = [
     "CalcRecord", "Provenance",
@@ -37,4 +38,5 @@ __all__ = [
     "nrtl_gamma", "nrtl_gamma_binary",
     "lookup_kij_pr", "lookup_nrtl", "get_omega",
     "parse_reaction", "reaction_properties", "reaction_grid",
+    "composition", "_check_balance",
 ]

@@ -135,3 +135,36 @@ def test_pr_uses_tabulated_kij():
     pr_fugacity(["CH4", "C2H6"], [0.7, 0.3], 300.0, 10.0, prov=rec)
     assert any("k_ij(CH4,C2H6) = -0.0059" in s for s in rec.sources)
     assert not any("kᵢⱼ = 0 for all pairs" in a for a in rec.assumptions)
+
+
+def test_composition_parser():
+    from janaf import composition
+    assert composition("n-C4H10") == {"C": 4.0, "H": 10.0}
+    assert composition("SiH4") == {"Si": 1.0, "H": 4.0}
+    assert composition("H2SO4") == {"H": 2.0, "S": 1.0, "O": 4.0}
+    assert composition("CH3OH") == {"C": 1.0, "H": 4.0, "O": 1.0}
+
+
+def test_reaction_rejects_unbalanced():
+    from janaf import parse_reaction
+    with pytest.raises(ValueError, match="not atom-balanced"):
+        parse_reaction("CH4(gas) + O2(gas) -> CO2(gas) + H2O(gas)")
+    # balanced reactions (incl. fractional coefficients) still pass
+    t = parse_reaction("H2(gas) + 0.5 O2(gas) -> H2O(gas)")
+    assert len(t) == 3
+    t2 = parse_reaction("2 H2(gas) + O2(gas) -> 2 H2O(gas)")
+    assert len(t2) == 3
+
+
+def test_reaction_grid_emits_gaps_not_raises():
+    from janaf import reaction_grid
+    terms = parse_reaction("H2(gas) + 0.5 O2(gas) -> H2O(gas)")
+    grid = reaction_grid(terms, np.array([100.0, 500.0]))
+    assert np.isnan(grid["ΔrH° (kJ/mol)"].iloc[0])
+    assert np.isfinite(grid["ΔrH° (kJ/mol)"].iloc[1])
+
+
+def test_ideal_mixture_rejects_nan_component_props():
+    # C2H6 is 298.15 K reference-only with no tabulated S_298
+    with pytest.raises(ValueError, match="unavailable"):
+        ideal_gas_mixture(["C2H6", "CH4"], [0.5, 0.5], 298.15, 1.0)
