@@ -1,37 +1,34 @@
-# Packed Absorber Column — Sizing & Theory Demo 🧪
+# Couette flow between concentric cylinders 🌀
 
-Interactive Streamlit web app demonstrating **packed gas-absorber calculations and sizing**:
+Streamlit web app that calculates and visualizes the steady laminar velocity
+profile of a Newtonian fluid between rotating concentric cylinders.
 
-- **Sizing calculator** — set the separation (flows, mole fractions, removal %),
-  pick a packing, and get the operating line, transfer units (Kremser / NTU–HTU),
-  column diameter from the **Eckert generalized pressure-drop correlation (GPDC)**
-  flooding line, pressure drop, and packed height via the **Onda** mass-transfer
-  correlations. All with Plotly charts (y–x diagram, GPDC chart, axial profile,
-  % flood sensitivity) and a step-by-step audit trail.
-- **Theory** — operating line, Henry's-law equilibrium, pinch / minimum L/G,
-  absorption factor, NTU integral, Kremser equation, HTU, flooding — with
-  fully rendered equations and references.
-- **Correlations & packing data** — GPDC, Onda et al. (1968), packing-factor
-  table, and pointers to Stichlmair, Billet–Schultes, Kister–Gill, Bravo–Rocha–Fair.
-- **Worked example** — NH₃ absorbed from air into water, every step computed live.
+- **Inputs** — inner/outer radii, rotation rates (rpm, negative = counter-rotation),
+  viscosity (presets for water and glycerol, or custom).
+- **Outputs** — azimuthal velocity profile $v_\\theta(r)$, shear-stress
+  distribution $\\tau_{r\\theta}(r) \\propto 1/r^2$, torque per unit length
+  (computed, not prescribed), wall shear stresses, and a cross-section vector
+  field of the annulus.
+- **Theory panel** — full derivation from torque balance and geometric/physical
+  arguments, deliberately avoiding Navier–Stokes; flags the one place an NS
+  assumption would normally sneak in, and covers limiting cases (narrow gap →
+  plane Couette, fixed outer cylinder, solid-body rotation) plus caveats
+  (Taylor vortices, end effects).
 
 ## Run locally
 
 ```bash
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run couette/app.py
 ```
 
-## Deploy on Streamlit Community Cloud
+## Tests
 
-1. Push this repo to GitHub (public).
-2. Go to [share.streamlit.io](https://share.streamlit.io) → *New app* →
-   select the repo, branch `main`, file `app.py` → *Deploy*.
+```bash
+pytest tests/test_couette_physics.py -v
+```
 
-## Notes
-
-- Educational demo: the GPDC flooding-line fit and ΔP curves are analytical
-  approximations of the published Eckert chart — verify against primary sources
-  (Eckert 1970; Strigle 1994; Treybal) before detailed design.
-- Equations render with KaTeX (via `st.latex`), supported identically in
-  Chrome, Safari, and Firefox.
+The suite includes hand-verified anchors (torque, wall shear stresses,
+mid-gap velocity for R₁=50 mm, R₂=100 mm, Ω₁=10 rad/s, μ=1 mPa·s),
+no-slip checks, the solid-body-rotation zero-shear check, the narrow-gap
+plane-Couette limit, and input validation.

@@ -3,6 +3,14 @@
 Run with:  streamlit run couette/app.py
 """
 
+import sys
+from pathlib import Path
+
+# Make the repo root importable when Streamlit (Cloud or local) runs this file
+# directly: only the script's own directory lands on sys.path, so the top-level
+# `couette` package would otherwise be unimportable (ModuleNotFoundError).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -94,7 +102,7 @@ with tab_prof:
         fig_v.update_layout(title="Azimuthal velocity profile vθ(r)",
                             xaxis_title="r [mm]", yaxis_title="vθ [m/s]",
                             height=420, margin=dict(l=10, r=10, t=50, b=10))
-        st.plotly_chart(fig_v, use_container_width=True)
+        st.plotly_chart(fig_v, width="stretch")
     with c2:
         fig_t = go.Figure()
         fig_t.add_trace(go.Scatter(x=r * 1000, y=tau, mode="lines", name="τ(r)",
@@ -106,7 +114,7 @@ with tab_prof:
         fig_t.update_layout(title="Shear-stress distribution τᵣθ(r) ∝ 1/r²",
                             xaxis_title="r [mm]", yaxis_title="τᵣθ [Pa]",
                             height=420, margin=dict(l=10, r=10, t=50, b=10))
-        st.plotly_chart(fig_t, use_container_width=True)
+        st.plotly_chart(fig_t, width="stretch")
     st.info("Note how the stress curve is fixed by the torque balance "
             "(τ ∝ 1/r²) regardless of the rotation rates, while the velocity "
             "profile reshapes itself to satisfy no-slip at both walls.")
@@ -117,7 +125,7 @@ with tab_field:
         st.warning("Both cylinders are stationary — the fluid is at rest.")
     else:
         fig = vector_field_figure(R1, R2, N1, N2, w1, w2, R1_mm, R2_mm)
-        st.pyplot(fig, use_container_width=False)
+        st.pyplot(fig, width="content")
         fig.clear()
         plt.close(fig)
         st.caption("Arrow length ∝ local speed; the longest arrow is capped at 55% "
