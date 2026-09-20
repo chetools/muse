@@ -31,10 +31,14 @@ notebook (`__marimo__/session/`, generated — see below).
 
 ## GitHub Pages (numpy edition)
 
-`docs/tanks_in_series_numpy.html` is the numpy notebook exported to
-self-contained WASM HTML (`marimo export html`); it runs entirely in the
-visitor's browser via Pyodide — no server. Enable Pages on this branch with
-*Settings → Pages → Deploy from branch → `tube` → `/docs`*.
+The numpy notebook is published as an interactive WebAssembly app at
+<https://chetools.github.io/muse/>. The page runs entirely in the visitor's
+browser via Pyodide — no server.
+
+It deploys from the dedicated orphan branch `gh-pages` (repo Settings →
+Pages → Deploy from branch → `gh-pages` → `/ (root)`). That branch holds only
+the export output (`index.html`, `assets/`, icons, manifests); the notebook
+source of truth lives here on `tube`.
 
 ## Regenerating
 
@@ -47,11 +51,15 @@ marimo edit tube/marimo/tanks_in_series_jax.py
 marimo export session tube/marimo/tanks_in_series_numpy.py
 marimo export session tube/marimo/tanks_in_series_jax.py
 
-# WASM HTML for GitHub Pages
-marimo export html tube/marimo/tanks_in_series_numpy.py \
-    -o docs/tanks_in_series_numpy.html
+# WASM app for GitHub Pages (output is a directory: index.html + assets/)
+marimo export html-wasm tube/marimo/tanks_in_series_numpy.py \
+    -o /tmp/pages --mode run -f
+# then set <title> to "Tanks-in-Series RTD Explorer" in index.html,
+# delete the generated CLAUDE.md, and commit the tree on the orphan
+# gh-pages branch (push with gh-push-chunked: 700+ files makes a single
+# create-tree call time out)
 ```
 
-The HTML export embeds the Python/WASM runtime (~15 MB); regenerating it on
-every commit is fine, but it is a build artifact — review the diff before
-pushing.
+The WASM export bundles the Python/WASM runtime (~28 MB with assets);
+regenerating it on every commit is fine, but it is a build artifact — review
+the diff before pushing.
