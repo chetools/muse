@@ -897,15 +897,19 @@ def _(mo):
         **Definition.** With the logistic function
         $\sigma(x) = 1/(1+e^{-x})$ (dimensionless) and edge sharpness
         $k$ (s⁻¹),
-        $$C_0(t) = C_p\,\frac{t_p}{M(k)}\,
-          \big[\sigma(k t) - \sigma(k\,(t - t_p))\big].$$
+        $$
+        C_0(t) = C_p\,\frac{t_p}{M(k)}\,
+        \big[\sigma(k t) - \sigma(k\,(t - t_p))\big].
+        $$
         The bracket is the difference of two logistic steps: the first rises
         from 0 to 1 around $t = 0$, the second around $t = t_p$, so their
         difference is a pulse with smooth edges of width $\sim 4/k$.
 
         **Mass conservation.** The bracket integrates to
-        $$M(k) = \int_0^\infty \big[\sigma(k t)-\sigma(k\,(t-t_p))\big]\,dt
-               = t_p - \frac{\ln 2 - \ln(1+e^{-k t_p})}{k},$$
+        $$
+        M(k) = \int_0^\infty \big[\sigma(k t)-\sigma(k\,(t-t_p))\big]\,dt
+        = t_p - \frac{\ln 2 - \ln(1+e^{-k t_p})}{k},
+        $$
         because an antiderivative of $\sigma(k t)$ is
         $\tfrac{1}{k}\ln(1+e^{k t})$ and the difference telescopes, leaving
         $t_p$ minus the small mass of the rise that lies before $t = 0$.
@@ -937,12 +941,16 @@ def _(inspect, mo, make_rhs):
                 $$\frac{d}{dt}(V_i C_i) = Q\,(C_{i-1} - C_i).$$
                 $V_i$ is constant, so divide by $V_i = V/N$ and use
                 $\tau = V/Q$:
-                $$\boxed{\frac{dC_i}{dt} = \frac{N}{\tau}\,
-                  \big(C_{i-1} - C_i\big)}, \qquad i = 1 \dots N,$$
+                $$
+                \boxed{\frac{dC_i}{dt} = \frac{N}{\tau}\,
+                \big(C_{i-1} - C_i\big)}, \qquad i = 1 \dots N,
+                $$
                 with $C_0(t)$ the smoothed pulse and $C_i(0) = 0$. In vector
                 form, with $\mathbf{C} = (C_1, \dots, C_N)^T$ (kg m⁻³),
-                $$\frac{d\mathbf{C}}{dt} = \frac{N}{\tau}\,
-                  (S\,\mathbf{C} + \mathbf{e}_1\, C_0(t)),$$
+                $$
+                \frac{d\mathbf{C}}{dt} = \frac{N}{\tau}\,
+                (S\,\mathbf{C} + \mathbf{e}_1\, C_0(t)),
+                $$
                 where $S$ is the shift-minus-identity matrix ($S_{i,i} = -1$,
                 $S_{i,i-1} = +1$). The right-hand side is built without ever
                 forming $S$, with `jax.scipy.special.expit` for the feed.
@@ -1038,8 +1046,10 @@ def _(inspect, mo, rtd_gamma):
                 $$G_N(s) = \left(1 + \frac{\tau s}{N}\right)^{-N}.$$
                 The inverse Laplace transform is the Erlang (gamma)
                 distribution:
-                $$\boxed{E(t) = \frac{(N/\tau)^N}{(N-1)!}\;
-                  t^{N-1}\,e^{-Nt/\tau}}, \qquad t \ge 0,$$
+                $$
+                \boxed{E(t) = \frac{(N/\tau)^N}{(N-1)!}\;
+                t^{N-1}\,e^{-Nt/\tau}}, \qquad t \ge 0,
+                $$
                 with mean and variance
                 $$\bar t = \tau, \qquad \sigma^2 = \frac{\tau^2}{N}.$$
                 For large $N$ the code evaluates $E(t)$ in log space
@@ -1092,8 +1102,10 @@ def _(inspect, mo, plug_flow_response):
                 ### 8. Plug-flow limit ($N \to \infty$)
 
                 Let $N \to \infty$ in the transfer function:
-                $$\lim_{N\to\infty}\left(1 + \frac{\tau s}{N}\right)^{-N}
-                  = e^{-\tau s}.$$
+                $$
+                \lim_{N\to\infty}\left(1 + \frac{\tau s}{N}\right)^{-N}
+                = e^{-\tau s}.
+                $$
                 Multiplication by $e^{-\tau s}$ in the Laplace domain is a
                 **pure time delay** $\tau$ in the time domain. Hence the
                 effluent tends to the feed shifted by $\tau$, with zero
@@ -1125,14 +1137,20 @@ def _(effluent_moments, inspect, mo, pulse_moments):
 
                 Three integral checks are evaluated on every numerical
                 effluent curve $C_N(t)$ with the trapezoidal rule:
-                $$\int_0^\infty C_N\,dt = C_p\,t_p
-                  \qquad\text{(exact by construction; Q cancels)},$$
-                $$\bar t = \frac{\int t\,C_N\,dt}{\int C_N\,dt}
+                $$
+                \int_0^\infty C_N\,dt = C_p\,t_p
+                \qquad\text{(exact by construction; Q cancels)},
+                $$
+                $$
+                \bar t = \frac{\int t\,C_N\,dt}{\int C_N\,dt}
                   = \tau + \mu_p
-                  \qquad\text{(RTD mean + pulse mean)},$$
-                $$\sigma^2 = \frac{\int t^2 C_N\,dt}{\int C_N\,dt} - \bar t^2
+                \qquad\text{(RTD mean + pulse mean)},
+                $$
+                $$
+                \sigma^2 = \frac{\int t^2 C_N\,dt}{\int C_N\,dt} - \bar t^2
                   = \frac{\tau^2}{N} + \sigma_p^2
-                  \qquad\text{(variances add under convolution)}.$$
+                \qquad\text{(variances add under convolution)}.
+                $$
                 Any violation flags a numerical or modelling error.
                 """
             ),
