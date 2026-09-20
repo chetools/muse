@@ -1126,7 +1126,7 @@ def _(effluent_moments, inspect, mo, pulse_moments):
                 Three integral checks are evaluated on every numerical
                 effluent curve $C_N(t)$ with the trapezoidal rule:
                 $$\int_0^\infty C_N\,dt = C_p\,t_p
-                  \qquad\text{(exact by construction; $Q$ cancels)},$$
+                  \qquad\text{(exact by construction; Q cancels)},$$
                 $$\bar t = \frac{\int t\,C_N\,dt}{\int C_N\,dt}
                   = \tau + \mu_p
                   \qquad\text{(RTD mean + pulse mean)},$$
