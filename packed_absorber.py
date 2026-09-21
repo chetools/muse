@@ -14,9 +14,8 @@ MDEA (methyldiethanolamine).
 Covers: VLE of H2S in MDEA (Kent-Eisenberg), wetted-area and film
 coefficients (Onda et al. 1968, explained in detail), numerical N_OG
 integration over the curved equilibrium line, the GPDC pressure-drop chart
-in SI units, the Stichlmair-Bravo-Fair mechanistic pressure-drop model,
-column sizing (diameter at a fraction of flood, packed height from
-N_OG x H_OG), and turndown.
+in SI units, column sizing (diameter at a fraction of flood, packed height
+from N_OG x H_OG), and turndown.
 
 Run with `marimo edit packed_absorber.py` (or open in molab), or view the
 WASM export. All quantities are SI unless a unit is stated.
@@ -52,8 +51,7 @@ def _(mo):
         coefficients via Onda et al., 1968 — explained term by term),
         **transfer units by numerical integration** over the curved
         equilibrium line, **hydraulics** (the generalized pressure-drop
-        correlation, GPDC, drawn in SI units, plus the mechanistic
-        Stichlmair–Bravo–Fair model), and **sizing** (diameter at a chosen
+        correlation, GPDC, drawn in SI units), and **sizing** (diameter at a chosen
         fraction of flooding, packed height from $N_{OG} \times H_{OG}$).
 
         ## Example system (defaults — change them with the sliders)
@@ -69,8 +67,8 @@ def _(mo):
         2. Set the feed and solvent in §3.
         3. Follow the calculation sections in order; every step shows its
            equations, the numbers, and a figure.
-        4. §13 compares three independent pressure-drop estimates;
-           §12 explains turndown.
+        4. §12 compares two independent pressure-drop estimates;
+           §11 explains turndown.
 
         Every symbol is defined where it first appears (see also the
         nomenclature in §1). All units are SI unless stated.
@@ -120,14 +118,6 @@ def _(mo):
         | $Y$ | GPDC capacity parameter (not a mole fraction) | – |
         | $\Delta p$ | pressure drop | Pa |
         | $g$ | gravitational acceleration | m s⁻² |
-        | $u_G$, $u_L$ | superficial gas / liquid velocity | m s⁻¹ |
-        | $Re_G$ | gas Reynolds number | – |
-        | $Fr_L$ | liquid Froude number | – |
-        | $d_{pe}$ | SBF equivalent particle diameter, $6(1-\epsilon)/a_t$ | m |
-        | $f_0$ | SBF dry-bed friction factor | – |
-        | $c$ | SBF friction-factor slope | – |
-        | $C_1$, $C_2$, $C_3$ | SBF packing-specific constants | – |
-        | $h_0$, $h_T$ | liquid holdup below loading / total | m³ m⁻³ |
         | $F_{pd}$ | Robbins dry-packing factor | m⁻¹ |
         """
     )
@@ -167,8 +157,6 @@ def _():
     # Structured Fp: d-sorganization tools packing DB (250Y); others indicative.
     # sigma_c: steel 0.075 N/m confirmed (Onda); ceramic 0.061 / plastic 0.033
     # are commonly quoted values -- verify against Treybal or Onda (1968).
-    # sbf: Stichlmair-Bravo-Fair (C1, C2, C3); only the set reproduced from the
-    # 1989 paper's worked example (via the open `fluids` package docs) is listed.
     PACKINGS = [
         dict(name="Raschig rings, ceramic, 13 mm", kind="random", mat="ceramic",
              dp=0.013, Fp=1900.0, Fpd=1705.0, a_t=370.0, eps=0.64, sig_c=0.061),
@@ -242,8 +230,6 @@ def _(PACK_BY_NAME, mo, packing_ui):
          f"{1000*_p['sig_c']:.0f} mN/m"),
         ("Robbins dry factor $F_{pd}$",
          f"{_p['Fpd']:.0f} m⁻¹" if _p['Fpd'] else "not tabulated"),
-        ("SBF constants $(C_1, C_2, C_3)$",
-         str(_p['sbf']) if 'sbf' in _p else "pending (1989 paper, Table 2)"),
     ]
     if "note" in _p:
         _rows.append(("Note", _p["note"]))
@@ -531,7 +517,8 @@ def _(go, mo, np, y_in, y_out, ystar):
         xaxis_title="liquid H2S mole fraction x (mol %)",
         yaxis_title="equilibrium y* (ppmv)", yaxis_type="log",
         font=dict(family="Georgia, serif", size=13),
-        margin=dict(l=60, r=20, t=50, b=50))
+        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+        margin=dict(l=60, r=170, t=50, b=50))
     mo.ui.plotly(_fig)
     return
 
@@ -665,7 +652,7 @@ def _(G_C, np):
 def _(mo):
     mo.md(
         r"""
-        ## 6. Hydraulics I — the generalized pressure-drop correlation (GPDC)
+        ## 6. Hydraulics — the generalized pressure-drop correlation (GPDC)
 
         ### What the chart is
 
@@ -702,8 +689,8 @@ def _(mo):
         $0.01 < X < 10$):
 
         $$
-        \\log_{10} Y_{flood} = -1.668 - 1.085\\,\\log_{10} X
-                              - 0.098\\,(\\log_{10} X)^2
+        \log_{10} Y_{flood} = -1.668 - 1.085\,\log_{10} X
+                              - 0.098\,(\log_{10} X)^2
         $$
 
         Inverting the definition of $Y$ gives the flooding mass flux:
@@ -736,7 +723,7 @@ def _(mo):
         > $\Delta p_{flood}$ at 2.0 in H₂O/ft (1635 Pa/m), following the
         > practice in several teaching sources. Small packings (high
         > $F_p$) therefore report the capped value — check the
-        > cross-check in §13.
+        > cross-check in §12.
 
         and, with the chart geometry exponent $n \approx 2.36$:
 
@@ -744,9 +731,8 @@ def _(mo):
         \Delta p = \Delta p_{flood}\left(\frac{Y}{Y_{flood}}\right)^{n}
         $$
 
-        This is an approximation of a chart reading — §8 predicts
-        $\Delta p$ mechanistically (Stichlmair–Bravo–Fair) and §10 compares
-        the two against the Robbins (1991) correlation.
+        This is an approximation of a chart reading — §12 compares it
+        against the Robbins (1991) correlation.
         """
     )
     return
@@ -902,10 +888,7 @@ def _(G_C, PACK_BY_NAME, T_ui, flood_ui, gpdc_Gp_flood, gpdc_X, gpdc_Y,
             frac_flood)
 
 @app.cell
-def _(Gp, Lp, mo, mu_G, mu_L, np, pack, rho_G, rho_L, robbins_dp, sbf_dp_irr,
-        sbf_flood_Vg, dp_gpdc):
-    Vg = Gp / rho_G
-    Vl = Lp / rho_L
+def _(Gp, Lp, mo, mu_L, pack, rho_G, rho_L, robbins_dp, dp_gpdc):
     _lines = ["### Pressure-drop cross-check", ""]
     _lines.append(f"- GPDC chart reading (§6): **{dp_gpdc:.0f} Pa/m**")
     dp_robbins = None
@@ -915,37 +898,6 @@ def _(Gp, Lp, mo, mu_G, mu_L, np, pack, rho_G, rho_L, robbins_dp, sbf_dp_irr,
                       f"($F_{{pd}}$ = {pack['Fpd']:.0f} m⁻¹)")
     else:
         _lines.append("- Robbins (1991): Fpd not tabulated for this packing")
-    _sbf_note = ""
-    if "sbf" in pack:
-        C1, C2, C3 = pack["sbf"]
-        try:
-            _dp_sbf, _hT = sbf_dp_irr(Vg, Vl, rho_G, rho_L, mu_G,
-                                      pack["eps"], pack["a_t"], C1, C2, C3)
-            _Vf = sbf_flood_Vg(Vl, rho_G, rho_L, mu_G, pack["eps"],
-                               pack["a_t"], C1, C2, C3, Vg)
-            _lines.append(
-                f"- Stichlmair–Bravo–Fair: **{_dp_sbf:.0f} Pa/m** "
-                f"(holdup $h_T$ = {_hT*100:.1f}% of bed; "
-                f"SBF flooding at {100*Vg/_Vf:.0f}% of this gas rate)")
-            # Loading point: gas velocity where holdup first exceeds the
-            # below-loading holdup h_0 by 10% (stated working definition).
-            _Vg_test = np.linspace(0.2 * Vg, 0.99 * _Vf, 40)
-            _h0_ref = sbf_dp_irr(_Vg_test[0], Vl, rho_G, rho_L, mu_G,
-                                 pack["eps"], pack["a_t"], C1, C2, C3)[1]
-            _Vload = _Vf
-            for _vt in _Vg_test:
-                _h = sbf_dp_irr(_vt, Vl, rho_G, rho_L, mu_G,
-                                pack["eps"], pack["a_t"], C1, C2, C3)[1]
-                if _h > 1.1 * _h0_ref:
-                    _Vload = _vt
-                    break
-            _lines.append(
-                f"  - SBF loading point ≈ {100*_Vload/_Vf:.0f}% of SBF "
-                f"flooding (holdup 10% above the below-loading value)")
-        except ArithmeticError as _e:
-            _lines.append(f"- Stichlmair–Bravo–Fair: {_e}")
-    else:
-        _lines.append("- Stichlmair–Bravo–Fair: constants pending (§8)")
     _lines.append("")
     _lines.append("Order-of-magnitude agreement builds confidence; systematic "
                   "disagreement points back at the packing data.")
@@ -953,71 +905,7 @@ def _(Gp, Lp, mo, mu_G, mu_L, np, pack, rho_G, rho_L, robbins_dp, sbf_dp_irr,
     return (dp_robbins,)
 
 @app.cell
-def _(G_C, np):
-    def sbf_dp_irr(Vg, Vl, rho_G, rho_L, mu_G, eps, a_t, C1, C2, C3):
-        """Stichlmair-Bravo-Fair irrigated-bed dP/H, Pa/m.
-
-        Vg, Vl: superficial gas/liquid velocities, m/s. Returns
-        (dp_dz, h_T). Raises ArithmeticError at/above flooding, where the
-        secant iteration cannot converge (h_T -> eps). Equations follow
-        the open `fluids` package implementation (which documents the
-        corrected form of Stichlmair, Bravo & Fair (1989) per
-        Piche et al. (2001)); validated numerically against fluids'
-        worked example (539.81 vs 539.88 Pa/m).
-        """
-        g = G_C
-        dp_eq = 6.0 * (1.0 - eps) / a_t
-        Re = Vg * rho_G * dp_eq / mu_G
-        f0 = C1 / Re + C2 / np.sqrt(Re) + C3
-        dp_dry = 0.75 * f0 * (1.0 - eps) / eps**4.65 * rho_G * Vg**2 / dp_eq
-        c = (-C1 / Re - C2 / (2.0 * np.sqrt(Re))) / f0
-        h0 = 0.555 * (Vl**2 * a_t / (g * eps**4.65)) ** (1.0 / 3.0)
-
-        def hT_of(x):
-            return h0 * (1.0 + 20.0 * (x / (rho_L * g)) ** 2)
-
-        def F(x):
-            hT = hT_of(x)
-            if hT >= eps:
-                return np.inf
-            return (x - dp_dry * ((1.0 - eps + hT) / (1.0 - eps)) ** ((2.0 + c) / 3.0)
-                    * (eps / (eps - hT)) ** 4.65)
-
-        x0, x1 = dp_dry, 1.5 * dp_dry
-        f0v, f1v = F(x0), F(x1)
-        for _ in range(60):
-            if f1v == f0v or not np.isfinite(f1v):
-                raise ArithmeticError("SBF iteration diverged (flooding)")
-            x2 = x1 - f1v * (x1 - x0) / (f1v - f0v)
-            if x2 <= 0 or not np.isfinite(x2):
-                raise ArithmeticError("SBF iteration diverged (flooding)")
-            if abs(x2 - x1) < 1e-10 * max(1.0, x2):
-                return x2, hT_of(x2)
-            x0, x1, f0v, f1v = x1, x2, f1v, F(x2)
-        raise ArithmeticError("SBF iteration did not converge")
-
-    def sbf_flood_Vg(Vl, rho_G, rho_L, mu_G, eps, a_t, C1, C2, C3, Vg_op):
-        """Flooding superficial gas velocity, m/s: ramp Vg until the SBF
-        iteration diverges, then bisect."""
-        def ok(v):
-            try:
-                sbf_dp_irr(v, Vl, rho_G, rho_L, mu_G, eps, a_t, C1, C2, C3)
-                return True
-            except ArithmeticError:
-                return False
-        lo, hi = Vg_op, 2.0 * Vg_op
-        while ok(hi):
-            lo, hi = hi, hi * 1.5
-            if hi > 1e3:
-                raise ArithmeticError("no flooding found")
-        for _ in range(40):
-            mid = 0.5 * (lo + hi)
-            if ok(mid):
-                lo = mid
-            else:
-                hi = mid
-        return lo
-
+def _(np):
     def robbins_dp(Lp, Gp, rho_L, rho_G, mu_L, Fpd):
         """Robbins (1991) pressure gradient, Pa/m.
 
@@ -1038,96 +926,12 @@ def _(G_C, np):
         dp = dpd + 0.4 * (Lf / 20000.0) ** 0.1 * dpd**4   # inH2O/ft, total
         return dp * 817.22083                             # Pa/m
 
-    return robbins_dp, sbf_dp_irr, sbf_flood_Vg
+    return (robbins_dp,)
 @app.cell
 def _(mo):
     mo.md(
         r"""
-        ## 8. Hydraulics II — the Stichlmair–Bravo–Fair particle model
-
-        While the GPDC reads an empirical chart, the
-        Stichlmair–Bravo–Fair (SBF) model (Stichlmair, Bravo & Fair,
-        1989) predicts pressure drop **mechanistically** from a force
-        balance on the gas flowing through the packed bed, treating the
-        packing as an assembly of particles of equivalent diameter
-        $d_{pe} = 6(1-\epsilon)/a_t$. (Equations as reproduced in the open
-        `fluids` package documentation, cross-checked against the 1989
-        paper and Piché et al., 2001.)
-
-        **Dry bed.** With $u_G = G'/\rho_G$ the superficial gas velocity
-        (m/s) and $Re_G = u_G\,\rho_G\,d_{pe}/\mu_G$:
-
-        $$
-        \frac{\Delta p_{dry}}{H} = \frac{3}{4}\,f_0\,
-        \frac{1-\epsilon}{\epsilon^{4.65}}\,\rho_G\,
-        \frac{u_G^2}{d_{pe}}, \qquad
-        f_0 = \frac{C_1}{Re_G} + \frac{C_2}{Re_G^{1/2}} + C_3
-        $$
-
-        where $C_1$, $C_2$, $C_3$ are packing-specific constants fitted
-        to dry-bed data.
-
-        **Irrigated bed.** Liquid holdup $h_T$ (m³ liquid per m³ bed)
-        constricts the gas passages; with $u_L = L'/\rho_L$ the
-        superficial liquid velocity (m/s):
-
-        $$
-        \frac{\Delta p_{irr}}{H} = \frac{\Delta p_{dry}}{H}
-        \left(\frac{1-\epsilon+h_T}{1-\epsilon}\right)^{(2+c)/3}
-        \left(\frac{\epsilon}{\epsilon-h_T}\right)^{4.65}
-        $$
-
-        $$
-        h_T = h_0\left[1 + 20
-        \left(\frac{\Delta p_{irr}}{H\,\rho_L\,g}\right)^2\right],
-        \qquad
-        h_0 = 0.555\,Fr_L^{1/3}, \quad
-        Fr_L = \frac{u_L^2\,a_t}{g\,\epsilon^{4.65}}
-        $$
-
-        $$
-        c = \frac{-C_1/Re_G - C_2/(2\,Re_G^{1/2})}{f_0}
-        $$
-
-        Here $h_0$ is the holdup below the loading point, $Fr_L$ the
-        liquid Froude number, and $c$ the slope of the friction-factor
-        curve. Because $h_T$ depends on $\Delta p_{irr}$ and vice
-        versa, the irrigated pressure drop is solved **iteratively**
-        (secant method from the dry-bed value).
-
-        **Loading and flooding.** As the gas rate rises, $h_T$ grows;
-        the **loading point** is where $h_T$ begins to rise steeply
-        (liquid starts to accumulate), and the **flooding point** is
-        where the iteration ceases to converge — $h_T \to \epsilon$
-        and the $[\epsilon/(\epsilon-h_T)]^{4.65}$ term diverges.
-        The notebook locates flooding by ramping $u_G$ until the secant
-        iteration fails, the same signature simulators use.
-
-        **Constants.** $C_1$, $C_2$, $C_3$ come from the 1989 paper's
-        packing tables. Only the set reproduced from the paper's worked
-        example is coded (see §2); other packings fall back to the GPDC
-        until the table values are verified.
-        """
-    )
-    return
-
-
-@app.cell
-def _():
-    # SBF_CONST will map packing name -> (C1, C2, C3) from the verified
-    # Stichlmair, Bravo & Fair (1989) tables (literature check pending).
-    # Until then, hydraulics use the GPDC (Sections 5-6, 9).
-    SBF_CONST = {}
-    return (SBF_CONST,)
-
-
-
-
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
-        ## 9. The GPDC chart in SI units
+        ## 8. The GPDC chart in SI units
 
         The figure below is the generalized pressure-drop correlation
         drawn in SI: the abscissa is the flow parameter $X$, the ordinate
@@ -1176,8 +980,8 @@ def _(Fp, X_design, Y_op, dp_flood_kg, dp_gpdc, frac_flood_actual, go,
         yaxis_title="capacity parameter Y",
         xaxis_type="log", yaxis_type="log",
         font=dict(family="Georgia, serif", size=13),
-        legend=dict(x=0.02, y=0.98),
-        margin=dict(l=60, r=20, t=50, b=50))
+        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+        margin=dict(l=60, r=170, t=50, b=50))
     _fig.update_xaxes(showgrid=True)
     _fig.update_yaxes(showgrid=True)
     mo.ui.plotly(_fig)
@@ -1188,7 +992,7 @@ def _(Fp, X_design, Y_op, dp_flood_kg, dp_gpdc, frac_flood_actual, go,
 def _(mo):
     mo.md(
         r"""
-        ## 10. Operating diagram — where the driving force lives
+        ## 9. Operating diagram — where the driving force lives
 
         On a $y$–$x$ diagram (gas mole fraction $y$ vs liquid mole
         fraction $x$), the **operating line** is the material balance
@@ -1232,7 +1036,8 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar):
         yaxis_title="gas H2S mole fraction y (ppmv)",
         yaxis_type="log",
         font=dict(family="Georgia, serif", size=13),
-        margin=dict(l=60, r=20, t=50, b=50),
+        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+        margin=dict(l=60, r=170, t=50, b=50),
         annotations=[dict(x=0.98, y=0.05, xref="paper", yref="paper",
                           text="green dotted = local driving force y − y*",
                           showarrow=False, font=dict(size=11))])
@@ -1244,7 +1049,7 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar):
 def _(mo):
     mo.md(
         r"""
-        ## 11. Transfer units by numerical integration
+        ## 10. Transfer units by numerical integration
 
         The number of overall gas-phase transfer units is the integral
         of the reciprocal driving force from the sweet gas ($y_{out}$)
@@ -1294,7 +1099,8 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar, N_OG):
         xaxis_title="gas H2S mole fraction y (ppmv)",
         yaxis_title="1 / (y − y*)",
         font=dict(family="Georgia, serif", size=13),
-        margin=dict(l=60, r=20, t=50, b=50))
+        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+        margin=dict(l=60, r=170, t=50, b=50))
     mo.ui.plotly(_fig)
     return
 
@@ -1303,7 +1109,7 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar, N_OG):
 def _(mo):
     mo.md(
         r"""
-        ## 12. Turndown — how far can the column back off?
+        ## 11. Turndown — how far can the column back off?
 
         A column is designed at one rate (here ~70% of flood) but must
         operate over a range. **Turndown** is the ratio
@@ -1379,17 +1185,16 @@ def _(Fp, Gp, Lp, X_design, a_t, dp_p, eps, frac_flood, go, gpdc_Gp_flood,
 def _(mo):
     mo.md(
         r"""
-        ## 13. Pressure-drop comparison and design summary
+        ## 12. Pressure-drop comparison and design summary
 
-        Three independent routes to the bed pressure gradient, in order
-        of increasing mechanistic content -- all computed for the current
-        operating point in the cross-check after section 7:
+        Two independent routes to the bed pressure gradient -- both
+        computed for the current operating point in the cross-check
+        after section 7:
 
         | Method | Basis | Status here |
         |---|---|---|
         | GPDC chart reading (section 6) | Eckert/Strigle chart + Kister-Gill anchor | computed |
         | Robbins (1991) | packing-specific pressure-drop correlation | computed (needs Fpd) |
-        | Stichlmair-Bravo-Fair (section 8) | particle force balance + holdup | computed where C1-C3 known |
 
         Same order of magnitude across independent correlations is what
         builds confidence in a hydraulics design; systematic disagreement
@@ -1399,7 +1204,7 @@ def _(mo):
         What this notebook does and does not claim: it *does* size a
         packed absorber's diameter from GPDC flooding hydraulics,
         integrate N_OG numerically against an amine equilibrium curve,
-        and cross-check the pressure gradient with Robbins and SBF. It
+        and cross-check the pressure gradient with Robbins. It
         *does not* replace rate-based simulation (Aspen RateSep,
         ProTreat) for final design, vendor hydraulics for the exact
         packing, or pilot data for a new solvent. The equilibrium curve
@@ -1434,17 +1239,12 @@ def _(D, H_OG, N_OG, Z, a_w, dp_gpdc, dp_total, frac_flood_actual, mo,
 def _(mo):
     mo.md(
         r"""
-        ## 14. References and further reading
+        ## 13. References and further reading
 
         - Onda, K., Takeuchi, H. & Okumoto, Y. (1968). Mass transfer
           coefficients between gas and liquid phases in packed columns.
           *J. Chem. Eng. Japan* 1(1), 56–62.
           DOI: [10.1252/kakoronbunshu1953.32.136](https://doi.org/10.1252/kakoronbunshu1953.32.136)
-        - Stichlmair, J., Bravo, J. L. & Fair, J. R. (1989). General
-          model for prediction of pressure drop and capacity of
-          countercurrent gas/liquid packed columns.
-          *Gas Sep. Purif.* 3(1), 19–28.
-          DOI: [10.1016/0950-4214(89)80016-7](https://doi.org/10.1016/0950-4214(89)80016-7)
         - Kister, H. Z. & Gill, D. R. (1991). Predict flood points and
           pressure drop for modern random packings. *Chem. Eng. Prog.*
           87(2), 32–42.
