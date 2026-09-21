@@ -69,8 +69,8 @@ def _(mo):
         2. Set the feed and solvent in §3.
         3. Follow the calculation sections in order; every step shows its
            equations, the numbers, and a figure.
-        4. §10 compares three independent pressure-drop estimates;
-           §10 explains turndown.
+        4. §13 compares three independent pressure-drop estimates;
+           §12 explains turndown.
 
         Every symbol is defined where it first appears (see also the
         nomenclature in §1). All units are SI unless stated.
@@ -702,8 +702,8 @@ def _(mo):
         $0.01 < X < 10$):
 
         $$
-        \log_{10} Y_{flood} = -1.668 - 1.085\,\log_{10} X
-                              - 0.098\,(\log_{10} X)^2
+        \\log_{10} Y_{flood} = -1.668 - 1.085\\,\\log_{10} X
+                              - 0.098\\,(\\log_{10} X)^2
         $$
 
         Inverting the definition of $Y$ gives the flooding mass flux:
