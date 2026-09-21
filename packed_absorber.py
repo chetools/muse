@@ -258,28 +258,50 @@ def _(mo):
 @app.cell
 def _(mo):
     P_ui = mo.ui.slider(5.0, 50.0, value=20.0, step=1.0,
-                        label="Column pressure P (bar abs)", debounce=True)
+                        label="Column pressure P", debounce=True,
+                        show_value=True)
     T_ui = mo.ui.slider(20.0, 60.0, value=40.0, step=1.0,
-                        label="Temperature T (°C)", debounce=True)
+                        label="Temperature T", debounce=True,
+                        show_value=True)
     Gfeed_ui = mo.ui.slider(100.0, 5000.0, value=1000.0, step=50.0,
-                            label="Gas feed (kmol/h)", debounce=True)
+                            label="Gas feed", debounce=True,
+                            show_value=True)
     yin_ui = mo.ui.slider(0.5, 5.0, value=2.0, step=0.1,
-                          label="Feed H2S y_in (mol %)", debounce=True)
+                          label="Feed H2S y_in", debounce=True,
+                          show_value=True)
     rem_ui = mo.ui.slider(90.0, 99.9, value=99.0, step=0.1,
-                          label="H2S removal (%)", debounce=True)
+                          label="H2S removal", debounce=True,
+                          show_value=True)
     mdea_ui = mo.ui.slider(30.0, 50.0, value=45.0, step=1.0,
-                           label="MDEA strength (wt %)", debounce=True)
+                           label="MDEA strength", debounce=True,
+                           show_value=True)
     lean_ui = mo.ui.slider(0.0, 0.05, value=0.005, step=0.001,
-                           label="Lean loading alpha_in (mol H2S / mol MDEA)",
-                           debounce=True)
+                           label="Lean loading alpha_in", debounce=True,
+                           show_value=True)
     rich_ui = mo.ui.slider(0.20, 0.50, value=0.35, step=0.01,
-                           label="Rich loading target alpha_out (mol/mol)",
-                           debounce=True)
+                           label="Rich loading target alpha_out",
+                           debounce=True, show_value=True)
     flood_ui = mo.ui.slider(50.0, 80.0, value=70.0, step=1.0,
-                            label="Design fraction of flood (%)",
-                            debounce=True)
-    mo.vstack([P_ui, T_ui, Gfeed_ui, yin_ui, rem_ui, mdea_ui,
-               lean_ui, rich_ui, flood_ui])
+                            label="Design fraction of flood", debounce=True,
+                            show_value=True)
+
+    def _unit_row(slider, unit):
+        # number shown by show_value sits inside the slider; the unit goes
+        # immediately to the right of the number.
+        return mo.hstack([slider, mo.md(unit)], widths=[1, 0],
+                         align="center")
+
+    mo.vstack([
+        _unit_row(P_ui, "bar abs"),
+        _unit_row(T_ui, "°C"),
+        _unit_row(Gfeed_ui, "kmol/h"),
+        _unit_row(yin_ui, "mol %"),
+        _unit_row(rem_ui, "%"),
+        _unit_row(mdea_ui, "wt %"),
+        _unit_row(lean_ui, "mol H2S / mol MDEA"),
+        _unit_row(rich_ui, "mol/mol"),
+        _unit_row(flood_ui, "%"),
+    ])
     return (Gfeed_ui, P_ui, T_ui, flood_ui, lean_ui, mdea_ui, rem_ui,
             rich_ui, yin_ui)
 
@@ -504,8 +526,20 @@ def _(P_ui, T_ui, mdea_ui, np, optimize):
 @app.cell
 def _(go, mo, np, y_in, y_out, ystar):
     _x = np.linspace(1e-5, 0.08, 300)
+    _y = np.asarray(ystar(_x), dtype=float) * 1e6  # equilibrium y*, ppmv
+    # Pin the log y-range from the data: plotly's autorange blows the axis
+    # out to ~1e207 on this chart in the WASM build, squeezing the curve
+    # into invisibility at the bottom.
+    _bits = [_a[np.isfinite(_a) & (_a > 0)] for _a in
+             (_y, np.array([y_in * 1e6, y_out * 1e6], dtype=float))]
+    _bits = [_a for _a in _bits if _a.size]
+    _yrange = None
+    if _bits:
+        _pool = np.concatenate(_bits)
+        _yrange = [float(np.log10(_pool.min())) - 0.2,
+                   float(np.log10(_pool.max())) + 0.2]
     _fig = go.Figure()
-    _fig.add_trace(go.Scatter(x=_x * 100, y=ystar(_x) * 1e6, mode="lines",
+    _fig.add_trace(go.Scatter(x=_x * 100, y=_y, mode="lines",
                               name="y* (Kent–Eisenberg)",
                               line=dict(color="#1f77b4", width=2.5)))
     _fig.add_hline(y=y_in * 1e6, line_dash="dash", line_color="gray",
@@ -516,6 +550,7 @@ def _(go, mo, np, y_in, y_out, ystar):
         title="H2S equilibrium curve (Kent–Eisenberg) at column T, P",
         xaxis_title="liquid H2S mole fraction x (mol %)",
         yaxis_title="equilibrium y* (ppmv)", yaxis_type="log",
+        yaxis_range=_yrange,
         font=dict(family="Georgia, serif", size=13),
         legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
         margin=dict(l=60, r=170, t=50, b=50))
@@ -1016,11 +1051,21 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar):
     _x = np.linspace(x_in * 0.9, x_in + (G_tot / L_tot) * (y_in - y_out)
                      * 1.15, 300)
     _yop = y_out + (L_tot / G_tot) * (_x - x_in)
+    _yeq = np.asarray(ystar(_x), dtype=float) * 1e6  # ppmv
+    _yop_ppm = _yop * 1e6
+    # Pin the log y-range from the data (same autorange blow-up guard as §4).
+    _bits = [_a[np.isfinite(_a) & (_a > 0)] for _a in (_yeq, _yop_ppm)]
+    _bits = [_a for _a in _bits if _a.size]
+    _yrange = None
+    if _bits:
+        _pool = np.concatenate(_bits)
+        _yrange = [float(np.log10(_pool.min())) - 0.2,
+                   float(np.log10(_pool.max())) + 0.2]
     _fig = go.Figure()
-    _fig.add_trace(go.Scatter(x=_x * 100, y=ystar(_x) * 1e6, mode="lines",
+    _fig.add_trace(go.Scatter(x=_x * 100, y=_yeq, mode="lines",
                               name="equilibrium y*(x)",
                               line=dict(color="#d62728", width=2.5)))
-    _fig.add_trace(go.Scatter(x=_x * 100, y=_yop * 1e6, mode="lines",
+    _fig.add_trace(go.Scatter(x=_x * 100, y=_yop_ppm, mode="lines",
                               name="operating line",
                               line=dict(color="#1f77b4", width=2.5)))
     for _frac in (0.15, 0.5, 0.85):
@@ -1034,6 +1079,7 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar):
         xaxis_title="liquid H2S mole fraction x (mol %)",
         yaxis_title="gas H2S mole fraction y (ppmv)",
         yaxis_type="log",
+        yaxis_range=_yrange,
         font=dict(family="Georgia, serif", size=13),
         legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
         margin=dict(l=60, r=170, t=50, b=50),
