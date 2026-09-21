@@ -287,9 +287,11 @@ def _(mo):
 
     def _unit_row(slider, unit):
         # number shown by show_value sits inside the slider; the unit goes
-        # immediately to the right of the number.
-        return mo.hstack([slider, mo.md(unit)], widths=[1, 0],
-                         align="center")
+        # immediately to the right of the number, kept on one line.
+        return mo.hstack(
+            [slider,
+             mo.Html(f"<span style='white-space:nowrap'>{unit}</span>")],
+            widths=[1, 0], align="center")
 
     mo.vstack([
         _unit_row(P_ui, "bar abs"),
