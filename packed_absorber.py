@@ -689,8 +689,7 @@ def _(mo):
         $0.01 < X < 10$):
 
         $$
-        \log_{10} Y_{flood} = -1.668 - 1.085\,\log_{10} X
-                              - 0.098\,(\log_{10} X)^2
+        \log_{10} Y_{flood} = -1.668 - 1.085\,\log_{10} X - 0.098\,(\log_{10} X)^2
         $$
 
         Inverting the definition of $Y$ gives the flooding mass flux:
