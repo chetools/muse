@@ -17,7 +17,7 @@ convolution check, moment checks, and the full theory panel with live code.
 
 ## Open in molab (jax edition)
 
-[![Open in molab](https://marimo.io/molab-shield.svg)](https://molab.marimo.io/github/chetools/muse/blob/tube/tube/marimo/tanks_in_series_jax.py)
+[![Open in molab](https://marimo.io/molab-shield.svg)](https://molab.marimo.io/github/chetools/muse/blob/main/tube/marimo/tanks_in_series_jax.py)
 
 In molab: *New notebook → From GitHub URL*, paste the notebook's GitHub URL.
 molab keeps the notebook synced — push to this branch and the mirror updates.

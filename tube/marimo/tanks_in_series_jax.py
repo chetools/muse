@@ -69,7 +69,7 @@ def _(diffrax, jax, mo):
         # Band broadening in tube flow — N stirred tanks in series
         ## jax / diffrax edition
 
-        [![Open in molab](https://marimo.io/molab-shield.svg)](https://molab.marimo.io/github/chetools/muse/blob/tube/tube/marimo/tanks_in_series_jax.py)
+        [![Open in molab](https://marimo.io/molab-shield.svg)](https://molab.marimo.io/github/chetools/muse/blob/main/tube/marimo/tanks_in_series_jax.py)
 
         A tube of mean residence time $\tau$ is approximated by **$N$ equal,
         perfectly mixed tanks in series**, fed with a **tracer pulse** of height
