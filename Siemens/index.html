@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="A sourced comparison of Siemens chemical engineering software, competing vendors, process industries, and undergraduate education."><title>Siemens in Chemical Engineering — muse</title><style>
+:root{--paper:#f5f3ed;--ink:#23282a;--muted:#565e62;--accent:#a93220;--line:#c8cbc5;--white:#fffef9}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.65 Arial,Helvetica,sans-serif}a{color:var(--accent);text-underline-offset:3px}a:hover{color:var(--ink)}a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.skip{position:absolute;left:20px;top:-100px;background:var(--white);padding:8px;z-index:10}.skip:focus{top:12px}.masthead{max-width:1440px;margin:auto;padding:28px 5%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);gap:20px}.brand{font-size:14px;font-weight:bold;letter-spacing:.14em;text-decoration:none;color:var(--ink)}.masthead span{font-size:13px;color:var(--muted)}button{font:inherit;font-size:13px;background:transparent;border:1px solid var(--line);padding:8px 13px;cursor:pointer;color:var(--ink)}button:hover{background:var(--white)}header{max-width:1440px;margin:auto;padding:62px 5% 48px}.eyebrow{font-size:13px;text-transform:uppercase;letter-spacing:.13em;color:var(--accent);font-weight:bold}h1{font:normal clamp(38px,4.7vw,68px)/1.06 Georgia,serif;max-width:970px;margin:18px 0 25px;letter-spacing:-.025em}.deck{max-width:780px;font-size:21px;line-height:1.5;color:var(--muted)}.meta{font-size:13px;color:var(--muted);margin-top:25px}.layout{max-width:1440px;margin:auto;padding:0 5% 80px;display:grid;grid-template-columns:230px minmax(0,1fr);gap:58px}aside{position:sticky;top:25px;align-self:start;border-top:3px solid var(--ink);padding-top:15px}aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.13em;margin:0 0 15px}nav a{display:block;font-size:13px;color:var(--muted);text-decoration:none;line-height:1.45;padding:9px 0;border-bottom:1px solid var(--line)}nav a:hover{color:var(--accent)}.aside-note{font-size:12px;line-height:1.5;color:var(--muted);margin-top:22px}article{min-width:0}article>p:first-child{font-size:13px;color:var(--muted);margin-top:0}h2{font:normal 32px/1.22 Georgia,serif;margin:52px 0 22px;padding-top:24px;border-top:1px solid var(--line)}article>h2:first-of-type{margin-top:0;border-top:3px solid var(--accent)}h3{font-size:20px;line-height:1.35;margin:35px 0 15px}p{margin:0 0 19px}li{margin:9px 0}ul,ol{padding-left:25px}strong{font-weight:700}.table-scroll{overflow-x:auto;margin:26px 0 22px;border-top:2px solid var(--ink);border-bottom:1px solid var(--line);background:var(--white)}table{border-collapse:collapse;width:100%;min-width:740px;font-size:14px;line-height:1.5}th{text-align:left;font-weight:bold;padding:15px 14px;border-bottom:1px solid var(--ink);vertical-align:bottom}td{padding:15px 14px;vertical-align:top;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}td:first-child{width:22%}article a{overflow-wrap:anywhere}footer{border-top:1px solid var(--line);padding:28px 5%;font-size:13px;color:var(--muted);max-width:1440px;margin:auto}footer p{margin:0}.back{display:inline-block;margin-top:25px;font-size:14px}
+@media(max-width:1000px){.layout{grid-template-columns:185px minmax(0,1fr);gap:30px}body{font-size:16px}}
+@media(max-width:720px){.masthead{padding:20px 6%}.masthead span{display:none}header{padding:38px 6% 30px}.deck{font-size:18px}.layout{display:block;padding:0 6% 45px}aside{position:static;margin-bottom:35px}nav{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}.aside-note{display:none}h2{font-size:28px}h3{font-size:19px}table{font-size:13px}footer{padding:25px 6%}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{body{background:white;font-size:10pt;color:black}.masthead,aside,.skip,.back{display:none}header{padding:0 0 20px}h1{font-size:32pt}.deck{font-size:14pt}.layout{display:block;padding:0}h2{font-size:20pt;break-after:avoid}h3{break-after:avoid}a{color:black}.table-scroll{overflow:visible;background:white}table{min-width:0;font-size:8pt}th,td{padding:8px}tr{break-inside:avoid}footer{padding:15px 0}.meta{font-size:9pt}}
+</style></head>
+<body id="top"><a class="skip" href="#research">Skip to research</a>
+<div class="masthead"><a class="brand" href="https://github.com/chetools/muse">MUSE / ENGINEERING</a><span>Software · Processes · Education</span><button type="button" onclick="window.print()">Print / save PDF</button></div>
+<header><div class="eyebrow">Comparative research brief / 01 October 2026</div><h1>Siemens software in<br>chemical engineering</h1><p class="deck">Where the portfolio fits, how competing tools compare, and what undergraduate engineers should learn.</p><p class="meta">Primary vendor sources, published educational evidence, and clearly identified engineering judgments.</p></header>
+<div class="layout"><aside><h2>In this brief</h2><nav aria-label="Research sections"><a href="#findings-that-matter">Findings that matter</a><a href="#1-what-siemens-software-actually-does">1. What Siemens software actually does</a><a href="#2-comparison-with-the-principal-alternatives">2. Comparison with the principal alternatives</a><a href="#3-processes-and-industries-where-the-shortlist-changes">3. Processes and industries: where the shortlist changes</a><a href="#4-connection-to-undergraduate-chemical-engineering">4. Connection to undergraduate chemical engineering</a><a href="#5-academic-access-and-procurement">5. Academic access and procurement</a><a href="#6-research-questions-worth-pursuing">6. Research questions worth pursuing</a></nav><p class="aside-note">Read by engineering task. A flowsheet simulator, equipment CFD model, and manufacturing execution system solve different problems.</p></aside><main id="research"><article>
+<p>Research checked: 1 October 2026. Audience: chemical engineering educators, students, and departments evaluating industrial software.</p>
+<h2 id="findings-that-matter">Findings that matter</h2>
+<p><strong>Siemens is particularly compelling when chemical engineering involves building and validating custom process models, predicting product quality, resolving equipment-scale transport phenomena, or connecting models to plant automation. It is not automatically the best single supplier for every process, industry, or undergraduate course.</strong></p>
+<p>The relevant Siemens portfolio has several distinct layers: gPROMS for process and product modeling; Simcenter STAR-CCM+ for computational fluid dynamics (CFD); Simcenter Flomaster for thermofluid networks; COMOS for plant engineering information; SIMIT for automation simulation and training; SIMATIC process control; and Opcenter for manufacturing execution. Comparing all of these collectively against only Aspen Plus would misrepresent both vendors.</p>
+<p>My recommended educational strategy is a complementary stack: one flowsheet simulator, one environment for explicit mathematical modeling, one focused CFD experience, and an accessible programming/data-analysis tool. A department with Siemens licenses can make gPROMS a central modeling platform while retaining another flowsheet tool for comparison and sector exposure.</p>
+<h3 id="evidence-and-limits">Evidence and limits</h3>
+<p>This is a broad portfolio and workflow assessment, not a benchmark of solver speed, prediction accuracy, market share, or employment outcomes. Product descriptions establish advertised scope; they do not independently demonstrate superiority. Pros, cons, and selection recommendations below are engineering judgments drawn from those capabilities. Actual suitability depends on model libraries, property data, version, validation, implementation support, and licensed modules.</p>
+<p>Sources include primary vendor documentation, an academic conference paper deposited by UCL, and ABET's published criteria. Siemens customer examples cited here are vendor-hosted. No comparable, current institutional quotations were obtained, so price rankings would be speculative. Coverage spans major process families and industries, with representative specialist tools rather than an exhaustive catalog of every application.</p>
+<h2 id="1-what-siemens-software-actually-does">1. What Siemens software actually does</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Comparison table; scroll horizontally on narrow screens"><table>
+<thead>
+<tr>
+<th>Product or family</th>
+<th>Chemical engineering role</th>
+<th>Main benefit</th>
+<th>Practical limitation and teaching implication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>gPROMS Process</strong></td>
+<td>Steady-state/dynamic process models, custom equipment, calibration and optimization</td>
+<td>Explicit process equations can connect experiments, design, and operations</td>
+<td>Custom models require formulation, initialization, parameter identification and maintenance; start teaching with small models</td>
+</tr>
+<tr>
+<td><strong>gPROMS FormulatedProducts</strong></td>
+<td>Formulation and manufacturing models, including crystallization, drying, granulation and downstream bioprocessing applications</td>
+<td>Connects manufacturing conditions to product attributes</td>
+<td>Requires product-specific kinetics and property data; useful for advanced reaction/separations electives</td>
+</tr>
+<tr>
+<td><strong>gPROMS Utilities</strong></td>
+<td>Site utility and energy-system optimization</td>
+<td>Extends analysis beyond the production flowsheet</td>
+<td>Savings depend on real equipment constraints, prices and operating data</td>
+</tr>
+<tr>
+<td><strong>Simcenter STAR-CCM+</strong></td>
+<td>3D flow, heat/species transport, reactions and multiphase equipment</td>
+<td>Investigates mixing, local gradients and geometry-dependent behavior</td>
+<td>Meshing, closure-model choices, runtime and validation add substantial effort</td>
+</tr>
+<tr>
+<td><strong>Simcenter Flomaster</strong></td>
+<td>Thermofluid networks and transients</td>
+<td>Supports pipes, pumps, valves and surge scenarios</td>
+<td>Network analysis is distinct from chemical equilibrium and full process flowsheeting</td>
+</tr>
+<tr>
+<td><strong>COMOS</strong></td>
+<td>Plant engineering and lifecycle information</td>
+<td>Keeps equipment and project information connected across disciplines</td>
+<td>Engineering information management does not itself predict reaction conversion or phase equilibrium</td>
+</tr>
+<tr>
+<td><strong>SIMIT</strong></td>
+<td>Virtual commissioning and operator training</td>
+<td>Tests automation behavior in a simulated plant environment</td>
+<td>Accuracy depends on the process model; a model useful for logic testing may be insufficient for design</td>
+</tr>
+<tr>
+<td><strong>SIMATIC PCS 7 / PCS neo and batch automation</strong></td>
+<td>Plant control and automation</td>
+<td>Exposes students to how designs become operating systems</td>
+<td>Control configuration and hardware integration require a separate skills track</td>
+</tr>
+<tr>
+<td><strong>Opcenter Execution Process</strong></td>
+<td>Manufacturing execution, recipes, traceability and quality workflows</td>
+<td>Connects process manufacturing to production records</td>
+<td>Does not substitute for thermodynamics, kinetics or equipment design</td>
+</tr>
+</tbody>
+</table></div>
+<p>Capability sources: <a href="https://www.siemens.com/en-us/products/gproms/">gPROMS portfolio</a>, <a href="https://www.siemens.com/en-us/products/gproms/process/">gPROMS Process</a>, <a href="https://www.siemens.com/es-es/products/gproms/formulated-products/">FormulatedProducts</a>, <a href="https://blogs.sw.siemens.com/simcenter/reacting-flows-and-combustion-computational-fluid-dynamics-cfd-with-simcenter-star-ccm/">STAR-CCM+ reacting flows</a>, <a href="https://resources.sw.siemens.com/sr-RS/case-study-linde-engineering/">Linde Flomaster case</a>, <a href="https://www.siemens.com/en-gb/products/comos/">COMOS</a>, <a href="https://www.siemens.com/en-us/products/simit/">SIMIT</a>, <a href="https://www.siemens.com/en-us/products/process-control/simatic-pcs-neo/">PCS neo</a>, <a href="https://blogs.sw.siemens.com/opcenter/whats-new-in-opcenter-execution-process-2401/">Opcenter process manufacturing</a>. FormulatedProducts' linked regional page uses translated content; numeric savings claims are not used in this comparison.</p>
+<p><strong>Important distinction:</strong> gPROMS's equation-oriented approach is valuable, but equations and customization are not exclusive to Siemens. Aspen and AVEVA also offer advanced/custom modeling capabilities. Likewise, STAR-CCM+ is a CFD tool; it should not be treated as a routine replacement for a plant flowsheet simulator. <a href="https://www.aveva.com/en/products/process-simulation/">AVEVA's modeling architecture</a> explicitly includes custom modeling and Python scripting.</p>
+<p>Siemens advertises gPROMS model integration through optional gPROMS Objects with CFD, MATLAB and CAPE-OPEN simulators. This is evidence of available interfaces, not a guarantee that every multi-product workflow is configured or licensed by default. <a href="https://www.siemens.com/en-us/products/gproms/academic/">Siemens academic capabilities</a>.</p>
+<h2 id="2-comparison-with-the-principal-alternatives">2. Comparison with the principal alternatives</h2>
+<p>The following is a shortlist by engineering task. “Advantage” means a reason to evaluate the tool, not a measured ranking.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Comparison table; scroll horizontally on narrow screens"><table>
+<thead>
+<tr>
+<th>Vendor / tool</th>
+<th>Reasons to consider it</th>
+<th>Tradeoffs to investigate</th>
+<th>Comparison with Siemens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AspenTech: Aspen Plus, HYSYS, related products</strong></td>
+<td>Broad chemical flowsheeting; refinery-specific models; integrated exchanger, energy and economic workflows</td>
+<td>Required add-ons, property/kinetic coverage, institutional licensing and portability</td>
+<td>Strong candidate for conventional plant design; gPROMS is particularly attractive for a focused custom model and experiment-to-model workflow</td>
+</tr>
+<tr>
+<td><strong>AVEVA: Process Simulation, PRO/II, Dynamic Simulation</strong></td>
+<td>Steady-state/dynamic workflows; process engineering and operating-data integration</td>
+<td>Differences between products, cloud arrangements, libraries and customization effort</td>
+<td>A direct competitor to lifecycle modeling; compare against gPROMS plus the relevant engineering/data products</td>
+</tr>
+<tr>
+<td><strong>Honeywell: UniSim Design Suite</strong></td>
+<td>Integrated steady-state/dynamic simulation; relevant option where Honeywell systems are used</td>
+<td>Sector-specific packages, training and external integrations</td>
+<td>Useful comparator for energy-process design and dynamics; assess the actual plant ecosystem</td>
+</tr>
+<tr>
+<td><strong>Datacor/Chemstations: CHEMCAD</strong></td>
+<td>General chemical processing, batch reactors and batch distillation</td>
+<td>Model coverage, scale of organizational deployment and economic tools needed</td>
+<td>Worth evaluating for targeted chemical design teaching or specialty-chemical projects</td>
+</tr>
+<tr>
+<td><strong>Fives ProSim: ProSimPlus, BatchReactor, BatchColumn</strong></td>
+<td>Chemical flowsheeting, specialist batch calculations and energy/water analysis</td>
+<td>Product boundaries, interfaces and local support</td>
+<td>Concrete alternative to developing every batch model in gPROMS</td>
+</tr>
+<tr>
+<td><strong>Intelligen: SuperPro Designer, SchedulePro</strong></td>
+<td>Integrated batch/continuous processes, equipment costing, resource tracking and scheduling</td>
+<td>Physical-model detail must match the question; scheduling and mechanistic prediction are different tasks</td>
+<td>Often a more direct fit for facility capacity and bioprocess economics; gPROMS can complement it for kinetics and product quality</td>
+</tr>
+<tr>
+<td><strong>Ansys Fluent</strong></td>
+<td>Reacting-flow and species-transport CFD, including fluid and surface reactions</td>
+<td>Mesh, numerical settings, closure models, compute resources and validation</td>
+<td>Compare directly with STAR-CCM+ using the same equipment problem</td>
+</tr>
+<tr>
+<td><strong>COMSOL Multiphysics</strong></td>
+<td>Editable coupled physics; ideal-reactor models extended into spatial transport and electrochemical applications</td>
+<td>Module licensing, discretization and formulation expertise</td>
+<td>Especially worth evaluating for research-scale coupled transport/electrochemistry; compare with STAR-CCM+ by physics and geometry</td>
+</tr>
+<tr>
+<td><strong>DWSIM open-source release</strong></td>
+<td>Free source-accessible flowsheet simulation, supporting access beyond university licenses</td>
+<td>Required feature availability, property data, interfaces and support for the specific project</td>
+<td>A useful baseline and teaching complement; evaluate the commercial DWSIM Pro separately</td>
+</tr>
+</tbody>
+</table></div>
+<p>Primary sources: <a href="https://www.aspentech.com/en/products/engineering/aspen-plus">Aspen Plus</a>, <a href="https://www.aspentech.com/en/products/engineering/refinery-reactor-models-in-aspen-hysys">HYSYS refinery models</a>, <a href="https://www.aspentech.com/en/products/engineering/aspen-exchanger-design-and-rating">Aspen EDR</a>, <a href="https://www.aveva.com/en/products/process-simulation/">AVEVA Process Simulation</a>, <a href="https://www.aveva.com/content/dam/aveva/documents/datasheets/Datasheet_PROIISimulation.pdf">PRO/II datasheet</a>, <a href="https://process.honeywell.com/us/en/products/industrial-software/process-optimization/unisim-design-suite">UniSim</a>, <a href="https://chemstations.com/Industries/Chemical_Processing/">CHEMCAD chemical processing</a>, <a href="https://www.prosim.net/en/">Fives ProSim portfolio</a>, <a href="https://www.intelligen.com/products/superpro-overview/">SuperPro</a>, <a href="https://www.intelligen.com/products/schedulepro-overview/">SchedulePro</a>, <a href="https://ansyshelp.ansys.com/public/Views/Secured/corp/v242/en/flu_th/flu_th_chp_finrate.html">Fluent species/reaction theory</a>, <a href="https://www.comsol.com/chemical-reaction-engineering-module">COMSOL reaction engineering</a>, <a href="https://dwsim.org/">DWSIM</a>, <a href="https://dwsim.org/index.php/dwsim-pro/">DWSIM Pro</a>.</p>
+<h3 id="siemens-most-persuasive-advantages">Siemens' most persuasive advantages</h3>
+<ol>
+<li><strong>Model development tied to experimental evidence.</strong> gPROMS supports parameter estimation and model validation alongside simulation and optimization. This helps when a standard reactor block misses the important mechanism.</li>
+<li><strong>Product quality as an engineering output.</strong> FormulatedProducts targets processes where a particle distribution, impurity profile or formulation outcome matters alongside throughput.</li>
+<li><strong>Multiple physical scales.</strong> gPROMS and STAR-CCM+ allow a department or company to study both process networks and local transport effects. Transferring information between these levels still requires deliberate modeling choices.</li>
+<li><strong>Engineering-to-operations breadth.</strong> COMOS, SIMIT, process control and Opcenter offer a route from design information to commissioning and manufacturing workflows.</li>
+</ol>
+<h3 id="siemens-most-consequential-limitations">Siemens' most consequential limitations</h3>
+<ol>
+<li><strong>Breadth creates implementation work.</strong> Common ownership does not remove the need to reconcile units, tags, component definitions, property methods, model versions and interfaces.</li>
+<li><strong>Custom-model freedom brings responsibility.</strong> A sophisticated solver cannot identify omitted mechanisms or supply missing kinetic data. A converged result can still be physically wrong.</li>
+<li><strong>Specialized alternatives can reduce development effort.</strong> A purpose-built wastewater, mineral, refinery or exchanger package may encode the exact domain knowledge a project needs.</li>
+<li><strong>Teaching time and access can dominate.</strong> Equation modeling, CFD and automation are distinct learning demands. Adding all products to compulsory courses can displace fundamental engineering content.</li>
+<li><strong>Lock-in extends beyond file format.</strong> Custom libraries, scripts, property databases and plant interfaces can all increase switching effort. Require readable equations and neutral data exports where practicable.</li>
+</ol>
+<p>These are analytical implications, not evidence that Siemens is uniquely difficult or that competing commercial tools avoid the same issues.</p>
+<h2 id="3-processes-and-industries-where-the-shortlist-changes">3. Processes and industries: where the shortlist changes</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Comparison table; scroll horizontally on narrow screens"><table>
+<thead>
+<tr>
+<th>Industry / process family</th>
+<th>Appropriate Siemens contribution</th>
+<th>Alternatives or complements</th>
+<th>Engineering issue that should decide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bulk chemicals, petrochemicals, fertilizers</td>
+<td>gPROMS reactors, separations, dynamics and optimization; STAR-CCM+ for critical equipment</td>
+<td>Aspen Plus, AVEVA, CHEMCAD, ProSimPlus</td>
+<td>Thermodynamics, recycle convergence, kinetics and energy integration</td>
+</tr>
+<tr>
+<td>Refining, gas processing, LNG</td>
+<td>gPROMS custom models/utility optimization; Flomaster networks; automation</td>
+<td>HYSYS refinery packages, UniSim, PRO/II</td>
+<td>Crude characterization, process-specific models and installed workflows</td>
+</tr>
+<tr>
+<td>Upstream production and transport</td>
+<td>Equipment CFD, network and automation studies</td>
+<td>SLB Olga for transient multiphase transport</td>
+<td>Slugging, startup/shutdown, deposition and validated flow-assurance scope</td>
+</tr>
+<tr>
+<td>Pharmaceutical APIs and continuous drug manufacture</td>
+<td>FormulatedProducts for crystallization/drying/formulation; gPROMS dynamics</td>
+<td>Aspen Plus, ProSim batch tools, SuperPro</td>
+<td>Impurities, particle properties, control strategy and experimentally validated kinetics</td>
+</tr>
+<tr>
+<td>Biotechnology and fermentation</td>
+<td>Mechanistic gPROMS models, feeding optimization; CFD for mixing/transport</td>
+<td>SuperPro/SchedulePro for capacity and economics</td>
+<td>Oxygen transfer, biological kinetics, downstream recovery and batch scheduling</td>
+</tr>
+<tr>
+<td>Food, beverages, consumer products</td>
+<td>Formulation models, mixing CFD, recipes and traceability</td>
+<td>SuperPro, ProSim batch tools, other MES systems</td>
+<td>Rheology, heat treatment, cleaning time, shelf-life and raw-material variability</td>
+</tr>
+<tr>
+<td>Polymers, coatings, specialty chemicals</td>
+<td>gPROMS custom kinetics and CFD</td>
+<td>Aspen Polymers, CHEMCAD, ProSim, COMSOL</td>
+<td>Molecular/particle attributes, viscosity, heat removal and specialized property methods</td>
+</tr>
+<tr>
+<td>Water, wastewater and desalination</td>
+<td>Equipment hydrodynamics, custom membrane/adsorption models and automation</td>
+<td>BioWin for wastewater biology; OLI for aqueous chemistry</td>
+<td>Biological state variables, speciation, scaling and membrane parameters</td>
+</tr>
+<tr>
+<td>Mining, hydrometallurgy, battery-material refining</td>
+<td>Custom leaching/precipitation models and equipment CFD</td>
+<td>Metso HSC Chemistry; OLI</td>
+<td>Mineralogy, particle distributions, redox, phase equilibria and concentrated electrolytes</td>
+</tr>
+<tr>
+<td>Electrolyzers, fuel cells and batteries</td>
+<td>STAR-CCM+ transport/multiphysics; gPROMS process integration</td>
+<td>COMSOL, Fluent, flowsheet simulators</td>
+<td>Electrochemistry, porous transport, thermal behavior and degradation</td>
+</tr>
+<tr>
+<td>Carbon capture, hydrogen, synthetic fuels, recycling</td>
+<td>gPROMS novel unit models; utilities; CFD; controls</td>
+<td>Aspen Plus/HYSYS, AVEVA, ProSim</td>
+<td>Separation mechanism, changing loads, validated properties and system boundaries</td>
+</tr>
+<tr>
+<td>Pulp/paper, cement, glass and thermal processing</td>
+<td>Reacting/multiphase CFD, custom process models and control</td>
+<td>Sector-specific models; HSC where thermochemistry is central; Fluent</td>
+<td>Solids, residence-time distributions, rheology, combustion and heat transfer</td>
+</tr>
+</tbody>
+</table></div>
+<p>The final row is an application shortlist inferred from physics capabilities, not verification of a complete prebuilt Siemens library for each industry. Some applications require custom models or additional products. Sector labels alone are weak selection criteria.</p>
+<p>Specialist evidence: <a href="https://www.slb.com/products-and-services/delivering-digital-at-scale/software/olga">Olga transient multiphase transport</a>, <a href="https://www.aspentech.com/en/products/engineering/aspen-polymers">Aspen polymer properties/models</a>, <a href="https://envirosim.com/">BioWin biological/chemical/physical wastewater models</a>, <a href="https://olisystems.com/software/oli-studio/">OLI water chemistry, scaling and corrosion</a>, <a href="https://www.metso.com/portfolio/hsc-chemistry/">HSC mineral and metallurgical workflows</a>. These demonstrate why a broad portfolio should sometimes be complemented by a domain specialist.</p>
+<p><strong>Across industries, distinguish equipment sizing from equipment rating.</strong> A flowsheet heat duty and an assumed heat-transfer coefficient are not a complete exchanger design. Evaluate <a href="https://gc.htri.net/xist">HTRI Xist</a> or <a href="https://www.aspentech.com/en/products/engineering/aspen-exchanger-design-and-rating">Aspen EDR</a> when thermal/hydraulic rating is the task. Likewise, a safety study needs an appropriate validated transient model and applicable design methods; possessing a simulator does not make an operating procedure safe.</p>
+<h2 id="4-connection-to-undergraduate-chemical-engineering">4. Connection to undergraduate chemical engineering</h2>
+<h3 id="published-educational-evidence">Published educational evidence</h3>
+<p>Kamel, Tsatse and Badmos (2025), in an ESCAPE 35 proceedings paper, describe UCL's integration of <strong>gPROMS, Aspen Plus and GAMS</strong>. Their sequence introduces gPROMS for reactor ODEs and GAMS for simulation/optimization in the first year, adds Aspen Plus and advanced reactor/separator modeling in the second year, and applies the tools in a third-year capstone. This is a concrete example of complementary adoption. It does not prove that the same sequence causes better learning outcomes than another curriculum. <a href="https://discovery.ucl.ac.uk/id/eprint/10216172/">UCL paper and abstract</a>.</p>
+<p>For a US-oriented accreditation connection, ABET's <strong>2026–2027 adopted criteria</strong> require modern engineering tools, experimentation and data interpretation, culminating design, and chemical engineering applications to process design, analysis, control and hazards. They do not prescribe Siemens, Aspen, or another brand. The same document includes proposed future criteria; those should not be confused with the adopted requirements. <a href="https://www.abet.org/accreditation/accreditation-criteria/criteria-for-accrediting-engineering-programs-2026-2027/">ABET criteria</a>.</p>
+<h3 id="proposed-four-year-sequence">Proposed four-year sequence</h3>
+<p>This sequence is a recommendation, not a description of UCL's three-year structure.</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Comparison table; scroll horizontally on narrow screens"><table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Engineering learning objective</th>
+<th>Suggested software role</th>
+<th>Assessable output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Year 1: balances and computation</td>
+<td>Units, conservation, numerical methods and reproducibility</td>
+<td>Spreadsheet/Python or MATLAB; optional small gPROMS model</td>
+<td>Independent material/energy balance and a documented calculation</td>
+</tr>
+<tr>
+<td>Year 2: thermodynamics and transport</td>
+<td>Choose and defend property methods; connect equations to data</td>
+<td>One flowsheet simulator; gPROMS for a small dynamic model</td>
+<td>Flash/VLE comparison with experimental or trusted reference data</td>
+</tr>
+<tr>
+<td>Year 3: reactions, separations and control</td>
+<td>Calibrate kinetics, simulate disturbances, examine nonideal equipment</td>
+<td>gPROMS plus one bounded STAR-CCM+/Fluent/COMSOL exercise</td>
+<td>Held-out model validation, sensitivity results and a control analysis</td>
+</tr>
+<tr>
+<td>Year 4: integrated design</td>
+<td>Trade off economics, operability, safety and environmental performance</td>
+<td>Flowsheet core plus targeted custom model; specialist tools as needed</td>
+<td>Design report, model archive, assumptions, uncertainty and oral defense</td>
+</tr>
+</tbody>
+</table></div>
+<p>For most undergraduates, basic COMOS/P&amp;ID and SIMIT/control demonstrations are sufficient. A full MES, plant engineering or distributed-control-system qualification is better suited to an elective, industrial placement, or sponsored capstone.</p>
+<h3 id="four-assignments-that-make-the-software-educational">Four assignments that make the software educational</h3>
+<p><strong>1. Thermodynamic disagreement.</strong> Simulate the same flash or distillation problem using a shared component set and two justified property methods. Explain differences using phase-equilibrium data. Where two simulators are available, match physical assumptions before comparing answers. Vendor agreement alone is not validation.</p>
+<p><strong>2. Nonisothermal reactor model.</strong> Derive species and energy balances in gPROMS or a programming environment, estimate kinetic parameters from a supplied dataset, and validate against separate observations. Examine initialization, parameter identifiability, jacket behavior and a feed disturbance. Do not award full credit for fitting the training data alone.</p>
+<p><strong>3. Mixing and scale-up.</strong> Compare an ideal stirred-tank assumption with a small CFD study of a stirred vessel or static mixer. Use an appropriate mesh study and compare power, residence-time or mixing measurements where available. Explain whether local transport changes selectivity or heat removal enough to justify CFD.</p>
+<p><strong>4. Batch manufacture and economics.</strong> Use a fermentation or crystallization process to compare mechanism-based predictions with a facility scheduling/economic analysis. A yield improvement may fail to improve annual output if a dryer, cleaning step, or downstream unit remains the bottleneck.</p>
+<h3 id="a-coherent-capstone-example">A coherent capstone example</h3>
+<p>An illustrative renewable-methanol project can connect the tools without requiring students to learn the entire Siemens portfolio:</p>
+<ol>
+<li>Define the boundary: purchased or onsite hydrogen; CO2 source and conditioning; synthesis/recycle; purification; utilities.</li>
+<li>Build a conventional flowsheet and close balances using defensible properties.</li>
+<li>Develop a gPROMS reactor/dynamic model only for the part whose assumptions need refinement.</li>
+<li>Use CFD only if a specific heat/mass-transfer or geometry question affects the design.</li>
+<li>Compare energy, cost and emissions under explicit electricity and feedstock scenarios.</li>
+<li>Examine disturbances, operating limits and a P&amp;ID/control strategy; optionally demonstrate virtual commissioning.</li>
+</ol>
+<p>The assignment must supply or require students to source kinetics and property data. No numerical production rate, savings or emissions reduction is assumed here. Purchased hydrogen and onsite electrolysis require different accounting boundaries, so students must state which they use.</p>
+<h3 id="recommended-assessment-emphasis">Recommended assessment emphasis</h3>
+<p>An illustrative rubric allocates 25% to formulation and assumptions, 25% to verification/validation, 20% to design decisions, 15% to uncertainty and sensitivity, and 15% to reproducibility and communication. These weights are proposed teaching choices, not researched standards. Require a model file, readable equations or calculation logic, property-method rationale, data provenance and an oral explanation. Interface proficiency should support engineering reasoning rather than dominate the grade.</p>
+<h2 id="5-academic-access-and-procurement">5. Academic access and procurement</h2>
+<p>Siemens advertises discounted, full-functionality gPROMS academic licenses; access is institution-dependent. AspenTech also has an academic program. HTRI's educational suite includes selected exchanger modules but excludes some commercial resources. The standard DWSIM release is free and open source, while DWSIM Pro is a separate commercial offering. <a href="https://www.siemens.com/en-us/products/gproms/academic/">gPROMS academic program</a>, <a href="https://www.aspentech.com/en/academic-program-for-education">Aspen academic program</a>, <a href="https://gc.htri.net/htri-xchanger-suite-educational">HTRI educational scope</a>, <a href="https://dwsim.org/">DWSIM</a>.</p>
+<p>Siemens has published a free STAR-CCM+ student edition fact sheet describing size/export limitations. That document is dated 2021 despite recent search crawl dates, so confirm current availability and restrictions directly before planning a course around it. A recently crawled page is not necessarily a recently revised policy. <a href="https://www.plm.automation.siemens.com/media/global/en/Simcenter%20STAR%20CCM%2B%20free%20student%20version%20Fact%20Sheet_tcm27-100580.pdf">Siemens student fact sheet</a>.</p>
+<p>Before purchase or curriculum adoption, request written answers on concurrent seats, required model/property modules, student laptop and remote access, research versus teaching rights, commercial project restrictions, compute resources, instructor training, export formats and renewal terms. Calculate total effort and cost over several teaching years, including faculty preparation and IT administration.</p>
+<p>Interoperability merits a practical trial. CAPE-OPEN defines interfaces between process-modeling components, but a standard's existence does not establish support for every product/version or guarantee complete model portability. <a href="https://www.colan.org/version-1-1-of-the-cape-open-standards/">CO-LaN standards</a>.</p>
+<h3 id="recommended-selection-exercise">Recommended selection exercise</h3>
+<p>Ask shortlisted vendors to solve three department-relevant problems with the actual licensed configuration: a nonideal separation, a calibrated dynamic reactor, and a sector-specific batch or electrolyte case. If CFD is important, add a shared mixing problem. Evaluate documented assumptions, validation data, setup effort, reproducibility, interfaces, classroom reliability and a written price quotation. Treat industrial partner workflows as one input to the decision.</p>
+<p><strong>Default recommendation:</strong> adopt Siemens gPROMS where equation modeling, experiments, dynamics or product quality are central; retain a conventional flowsheet simulator; provide a limited CFD experience and an accessible computational environment. Favor a single Siemens-centered stack only when faculty expertise, industrial partnerships, licenses and teaching support make that choice practical. For broader student access or constrained budgets, use DWSIM and an open computational environment as the baseline, with commercial tools targeted to their educational value.</p>
+<h2 id="6-research-questions-worth-pursuing">6. Research questions worth pursuing</h2>
+<ul>
+<li>Does explicit equation modeling improve students' ability to diagnose a flawed process model compared with interface-led flowsheet teaching?</li>
+<li>Does experimental calibration followed by held-out validation improve understanding of kinetics, uncertainty and scale-up?</li>
+<li>Does a focused CFD exercise change students' judgments about ideal reactor assumptions?</li>
+<li>Can students transfer thermodynamic/modeling reasoning to an unfamiliar simulator?</li>
+<li>What learning benefit justifies the additional licensing, computing and instructor effort?</li>
+</ul>
+<p>A useful study would give groups the same physical problem and datasets, assess reasoning with a common rubric, track prior preparation and instructional time, and test transfer using an unfamiliar tool. Outcomes should include conservation errors, property-method justification, validation quality and design reasoning—not simply successful convergence or software certification. These are proposed research directions; this brief does not claim that comparative educational effectiveness has already been established.</p></article><a class="back" href="#top">Back to top ↑</a></main></div>
+<footer><p>muse · Chemical engineering software research · Prepared with AI assistance; source links and analysis limitations are included in the brief. This page is independent of Siemens and other vendors.</p></footer></body></html>
