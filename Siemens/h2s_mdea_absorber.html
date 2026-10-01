@@ -57,7 +57,7 @@ pre.code { background: #f7f9fc; border: 1px solid var(--line); border-radius: 8p
 <li><a href="#s4">Symbol glossary</a></li>
 <li><a href="#s5">Base-case data</a></li>
 <li><a href="#s6">Results</a></li>
-<li><a href="#s7">gPROMS source code</a></li>
+<li><a href="#gproms">gPROMS source code</a></li>
 <li><a href="#s8">Running it in ModelBuilder</a></li>
 <li><a href="#s9">Limitations</a></li>
 </ol>
@@ -65,7 +65,7 @@ pre.code { background: #f7f9fc; border: 1px solid var(--line); border-radius: 8p
 
 <h2 id="s1">1. What this simulation is</h2>
 <p>This page documents an <strong>illustrative</strong> gPROMS (Siemens PSE) simulation of an H2S/MDEA absorber, the workhorse unit of natural-gas sweetening. A sour gas &mdash; here methane carrying 5 mol% H2S &mdash; flows upward through a packed column while a lean aqueous MDEA solution flows downward. H2S transfers from gas to liquid, where it reacts rapidly with the amine; the treated gas leaves the top at pipeline specification (4 ppmv H2S) and the H2S-rich amine leaves the bottom for regeneration.</p>
-<p>The simulation consists of two gPROMS entities, both listed in full in <a href="#s7">&sect;7</a> and shipped as files alongside this page:</p>
+<p>The simulation consists of two gPROMS entities, both listed in full in <a href="#gproms">&sect;7</a> and shipped as files alongside this page:</p>
 <ul>
 <li><strong>MODEL <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">H</mi><mn>2</mn><mi mathvariant="normal">S</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">M</mi><mi mathvariant="normal">D</mi><mi mathvariant="normal">E</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">b</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">b</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">r</mi></mrow><annotation encoding="application/x-tex">\mathrm{H2S\_MDEA\_Absorber}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.0044em;vertical-align:-0.31em;"></span><span class="mord"><span class="mord mathrm">H2S_MDEA_Absorber</span></span></span></span></span></strong> &mdash; parameters, variables, and the equation set (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">H</mi><mn>2</mn><mi mathvariant="normal">S</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">M</mi><mi mathvariant="normal">D</mi><mi mathvariant="normal">E</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">b</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">b</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">M</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">m</mi><mi mathvariant="normal">s</mi></mrow><annotation encoding="application/x-tex">\mathrm{H2S\_MDEA\_Absorber\_Model.gproms}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.0044em;vertical-align:-0.31em;"></span><span class="mord"><span class="mord mathrm">H2S_MDEA_Absorber_Model.gproms</span></span></span></span></span>).</li>
 <li><strong>PROCESS <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">H</mi><mn>2</mn><mi mathvariant="normal">S</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">M</mi><mi mathvariant="normal">D</mi><mi mathvariant="normal">E</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">B</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">C</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><annotation encoding="application/x-tex">\mathrm{H2S\_MDEA\_BaseCase}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.9933em;vertical-align:-0.31em;"></span><span class="mord"><span class="mord mathrm">H2S_MDEA_BaseCase</span></span></span></span></span></strong> &mdash; base-case data, solver starting guesses, and a three-step operating schedule (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">H</mi><mn>2</mn><mi mathvariant="normal">S</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">M</mi><mi mathvariant="normal">D</mi><mi mathvariant="normal">E</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">_</mi><mi mathvariant="normal">B</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">C</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">m</mi><mi mathvariant="normal">s</mi></mrow><annotation encoding="application/x-tex">\mathrm{H2S\_MDEA\_BaseCase.gproms}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.9933em;vertical-align:-0.31em;"></span><span class="mord"><span class="mord mathrm">H2S_MDEA_BaseCase.gproms</span></span></span></span></span>).</li>
@@ -242,8 +242,8 @@ pre.code { background: #f7f9fc; border: 1px solid var(--line); border-radius: 8p
 <figcaption>Axial profiles from the verification twin (base case): treated-gas H2S on a log scale, liquid loading for the base and 80%-circulation cases, and the H2S absorption rate per compartment &mdash; most of the absorption happens in the bottom third of the packing, where the driving force is largest.</figcaption>
 </figure>
 
-<h2 id="s7">7. gPROMS source code</h2>
-<p>The complete MODEL entity:</p>
+<h2 id="gproms">7. gPROMS source code</h2>
+<h3 id="gproms-model">MODEL entity</h3>
 <pre class="code"><code>{===============================================================================
  MODEL H2S_MDEA_Absorber
  -------------------------------------------------------------------------------
@@ -458,7 +458,7 @@ EQUATION
 
 END
 </code></pre>
-<p>The complete PROCESS entity:</p>
+<h3 id="gproms-process">PROCESS entity</h3>
 <pre class="code"><code>{===============================================================================
  PROCESS H2S_MDEA_BaseCase
  -------------------------------------------------------------------------------
