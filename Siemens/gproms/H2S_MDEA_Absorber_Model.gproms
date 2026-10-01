@@ -1,0 +1,213 @@
+{===============================================================================
+ MODEL H2S_MDEA_Absorber
+ -------------------------------------------------------------------------------
+ Illustrative steady-state, isothermal, isobaric rate-based model of a packed
+ absorber removing H2S from natural gas into aqueous MDEA (methyldiethanolamine).
+
+ Gas (CH4 + H2S) flows upward; lean aqueous MDEA flows downward. The packed
+ height is divided into N well-mixed axial compartments (j = 1 at the bottom
+ where the sour gas enters, j = N at the top where the lean amine enters).
+ H2S transfers gas -> liquid with an enhancement factor E_H2S accounting for
+ the fast reaction  H2S + MDEA <-> MDEAH+ + HS- , whose equilibrium is solved
+ in the bulk liquid of every compartment. CH4 co-absorbs physically (no
+ reaction). Water is treated as a non-transferring bulk solvent.
+
+ SYMBOL GLOSSARY (all symbols defined before first use, SI units)
+  Parameters
+   N          number of axial compartments, -                              (N >= 2)
+   P          column pressure, Pa
+   T          column temperature, K  (model is isothermal)
+   Dcol       column diameter, m
+   Z          packed height, m
+   KGa_H2S    overall volumetric gas-side mass-transfer coefficient for H2S,
+              mol/(m^3 s Pa)
+   KGa_CH4    as above for CH4, mol/(m^3 s Pa)
+   E_H2S      enhancement factor for H2S absorption due to chemical reaction, -
+   a_H2S      Henry-correlation constant for H2S: ln(H_H2S/Pa) = a_H2S - b_H2S/T, -
+   b_H2S      Henry-correlation temperature coefficient for H2S, K
+   a_CH4      Henry-correlation constant for CH4, -
+   b_CH4      Henry-correlation temperature coefficient for CH4, K
+   K_eq       equilibrium constant of H2S + MDEA <-> MDEAH+ + HS-,
+              mole-fraction basis, -
+   G_in       sour-gas feed molar flow, mol/s
+   yH2S_in    sour-gas feed H2S mole fraction, -
+   L_in       lean-amine feed molar flow, mol/s
+   xA_lean    lean-amine total MDEA mole fraction, -
+   alpha_lean lean loading = mol H2S absorbed per mol MDEA in the lean amine, -
+  Variables (arrays indexed j = 1..N; j = 1 bottom, j = N top)
+   G(j)       gas molar flow leaving compartment j upward, mol/s
+   L(j)       liquid molar flow leaving compartment j downward, mol/s
+   yH2S(j)    gas-phase H2S mole fraction leaving compartment j, -
+   yCH4(j)    gas-phase CH4 mole fraction leaving compartment j, -
+   xS(j)      liquid total-sulfide (molecular H2S + HS-) mole fraction
+              leaving compartment j, -
+   xA(j)      liquid total-amine (MDEA + MDEAH+) mole fraction
+              leaving compartment j, -
+   xCH4(j)    liquid dissolved-CH4 mole fraction leaving compartment j, -
+   xfH2S(j)   free (molecular) H2S mole fraction in the bulk liquid, -
+   xfMDEA(j)  free (molecular) MDEA mole fraction in the bulk liquid, -
+   xHS(j)     hydrosulphide-ion (HS-) mole fraction in the bulk liquid, -
+   xMDEAH(j)  protonated-MDEA (MDEAH+) mole fraction in the bulk liquid, -
+   NH2S(j)    H2S absorption rate in compartment j, mol/s (positive gas->liquid)
+   NCH4(j)    CH4 absorption rate in compartment j, mol/s (positive gas->liquid)
+   H_H2S      Henry constant of H2S in water at T: p_H2S = H_H2S * xfH2S, Pa
+   H_CH4      Henry constant of CH4 in water at T: p_CH4 = H_CH4 * xCH4, Pa
+   Vc         compartment volume, m^3
+  Performance outputs
+   removal    fractional H2S removal over the column, -
+   ppm_out    treated-gas H2S concentration, ppmv
+   alpha_rich rich loading = mol H2S absorbed per mol MDEA in the rich amine, -
+
+ ASSUMPTIONS (illustrative model -- not a validated design tool)
+  1. Steady state, isothermal (T), isobaric (P); no pressure drop.
+  2. No water or MDEA volatility; water mole fraction follows by difference.
+  3. Gas phase is an ideal mixture of CH4 + H2S only.
+  4. One reversible liquid reaction, H2S + MDEA <-> MDEAH+ + HS-, at
+     equilibrium in each compartment; water autoprotolysis neglected, so
+     electroneutrality reads xMDEAH = xHS.
+  5. Constant enhancement factor E_H2S (replace with a Hatta-number
+     correlation for a predictive model).
+  6. Henry constants from ln(H/Pa) = a - b/T with illustrative coefficients.
+===============================================================================}
+
+MODEL H2S_MDEA_Absorber
+
+PARAMETER
+  N           AS INTEGER
+  P           AS REAL
+  T           AS REAL
+  Dcol        AS REAL
+  Z           AS REAL
+  KGa_H2S     AS REAL
+  KGa_CH4     AS REAL
+  E_H2S       AS REAL
+  a_H2S       AS REAL
+  b_H2S       AS REAL
+  a_CH4       AS REAL
+  b_CH4       AS REAL
+  K_eq        AS REAL
+  G_in        AS REAL
+  yH2S_in     AS REAL
+  L_in        AS REAL
+  xA_lean     AS REAL
+  alpha_lean  AS REAL
+
+VARIABLE
+  G           AS ARRAY(N) OF REAL
+  L           AS ARRAY(N) OF REAL
+  yH2S        AS ARRAY(N) OF REAL
+  yCH4        AS ARRAY(N) OF REAL
+  xS          AS ARRAY(N) OF REAL
+  xA          AS ARRAY(N) OF REAL
+  xCH4        AS ARRAY(N) OF REAL
+  xfH2S       AS ARRAY(N) OF REAL
+  xfMDEA      AS ARRAY(N) OF REAL
+  xHS         AS ARRAY(N) OF REAL
+  xMDEAH      AS ARRAY(N) OF REAL
+  NH2S        AS ARRAY(N) OF REAL
+  NCH4        AS ARRAY(N) OF REAL
+  H_H2S       AS REAL
+  H_CH4       AS REAL
+  Vc          AS REAL
+  removal     AS REAL
+  ppm_out     AS REAL
+  alpha_rich  AS REAL
+
+EQUATION
+
+  # --- physical properties -------------------------------------------------
+  # Henry constants of H2S and CH4 in water at the column temperature T.
+  H_H2S = EXP(a_H2S - b_H2S/T) ;
+  H_CH4 = EXP(a_CH4 - b_CH4/T) ;
+
+  # Compartment volume from the column geometry.
+  Vc = (3.14159265*Dcol^2/4.0)*Z/N ;
+
+  # --- interior compartments: gas enters from j+1, liquid enters from j-1 --
+  FOR j := 2 TO N-1 DO
+    # Gas total molar balance.
+    G(j+1) - G(j) - NH2S(j) - NCH4(j) = 0 ;
+    # Gas H2S component balance (CH4 follows from the summation below).
+    G(j+1)*yH2S(j+1) - G(j)*yH2S(j) - NH2S(j) = 0 ;
+    # Gas-phase mole-fraction summation.
+    yH2S(j) + yCH4(j) = 1 ;
+    # Liquid total molar balance (water assumed non-transferring).
+    L(j) - L(j-1) - NH2S(j) - NCH4(j) = 0 ;
+    # Liquid total-sulfide balance.
+    L(j)*xS(j) - L(j-1)*xS(j-1) - NH2S(j) = 0 ;
+    # Liquid total-amine balance (MDEA is non-volatile).
+    L(j)*xA(j) - L(j-1)*xA(j-1) = 0 ;
+    # Liquid dissolved-CH4 balance.
+    L(j)*xCH4(j) - L(j-1)*xCH4(j-1) - NCH4(j) = 0 ;
+    # Sulfide mass balance: molecular H2S + HS- = total sulfide.
+    xfH2S(j) + xHS(j) = xS(j) ;
+    # Amine mass balance: free MDEA + MDEAH+ = total amine.
+    xfMDEA(j) + xMDEAH(j) = xA(j) ;
+    # Electroneutrality (water ions neglected).
+    xMDEAH(j) = xHS(j) ;
+    # Reaction equilibrium: K_eq = xMDEAH*xHS/(xfH2S*xfMDEA),
+    # written in product form to avoid division by zero.
+    K_eq*xfH2S(j)*xfMDEA(j) - xMDEAH(j)*xHS(j) = 0 ;
+    # H2S absorption flux with enhancement factor; driving force in Pa.
+    NH2S(j) = E_H2S*KGa_H2S*Vc*(yH2S(j)*P - H_H2S*xfH2S(j)) ;
+    # CH4 physical-absorption flux (no enhancement).
+    NCH4(j) = KGa_CH4*Vc*(yCH4(j)*P - H_CH4*xCH4(j)) ;
+  END
+
+  # --- top compartment (j = N): sour gas feed enters, liquid from N-1 ------
+  # Gas total molar balance.
+  G_in - G(N) - NH2S(N) - NCH4(N) = 0 ;
+  # Gas H2S component balance.
+  G_in*yH2S_in - G(N)*yH2S(N) - NH2S(N) = 0 ;
+  # Gas-phase mole-fraction summation.
+  yH2S(N) + yCH4(N) = 1 ;
+  # Liquid total molar balance.
+  L(N) - L(N-1) - NH2S(N) - NCH4(N) = 0 ;
+  # Liquid total-sulfide balance.
+  L(N)*xS(N) - L(N-1)*xS(N-1) - NH2S(N) = 0 ;
+  # Liquid total-amine balance.
+  L(N)*xA(N) - L(N-1)*xA(N-1) = 0 ;
+  # Liquid dissolved-CH4 balance.
+  L(N)*xCH4(N) - L(N-1)*xCH4(N-1) - NCH4(N) = 0 ;
+  # Bulk-liquid speciation (same four relations as interior).
+  xfH2S(N) + xHS(N) = xS(N) ;
+  xfMDEA(N) + xMDEAH(N) = xA(N) ;
+  xMDEAH(N) = xHS(N) ;
+  K_eq*xfH2S(N)*xfMDEA(N) - xMDEAH(N)*xHS(N) = 0 ;
+  # Absorption fluxes.
+  NH2S(N) = E_H2S*KGa_H2S*Vc*(yH2S(N)*P - H_H2S*xfH2S(N)) ;
+  NCH4(N) = KGa_CH4*Vc*(yCH4(N)*P - H_CH4*xCH4(N)) ;
+
+  # --- bottom compartment (j = 1): lean amine enters, gas from stage 2 ----
+  # Gas total molar balance.
+  G(2) - G(1) - NH2S(1) - NCH4(1) = 0 ;
+  # Gas H2S component balance.
+  G(2)*yH2S(2) - G(1)*yH2S(1) - NH2S(1) = 0 ;
+  # Gas-phase mole-fraction summation.
+  yH2S(1) + yCH4(1) = 1 ;
+  # Liquid total molar balance.
+  L(1) - L_in - NH2S(1) - NCH4(1) = 0 ;
+  # Liquid total-sulfide balance; lean sulfide loading is alpha_lean*xA_lean.
+  L(1)*xS(1) - L_in*alpha_lean*xA_lean - NH2S(1) = 0 ;
+  # Liquid total-amine balance.
+  L(1)*xA(1) - L_in*xA_lean = 0 ;
+  # Liquid dissolved-CH4 balance (lean amine enters CH4-free).
+  L(1)*xCH4(1) - NCH4(1) = 0 ;
+  # Bulk-liquid speciation (same four relations as interior).
+  xfH2S(1) + xHS(1) = xS(1) ;
+  xfMDEA(1) + xMDEAH(1) = xA(1) ;
+  xMDEAH(1) = xHS(1) ;
+  K_eq*xfH2S(1)*xfMDEA(1) - xMDEAH(1)*xHS(1) = 0 ;
+  # Absorption fluxes.
+  NH2S(1) = E_H2S*KGa_H2S*Vc*(yH2S(1)*P - H_H2S*xfH2S(1)) ;
+  NCH4(1) = KGa_CH4*Vc*(yCH4(1)*P - H_CH4*xCH4(1)) ;
+
+  # --- performance outputs ---------------------------------------------------
+  # Fractional H2S removal: 1 - (H2S leaving in treated gas)/(H2S fed).
+  removal = 1 - G(1)*yH2S(1)/(G_in*yH2S_in) ;
+  # Treated-gas H2S concentration in ppmv.
+  ppm_out = 1.0E6*yH2S(1) ;
+  # Rich-amine loading leaving the bottom of the column.
+  alpha_rich = xS(N)/xA(N) ;
+
+END

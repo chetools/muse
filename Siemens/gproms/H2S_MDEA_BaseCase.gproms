@@ -1,0 +1,105 @@
+{===============================================================================
+ PROCESS H2S_MDEA_BaseCase
+ -------------------------------------------------------------------------------
+ Steady-state base case for MODEL H2S_MDEA_Absorber.
+
+ Duty: 100 kmol/h sour gas, 5 mol% H2S in CH4, at 70 bar and 40 C, treated
+ with 45 wt% aqueous MDEA. The volumetric mass-transfer coefficient KGa_H2S
+ was tuned (in an independent Python twin of these equations) so the column
+ delivers 4.0 ppmv H2S in the treated gas -- the pipeline specification.
+
+ Schedule:
+   Step 1  base case               (L_in = 31.5 mol/s, alpha_lean = 0.008)
+   Step 2  80% amine circulation   (L_in = 25.2 mol/s)
+   Step 3  poorer regeneration     (alpha_lean = 0.02, L_in back at 31.5)
+ Expected steady-state results (from the Python twin, twin_results.json):
+   Step 1:  ppm_out = 4.00 ppmv,  removal = 99.992%,  alpha_rich = 0.408
+   Step 2:  ppm_out = 4.68 ppmv,  removal = 99.991%,  alpha_rich = 0.509
+   Step 3:  ppm_out = 17.3 ppmv,  removal = 99.967%,  alpha_rich = 0.420
+===============================================================================}
+
+PROCESS H2S_MDEA_BaseCase
+
+UNIT
+  ABS AS H2S_MDEA_Absorber
+END
+
+SET
+  # --- column discretisation and geometry ----------------------------------
+  ABS.N          := 12 ;            # number of axial compartments, -
+  ABS.Dcol       := 0.8 ;           # column diameter, m
+  ABS.Z          := 8.0 ;           # packed height, m
+
+  # --- operating conditions --------------------------------------------------
+  ABS.P          := 70.0E5 ;        # column pressure, Pa
+  ABS.T          := 313.15 ;        # column temperature, K
+
+  # --- mass transfer -----------------------------------------------------------
+  ABS.KGa_H2S    := 6.722651E-7 ;  # H2S volumetric mass-transfer coeff, mol/(m^3 s Pa)
+  ABS.KGa_CH4    := 1.344530E-8 ;  # CH4 volumetric mass-transfer coeff, mol/(m^3 s Pa)
+  ABS.E_H2S      := 25.0 ;          # H2S enhancement factor, -
+
+  # --- physical properties (illustrative correlations) -------------------------
+  ABS.a_H2S      := 24.006205882792447 ;  # ln(H_H2S/Pa) = a_H2S - b_H2S/T
+  ABS.b_H2S      := 1800.0 ;              # K
+  ABS.a_CH4      := 27.33671573891189 ;   # ln(H_CH4/Pa) = a_CH4 - b_CH4/T
+  ABS.b_CH4      := 1600.0 ;              # K
+  ABS.K_eq       := 35.0 ;          # H2S + MDEA <-> MDEAH+ + HS- equilibrium constant, -
+
+  # --- feed specifications -------------------------------------------------------
+  ABS.G_in       := 27.78 ;         # sour-gas feed, mol/s  (= 100 kmol/h)
+  ABS.yH2S_in    := 0.05 ;          # sour-gas H2S mole fraction, -
+  ABS.L_in       := 31.5 ;          # lean-amine feed, mol/s
+  ABS.xA_lean    := 0.1101 ;        # lean-amine total MDEA mole fraction, - (= 45 wt%)
+  ABS.alpha_lean := 0.008 ;         # lean loading, mol H2S / mol MDEA, -
+END
+
+# No ASSIGN section: every boundary stream enters as a parameter, so the
+# model has zero degrees of freedom.
+
+INITIAL
+  # Initial guesses for the steady-state solver (one profile guess per
+  # compartment; values only need to be roughly right).
+  FOR j := 1 TO ABS.N DO
+    ABS.G(j)      := 27.0 ;
+    ABS.L(j)      := 31.8 ;
+    ABS.yH2S(j)   := 0.02 ;
+    ABS.yCH4(j)   := 0.98 ;
+    ABS.xS(j)     := 0.02 ;
+    ABS.xA(j)     := 0.11 ;
+    ABS.xCH4(j)   := 0.0001 ;
+    ABS.xfH2S(j)  := 0.000001 ;
+    ABS.xfMDEA(j) := 0.09 ;
+    ABS.xHS(j)    := 0.02 ;
+    ABS.xMDEAH(j) := 0.02 ;
+    ABS.NH2S(j)   := 0.12 ;
+    ABS.NCH4(j)   := 0.004 ;
+  END
+END
+
+SOLUTIONPARAMETERS
+  "SteadyState" := TRUE ;   # solve the algebraic system (no time derivatives)
+END
+
+SCHEDULE
+  SEQUENCE
+    # Step 1: base case. (For a steady-state model the CONTINUE duration is
+    # arbitrary; the solver converges the algebraic system.)
+    CONTINUE FOR 3600 ;
+
+    # Step 2: cut amine circulation to 80%.
+    REASSIGN
+      ABS.L_in := 25.2 ;
+    END
+    CONTINUE FOR 3600 ;
+
+    # Step 3: restore circulation, degrade regeneration (higher lean loading).
+    REASSIGN
+      ABS.L_in       := 31.5 ;
+      ABS.alpha_lean := 0.02 ;
+    END
+    CONTINUE FOR 3600 ;
+  END
+END
+
+END
