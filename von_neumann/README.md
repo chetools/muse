@@ -43,6 +43,12 @@ T_s(x) = 40 + 40x (C, x in m).
    the analytical eigenfunction-series solution (max diff 0.003 C at the
    check point), and the stability classification itself (r = 0.49 bounded,
    r = 0.51 blows up).
+5. A Crank–Nicolson section (§§13–16) solving the identical problem with the
+   unconditionally stable implicit scheme (Thomas algorithm, O(dt^2, dx^2)):
+   profile comparison at Fo = 0.05 for r = 0.5…50 showing bounded-but-ringing
+   solutions, a two-panel stability-vs-accuracy figure (max|T| vs r and
+   error-vs-analytical vs r, n = 51), and three more verification checks
+   (CN vs analytical, boundedness at r = 50, CN vs FTCS agreement).
 
 ## Run it
 

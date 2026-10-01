@@ -15,7 +15,9 @@ temperature of 20 C. Its left end is held at 40 C and its right end at 80 C
 for t > 0. There is no heat generation. The 1D transient heat equation is
 integrated with the explicit FTCS finite-difference scheme, and the
 dimensionless stability parameter r = alpha*dt/dx^2 is varied across the
-von Neumann stability limit r = 1/2.
+von Neumann stability limit r = 1/2. A second part solves the identical
+problem with the unconditionally stable Crank-Nicolson scheme, separating
+stability from accuracy.
 
 Run with `marimo edit heat_diffusion.py`.
 """
@@ -716,9 +718,334 @@ def _(mo):
         **The way out** is an *implicit* scheme (e.g. backward Euler or
         Crank–Nicolson), which is unconditionally stable — any $\Delta t$
         works — at the price of solving a tridiagonal linear system each
-        step. That is the natural follow-up notebook.
+        step. That follow-up is §§13–16 below.
+        """
+    )
+    return
 
-        ## 12. References
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## 13. Crank–Nicolson: an unconditionally stable implicit scheme
+
+        The explicit scheme extrapolates the curvature at the *old* time
+        level. Crank–Nicolson instead applies the *trapezoidal rule* in time
+        to the spatially discrete heat equation — it averages the curvature
+        at the old and the new time level:
+
+        $$\frac{T_i^{n+1} - T_i^n}{\Delta t} = \frac{\alpha}{2}\left[\frac{T_{i+1}^{n+1} - 2T_i^{n+1} + T_{i-1}^{n+1}}{\Delta x^2} + \frac{T_{i+1}^n - 2T_i^n + T_{i-1}^n}{\Delta x^2}\right]$$
+
+        Collecting the unknown new-time values (superscript $n+1$) on the
+        left, with $r = \alpha\,\Delta t/\Delta x^2$:
+
+        $$-\frac{r}{2}T_{i-1}^{n+1} + (1+r)T_i^{n+1} - \frac{r}{2}T_{i+1}^{n+1} = \frac{r}{2}T_{i-1}^n + (1-r)T_i^n + \frac{r}{2}T_{i+1}^n$$
+
+        Each row couples three unknowns, so every time step requires solving
+        a *tridiagonal* linear system — nonzero entries only on the main
+        diagonal and its two neighbors. The *Thomas algorithm* used below is
+        Gaussian elimination specialized to tridiagonal systems: a forward
+        sweep builds elimination factors $c'_i$ and a modified right-hand
+        side $d'_i$, then a backward sweep recovers the unknowns, in $O(n)$
+        work per step instead of $O(n^3)$. Because the coefficients
+        $-r/2$, $1+r$, $-r/2$ never change during a run, the forward-sweep
+        factors are computed once and reused for every step.
+
+        Centering in both time and space makes the scheme second-order
+        accurate in both: the local error is $O(\Delta t^2) + O(\Delta x^2)$,
+        versus $O(\Delta t) + O(\Delta x^2)$ for the explicit scheme.
+
+        The von Neumann analysis goes through exactly as in §5, but the
+        Crank–Nicolson *amplification factor* $G_{\mathrm{CN}}$ — the factor
+        by which a Fourier mode of wavenumber $k$ is multiplied each step —
+        is
+
+        $$G_{\mathrm{CN}} = \frac{1 - 2r\sin^2(k\Delta x/2)}{1 + 2r\sin^2(k\Delta x/2)}, \qquad |G_{\mathrm{CN}}| \le 1\ \ \text{for every } r \ge 0.$$
+
+        No mode ever grows: Crank–Nicolson is **unconditionally stable** —
+        any $\Delta t$ works, and Figure E below runs $r$ up to $50$
+        ($\Delta t \approx 11$ h) without blowing up.
+
+        Stability is not accuracy, though. For the zigzag mode
+        ($\sin^2(k\Delta x/2) = 1$),
+        $G_{\mathrm{CN}} = (1-2r)/(1+2r) \to -1$ as $r \to \infty$: the most
+        oscillatory grid mode flips sign every step and barely decays. With
+        the discontinuous initial condition of this problem
+        ($20^\circ\mathrm{C}$ inside versus $40/80^\circ\mathrm{C}$ pinned at
+        the ends from $t = 0^+$), that mode is strongly excited, so large-$r$
+        runs show grid-scale ringing near the boundaries — bounded, hence
+        stable, but wrong. Figure F separates the two concepts.
+        """
+    )
+    return
+
+
+@app.cell
+def _(ALPHA, L_BAR, T_INIT, T_LEFT, T_RIGHT, np):
+    def run_cn(n, r, fo_end, n_snaps=41):
+        """Crank-Nicolson integration of the bar via the Thomas algorithm.
+
+        Solves -r/2*T[i-1] + (1+r)*T[i] - r/2*T[i+1] = rhs[i] on the interior
+        nodes each step, with Dirichlet ends T[0] = T_LEFT, T[-1] = T_RIGHT.
+        Returns the same dict layout as run_case for direct comparison.
+        """
+        dx = L_BAR / (n - 1)
+        dt = r * dx**2 / ALPHA
+        t_end = fo_end * L_BAR**2 / ALPHA
+        nsteps = int(np.ceil(t_end / dt))
+        t_final = nsteps * dt
+        xs = np.linspace(0.0, L_BAR, n)
+        steady = T_LEFT + (T_RIGHT - T_LEFT) * xs / L_BAR
+        temp = np.full(n, T_INIT)
+        temp[0] = T_LEFT
+        temp[-1] = T_RIGHT
+        # Tridiagonal coefficients (constant for the whole run).
+        a = -r / 2.0          # sub-diagonal
+        b = 1.0 + r           # main diagonal
+        c = -r / 2.0          # super-diagonal
+        n_int = n - 2
+        # Thomas forward-sweep factors depend only on (n, r): compute once.
+        cp = np.empty(n_int)
+        cp[0] = c / b
+        for i in range(1, n_int):
+            cp[i] = c / (b - a * cp[i - 1])
+        fracs = np.concatenate(([0.0], np.logspace(-3.0, 0.0, n_snaps - 1)))
+        targets = fracs * nsteps
+        snaps = [temp.copy()]
+        snap_t = [0.0]
+        nxt = 1
+        max_abs = float(np.max(np.abs(temp)))
+        blew_up = False
+        for step in range(1, nsteps + 1):
+            rhs = ((r / 2.0) * temp[0:-2] + (1.0 - r) * temp[1:-1]
+                   + (r / 2.0) * temp[2:])
+            rhs[0] += (r / 2.0) * T_LEFT
+            rhs[-1] += (r / 2.0) * T_RIGHT
+            # Thomas solve: forward sweep for dp, then back substitution.
+            dp = np.empty(n_int)
+            dp[0] = rhs[0] / b
+            for i in range(1, n_int):
+                dp[i] = (rhs[i] - a * dp[i - 1]) / (b - a * cp[i - 1])
+            u_new = np.empty(n_int)
+            u_new[-1] = dp[-1]
+            for i in range(n_int - 2, -1, -1):
+                u_new[i] = dp[i] - cp[i] * u_new[i + 1]
+            temp[1:-1] = u_new
+            m = float(np.max(np.abs(temp)))
+            if m > max_abs:
+                max_abs = m
+            if not np.isfinite(m) or m > 1e12:
+                blew_up = True
+                break
+            while nxt < len(targets) and step >= targets[nxt]:
+                snaps.append(temp.copy())
+                snap_t.append(step * dt)
+                nxt += 1
+        return {"xs": xs, "dx": dx, "dt": dt, "nsteps": nsteps,
+                "t_final": t_final, "snaps": np.array(snaps),
+                "snap_t": np.array(snap_t), "steady": steady,
+                "blew_up": blew_up, "max_abs": max_abs,
+                "r": r, "n": n, "fo_end": fo_end}
+
+    return run_cn
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## 14. Figure E — Crank–Nicolson stays bounded far beyond $r = 1/2$
+
+        Same grid ($n = 51$), same physics, now the Crank–Nicolson scheme,
+        plotted at $\mathit{Fo} = 0.05$ for $r \in \{0.5,\, 2,\, 10,\, 50\}$
+        — that is, $\Delta t$ from about seven minutes to about eleven
+        hours — against the analytical solution (dashed). Every run is
+        bounded: unconditional stability in action. But look at the
+        boundaries: as $r$ grows, grid-scale ringing appears and persists —
+        the $(1-2r)/(1+2r) \to -1$ zigzag mode of §13, excited by the
+        discontinuous initial condition. Stable, yet increasingly inaccurate.
+        """
+    )
+    return
+
+
+@app.cell
+def _(analytical_T, go, mo, px, run_cn):
+    r_list_e = [0.5, 2.0, 10.0, 50.0]
+    fo_e = 0.05
+    cases_e = [(r_e, run_cn(51, r_e, fo_e)) for r_e in r_list_e]
+    c0_e = cases_e[0][1]
+    ana_e = analytical_T(c0_e["xs"], c0_e["t_final"], n_modes=60)
+    cols_e = px.colors.sample_colorscale(
+        "Viridis", [0.12 + 0.76 * i / (len(r_list_e) - 1) for i in range(len(r_list_e))])
+    fig_e = go.Figure()
+    for (r_e, c_e), col_e in zip(cases_e, cols_e):
+        fig_e.add_trace(go.Scatter(
+            x=c_e["xs"], y=c_e["snaps"][-1], mode="lines",
+            line=dict(color=col_e, width=2.2), name=f"CN, r = {r_e:g}"))
+    fig_e.add_trace(go.Scatter(
+        x=c0_e["xs"], y=ana_e, mode="lines",
+        line=dict(color="black", width=2.5, dash="dash"), name="analytical"))
+    fig_e.update_layout(
+        title="Figure E — Crank–Nicolson at Fo = 0.05: bounded for every r, ringing grows with r",
+        xaxis_title="x (m)", yaxis_title="T (°C)",
+        yaxis_range=[-20.0, 120.0],
+        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+        margin=dict(r=170), template="plotly_white", height=520)
+    caption_e = (
+        "Dashed black: analytical series at Fo = 0.05. Colored: Crank–Nicolson, "
+        "n = 51, with Δt = 6.8 min (r = 0.5), 27 min (r = 2), 2.3 h (r = 10), "
+        "11.3 h (r = 50). Largest |T| reached: 80.0, 80.0, 97.0, 118.3 °C — "
+        "all bounded (compare Figure C, where the explicit scheme overflows "
+        "at r = 1.0). The wiggles growing near x = 0 and x = 1 m are the "
+        "slowly-decaying zigzag mode flipping sign each step: stability "
+        "without accuracy.")
+    return fig_e, mo.md(caption_e)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## 15. Figure F — stability is not accuracy
+
+        Two panels, same grid ($n = 51$). **Left:** the largest $|T|$
+        reached during a run to $\mathit{Fo} = 0.5$, versus $r$ (log–log).
+        The explicit scheme is flat at $\approx 80^\circ\mathrm{C}$ up to
+        $r = 1/2$, then jumps past the $10^{12}$ overflow threshold — the
+        cliff. Crank–Nicolson stays near $80$–$120^\circ\mathrm{C}$ for every
+        $r$ from $0.05$ to $50$: unconditionally stable. **Right:** the
+        largest error against the analytical solution at
+        $\mathit{Fo} = 0.1$, versus $r$ (log–log). The explicit scheme has
+        no points right of $r = 1/2$ — it cannot run there — while its error
+        shrinks as $r$ (hence $\Delta t$) shrinks. Crank–Nicolson runs
+        everywhere, but its error *grows* with $r$ once the
+        $O(\Delta t^2)$ temporal error dominates: at $r = 50$
+        ($\Delta t \approx 11$ h) the error is about $28^\circ\mathrm{C}$.
+        A scheme can be perfectly stable and badly wrong — the time step must
+        satisfy *accuracy*, not just stability.
+        """
+    )
+    return
+
+
+@app.cell
+def _(analytical_T, go, make_subplots, mo, np, run_case, run_cn):
+    fo_stab = 0.5
+    r_ftcs_f = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.51, 0.6, 0.75, 1.0, 2.0, 5.0]
+    r_cn_f = [0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 25.0, 50.0]
+    stab_f = []
+    for r_f in r_ftcs_f:
+        c_f = run_case(51, r_f, fo_stab)
+        stab_f.append(1e12 if c_f["blew_up"] else c_f["max_abs"])
+    stab_c = [run_cn(51, rr, fo_stab)["max_abs"] for rr in r_cn_f]
+    fo_acc = 0.1
+    acc_f = []
+    for r_f in [0.05, 0.1, 0.2, 0.3, 0.4, 0.5]:
+        c_f = run_case(51, r_f, fo_acc)
+        ana_f = analytical_T(c_f["xs"], c_f["nsteps"] * c_f["dt"])
+        acc_f.append(float(np.max(np.abs(c_f["snaps"][-1] - ana_f))))
+    acc_c = []
+    for rr in r_cn_f:
+        cc = run_cn(51, rr, fo_acc)
+        ana_c = analytical_T(cc["xs"], cc["t_final"])
+        acc_c.append(max(float(np.max(np.abs(cc["snaps"][-1] - ana_c))), 1e-16))
+    fig_f = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=("max|T| over the run — bounded = stable",
+                        "max|T − T_analytical| at Fo = 0.1 — accuracy"))
+    fig_f.add_trace(go.Scatter(
+        x=r_ftcs_f, y=stab_f, mode="lines+markers",
+        line=dict(color="#1f77b4", width=2.2),
+        marker=dict(size=7), name="explicit FTCS"), row=1, col=1)
+    fig_f.add_trace(go.Scatter(
+        x=r_cn_f, y=stab_c, mode="lines+markers",
+        line=dict(color="#d62728", width=2.2),
+        marker=dict(size=7), name="Crank–Nicolson"), row=1, col=1)
+    fig_f.add_trace(go.Scatter(
+        x=[0.05, 0.1, 0.2, 0.3, 0.4, 0.5], y=acc_f, mode="lines+markers",
+        line=dict(color="#1f77b4", width=2.2),
+        marker=dict(size=7), name="explicit FTCS", showlegend=False), row=1, col=2)
+    fig_f.add_trace(go.Scatter(
+        x=r_cn_f, y=acc_c, mode="lines+markers",
+        line=dict(color="#d62728", width=2.2),
+        marker=dict(size=7), name="Crank–Nicolson", showlegend=False), row=1, col=2)
+    fig_f.add_vline(x=0.5, line_dash="dash", line_color="gray", row=1, col=1)
+    fig_f.add_vline(x=0.5, line_dash="dash", line_color="gray", row=1, col=2)
+    fig_f.update_xaxes(type="log", title_text="r (log scale)", row=1, col=1)
+    fig_f.update_xaxes(type="log", title_text="r (log scale)", row=1, col=2)
+    fig_f.update_yaxes(type="log", title_text="max|T| (°C, log scale)",
+                       range=[np.log10(60.0), np.log10(3e12)], row=1, col=1)
+    fig_f.update_yaxes(type="log", title_text="max error (°C, log scale)",
+                       row=1, col=2)
+    fig_f.update_layout(
+        title="Figure F — stability (left) versus accuracy (right), n = 51",
+        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+        margin=dict(r=190), template="plotly_white", height=520)
+    caption_f = (
+        "Gray dashed line: the explicit stability limit r = 1/2. Left: the "
+        "explicit scheme is bounded (≈80 °C) up to r = 1/2, then jumps to the "
+        "10¹² overflow floor — plotted at 10¹² wherever it blew up. "
+        "Crank–Nicolson stays bounded (≈80–120 °C) for every r from 0.05 to "
+        "50: unconditionally stable. Right: against the analytical solution "
+        "at Fo = 0.1, the explicit error (blue) shrinks as r shrinks and has "
+        "no points beyond r = 1/2 — it cannot run there. Crank–Nicolson (red) "
+        "runs everywhere, but its error grows from ≈0.001 °C at r ≤ 5 to "
+        "≈28 °C at r = 50 as the O(Δt²) temporal error takes over. Stable "
+        "does not mean accurate.")
+    return fig_f, mo.md(caption_f)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## 16. Verification — Crank–Nicolson checks
+
+        Three static checks that run on every page load. Check 4 compares
+        Crank–Nicolson against the analytical series on a fine grid at
+        moderate $r$; check 5 runs $r = 50$ — one hundred times the explicit
+        stability limit — and demands boundedness; check 6 cross-validates
+        the two schemes against each other where both are valid.
+        """
+    )
+    return
+
+
+@app.cell
+def _(analytical_T, mo, np, run_case, run_cn):
+    # Check 4: CN vs analytical, fine grid, moderate r.
+    c4 = run_cn(201, 0.5, 0.25)
+    err4 = float(np.max(np.abs(c4["snaps"][-1] - analytical_T(c4["xs"], c4["t_final"]))))
+    pass4 = err4 < 0.3
+    # Check 5: CN bounded at r = 50 (100x the explicit limit).
+    c5 = run_cn(51, 50.0, 0.5)
+    pass5 = (not c5["blew_up"]) and c5["max_abs"] < 200.0
+    # Check 6: CN vs FTCS agreement where both are valid.
+    c6a = run_cn(101, 0.25, 0.5)
+    c6b = run_case(101, 0.25, 0.5)
+    err6 = float(np.max(np.abs(c6a["snaps"][-1] - c6b["snaps"][-1])))
+    pass6 = err6 < 0.5
+    rows16 = [
+        ("4", f"CN (n = 201, r = 0.5, Fo = 0.25) vs analytical: "
+              f"max error {err4:.4f} °C < 0.3 °C", pass4),
+        ("5", f"CN (n = 51, r = 50, Fo = 0.5): bounded, "
+              f"max|T| = {c5['max_abs']:.1f} °C < 200 °C", pass5),
+        ("6", f"CN vs FTCS (n = 101, r = 0.25, Fo = 0.5): "
+              f"max difference {err6:.4f} °C < 0.5 °C", pass6),
+    ]
+    table16 = mo.md(
+        "| check | assertion | result |\n|---|---|---|\n" + "\n".join(
+            f"| {n} | {a} | {'PASS' if p else 'FAIL'} |" for n, a, p in rows16))
+    return (table16,)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## 17. References
 
         - Thermal diffusivity of soda-lime glass:
           time-resolved thermal-lens measurement giving
@@ -726,9 +1053,14 @@ def _(mo):
           by photoacoustic spectrometry
           ($5.1\times10^{-3}\ \mathrm{cm^2/s}$).
         - Von Neumann stability analysis of the FTCS scheme for the
-          diffusion equation: any standard numerical-methods text
-          (e.g. the $G = 1 - 4r\sin^2(k\Delta x/2)$, $r \le 1/2$ result).
-        - Analytical solution: separation of variables on
+          diffusion equation: substitute
+          $T_j^n = \xi^n e^{ikj\Delta x}$, giving
+          $G = 1 - 4r\sin^2(k\Delta x/2)$ and hence $r \le 1/2$.
+        - Crank–Nicolson (1947): the trapezoidal-in-time scheme of §13,
+          second-order in time and space and unconditionally stable; each
+          step solves a tridiagonal system with the Thomas algorithm.
+        - Eigenfunction expansion of the transient with Dirichlet ends:
+          split $T(x,t) = T_s(x) + u(x,t)$ with $T_s$ the steady line and
           $u(x,t) = T - T_s(x)$ with homogeneous Dirichlet ends, giving the
           sine series used in check 2 of §10.
         """
