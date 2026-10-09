@@ -1471,11 +1471,14 @@ def _(mo):
 
 
 @app.cell
-def _(mo, nbdir):
+def _(mo, nbdir, restored_adapters):
     import io as _io
     import os as _os
     import zipfile as _zipfile
 
+    # `restored_adapters` is only a refresh trigger: this cell re-runs after
+    # a zip upload below restores adapters, so the download list updates.
+    _ = restored_adapters
     _adir = _os.path.join(nbdir, "adapters")
     _found = sorted(
         _d for _d in (_os.listdir(_adir) if _os.path.isdir(_adir) else [])
@@ -1511,18 +1514,26 @@ def _(mo, nbdir):
 
 
 @app.cell
-def _(mo, nbdir):
+def _(mo):
+    # Created here, displayed and *read* in the cell below: marimo forbids
+    # reading a UI element's value in the cell that created it.
+    upload_picker = mo.ui.file(filetypes=[".zip"], kind="button",
+                               label="Upload adapter zip")
+    return (upload_picker,)
+
+
+@app.cell
+def _(mo, nbdir, upload_picker):
     import io as _io
     import os as _os
     import zipfile as _zipfile
 
-    _picker = mo.ui.file(filetypes=[".zip"], kind="button",
-                         label="Upload adapter zip")
     _notes = []
+    _restored = []
     _adir = _os.path.join(nbdir, "adapters")
-    if _picker.value:
+    if upload_picker.value:
         _os.makedirs(_adir, exist_ok=True)
-        for _fname, _contents in _picker.value:
+        for _fname, _contents in upload_picker.value:
             try:
                 with _zipfile.ZipFile(_io.BytesIO(_contents)) as _z:
                     _base = _os.path.realpath(_adir) + _os.sep
@@ -1533,6 +1544,7 @@ def _(mo, nbdir):
                     _z.extractall(_adir)
                     _tops = sorted({_m.split("/")[0] for _m in _z.namelist()
                                     if "/" in _m})
+                _restored.extend(_tops)
                 _notes.append("✅ `" + _fname + "` → restored: " +
                               ", ".join(f"`adapters/{_t}/`" for _t in _tops))
             except Exception as _e:
@@ -1541,8 +1553,10 @@ def _(mo, nbdir):
         _notes.append("_No file uploaded yet — upload the `qc-lora.zip` / "
                       "`qc-grpo.zip` you downloaded above. §15 and §16 "
                       "detect restored adapters automatically._")
-    mo.vstack([_picker] + [mo.md(_n) for _n in _notes])
-    return
+    mo.vstack([upload_picker] + [mo.md(_n) for _n in _notes])
+    # Exposed so the download list above refreshes once adapters land.
+    restored_adapters = tuple(_restored)
+    return (restored_adapters,)
 
 
 if __name__ == "__main__":
