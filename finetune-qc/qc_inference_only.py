@@ -695,20 +695,41 @@ def _(mo):
         no GPU. In a new session, come back here first — sessions are
         ephemeral and the container disk does not survive.
 
-        **Large zips:** MoLab caps browser uploads at 100MB per file, and a
-        rank-32 LoRA zip is 100–300MB. Split it on your own machine into
-        chunks under 100MB and upload **1–2 chunks at a time** (a single
-        upload of all chunks can exceed the browser's message size). Each
-        batch is saved, and the zip is reassembled automatically once every
-        chunk has arrived:
+        **Large zips:** two caps apply — MoLab caps browser uploads at
+        100MB per file, and each upload is one HTTP request to the server
+        that dies above ~100 MB ("Failed to fetch"). So first shrink the
+        zip, then split it into 50 MB chunks uploaded one at a time.
+
+        Before uploading, shrink the zip: the training output folders contain
+        `checkpoint-*/` subdirectories (intermediate trainer state — optimizer
+        and scheduler snapshots you do not need for inference). Only the
+        *final* adapter files matter. On the training machine, build a slim
+        zip with PowerShell:
+
+        ```
+        mkdir qc-lora-slim -Force | Out-Null
+        Copy-Item adapters\\qc-lora\\adapter_model.safetensors qc-lora-slim\\
+        Copy-Item adapters\\qc-lora\\adapter_config.json qc-lora-slim\\
+        Copy-Item adapters\\qc-lora\\tokenizer* qc-lora-slim\\ -ErrorAction SilentlyContinue
+        Compress-Archive qc-lora-slim qc-lora-slim.zip -Force
+        ```
+
+        (Same for `qc-grpo`.) This cuts a ~1.3 GB zip to ~180 MB.
+
+        Then split the slim zip into **50 MB** chunks — each upload is one
+        HTTP request to the MoLab server, and a request much above ~100 MB
+        dies with "Failed to fetch", so upload **exactly one chunk at a
+        time** (a 50 MB chunk travels as ~67 MB of base64, safely under the
+        cap). Each batch is saved, and the zip is reassembled automatically
+        once every chunk has arrived:
 
         ```
         import os
-        src = "qc-lora.zip"          # the downloaded adapter zip
+        src = "qc-lora-slim.zip"     # the slim adapter zip
         data = open(src, "rb").read()
-        for i in range(0, len(data), 90_000_000):
-            part = f"{src}.part{i // 90_000_000 + 1:02d}"
-            open(part, "wb").write(data[i:i + 90_000_000])
+        for i in range(0, len(data), 50_000_000):
+            part = f"{src}.part{i // 50_000_000 + 1:02d}"
+            open(part, "wb").write(data[i:i + 50_000_000])
             print(part, f"{os.path.getsize(part) / 1e6:.1f} MB")
         ```
         """
@@ -718,15 +739,16 @@ def _(mo):
 def _(mo):
     # Created here, displayed and *read* in the cell below: marimo forbids
     # reading a UI element's value in the cell that created it.
-    # MoLab caps browser uploads at 100MB per file, but a rank-32 LoRA zip is
-    # 100-300MB: split it locally into chunks <100MB named
-    # <name>.zip.part01, <name>.zip.part02, ... (see the markdown above) and
-    # upload all chunks together — the cell below reassembles them.
+    # MoLab caps browser uploads at 100MB per file, and each upload travels
+    # as one HTTP request that dies above ~100MB — so split slim (~180MB)
+    # adapter zips into 50MB chunks named <name>.zip.part01, ... (see the
+    # markdown above) and upload exactly ONE chunk at a time. The cell below
+    # accumulates chunks on disk and reassembles them automatically.
     upload_picker = mo.ui.file(
         filetypes=[".zip", ".part01", ".part02", ".part03", ".part04",
                    ".part05", ".part06", ".part07", ".part08"],
         multiple=True, kind="button",
-        label="Upload adapter zip (or .zip.partNN chunks, 1–2 at a time)")
+        label="Upload adapter zip (or .zip.partNN chunks, ONE at a time)")
     return (upload_picker,)
 @app.cell
 def _(mo, nbdir, upload_picker):
@@ -746,8 +768,8 @@ def _(mo, nbdir, upload_picker):
     _os.makedirs(_cdir, exist_ok=True)
 
     # 1. Persist newly uploaded files. Chunks accumulate on disk across
-    #    uploads, because a single browser upload cannot exceed the
-    #    frontend's message size — upload 1–2 chunks at a time.
+    #    uploads, because each upload is one HTTP request to the MoLab
+    #    server and dies above ~100MB — upload exactly ONE chunk at a time.
     if upload_picker.value:
         for _fname, _contents in upload_picker.value:
             if _re.fullmatch(_PART_RE, _fname) or _fname.endswith(".zip"):

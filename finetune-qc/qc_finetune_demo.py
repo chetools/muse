@@ -1534,23 +1534,27 @@ def _(mo):
         up automatically. This section needs no GPU.
 
         1. After §13/§14 finish, click a **Download** button below — one zip
-           per adapter directory (a few hundred MB at most for rank-32 LoRA).
+           per adapter directory. The zip holds only the final adapter
+           files (trainer `checkpoint-*` dirs are skipped — they are
+           intermediate optimizer state you do not need for inference),
+           so each zip is ~180 MB.
         2. In a new session (or on another machine), come back to this
-           section and upload the zip with the button below. **MoLab caps
-           browser uploads at 100MB per file**, so split larger zips on your
-           own machine into chunks under 100MB named `<name>.zip.part01`,
-           `<name>.zip.part02`, … and upload **1–2 chunks at a time** (one
-           upload of all chunks can exceed the browser's message size).
-           Each batch is saved, and the zip is reassembled automatically
-           once every chunk has arrived:
+           section and upload the zip with the button below. **Two caps
+           apply: MoLab caps browser uploads at 100MB per file, and each
+           upload is one HTTP request to the server that dies above
+           ~100 MB** — so split the zip on your own machine into **50 MB**
+           chunks named `<name>.zip.part01`, `<name>.zip.part02`, … and
+           upload **exactly one chunk at a time**. Each batch is saved,
+           and the zip is reassembled automatically once every chunk has
+           arrived:
 
            ```
            import os
            src = "qc-lora.zip"          # the downloaded adapter zip
            data = open(src, "rb").read()
-           for i in range(0, len(data), 90_000_000):
-               part = f"{src}.part{i // 90_000_000 + 1:02d}"
-               open(part, "wb").write(data[i:i + 90_000_000])
+           for i in range(0, len(data), 50_000_000):
+               part = f"{src}.part{i // 50_000_000 + 1:02d}"
+               open(part, "wb").write(data[i:i + 50_000_000])
                print(part, f"{os.path.getsize(part) / 1e6:.1f} MB")
            ```
 
@@ -1581,6 +1585,11 @@ def _(mo, nbdir, restored_adapters):
         _root = _os.path.join(_adir, _name)
         with _zipfile.ZipFile(_buf, "w", _zipfile.ZIP_DEFLATED) as _z:
             for _dp, _dn, _fn in _os.walk(_root):
+                # Skip trainer checkpoint-* dirs: intermediate optimizer /
+                # scheduler state, not needed to restore the final adapters.
+                # This keeps the download ~180MB instead of ~1.3GB.
+                _dn[:] = [_d for _d in _dn
+                          if not _d.startswith("checkpoint-")]
                 for _f in _fn:
                     _fp = _os.path.join(_dp, _f)
                     _z.write(_fp,
@@ -1621,7 +1630,7 @@ def _(mo):
         filetypes=[".zip", ".part01", ".part02", ".part03", ".part04",
                    ".part05", ".part06", ".part07", ".part08"],
         multiple=True, kind="button",
-        label="Upload adapter zip (or .zip.partNN chunks, 1–2 at a time)")
+        label="Upload adapter zip (or .zip.partNN chunks, ONE at a time)")
     return (upload_picker,)
 
 
@@ -1643,8 +1652,8 @@ def _(mo, nbdir, upload_picker):
     _os.makedirs(_cdir, exist_ok=True)
 
     # 1. Persist newly uploaded files. Chunks accumulate on disk across
-    #    uploads, because a single browser upload cannot exceed the
-    #    frontend's message size — upload 1–2 chunks at a time.
+    #    uploads, because each upload is one HTTP request to the MoLab
+    #    server and dies above ~100MB — upload exactly ONE chunk at a time.
     if upload_picker.value:
         for _fname, _contents in upload_picker.value:
             if _re.fullmatch(_PART_RE, _fname) or _fname.endswith(".zip"):
