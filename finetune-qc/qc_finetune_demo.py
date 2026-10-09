@@ -1156,8 +1156,8 @@ def _(mo, pkgs, torch_ok):
 
 @app.cell
 def _(install_btn, mo, pkgs):
-    import subprocess
-    import sys
+    import subprocess as _subprocess
+    import sys as _sys
 
     _PIP_SPECS = {
         "unsloth": "unsloth==2026.10.3",
@@ -1176,8 +1176,8 @@ def _(install_btn, mo, pkgs):
         # import time; pin it explicitly so pip cannot resolve a bad one.
         _specs.append("tokenizers>=0.23.1,<0.24.0")
     print("Installing: " + " ".join(_specs) + "\n", flush=True)
-    _rc = subprocess.run(
-        [sys.executable, "-m", "pip", "install", *_specs]).returncode
+    _rc = _subprocess.run(
+        [_sys.executable, "-m", "pip", "install", *_specs]).returncode
     if _rc != 0:
         mo.stop(True, mo.md("❌ `pip install` failed — see the log above, "
                             "fix the error, and click the button again."))
@@ -1536,8 +1536,23 @@ def _(mo):
         1. After §13/§14 finish, click a **Download** button below — one zip
            per adapter directory (a few hundred MB at most for rank-32 LoRA).
         2. In a new session (or on another machine), come back to this
-           section and upload the zip with the button below. The adapters
-           are restored under `adapters/` next to the notebook.
+           section and upload the zip with the button below. **MoLab caps
+           browser uploads at 100MB per file**, so split larger zips on your
+           own machine into chunks under 100MB named `<name>.zip.part01`,
+           `<name>.zip.part02`, … and upload all chunks together — they are
+           reassembled automatically:
+
+           ```
+           import os
+           src = "qc-lora.zip"          # the downloaded adapter zip
+           data = open(src, "rb").read()
+           for i in range(0, len(data), 90_000_000):
+               part = f"{src}.part{i // 90_000_000 + 1:02d}"
+               open(part, "wb").write(data[i:i + 90_000_000])
+               print(part, f"{os.path.getsize(part) / 1e6:.1f} MB")
+           ```
+
+           The adapters are restored under `adapters/` next to the notebook.
         3. Re-run §11 to confirm, then §15/§16 to evaluate and chat with the
            restored checkpoints.
         """
@@ -1596,8 +1611,15 @@ def _(mo, nbdir, restored_adapters):
 def _(mo):
     # Created here, displayed and *read* in the cell below: marimo forbids
     # reading a UI element's value in the cell that created it.
-    upload_picker = mo.ui.file(filetypes=[".zip"], kind="button",
-                               label="Upload adapter zip")
+    # MoLab caps browser uploads at 100MB per file, but a rank-32 LoRA zip is
+    # 100-300MB: split it locally into chunks <100MB named
+    # <name>.zip.part01, <name>.zip.part02, ... (see the markdown above) and
+    # upload all chunks together — the cell below reassembles them.
+    upload_picker = mo.ui.file(
+        filetypes=[".zip", ".part01", ".part02", ".part03", ".part04",
+                   ".part05", ".part06", ".part07", ".part08"],
+        multiple=True, kind="button",
+        label="Upload adapter zip (or .zip.partNN chunks)")
     return (upload_picker,)
 
 
@@ -1605,14 +1627,37 @@ def _(mo):
 def _(mo, nbdir, upload_picker):
     import io as _io
     import os as _os
+    import re as _re
     import zipfile as _zipfile
 
     _notes = []
     _restored = []
     _adir = _os.path.join(nbdir, "adapters")
+    _PART_RE = r"(.*\.zip)\.part(\d+)"
     if upload_picker.value:
         _os.makedirs(_adir, exist_ok=True)
+        _zips, _parts = {}, {}
         for _fname, _contents in upload_picker.value:
+            _m = _re.fullmatch(_PART_RE, _fname)
+            if _m:
+                _parts.setdefault(_m.group(1), {})[int(_m.group(2))] = _contents
+            elif _fname.endswith(".zip"):
+                _zips[_fname] = _contents
+            else:
+                _notes.append(f"⚠️ `{_fname}` ignored — upload a `.zip` or "
+                              f"`.zip.partNN` chunk.")
+        for _stem in sorted(_parts):
+            _idx = sorted(_parts[_stem])
+            if _idx != list(range(1, len(_idx) + 1)):
+                _notes.append(
+                    f"❌ `{_stem}`: chunk(s) missing — uploaded "
+                    f"{', '.join(f'.part{i:02d}' for i in _idx)}; upload "
+                    f"every chunk.")
+                continue
+            _zips[_stem] = b"".join(_parts[_stem][i] for i in _idx)
+            _notes.append(f"🧩 `{_stem}` reassembled from {len(_idx)} chunks "
+                          f"({len(_zips[_stem]) / 1e6:.1f} MB).")
+        for _fname, _contents in _zips.items():
             try:
                 with _zipfile.ZipFile(_io.BytesIO(_contents)) as _z:
                     _base = _os.path.realpath(_adir) + _os.sep
