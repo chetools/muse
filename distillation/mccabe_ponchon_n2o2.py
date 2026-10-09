@@ -14,9 +14,15 @@ import marimo as mo
 __generated_with = "0.25.1"
 app = mo.App(width="medium")
 
-
 @app.cell
 def _():
+    import marimo as mo
+    return (mo,)
+
+
+
+@app.cell
+def _(mo, ):
     mo.md(
         r"""
         # McCabe–Thiele and Ponchon–Savarit design for N2/O2 distillation
@@ -58,7 +64,7 @@ def _():
 
 
 @app.cell
-def _(missing_pkgs, pkg_status):
+def _(mo, missing_pkgs, pkg_status):
     mo.md("**Environment check:** " + pkg_status)
 
     install_btn = (
@@ -67,11 +73,11 @@ def _(missing_pkgs, pkg_status):
         else None
     )
     install_btn
-    return install_btn, missing_pkgs
+    return (install_btn,)
 
 
 @app.cell
-def _(install_btn, missing_pkgs):
+def _(mo, install_btn, missing_pkgs):
     if install_btn is None or not install_btn.value or not missing_pkgs:
         mo.stop(True)
     import subprocess as _subprocess
@@ -94,7 +100,7 @@ def _():
 
 
 @app.cell
-def _():
+def _(mo, ):
     mo.md(
         r"""
         ## 1. McCabe–Thiele theory
@@ -425,7 +431,7 @@ def _(np, PropsSI, brentq, least_squares):
 
 
 @app.cell
-def _():
+def _(mo, ):
     mo.md(
         r"""
         ## 2. N2/O2 vapor–liquid equilibrium at 1.4 bar and 5.3 bar
@@ -465,7 +471,7 @@ def _(equilibrium_table, fit_alpha, bubble_T, dew_T, np):
 
 
 @app.cell
-def _(alpha_LP, alpha_HP, dev_LP, dev_HP, T_bub_air, T_dew_air, vle_ok):
+def _(mo, alpha_LP, alpha_HP, dev_LP, dev_HP, T_bub_air, T_dew_air, vle_ok):
     mo.md(
         r"""
         **VLE validation** (known-good: $\alpha_{LP} = 3.816$, $\alpha_{HP} = 2.946$,
@@ -521,7 +527,7 @@ def _(go, np, xs_LP, ys_LP, xs_HP, ys_HP, alpha_LP, alpha_HP):
 
 
 @app.cell
-def _():
+def _(mo, ):
     mo.md(
         r"""
         ## 3. McCabe–Thiele interactive design
@@ -535,7 +541,7 @@ def _():
 
 
 @app.cell
-def _():
+def _(mo, ):
     column_select = mo.ui.dropdown(
         {"LP column — 1.4 bar": 1.4e5, "HP column — 5.3 bar": 5.3e5},
         value=1.4e5,
@@ -555,7 +561,7 @@ def _():
 
 
 @app.cell
-def _(xB_slider, zF_slider, xD_slider):
+def _(mo, xB_slider, zF_slider, xD_slider):
     specs_ok = xB_slider.value < zF_slider.value < xD_slider.value
     if not specs_ok:
         mo.md(r"**Infeasible specification:** the sliders must satisfy $x_B < z_F < x_D$.")
@@ -564,6 +570,7 @@ def _(xB_slider, zF_slider, xD_slider):
 
 @app.cell
 def _(
+    mo,
     specs_ok, column_select, R_slider, zF_slider, q_slider, xD_slider,
     xB_slider, mccabe_thiele,
 ):
@@ -621,7 +628,7 @@ def _(go, np, mt, R_slider, zF_slider, q_slider, xD_slider, xB_slider, column_se
 
 
 @app.cell
-def _():
+def _(mo, ):
     mo.md(
         r"""
         ## 4. Enthalpy–composition diagram and Ponchon–Savarit theory
@@ -657,7 +664,7 @@ def _():
 
 
 @app.cell
-def _(specs_ok, column_select, enthalpy_tables, equilibrium_table):
+def _(mo, specs_ok, column_select, enthalpy_tables, equilibrium_table):
     if not specs_ok:
         mo.stop(True)
     hx_xs, hx_ys = equilibrium_table(column_select.value)
@@ -691,7 +698,7 @@ def _(go, np, hx_xs, hx_ys, hx_h_liq, hx_h_vap, column_select):
 
 
 @app.cell
-def _():
+def _(mo, ):
     mo.md(
         r"""
         ## 5. Ponchon–Savarit interactive design
@@ -707,6 +714,7 @@ def _():
 
 @app.cell
 def _(
+    mo,
     specs_ok, column_select, R_slider, zF_slider, q_slider, xD_slider,
     xB_slider, ponchon_savarit,
 ):
@@ -765,7 +773,7 @@ def _(go, ps, column_select, R_slider):
 
 
 @app.cell
-def _():
+def _(mo, ):
     mo.md(
         r"""
         ## 6. Method comparison
@@ -784,7 +792,7 @@ def _():
 
 
 @app.cell
-def _(mt, ps, R_slider):
+def _(mo, mt, ps, R_slider):
     mo.ui.table(
         data=[
             {
@@ -810,7 +818,7 @@ def _(mt, ps, R_slider):
 
 
 @app.cell
-def _():
+def _(mo, ):
     mo.md(
         r"""
         ## 7. Verification panel
@@ -888,6 +896,7 @@ def _(mccabe_thiele, ponchon_savarit, np):
 
 @app.cell
 def _(
+    mo,
     a_ok, b_ok, c_ok, d_ok, e_ok, close_tot, close_N2,
     mt_q0, mt_qh, mt_R500, mt_TR, N_fenske, Rmin_scan,
     mt_hi, mt_below, mt_v, ps_v,
