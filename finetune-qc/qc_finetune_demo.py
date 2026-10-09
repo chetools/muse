@@ -820,12 +820,17 @@ def _(FLAG_VOCAB, MEASURE_ORDER, ROOT_CAUSE_CODES, TRIAGE_LABELS, json, re):
 def _(COMPLAINT_MIX, mo, recs, verify):
     n_checks, fails = verify(recs, COMPLAINT_MIX)
     if fails:
-        mo.md(f"**FAILED:** {len(fails)} of {n_checks} checks.\n\n" +
-              "\n".join(f"- {f}" for f in fails[:20]))
+        _verdict = mo.md(
+            f"**FAILED:** {len(fails)} of {n_checks} checks.\n\n" +
+            "\n".join(f"- {f}" for f in fails[:20]))
     else:
-        mo.md(f"✅ **All {n_checks} verification checks passed** on "
-              f"{len(recs)} examples — every planted answer re-derived from "
-              f"the rendered prompt text.")
+        _verdict = mo.md(
+            f"✅ **All {n_checks} verification checks passed** on "
+            f"{len(recs)} examples — every planted answer re-derived from "
+            f"the rendered prompt text.")
+    # NOTE: the verdict must be a bare expression statement — marimo renders
+    # only the cell's last expression, so a trailing if/else shows nothing.
+    _verdict
     return
 
 
@@ -1205,11 +1210,16 @@ def _(mo, nbdir, run_stream, scripts_ok):
     print("=== check_env.py: preflight version check ===\n")
     _rc = run_stream(["check_env.py"], nbdir)
     if _rc != 0:
-        mo.md("❌ **Environment problems found** — fix the installs above "
-              "(usually `pip install -r requirements-gpu.txt` after torch "
-              "+ CUDA 12.8), then re-run this cell before §13–§16.")
+        _env_out = mo.md("❌ **Environment problems found** — fix the "
+                         "installs above (usually `pip install -r "
+                         "requirements-gpu.txt` after torch + CUDA 12.8), "
+                         "then re-run this cell before §13–§16.")
     else:
-        mo.md("✅ Environment OK — versions match the pinned GPU stack.")
+        _env_out = mo.md("✅ Environment OK — versions match the pinned "
+                         "GPU stack.")
+    # NOTE: the verdict must be a bare expression statement — marimo renders
+    # only the cell's last expression, so a trailing if/else shows nothing.
+    _env_out
     return
 
 
@@ -1562,8 +1572,9 @@ def _(mo, nbdir, restored_adapters):
         return _buf.getvalue()
 
     if not _found:
-        mo.md("⚠️ No adapters under `adapters/` yet — run §13 (and §14) "
-              "first, then come back here to download them.")
+        _dl_out = mo.md("⚠️ No adapters under `adapters/` yet — run §13 "
+                        "(and §14) first, then come back here to download "
+                        "them.")
     else:
         _cards = []
         for _name in _found:
@@ -1574,7 +1585,10 @@ def _(mo, nbdir, restored_adapters):
                  mo.download(_data, filename=f"{_name}.zip",
                              label=f"Download {_name}.zip")],
                 justify="space-between"))
-        mo.vstack(_cards)
+        _dl_out = mo.vstack(_cards)
+    # NOTE: the output must be a bare expression statement — marimo renders
+    # only the cell's last expression, so a trailing if/else shows nothing.
+    _dl_out
     return
 
 
@@ -1618,9 +1632,12 @@ def _(mo, nbdir, upload_picker):
         _notes.append("_No file uploaded yet — upload the `qc-lora.zip` / "
                       "`qc-grpo.zip` you downloaded above. §15 and §16 "
                       "detect restored adapters automatically._")
-    mo.vstack([upload_picker] + [mo.md(_n) for _n in _notes])
     # Exposed so the download list above refreshes once adapters land.
+    # NOTE: keep the vstack expression *after* the assignment — marimo
+    # renders only the cell's last expression, so anything after it
+    # (other than `return`) would hide the upload button.
     restored_adapters = tuple(_restored)
+    mo.vstack([upload_picker] + [mo.md(_n) for _n in _notes])
     return (restored_adapters,)
 
 
