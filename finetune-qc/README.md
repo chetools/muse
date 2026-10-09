@@ -39,21 +39,27 @@ https://molab.marimo.io/github/chetools/muse/blob/main/finetune-qc/qc_finetune_d
 7. **Reward demos (§10).** The exact parsing/scoring functions from
    `train_grpo.py` applied to right/wrong/malformed sample completions,
    including per-field partial credit for JSON.
-8. **GPU training (§11–§16).** Environment check (torch/CUDA, Unsloth, TRL,
-   vendored scripts — nothing installed automatically), canonical dataset
-   generation via the vendored scripts, LoRA SFT, GRPO, the base/SFT/SFT+GRPO
-   eval plus the spec-change test, and interactive inference with a cached
-   model. Every GPU cell skips gracefully with guidance on machines without
-   CUDA.
+8. **GPU training (§11–§17).** Environment check (torch/CUDA, Unsloth, TRL,
+   vendored scripts), canonical dataset generation via the vendored scripts,
+   LoRA SFT, GRPO, the base/SFT/SFT+GRPO eval plus the spec-change test,
+   interactive inference with a cached model, and adapter download/upload.
+   On MoLab the GPU packages install automatically from the notebook header;
+   on your own machine use `requirements-gpu.txt`. Every GPU cell skips
+   gracefully with guidance on machines without CUDA.
 
 ## Running the GPU pipeline
 
 On a CUDA machine (e.g. an RTX 6000 Pro), open the notebook with
 `marimo edit qc_finetune_demo.py` from this directory and work through
-§11–§16 in order. The cells shell out to the vendored scripts, streaming
+§11–§17 in order. The cells shell out to the vendored scripts, streaming
 their logs. Knobs (model, epochs, GRPO steps, output dirs) are plain
 variables at the top of each training cell — lower them for a smoke test.
 Generated `data/` and `adapters/` are git-ignored.
+
+On MoLab, attach a GPU via the notebook specs button in the app header —
+the GPU packages install automatically at session start. Sessions are
+ephemeral (12 h max, 90 min idle), so use §17 to download your adapters
+before the session ends, and upload the zip back in a fresh session.
 
 Equivalently, the scripts run standalone:
 
@@ -72,5 +78,4 @@ python eval.py --model Qwen/Qwen3-8B --adapters adapters/qc-grpo
 The complete training package (data generator, verifier, reward unit tests,
 Unsloth SFT, TRL GRPO, eval harness incl. the spec-change/RAG test) lives at
 `~/workspace/cheme-finetune-qc/` — this notebook is its self-contained
-MoLab companion. The v1 demo (textbook ChemE calculation problems) is at
-`~/workspace/cheme-finetune-demo/`.
+MoLab companion.

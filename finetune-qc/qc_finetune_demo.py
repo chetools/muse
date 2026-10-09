@@ -4,6 +4,16 @@
 #     "marimo",
 #     "numpy",
 #     "plotly",
+#     # GPU stack (auto-installed by MoLab at session start; skipped on WASM,
+#     # where torch/CUDA is unavailable). torch itself is intentionally NOT
+#     # listed: MoLab preinstalls a CUDA build, and on your own machine
+#     # requirements-gpu.txt installs torch with CUDA 12.8 first.
+#     "unsloth>=2026.5; sys_platform != 'emscripten'",
+#     "trl>=0.22; sys_platform != 'emscripten'",
+#     "peft>=0.17; sys_platform != 'emscripten'",
+#     "transformers>=4.55; sys_platform != 'emscripten'",
+#     "datasets>=3.6; sys_platform != 'emscripten'",
+#     "accelerate>=1.10; sys_platform != 'emscripten'",
 # ]
 # ///
 
@@ -16,10 +26,16 @@ task families are built from them (four verifiable, one SFT-only), every
 answer is independently re-verified, and the GRPO reward functions are
 demonstrated on sample completions.
 
-What runs here on MoLab: data generation, verification, exploration figures,
-reward demos (numpy/plotly only). What does NOT run here: the LoRA SFT and
-GRPO training steps need torch + a CUDA GPU — §9 gives the exact commands
-for the RTX 6000 Pro and checks that no GPU is present.
+What runs here: data generation, verification, exploration figures, reward
+demos (numpy/plotly only) — plus, on a CUDA machine, the full training
+pipeline. Attach a GPU on MoLab (notebook specs button in the app header)
+or run on your own CUDA box: §11 checks the environment, §12 builds the
+canonical dataset, §13 runs LoRA SFT, §14 GRPO, §15 eval, §16 interactive
+inference, and §17 downloads/uploads the trained adapters (MoLab sessions
+are ephemeral — save your adapters before the session ends). The GPU
+packages install automatically from this file's header on MoLab;
+`requirements-gpu.txt` covers your own machine. Without a GPU, §13–§16
+skip gracefully.
 
 Run with `marimo edit qc_finetune_demo.py`, or open via MoLab:
 https://molab.marimo.io/github/chetools/muse/blob/main/finetune-qc/qc_finetune_demo.py
@@ -72,9 +88,10 @@ def _(mo):
         - §7 shows one example per task. §8 re-verifies every planted answer
           from the rendered text. §9 demonstrates the GRPO rewards.
         - §10 demonstrates the GRPO reward functions on sample completions.
-        - §11–§16 set up GPU training and inference: environment check,
-          canonical dataset, LoRA SFT, GRPO, eval, and interactive inference.
-          They run on a CUDA machine and skip gracefully anywhere else.
+        - §11–§17 set up GPU training and inference: environment check,
+          canonical dataset, LoRA SFT, GRPO, eval, interactive inference,
+          and adapter download/upload. They run on a CUDA machine and skip
+          gracefully anywhere else (§17 needs no GPU).
 
         ## What runs where
 
@@ -87,6 +104,7 @@ def _(mo):
         | LoRA SFT (§13) | skips without CUDA | ✅ torch + Unsloth + CUDA |
         | GRPO (§14) | skips without CUDA | ✅ torch + TRL + CUDA |
         | Eval + interactive inference (§15, §16) | skips without CUDA | ✅ GPU for generation |
+        | Adapter download / upload (§17) | ✅ no GPU needed | — |
         """
     )
     return
@@ -1037,11 +1055,13 @@ def _(mo):
         The cells in §12–§16 run the training pipeline on **this machine**.
         They need the vendored scripts sitting next to the notebook
         (`gen_data.py`, `train_sft.py`, …) and, for §13–§16, **torch with
-        CUDA** plus the GPU packages from `requirements-gpu.txt`
-        (Unsloth, TRL, PEFT, …). This cell checks everything and reports what
-        is missing; nothing is installed automatically. On a machine without a
-        GPU, the training cells below skip gracefully with guidance instead of
-        failing.
+        CUDA** plus the GPU packages (Unsloth, TRL, PEFT, …). On MoLab the
+        GPU packages install automatically from the notebook header at
+        session start; on your own machine install them from
+        `requirements-gpu.txt` (torch with CUDA 12.8 **first**, from
+        pytorch.org). This cell checks everything and reports what is
+        missing. On a machine without a GPU, the training cells below skip
+        gracefully with guidance instead of failing.
         """
     )
     return
@@ -1089,8 +1109,11 @@ def _(mo):
     if not has_cuda:
         _rows.append("_No CUDA GPU → §13–§16 will skip. §5–§12 still run._")
     if not all(pkgs.values()) or not torch_ok:
-        _rows.append("Install the GPU stack with (torch with CUDA 12.8 **first**, "
-                     "from pytorch.org): `pip install -r requirements-gpu.txt`")
+        _rows.append("Install the GPU stack: on MoLab use the built-in package "
+                     "manager (or restart the session — the notebook header "
+                     "installs it automatically); on your own machine, torch "
+                     "with CUDA 12.8 **first** from pytorch.org, then "
+                     "`pip install -r requirements-gpu.txt`")
     mo.md("**Environment**\n\n- " + "\n- ".join(_rows))
     return has_cuda, nbdir, scripts_ok
 
@@ -1395,6 +1418,106 @@ def _(ROOT_CAUSE_CODES, TRIAGE_LABELS, ckpt_picker, eval_recs, ex_slider,
         mo.md(f"**Ground truth:** `{_truth}`"),
         mo.md(f"**Verdict:** {_badge}"),
     ])
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## §17 Adapter download & upload
+
+        MoLab sessions are **ephemeral**: a session ends after 12 hours (or
+        90 minutes idle) and the container disk — including
+        `adapters/qc-lora/` and `adapters/qc-grpo/` — is discarded with it.
+        **Download your adapters before the session ends.** In a fresh
+        session, upload the zip back here and §15/§16 will pick the adapters
+        up automatically. This section needs no GPU.
+
+        1. After §13/§14 finish, click a **Download** button below — one zip
+           per adapter directory (a few hundred MB at most for rank-32 LoRA).
+        2. In a new session (or on another machine), come back to this
+           section and upload the zip with the button below. The adapters
+           are restored under `adapters/` next to the notebook.
+        3. Re-run §11 to confirm, then §15/§16 to evaluate and chat with the
+           restored checkpoints.
+        """
+    )
+    return
+
+
+@app.cell
+def _(mo, nbdir):
+    import io as _io
+    import os as _os
+    import zipfile as _zipfile
+
+    _adir = _os.path.join(nbdir, "adapters")
+    _found = sorted(
+        _d for _d in (_os.listdir(_adir) if _os.path.isdir(_adir) else [])
+        if _os.path.isdir(_os.path.join(_adir, _d)))
+
+    def _zip_bytes(_name):
+        _buf = _io.BytesIO()
+        _root = _os.path.join(_adir, _name)
+        with _zipfile.ZipFile(_buf, "w", _zipfile.ZIP_DEFLATED) as _z:
+            for _dp, _dn, _fn in _os.walk(_root):
+                for _f in _fn:
+                    _fp = _os.path.join(_dp, _f)
+                    _z.write(_fp,
+                             _os.path.join(_name,
+                                           _os.path.relpath(_fp, _root)))
+        return _buf.getvalue()
+
+    if not _found:
+        mo.md("⚠️ No adapters under `adapters/` yet — run §13 (and §14) "
+              "first, then come back here to download them.")
+    else:
+        _cards = []
+        for _name in _found:
+            _data = _zip_bytes(_name)
+            _mb = len(_data) / 1e6
+            _cards.append(mo.hstack(
+                [mo.md(f"`adapters/{_name}/` — {_mb:.1f} MB"),
+                 mo.download(_data, filename=f"{_name}.zip",
+                             label=f"Download {_name}.zip")],
+                justify="space-between"))
+        mo.vstack(_cards)
+    return
+
+
+@app.cell
+def _(mo, nbdir):
+    import io as _io
+    import os as _os
+    import zipfile as _zipfile
+
+    _picker = mo.ui.file(filetypes=[".zip"], kind="button",
+                         label="Upload adapter zip")
+    _notes = []
+    _adir = _os.path.join(nbdir, "adapters")
+    if _picker.value:
+        _os.makedirs(_adir, exist_ok=True)
+        for _fname, _contents in _picker.value:
+            try:
+                with _zipfile.ZipFile(_io.BytesIO(_contents)) as _z:
+                    _base = _os.path.realpath(_adir) + _os.sep
+                    for _m in _z.namelist():
+                        _dest = _os.path.realpath(_os.path.join(_adir, _m))
+                        if not _dest.startswith(_base):
+                            raise ValueError(f"unsafe path in zip: {_m}")
+                    _z.extractall(_adir)
+                    _tops = sorted({_m.split("/")[0] for _m in _z.namelist()
+                                    if "/" in _m})
+                _notes.append("✅ `" + _fname + "` → restored: " +
+                              ", ".join(f"`adapters/{_t}/`" for _t in _tops))
+            except Exception as _e:
+                _notes.append(f"❌ `{_fname}` could not be restored ({_e})")
+    else:
+        _notes.append("_No file uploaded yet — upload the `qc-lora.zip` / "
+                      "`qc-grpo.zip` you downloaded above. §15 and §16 "
+                      "detect restored adapters automatically._")
+    mo.vstack([_picker] + [mo.md(_n) for _n in _notes])
     return
 
 
