@@ -8,11 +8,12 @@
 #     # where torch/CUDA is unavailable). torch itself is intentionally NOT
 #     # listed: MoLab preinstalls a CUDA build, and on your own machine
 #     # requirements-gpu.txt installs torch with CUDA 12.8 first.
-#     "unsloth>=2026.5; sys_platform != 'emscripten'",
-#     "trl>=0.22; sys_platform != 'emscripten'",
-#     "peft>=0.17; sys_platform != 'emscripten'",
-#     "transformers>=4.55; sys_platform != 'emscripten'",
-#     "datasets>=3.6; sys_platform != 'emscripten'",
+#     "unsloth==2026.10.3; sys_platform != 'emscripten'",
+#     "trl==1.13.0; sys_platform != 'emscripten'",
+#     "transformers==5.17.0; sys_platform != 'emscripten'",
+#     "tokenizers>=0.23.1,<0.24.0; sys_platform != 'emscripten'",
+#     "peft==0.21.2; sys_platform != 'emscripten'",
+#     "datasets>=3.6,<5.0.0; sys_platform != 'emscripten'",
 #     "accelerate>=1.10; sys_platform != 'emscripten'",
 # ]
 # ///
@@ -1077,7 +1078,7 @@ def _(mo):
         nbdir = os.getcwd()
 
     _scripts = ["gen_data.py", "test_data.py", "rewards.py", "test_rewards.py",
-                "train_sft.py", "train_grpo.py", "eval.py"]
+                "train_sft.py", "train_grpo.py", "eval.py", "check_env.py"]
     scripts_ok = all(os.path.exists(os.path.join(nbdir, s)) for s in _scripts)
 
     try:
@@ -1134,6 +1135,21 @@ def _():
         return proc.wait()
 
     return (run_stream,)
+
+
+@app.cell
+def _(mo, nbdir, run_stream, scripts_ok):
+    mo.stop(not scripts_ok,
+            mo.md("⚠️ Training scripts not found next to the notebook."))
+    print("=== check_env.py: preflight version check ===\n")
+    _rc = run_stream(["check_env.py"], nbdir)
+    if _rc != 0:
+        mo.md("❌ **Environment problems found** — fix the installs above "
+              "(usually `pip install -r requirements-gpu.txt` after torch "
+              "+ CUDA 12.8), then re-run this cell before §13–§16.")
+    else:
+        mo.md("✅ Environment OK — versions match the pinned GPU stack.")
+    return
 
 
 @app.cell
@@ -1342,11 +1358,13 @@ def _(ROOT_CAUSE_CODES, TRIAGE_LABELS, ckpt_picker, eval_recs, ex_slider,
       has_cuda, mo, nbdir, parse_deviations, parse_json_answer, parse_label,
       score_structuring):
     import os as _os
+    import re as _re
     mo.stop(not has_cuda,
             mo.md("⚠️ No CUDA GPU detected — inference needs the GPU."))
     try:
         import torch as _torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                                    __version__ as _tf_version)
         from peft import PeftModel
         _infer_ok = True
     except Exception as _e:
@@ -1365,8 +1383,12 @@ def _(ROOT_CAUSE_CODES, TRIAGE_LABELS, ckpt_picker, eval_recs, ex_slider,
         _tok = AutoTokenizer.from_pretrained(_INFER_MODEL)
         if _tok.pad_token is None:
             _tok.pad_token = _tok.eos_token
+        # transformers 4.56 renamed torch_dtype -> dtype (old name warns).
+        _tfv = tuple(int(x) for x in _re.findall(r"\d+", _tf_version)[:3])
+        _dtype_kw = ({"dtype": _torch.bfloat16} if _tfv >= (4, 56)
+                     else {"torch_dtype": _torch.bfloat16})
         _model = AutoModelForCausalLM.from_pretrained(
-            _INFER_MODEL, torch_dtype=_torch.bfloat16, device_map="auto")
+            _INFER_MODEL, device_map="auto", **_dtype_kw)
         if _key:
             _model = PeftModel.from_pretrained(_model,
                                                _os.path.join(nbdir, _key))
@@ -1379,10 +1401,12 @@ def _(ROOT_CAUSE_CODES, TRIAGE_LABELS, ckpt_picker, eval_recs, ex_slider,
             "plant. Read complaints, QC lab reports, and spec limits carefully, "
             "reason from the evidence, and give the final answer as: "
             "Answer: <result>.")
+    # Qwen3 "thinking mode" off: direct-answer task; a <think> block would
+    # burn the max_new_tokens budget before the "Answer:" line.
     _prompt = _tok.apply_chat_template(
         [{"role": "system", "content": _sys},
          {"role": "user", "content": _rec["instruction"]}],
-        tokenize=False, add_generation_prompt=True)
+        tokenize=False, add_generation_prompt=True, enable_thinking=False)
     _inputs = _tok(_prompt, return_tensors="pt").to(_model.device)
     with _torch.no_grad():
         _out = _model.generate(**_inputs, max_new_tokens=512, do_sample=False,

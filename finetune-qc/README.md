@@ -64,7 +64,11 @@ before the session ends, and upload the zip back in a fresh session.
 Equivalently, the scripts run standalone:
 
 ```bash
-pip install -r requirements-gpu.txt          # torch with CUDA 12.8 first
+# torch with CUDA 12.8 FIRST from pytorch.org, then the pinned GPU stack:
+pip install -r requirements-gpu.txt
+python check_env.py    # preflight: fails fast with install instructions
+                       # instead of cryptic ImportErrors (e.g. the
+                       # transformers/tokenizers version-pin error)
 python gen_data.py --n 6000 --seed 0 --out data
 python test_data.py --dir data && python test_rewards.py
 python train_sft.py --model Qwen/Qwen3-8B --epochs 2 --out adapters/qc-lora

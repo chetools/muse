@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Step 2 -- GRPO with verifiable rewards on the QC tasks.
 
-What this teaches (beyond v1):
+What this teaches:
   * The reward dispatcher (rewards.qc_reward) scores four DIFFERENT answer
     shapes -- a category label, a JSON object, an out-of-spec set, a defect
     code -- all computed from planted ground truth, no judge model.
@@ -11,6 +11,7 @@ What this teaches (beyond v1):
     but only verifiable tasks get the RL polish.
 
 Run on the RTX 6000 Pro (after train_sft.py, or standalone on the base model):
+    python check_env.py                                  # preflight version check
     python train_grpo.py --model Qwen/Qwen3-8B --adapters adapters/qc-lora \
         --steps 300 --out adapters/qc-grpo
 
@@ -24,6 +25,10 @@ Watch the *reward*, not the loss (rising loss during GRPO is normal).
 """
 import argparse
 import json
+import sys
+
+sys.path.insert(0, ".")
+import check_env  # noqa: E402  (stdlib-only; safe even if the ML stack is broken)
 
 from unsloth import FastLanguageModel
 from trl import GRPOConfig, GRPOTrainer
@@ -43,7 +48,10 @@ def load_grpo_dataset(path, tokenizer):
     Columns must include the task name and the planted answer fields because
     TRL forwards extra dataset columns to the reward functions. Dict answers
     are serialized to JSON strings (datasets need scalar columns).
-    """
+
+    Qwen3's "thinking mode" is disabled: these are direct-answer tasks, and
+    a <think> block would burn the max_completion_length budget before the
+    model ever reaches its "Answer:" line."""
     rows = [json.loads(l) for l in open(path)]
     rows = [r for r in rows if not r.get("sft_only")]
     skipped = sum(1 for l in open(path)) - len(rows)
@@ -57,7 +65,8 @@ def load_grpo_dataset(path, tokenizer):
             {"role": "user", "content": r["instruction"]},
         ]
         prompts.append(tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True))
+            messages, tokenize=False, add_generation_prompt=True,
+            enable_thinking=False))
         tasks.append(r["task"])
         labels.append(r.get("answer_label") or "")
         aj = r.get("answer_json")
@@ -73,7 +82,53 @@ def load_grpo_dataset(path, tokenizer):
     })
 
 
+def load_model_for_grpo(args):
+    """Base model (+ fresh LoRA), or base + trained SFT adapters.
+
+    Continuing from SFT goes through Unsloth's adapter-aware loader:
+    passing the adapter directory as model_name makes from_pretrained read
+    adapter_config.json, load the base model, and attach the trained
+    adapters with is_trainable=True (plus Unsloth's patching).
+
+    Do NOT do PeftModel.from_pretrained(...) followed by
+    FastLanguageModel.get_peft_model(...): the second call injects a new
+    adapter under the same name ("default"), whose freshly initialized
+    weights silently overwrite the loaded SFT weights -- GRPO would then
+    train from a random adapter, not from SFT. (Verified against the
+    peft 0.21 source: update_layer() re-creates lora_A/B for the name.)
+    """
+    if args.adapters:
+        # Adapter-aware path: base model + trained SFT adapters, trainable.
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=args.adapters,
+            max_seq_length=args.max_seq_len,
+            load_in_4bit=True,
+            fast_inference=False,
+        )
+        print(f"Continuing GRPO from SFT adapters: {args.adapters}")
+    else:
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=args.model,
+            max_seq_length=args.max_seq_len,
+            load_in_4bit=True,
+            fast_inference=False,
+        )
+        model = FastLanguageModel.get_peft_model(
+            model,
+            r=32,
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                            "gate_proj", "up_proj", "down_proj"],
+            lora_alpha=64,
+            lora_dropout=0.0,
+            bias="none",
+            use_gradient_checkpointing="unsloth",
+            random_state=0,
+        )
+    return model, tokenizer
+
+
 def main():
+    check_env.require()  # fail fast with install instructions, not ImportErrors
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Qwen/Qwen3-8B")
     ap.add_argument("--adapters", default=None,
@@ -90,31 +145,16 @@ def main():
     ap.add_argument("--max-completion-len", type=int, default=1024)
     args = ap.parse_args()
 
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=args.model,
-        max_seq_length=args.max_seq_len,
-        load_in_4bit=True,
-        fast_inference=False,
-    )
-    if args.adapters:
-        from peft import PeftModel
-        model = PeftModel.from_pretrained(model, args.adapters)
-        print(f"Continuing GRPO from SFT adapters: {args.adapters}")
-    model = FastLanguageModel.get_peft_model(
-        model,
-        r=32,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
-        lora_dropout=0.0,
-        bias="none",
-        use_gradient_checkpointing="unsloth",
-        random_state=0,
-    )
+    model, tokenizer = load_model_for_grpo(args)
     model.print_trainable_parameters()
 
     ds = load_grpo_dataset(args.data, tokenizer)
 
+    # TRL 1.x GRPOConfig notes (verified against the trl 1.13.0 source):
+    #  * max_prompt_length was REMOVED -- prompts are tokenized as-is, so the
+    #    old kwarg now raises TypeError. Our prompts are ~2-3k tokens, inside
+    #    the model's 3072 context, so no truncation config is needed.
+    #  * the trainer kwarg is processing_class (tokenizer= was removed).
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
@@ -125,7 +165,6 @@ def main():
             max_steps=args.steps,
             learning_rate=args.lr,
             num_generations=args.num_generations,
-            max_prompt_length=args.max_seq_len - args.max_completion_len,
             max_completion_length=args.max_completion_len,
             temperature=args.temperature,
             beta=args.beta,              # KL penalty vs reference policy

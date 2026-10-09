@@ -11,7 +11,8 @@ What this teaches:
   * LoRA freezes the base model and trains only small low-rank adapters;
     the script prints the trainable parameter count (< 1% of weights).
 
-Run on the RTX 6000 Pro (needs CUDA; install requirements.txt first):
+Run on the RTX 6000 Pro (needs CUDA; install requirements-gpu.txt first):
+    python check_env.py                                  # preflight version check
     python gen_data.py --n 6000 --seed 0 --out data
     python train_sft.py --model Qwen/Qwen3-8B --epochs 2 --out adapters/qc-lora
 
@@ -20,10 +21,13 @@ tokens -> well under an hour on a 96 GB card with Unsloth.
 """
 import argparse
 import json
+import sys
+
+sys.path.insert(0, ".")
+import check_env  # noqa: E402  (stdlib-only; safe even if the ML stack is broken)
 
 from unsloth import FastLanguageModel
-from trl import SFTTrainer
-from transformers import TrainingArguments
+from trl import SFTTrainer, SFTConfig
 from datasets import Dataset
 
 SYSTEM = ("You are a quality-assurance analyst for a formulated-products "
@@ -36,7 +40,9 @@ def load_sft_dataset(path, tokenizer):
     """JSONL -> chat-formatted text using the model's own chat template.
 
     All five tasks are included -- corrective_action is SFT-only because no
-    computed reward exists for free-text 8D drafts."""
+    computed reward exists for free-text 8D drafts. Qwen3's "thinking mode"
+    is disabled: these are direct-answer tasks, and the planted solutions
+    contain no <think> blocks to imitate."""
     rows = [json.loads(l) for l in open(path)]
     texts = []
     for r in rows:
@@ -46,11 +52,13 @@ def load_sft_dataset(path, tokenizer):
             {"role": "assistant", "content": r["solution"]},
         ]
         texts.append(tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=False))
+            messages, tokenize=False, add_generation_prompt=False,
+            enable_thinking=False))
     return Dataset.from_dict({"text": texts})
 
 
 def main():
+    check_env.require()  # fail fast with install instructions, not ImportErrors
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Qwen/Qwen3-8B")
     ap.add_argument("--data", default="data/train.jsonl")
@@ -89,28 +97,35 @@ def main():
     warmup_steps = max(1, int(0.05 * total_steps))
     print(f"Warmup: {warmup_steps} steps of ~{total_steps} total (5%)")
 
+    # TRL >= 0.13 moved dataset_text_field off the SFTTrainer kwargs and
+    # into SFTConfig, renamed the tokenizer kwarg to processing_class, and
+    # TRL 1.x renamed SFTConfig's max_seq_length to max_length (the old
+    # names now raise TypeError -- verified against the trl 1.13.0 source).
+    training_args = SFTConfig(
+        output_dir=args.out,
+        dataset_text_field="text",
+        max_length=args.max_seq_len,
+        truncation_mode="keep_start",
+        packing=False,
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=4,   # effective batch 16
+        num_train_epochs=args.epochs,
+        learning_rate=args.lr,
+        lr_scheduler_type="cosine",
+        warmup_steps=warmup_steps,
+        logging_steps=10,
+        save_steps=200,
+        save_total_limit=2,
+        bf16=True,
+        optim="adamw_8bit",
+        seed=0,
+        report_to="none",
+    )
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
+        args=training_args,
         train_dataset=ds,
-        dataset_text_field="text",
-        max_seq_length=args.max_seq_len,
-        args=TrainingArguments(
-            output_dir=args.out,
-            per_device_train_batch_size=4,
-            gradient_accumulation_steps=4,   # effective batch 16
-            num_train_epochs=args.epochs,
-            learning_rate=args.lr,
-            lr_scheduler_type="cosine",
-            warmup_steps=warmup_steps,
-            logging_steps=10,
-            save_steps=200,
-            save_total_limit=2,
-            bf16=True,
-            optim="adamw_8bit",
-            seed=0,
-            report_to="none",
-        ),
+        processing_class=tokenizer,
     )
     trainer.train()
     model.save_pretrained(args.out)          # LoRA adapters only (~100-300 MB)

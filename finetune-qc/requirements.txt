@@ -1,3 +1,6 @@
+# CPU-side dependencies: data generation, verification, reward unit tests,
+# and the marimo notebook's non-GPU sections. GPU training needs
+# requirements-gpu.txt instead (torch with CUDA 12.8 first, from pytorch.org).
 marimo
 numpy
 plotly

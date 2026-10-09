@@ -33,9 +33,11 @@ Eval hygiene (the educational point of this script):
 """
 import argparse
 import json
+import re
 import sys
 
 sys.path.insert(0, ".")
+import check_env  # noqa: E402  (stdlib-only; safe even if the ML stack is broken)
 from rewards import (parse_label, parse_json_answer, parse_deviations,
                      score_triage, score_root_cause, score_spec_deviation,
                      score_structuring, _TRIAGE_VOCAB, _ROOT_CAUSE_VOCAB)
@@ -78,16 +80,22 @@ def main():
     ap.add_argument("--show-8d", action="store_true",
                     help="print one corrective_action generation (unscored)")
     args = ap.parse_args()
+    check_env.require()  # fail fast with install instructions, not ImportErrors
 
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    from transformers import AutoModelForCausalLM, AutoTokenizer, __version__ as _tfv
     from peft import PeftModel
 
     tok = AutoTokenizer.from_pretrained(args.model)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
+    # transformers 4.56 renamed torch_dtype -> dtype (old name still works
+    # but warns); pick the right spelling for the installed version.
+    _tf_parsed = tuple(int(x) for x in re.findall(r"\d+", _tfv)[:3])
+    _dtype_kw = ({"dtype": torch.bfloat16} if _tf_parsed >= (4, 56)
+                 else {"torch_dtype": torch.bfloat16})
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, torch_dtype=torch.bfloat16, device_map="auto")
+        args.model, device_map="auto", **_dtype_kw)
     if args.adapters:
         model = PeftModel.from_pretrained(model, args.adapters)
         print(f"Evaluating with adapters: {args.adapters}")
@@ -103,8 +111,12 @@ def main():
     for r in rows:
         messages = [{"role": "system", "content": SYSTEM},
                     {"role": "user", "content": r["instruction"]}]
+        # Qwen3 "thinking mode" is disabled: these are direct-answer tasks,
+        # and a <think> block would burn the max_new_tokens budget before
+        # the model reaches its "Answer:" line.
         prompt = tok.apply_chat_template(messages, tokenize=False,
-                                         add_generation_prompt=True)
+                                         add_generation_prompt=True,
+                                         enable_thinking=False)
         inputs = tok(prompt, return_tensors="pt").to(model.device)
         with torch.no_grad():
             out = model.generate(**inputs, max_new_tokens=args.max_new_tokens,

@@ -1,11 +1,38 @@
 # GPU-side dependencies for training/inference on the RTX 6000 (Blackwell, sm_120).
-# Install PyTorch with CUDA 12.8 FIRST from pytorch.org, then:
+#
+# Install PyTorch with CUDA 12.8 FIRST from pytorch.org (needs torch>=2.7;
+# unsloth caps torch at <2.15), then install this file in ONE command so pip
+# resolves a consistent set:
 #     pip install -r requirements-gpu.txt
-# Check: python -c "import torch; print(torch.cuda.is_available())"
-unsloth>=2026.5          # single-GPU SFT/GRPO kernels (explicit Blackwell support)
-trl>=0.22                # SFTTrainer, GRPOTrainer
-transformers>=4.55
-peft>=0.17
-accelerate>=1.10
-datasets>=3.6
+# Preflight (catches version drift before a 3-hour run dies on import):
+#     python check_env.py
+#
+# Why exact pins: loose lower bounds (>=) let pip/uv assemble mutually
+# incompatible combos -- e.g. transformers' hard pin
+# "tokenizers>=0.22.0,<=0.23.0 is required" failing at import time because an
+# older tokenizers was left in the env, or trl 1.14+ arriving with renamed
+# trainer args. Every == below was verified against the actual package
+# sources on 2026-10-09 (unsloth's dependency metadata, transformers'
+# dependency_versions_table, trl's trainer sources).
+
+unsloth==2026.10.3        # single-GPU SFT/GRPO kernels; explicit Blackwell support.
+                          # Its own metadata requires: trl<=1.13.0, transformers<=5.17.0,
+                          # peft>=0.18.0, datasets<5.0.0, torch<2.15 -- pip enforces these.
+trl==1.13.0               # unsloth's ceiling. API used here (verified in the trl 1.13.0
+                          # source): SFTConfig(dataset_text_field, max_length, packing),
+                          # SFTTrainer(processing_class=...), GRPOConfig WITHOUT
+                          # max_prompt_length (removed -- passing it raises TypeError).
+transformers==5.17.0      # unsloth's ceiling. Its dependency table demands
+                          # tokenizers>=0.23.1,<0.24.0 (checked at import time).
+tokenizers>=0.23.1,<0.24.0  # MUST match transformers' pin above, or `import
+                          # transformers` dies with ImportError. If you hit that
+                          # error: pip install "tokenizers>=0.23.1,<0.24.0".
+peft==0.21.2              # LoRA adapters (unsloth needs >=0.18.0).
+bitsandbytes>=0.49.2,!=0.46.0,!=0.48.0  # for optim="adamw_8bit" (unsloth pulls
+                          # this in too; the != exclusions are unsloth's;
+                          # >=0.49.2 minimum for working 4-bit kernels on
+                          # Blackwell sm_120 -- older bnb silently misbehaves).
+accelerate>=1.10          # device_map="auto".
+datasets>=3.6,!=4.0.*,!=4.1.0,!=4.4.*,!=4.5.0,<5.0.0  # mirrors unsloth's spec.
 numpy>=1.26
+scipy>=1.11
