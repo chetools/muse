@@ -1721,3 +1721,88 @@ def _(mo, nbdir, upload_picker):
     restored_adapters = tuple(_restored)
     mo.vstack([upload_picker] + [mo.md(_n) for _n in _notes])
     return (restored_adapters,)
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## §17b Publish adapters to HuggingFace Hub (optional)
+
+        Zip downloads work, but the Hub is more convenient: the adapters live
+        under your HuggingFace account and any fresh session pulls them with
+        a single download — no chunking, no re-upload. Create a **write**
+        token at <https://huggingface.co/settings/tokens> and paste it below.
+        Trainer `checkpoint-*/` directories are never uploaded.
+        """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    # Created here, read in the cell below: marimo forbids reading a UI
+    # element's value in the cell that created it.
+    hub_token = mo.ui.text(kind="password",
+                           label="HuggingFace write token")
+    hub_lora_repo = mo.ui.text(value="qc-lora",
+                               label="Hub repo name for the SFT adapters")
+    hub_grpo_repo = mo.ui.text(value="qc-grpo",
+                               label="Hub repo name for the SFT+GRPO adapters")
+    hub_private = mo.ui.checkbox(value=True, label="Private repositories")
+    hub_upload = mo.ui.button(label="Upload adapters to the Hub")
+    return hub_grpo_repo, hub_lora_repo, hub_private, hub_token, hub_upload
+
+
+@app.cell
+def _(hub_grpo_repo, hub_lora_repo, hub_private, hub_token, hub_upload, mo,
+        nbdir, restored_adapters):
+    import os as _os
+
+    _ = restored_adapters  # re-run after a zip upload restores adapters
+    _notes = []
+    if hub_upload.value:
+        if not hub_token.value:
+            _notes.append("⚠️ Paste a HuggingFace **write** token first "
+                          "(https://huggingface.co/settings/tokens).")
+        else:
+            try:
+                from huggingface_hub import HfApi as _HfApi
+            except ImportError:
+                _notes.append("⚠️ `huggingface_hub` is not installed — it "
+                              "ships with `transformers`; install the §11 "
+                              "GPU environment first.")
+                _HfApi = None
+            if _HfApi is not None:
+                try:
+                    _api = _HfApi(token=hub_token.value)
+                    _user = _api.whoami()["name"]
+                    _jobs = [("qc-lora", hub_lora_repo.value.strip()),
+                             ("qc-grpo", hub_grpo_repo.value.strip())]
+                    for _local, _repo_name in _jobs:
+                        if not _repo_name:
+                            continue
+                        _root = _os.path.join(nbdir, "adapters", _local)
+                        if not _os.path.isdir(_root):
+                            _notes.append(f"⏭️ `adapters/{_local}/` not "
+                                          f"present — skipped.")
+                            continue
+                        _repo_id = f"{_user}/{_repo_name}"
+                        _api.create_repo(_repo_id, private=hub_private.value,
+                                         exist_ok=True)
+                        _api.upload_folder(
+                            folder_path=_root, repo_id=_repo_id,
+                            ignore_patterns=["checkpoint-*"])
+                        _notes.append(
+                            f"✅ `adapters/{_local}/` → `{_repo_id}`"
+                            f"{' (private)' if hub_private.value else ''}.")
+                except Exception as _e:
+                    _notes.append(f"❌ Hub upload failed: {_e}")
+    if not _notes:
+        _notes.append("_Click **Upload adapters to the Hub** after §13/§14 "
+                      "have produced adapters._")
+    # NOTE: the output must be a bare expression statement — marimo renders
+    # only the cell's last expression, so anything after it (other than
+    # `return`) would hide the inputs and button.
+    mo.vstack([hub_token, hub_lora_repo, hub_grpo_repo, hub_private,
+               hub_upload] + [mo.md(_n) for _n in _notes])
+    return

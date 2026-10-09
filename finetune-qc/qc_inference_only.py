@@ -837,6 +837,75 @@ def _(mo, nbdir, upload_picker):
     restored_adapters = tuple(_restored)
     mo.vstack([upload_picker] + [mo.md(_n) for _n in _notes])
     return (restored_adapters,)
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## §2b Download adapters from HuggingFace Hub (optional)
+
+        If you published the adapters to the Hub (§17b of the training
+        notebook), pull them here instead of uploading zips — no chunking.
+        Enter the repo ids (e.g. `yourname/qc-lora`); a token is only needed
+        for private repos.
+        """
+    )
+    return
+
+
+@app.cell
+def _(mo):
+    # Created here, read in the cell below: marimo forbids reading a UI
+    # element's value in the cell that created it.
+    hub_lora_id = mo.ui.text(value="",
+                             label="Hub repo id for the SFT adapters")
+    hub_grpo_id = mo.ui.text(value="",
+                             label="Hub repo id for the SFT+GRPO adapters")
+    hub_read_token = mo.ui.text(kind="password",
+                                label="Token (private repos only)")
+    hub_fetch = mo.ui.button(label="Download adapters from the Hub")
+    return hub_fetch, hub_grpo_id, hub_lora_id, hub_read_token
+
+
+@app.cell
+def _(hub_fetch, hub_grpo_id, hub_lora_id, hub_read_token, mo, nbdir):
+    import os as _os
+
+    _notes = []
+    _done = []
+    if hub_fetch.value:
+        try:
+            from huggingface_hub import snapshot_download as _snap
+        except ImportError:
+            _notes.append("⚠️ `huggingface_hub` is not installed — install "
+                          "the §1 environment first.")
+            _snap = None
+        if _snap is not None:
+            try:
+                _jobs = [(hub_lora_id.value.strip(), "qc-lora"),
+                         (hub_grpo_id.value.strip(), "qc-grpo")]
+                for _repo_id, _local in _jobs:
+                    if not _repo_id:
+                        continue
+                    _dest = _os.path.join(nbdir, "adapters", _local)
+                    _os.makedirs(_dest, exist_ok=True)
+                    _snap(repo_id=_repo_id, local_dir=_dest,
+                          token=hub_read_token.value or None)
+                    _done.append(_local)
+                    _notes.append(f"✅ `{_repo_id}` → `adapters/{_local}/`.")
+            except Exception as _e:
+                _notes.append(f"❌ Hub download failed: {_e}")
+    if not _notes:
+        _notes.append("_Enter Hub repo ids above and click **Download "
+                      "adapters from the Hub**._")
+    # Exposed as a refresh trigger: the §4 picker cell depends on it, so the
+    # checkpoint list updates once Hub adapters land.
+    # NOTE: the output must be a bare expression statement — marimo renders
+    # only the cell's last expression.
+    hub_restored = tuple(_done)
+    mo.vstack([hub_lora_id, hub_grpo_id, hub_read_token, hub_fetch] +
+              [mo.md(_n) for _n in _notes])
+    return (hub_restored,)
 @app.cell
 def _(mo):
     mo.md(
@@ -882,8 +951,11 @@ def _(mo):
     )
     return
 @app.cell
-def _(eval_recs, mo, nbdir):
+def _(eval_recs, hub_restored, mo, nbdir, restored_adapters):
     import os as _os
+    # Refresh triggers: re-run this cell once adapters land via zip upload
+    # (§2) or Hub download (§2b).
+    _ = (hub_restored, restored_adapters)
     _opts = {"base model (no adapters)": None}
     for _label, _p in [("SFT adapters", "adapters/qc-lora"),
                        ("SFT+GRPO adapters", "adapters/qc-grpo")]:
