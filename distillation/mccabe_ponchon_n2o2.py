@@ -12,7 +12,7 @@
 import marimo as mo
 
 __generated_with = "0.25.1"
-app = marimo.App(width="medium")
+app = mo.App(width="medium")
 
 
 @app.cell
