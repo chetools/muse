@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Step 1 -- Supervised fine-tuning with LoRA (Unsloth) on synthetic QC data.
 
-What this teaches (beyond v1's numeric problems):
+What this teaches:
   * The SFT targets are *procedures over operational text*: how to read a
     complaint and triage it, how to structure a technician note into JSON,
     how to compare measurements against stated limits, how to chain QC
@@ -82,6 +82,13 @@ def main():
 
     ds = load_sft_dataset(args.data, tokenizer)
 
+    # warmup_ratio is rejected by some transformers builds (e.g. the one
+    # installed with Unsloth 2026.10.3), so express the 5% warmup as an
+    # explicit step count instead: warmup_steps = 0.05 * total steps.
+    total_steps = max(1, int(args.epochs * (len(ds) // (4 * 4))))
+    warmup_steps = max(1, int(0.05 * total_steps))
+    print(f"Warmup: {warmup_steps} steps of ~{total_steps} total (5%)")
+
     trainer = SFTTrainer(
         model=model,
         tokenizer=tokenizer,
@@ -95,7 +102,7 @@ def main():
             num_train_epochs=args.epochs,
             learning_rate=args.lr,
             lr_scheduler_type="cosine",
-            warmup_ratio=0.05,
+            warmup_steps=warmup_steps,
             logging_steps=10,
             save_steps=200,
             save_total_limit=2,
