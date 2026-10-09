@@ -1057,12 +1057,16 @@ def _(mo):
         They need the vendored scripts sitting next to the notebook
         (`gen_data.py`, `train_sft.py`, …) and, for §13–§16, **torch with
         CUDA** plus the GPU packages (Unsloth, TRL, PEFT, …). On MoLab the
-        GPU packages install automatically from the notebook header at
-        session start; on your own machine install them from
-        `requirements-gpu.txt` (torch with CUDA 12.8 **first**, from
-        pytorch.org). This cell checks everything and reports what is
-        missing. On a machine without a GPU, the training cells below skip
-        gracefully with guidance instead of failing.
+        GPU packages are *meant* to install automatically from the notebook
+        header at session start — but if the check below shows any ❌, the
+        header install didn't happen in your session: click the **Install
+        missing GPU packages** button that appears (it `pip install`s the
+        pinned specs, skipping torch, which ships with the MoLab GPU
+        image). On your own machine, install torch with CUDA 12.8 **first**
+        from pytorch.org, then `pip install -r requirements-gpu.txt`. This
+        cell checks everything and reports what is missing. On a machine
+        without a GPU, the training cells below skip gracefully with
+        guidance instead of failing.
         """
     )
     return
@@ -1092,7 +1096,8 @@ def _(mo):
         torch_ok, has_cuda, gpu_name, vram_gb = False, False, None, 0.0
 
     pkgs = {}
-    for _p in ["unsloth", "trl", "peft", "transformers", "datasets"]:
+    for _p in ["unsloth", "trl", "peft", "transformers", "datasets",
+               "accelerate"]:
         try:
             importlib.import_module(_p)
             pkgs[_p] = True
@@ -1110,13 +1115,69 @@ def _(mo):
     if not has_cuda:
         _rows.append("_No CUDA GPU → §13–§16 will skip. §5–§12 still run._")
     if not all(pkgs.values()) or not torch_ok:
-        _rows.append("Install the GPU stack: on MoLab use the built-in package "
-                     "manager (or restart the session — the notebook header "
-                     "installs it automatically); on your own machine, torch "
-                     "with CUDA 12.8 **first** from pytorch.org, then "
+        _rows.append("Install the GPU stack: click the **Install missing GPU "
+                     "packages** button below (or MoLab's built-in package "
+                     "manager); on your own machine, torch with CUDA 12.8 "
+                     "**first** from pytorch.org, then "
                      "`pip install -r requirements-gpu.txt`")
     mo.md("**Environment**\n\n- " + "\n- ".join(_rows))
-    return has_cuda, nbdir, scripts_ok
+    return has_cuda, nbdir, scripts_ok, pkgs, torch_ok
+
+
+@app.cell
+def _(mo, pkgs, torch_ok):
+    # In-notebook installer for the case the MoLab header auto-install did
+    # not happen (torch + CUDA present, but unsloth/trl/peft/… missing).
+    # Installs only the missing pinned specs; torch is never reinstalled
+    # here — on MoLab it ships with the GPU image, on your own machine it
+    # needs the CUDA 12.8 build from pytorch.org first.
+    _missing = [p for p, ok in pkgs.items() if not ok]
+    if not torch_ok:
+        _msg = ("⚠️ torch itself is not importable — install a CUDA build of "
+                "torch first (MoLab GPU image / pytorch.org), then re-run "
+                "the check cell above.")
+        install_btn = None
+    elif not _missing:
+        _msg = "✅ All GPU packages present — nothing to install."
+        install_btn = None
+    else:
+        _msg = ("Click to `pip install` the missing packages: "
+                + ", ".join(f"`{p}`" for p in _missing) + ".")
+        install_btn = mo.ui.button(label="Install missing GPU packages")
+    mo.vstack([mo.md(_msg)]
+              + ([install_btn] if install_btn is not None else []))
+    return (install_btn,)
+
+
+@app.cell
+def _(install_btn, mo, pkgs):
+    import subprocess
+    import sys
+
+    _PIP_SPECS = {
+        "unsloth": "unsloth==2026.10.3",
+        "trl": "trl==1.13.0",
+        "transformers": "transformers==5.17.0",
+        "peft": "peft==0.21.2",
+        "datasets": "datasets>=4.7.0,<5.0.0",
+        "accelerate": "accelerate>=1.1.0",  # device_map="auto" in §16
+    }
+    _missing = [p for p, ok in pkgs.items() if not ok]
+    if install_btn is None or install_btn.value == 0 or not _missing:
+        mo.stop(True)  # idle: button not shown or not clicked yet
+    _specs = [_PIP_SPECS[p] for p in _missing]
+    if "transformers" in _missing:
+        # transformers 5.17.0 hard-requires tokenizers>=0.23.1,<0.24.0 at
+        # import time; pin it explicitly so pip cannot resolve a bad one.
+        _specs.append("tokenizers>=0.23.1,<0.24.0")
+    print("Installing: " + " ".join(_specs) + "\n", flush=True)
+    _rc = subprocess.run(
+        [sys.executable, "-m", "pip", "install", *_specs]).returncode
+    if _rc != 0:
+        mo.stop(True, mo.md("❌ `pip install` failed — see the log above, "
+                            "fix the error, and click the button again."))
+    mo.md("✅ GPU packages installed — re-run the §11 check cell above to "
+          "confirm, then continue with §12–§16.")
 
 
 @app.cell
@@ -1367,11 +1428,15 @@ def _(ROOT_CAUSE_CODES, TRIAGE_LABELS, ckpt_picker, eval_recs, ex_slider,
                                     __version__ as _tf_version)
         from peft import PeftModel
         _infer_ok = True
+        _infer_err = ""
     except Exception as _e:
         _infer_ok = False
+        _infer_err = f"{type(_e).__name__}: {_e}"[:300]
     mo.stop(not _infer_ok,
-            mo.md("⚠️ `transformers`/`peft`/`torch` not importable — install "
-                  "`requirements-gpu.txt` first."))
+            mo.md("⚠️ GPU packages not importable — install them with the "
+                  "**§11 install button** above (or `pip install -r "
+                  "requirements-gpu.txt` on your own machine), then re-run "
+                  "this cell.\n\nImport error: `" + _infer_err + "`"))
 
     _INFER_MODEL = "Qwen/Qwen3-8B"
     _CACHE = globals().setdefault("_infer_cache", {})
