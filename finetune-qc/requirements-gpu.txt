@@ -1,19 +1,21 @@
 # GPU-side dependencies for training/inference on the RTX 6000 (Blackwell, sm_120).
 #
-# Install PyTorch with CUDA 12.8 FIRST from pytorch.org (needs torch>=2.7;
-# unsloth caps torch at <2.15), then install this file in ONE command so pip
-# resolves a consistent set:
+# Install PyTorch with CUDA 12.8 FIRST from pytorch.org (needs torch>=2.7 --
+# torch 2.7 is the first line with official cu128 wheels, required for
+# Blackwell sm_120; unsloth 2026.10.3 caps torch at <2.15), then install
+# this file in ONE command so pip resolves a consistent set:
 #     pip install -r requirements-gpu.txt
 # Preflight (catches version drift before a 3-hour run dies on import):
 #     python check_env.py
 #
 # Why exact pins: loose lower bounds (>=) let pip/uv assemble mutually
-# incompatible combos -- e.g. transformers' hard pin
-# "tokenizers>=0.22.0,<=0.23.0 is required" failing at import time because an
-# older tokenizers was left in the env, or trl 1.14+ arriving with renamed
-# trainer args. Every == below was verified against the actual package
-# sources on 2026-10-09 (unsloth's dependency metadata, transformers'
-# dependency_versions_table, trl's trainer sources).
+# incompatible combos -- e.g. `import transformers` dying at import time
+# because the installed tokenizers missed transformers 5.17.0's hard pin
+# (tokenizers>=0.23.1,<0.24.0, enforced by its dependency_versions_check.py),
+# or trl 1.14+ arriving with renamed trainer args. Every == below was
+# verified against the actual package sources on 2026-10-09 (unsloth's
+# Requires-Dist metadata, transformers' dependency_versions_table and
+# dependency_versions_check.py, trl's trainer sources).
 
 unsloth==2026.10.3        # single-GPU SFT/GRPO kernels; explicit Blackwell support.
                           # Its own metadata requires: trl<=1.13.0, transformers<=5.17.0,
@@ -32,7 +34,11 @@ bitsandbytes>=0.49.2,!=0.46.0,!=0.48.0  # for optim="adamw_8bit" (unsloth pulls
                           # this in too; the != exclusions are unsloth's;
                           # >=0.49.2 minimum for working 4-bit kernels on
                           # Blackwell sm_120 -- older bnb silently misbehaves).
-accelerate>=1.10          # device_map="auto".
-datasets>=3.6,!=4.0.*,!=4.1.0,!=4.4.*,!=4.5.0,<5.0.0  # mirrors unsloth's spec.
+accelerate>=1.1.0           # transformers 5.17.0's dependency table floor
+                          # (unsloth needs >=0.34.1); device_map="auto".
+datasets>=4.7.0,<5.0.0    # trl 1.13.0's Requires-Dist forces >=4.7.0
+                          # (unconditional); unsloth caps <5.0.0. unsloth's
+                          # !=4.0.*,!=4.1.0,!=4.4.*,!=4.5.0 exclusions all
+                          # fall below 4.7.0, so this range covers them.
 numpy>=1.26
 scipy>=1.11
