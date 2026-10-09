@@ -1,0 +1,11 @@
+# GPU-side dependencies for training/inference on the RTX 6000 (Blackwell, sm_120).
+# Install PyTorch with CUDA 12.8 FIRST from pytorch.org, then:
+#     pip install -r requirements-gpu.txt
+# Check: python -c "import torch; print(torch.cuda.is_available())"
+unsloth>=2026.5          # single-GPU SFT/GRPO kernels (explicit Blackwell support)
+trl>=0.22                # SFTTrainer, GRPOTrainer
+transformers>=4.55
+peft>=0.17
+accelerate>=1.10
+datasets>=3.6
+numpy>=1.26

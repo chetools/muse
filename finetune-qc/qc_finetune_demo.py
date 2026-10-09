@@ -71,17 +71,22 @@ def _(mo):
         - §6 lets you inspect any batch: its QC report, note, and complaints.
         - §7 shows one example per task. §8 re-verifies every planted answer
           from the rendered text. §9 demonstrates the GRPO rewards.
-        - §10 covers the GPU training steps (they do not run on MoLab).
+        - §10 demonstrates the GRPO reward functions on sample completions.
+        - §11–§16 set up GPU training and inference: environment check,
+          canonical dataset, LoRA SFT, GRPO, eval, and interactive inference.
+          They run on a CUDA machine and skip gracefully anywhere else.
 
         ## What runs where
 
-        | Step | Runs on MoLab (this notebook) | Needs the RTX 6000 Pro |
+        | Step | Runs anywhere (this notebook) | Needs a CUDA GPU |
         |---|---|---|
-        | Data generation + verification | ✅ numpy only | — |
-        | Reward-function demos | ✅ stdlib only | — |
-        | LoRA SFT (`train_sft.py`) | — | ✅ torch + Unsloth + CUDA |
-        | GRPO (`train_grpo.py`) | — | ✅ torch + TRL + CUDA |
-        | Eval (`eval.py`) | — | ✅ GPU for generation |
+        | Data generation + verification (§5, §8) | ✅ numpy only | — |
+        | Exploration + reward demos (§6, §7, §9, §10) | ✅ | — |
+        | Environment setup (§11) | ✅ checks, installs nothing | — |
+        | Canonical training data (§12) | ✅ numpy only | — |
+        | LoRA SFT (§13) | skips without CUDA | ✅ torch + Unsloth + CUDA |
+        | GRPO (§14) | skips without CUDA | ✅ torch + TRL + CUDA |
+        | Eval + interactive inference (§15, §16) | skips without CUDA | ✅ GPU for generation |
         """
     )
     return
@@ -1021,16 +1026,22 @@ def _(TRIAGE_LABELS, ROOT_CAUSE_CODES, json, mo, parse_deviations,
     return
 
 
+
+
 @app.cell
 def _(mo):
     mo.md(
         r"""
-        ## §11 Training on the RTX 6000 Pro — what MoLab cannot do
+        ## §11 GPU setup — environment check
 
-        Everything above runs on CPU. The two training steps need
-        **torch + Unsloth/TRL + a CUDA GPU**, which MoLab does not provide.
-        The cell below checks for a GPU so the notebook states its limits
-        honestly instead of implying the demo trains here.
+        The cells in §12–§16 run the training pipeline on **this machine**.
+        They need the vendored scripts sitting next to the notebook
+        (`gen_data.py`, `train_sft.py`, …) and, for §13–§16, **torch with
+        CUDA** plus the GPU packages from `requirements-gpu.txt`
+        (Unsloth, TRL, PEFT, …). This cell checks everything and reports what
+        is missing; nothing is installed automatically. On a machine without a
+        GPU, the training cells below skip gracefully with guidance instead of
+        failing.
         """
     )
     return
@@ -1038,23 +1049,102 @@ def _(mo):
 
 @app.cell
 def _(mo):
+    import os, importlib
+
     try:
-        import torch
-        _cuda = torch.cuda.is_available()
-        _name = torch.cuda.get_device_name(0) if _cuda else None
-        _torch_ok = True
+        nbdir = str(mo.notebook_dir())
     except Exception:
-        _torch_ok, _cuda, _name = False, False, None
-    if _cuda:
-        status = f"✅ GPU available: {_name} — training cells could run here."
-    elif _torch_ok:
-        status = ("⚠️ torch is installed but **no CUDA GPU** was found — "
-                  "this is the expected state on MoLab. Train on the RTX 6000 Pro.")
-    else:
-        status = ("⚠️ torch is **not installed** here — expected on MoLab. "
-                  "The data, verification, and reward demos above are the "
-                  "complete CPU portion of the pipeline.")
-    mo.md(status)
+        nbdir = os.getcwd()
+
+    _scripts = ["gen_data.py", "test_data.py", "rewards.py", "test_rewards.py",
+                "train_sft.py", "train_grpo.py", "eval.py"]
+    scripts_ok = all(os.path.exists(os.path.join(nbdir, s)) for s in _scripts)
+
+    try:
+        import torch as _torch
+        torch_ok = True
+        has_cuda = _torch.cuda.is_available()
+        gpu_name = _torch.cuda.get_device_name(0) if has_cuda else None
+        vram_gb = (_torch.cuda.get_device_properties(0).total_memory / 1e9
+                   if has_cuda else 0.0)
+    except Exception:
+        torch_ok, has_cuda, gpu_name, vram_gb = False, False, None, 0.0
+
+    pkgs = {}
+    for _p in ["unsloth", "trl", "peft", "transformers", "datasets"]:
+        try:
+            importlib.import_module(_p)
+            pkgs[_p] = True
+        except Exception:
+            pkgs[_p] = False
+
+    _rows = [
+        f"Notebook directory: `{nbdir}`",
+        f"Training scripts present: {'✅' if scripts_ok else '❌ missing — clone the full `finetune-qc/` directory'}",
+        f"torch: {'✅' if torch_ok else '❌'}; CUDA GPU: "
+        f"{'✅ ' + gpu_name + f' ({vram_gb:.0f} GB)' if has_cuda else '❌ not detected'}",
+        "GPU packages: " + ", ".join(
+            f"{p} {'✅' if ok else '❌'}" for p, ok in pkgs.items()),
+    ]
+    if not has_cuda:
+        _rows.append("_No CUDA GPU → §13–§16 will skip. §5–§12 still run._")
+    if not all(pkgs.values()) or not torch_ok:
+        _rows.append("Install the GPU stack with (torch with CUDA 12.8 **first**, "
+                     "from pytorch.org): `pip install -r requirements-gpu.txt`")
+    mo.md("**Environment**\n\n- " + "\n- ".join(_rows))
+    return has_cuda, nbdir, scripts_ok
+
+
+@app.cell
+def _():
+    import subprocess
+    import sys
+
+    def run_stream(args, cwd):
+        """Run [python, *args] in cwd, streaming output into the cell."""
+        proc = subprocess.Popen(
+            [sys.executable, "-u"] + args, cwd=cwd,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, bufsize=1)
+        for line in proc.stdout:
+            print(line, end="")
+        return proc.wait()
+
+    return (run_stream,)
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## §12 Canonical training data
+
+        The interactive exploration above used the notebook's inline
+        generator. Training uses the **canonical scripts** so the dataset is
+        byte-identical to the standalone package: `gen_data.py` writes
+        `data/train.jsonl` (6000 examples, seed 0), `data/eval.jsonl` (600,
+        held-out batches), and `data/eval_spec_change.jsonl` (revised spec
+        limits, stated only in the prompt — the RAG tie-in). `test_data.py`
+        then re-verifies every planted answer; `test_rewards.py` unit-tests
+        the rewards. CPU-only, seconds.
+        """
+    )
+    return
+
+
+@app.cell
+def _(mo, nbdir, run_stream, scripts_ok):
+    mo.stop(not scripts_ok,
+            mo.md("⚠️ Training scripts not found next to the notebook. "
+                  "Use the full `finetune-qc/` directory from the repo."))
+    rc1 = run_stream(["gen_data.py", "--n", "6000", "--seed", "0",
+                      "--out", "data"], nbdir)
+    rc2 = run_stream(["test_data.py", "--dir", "data"], nbdir)
+    rc3 = run_stream(["test_rewards.py"], nbdir)
+    mo.stop(any([rc1, rc2, rc3]),
+            mo.md("❌ Data generation or verification failed — see output above."))
+    mo.md("✅ Canonical dataset generated and verified: `data/train.jsonl`, "
+          "`data/eval.jsonl`, `data/eval_spec_change.jsonl`.")
     return
 
 
@@ -1062,44 +1152,249 @@ def _(mo):
 def _(mo):
     mo.md(
         r"""
-        ### Runbook (RTX 6000 Pro, CUDA 12.8)
+        ## §13 LoRA supervised fine-tune
 
-        The full package lives at `~/workspace/cheme-finetune-qc/` (this
-        notebook is its self-contained MoLab companion). On the GPU machine:
-
-        ```bash
-        pip install -r requirements.txt          # torch with CUDA 12.8 first
-
-        # 1. Generate + verify (CPU, seconds)
-        python gen_data.py --n 6000 --seed 0 --out data
-        python test_data.py --dir data
-        python test_rewards.py
-
-        # 2. SFT with LoRA — all five tasks, incl. SFT-only 8D drafts
-        python train_sft.py --model Qwen/Qwen3-8B --epochs 2 --out adapters/qc-lora
-
-        # 3. GRPO polish — four verifiable tasks only (task 5 is filtered out)
-        python train_grpo.py --model Qwen/Qwen3-8B --adapters adapters/qc-lora \
-            --steps 300 --out adapters/qc-grpo
-
-        # 4. Evaluate: base vs SFT vs SFT+GRPO on held-out batches
-        python eval.py --model Qwen/Qwen3-8B
-        python eval.py --model Qwen/Qwen3-8B --adapters adapters/qc-lora
-        python eval.py --model Qwen/Qwen3-8B --adapters adapters/qc-grpo
-
-        # 5. Spec-change test — revised limits in the prompt (the RAG tie-in)
-        python eval.py --model Qwen/Qwen3-8B --adapters adapters/qc-grpo \
-            --data data/eval_spec_change.jsonl
-        ```
-
-        **What success looks like:** SFT fixes procedure and formatting across
-        all five tasks; GRPO lifts exact-match accuracy on the four verifiable
-        ones; the spec-change accuracy stays high only if the model learned the
-        *comparison procedure* rather than memorizing limits. The 8D drafts are
-        never graded — no verifiable ground truth exists, and that boundary is
-        the point.
+        Trains LoRA adapters (Unsloth, 4-bit base + bf16 adapters, rank 32)
+        on **all five tasks**, including the SFT-only 8D corrective-action
+        drafts. Edit the knobs below before running — e.g. `SFT_EPOCHS = 0.2`
+        for a smoke test. Expected scale: 6000 examples × ~450 tokens × 2
+        epochs ≈ 5.4M tokens — well under an hour on the RTX 6000 Pro.
+        Training streams its log into this cell; this cell runs long.
         """
     )
+    return
+
+
+@app.cell
+def _(has_cuda, mo, nbdir, run_stream, scripts_ok):
+    mo.stop(not scripts_ok,
+            mo.md("⚠️ Training scripts not found next to the notebook."))
+    mo.stop(not has_cuda,
+            mo.md("⚠️ No CUDA GPU detected — skipping SFT. Run this cell on "
+                  "the RTX 6000 Pro machine."))
+    SFT_MODEL = "Qwen/Qwen3-8B"
+    SFT_EPOCHS = 2.0
+    SFT_OUT = "adapters/qc-lora"
+    sft_rc = run_stream(["train_sft.py", "--model", SFT_MODEL,
+                         "--epochs", str(SFT_EPOCHS), "--out", SFT_OUT], nbdir)
+    mo.stop(sft_rc != 0, mo.md("❌ `train_sft.py` failed — see the log above."))
+    mo.md(f"✅ SFT complete — adapters saved to `{SFT_OUT}/`.")
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## §14 GRPO with verifiable rewards
+
+        Continues from the SFT adapters (or runs cold-start from the base
+        model if you clear `GRPO_ADAPTERS`). For each prompt the trainer
+        samples a group of 8 completions, scores each with the **computed**
+        rewards from `rewards.py` (category / JSON / deviation-set / defect
+        code — no judge model), and reinforces completions above the group
+        mean. Task 5 (`corrective_action`) is filtered out of the GRPO
+        dataset: free-text 8D drafts have no verifiable answer, so there is
+        nothing to reinforce — that boundary is the point of the demo.
+        Expected: ~300 steps × 8 generations, a few hours on the RTX 6000 Pro.
+        Watch the *reward*, not the loss.
+        """
+    )
+    return
+
+
+@app.cell
+def _(has_cuda, mo, nbdir, run_stream, scripts_ok):
+    import os as _os
+    mo.stop(not scripts_ok,
+            mo.md("⚠️ Training scripts not found next to the notebook."))
+    mo.stop(not has_cuda,
+            mo.md("⚠️ No CUDA GPU detected — skipping GRPO. Run this cell on "
+                  "the RTX 6000 Pro machine."))
+    GRPO_MODEL = "Qwen/Qwen3-8B"
+    GRPO_ADAPTERS = "adapters/qc-lora"  # set to None for cold-start GRPO
+    GRPO_STEPS = 300
+    GRPO_OUT = "adapters/qc-grpo"
+    if GRPO_ADAPTERS and not _os.path.exists(_os.path.join(nbdir, GRPO_ADAPTERS)):
+        mo.stop(True, mo.md(f"⚠️ Adapters `{GRPO_ADAPTERS}` not found — run §13 "
+                            "first, or set `GRPO_ADAPTERS = None` for cold-start."))
+    _args = ["train_grpo.py", "--model", GRPO_MODEL, "--steps", str(GRPO_STEPS),
+             "--out", GRPO_OUT]
+    if GRPO_ADAPTERS:
+        _args += ["--adapters", GRPO_ADAPTERS]
+    grpo_rc = run_stream(_args, nbdir)
+    mo.stop(grpo_rc != 0, mo.md("❌ `train_grpo.py` failed — see the log above."))
+    mo.md(f"✅ GRPO complete — adapters saved to `{GRPO_OUT}/`.")
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## §15 Eval — base vs SFT vs SFT+GRPO
+
+        Greedy-decodes the held-out batches and grades programmatically with
+        the same parsers that score GRPO rollouts: per-task exact-match
+        accuracy (plus mean field-match score for structuring).
+        `corrective_action` is counted but never graded — no verifiable
+        answer exists. The last run is the **spec-change test**: revised
+        limits stated only in the prompt, checking the model follows current
+        facts instead of memorized ones. Needs the checkpoints from §13–§14;
+        missing ones are skipped with a note.
+        """
+    )
+    return
+
+
+@app.cell
+def _(has_cuda, mo, nbdir, run_stream, scripts_ok):
+    import os as _os
+    mo.stop(not scripts_ok,
+            mo.md("⚠️ Training scripts not found next to the notebook."))
+    mo.stop(not has_cuda,
+            mo.md("⚠️ No CUDA GPU detected — skipping eval. Generation needs "
+                  "the GPU; run this cell on the RTX 6000 Pro machine."))
+    EVAL_MODEL = "Qwen/Qwen3-8B"
+    _ckpts = [("base (no adapters)", None),
+              ("SFT", "adapters/qc-lora"),
+              ("SFT+GRPO", "adapters/qc-grpo")]
+    for _name, _ad in _ckpts:
+        if _ad and not _os.path.exists(_os.path.join(nbdir, _ad)):
+            print(f"--- {_name}: skipped ({_ad} not found, run §13/§14) ---\n")
+            continue
+        print(f"=== {_name} on data/eval.jsonl ===")
+        _args = ["eval.py", "--model", EVAL_MODEL, "--data", "data/eval.jsonl"]
+        if _ad:
+            _args += ["--adapters", _ad]
+        run_stream(_args, nbdir)
+        print()
+    if _os.path.exists(_os.path.join(nbdir, "adapters/qc-grpo")):
+        print("=== SFT+GRPO on data/eval_spec_change.jsonl (revised limits) ===")
+        run_stream(["eval.py", "--model", EVAL_MODEL, "--adapters",
+                    "adapters/qc-grpo", "--data",
+                    "data/eval_spec_change.jsonl"], nbdir)
+    mo.md("✅ Eval runs finished — compare the per-task tables above.")
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## §16 Interactive inference
+
+        Pick a checkpoint and an eval example, generate greedily on the GPU,
+        and see the parsed answer graded against planted ground truth. The
+        model loads once per checkpoint and is cached, so moving the slider
+        re-generates without reloading.
+        """
+    )
+    return
+
+
+@app.cell
+def _(mo, nbdir):
+    import os as _os
+    import json as _json
+    _eval_path = _os.path.join(nbdir, "data", "eval.jsonl")
+    mo.stop(not _os.path.exists(_eval_path),
+            mo.md("⚠️ `data/eval.jsonl` not found — run §12 first."))
+    with open(_eval_path) as _f:
+        eval_recs = [_json.loads(_l) for _l in _f]
+    _opts = {"base model (no adapters)": None}
+    for _label, _p in [("SFT adapters", "adapters/qc-lora"),
+                       ("SFT+GRPO adapters", "adapters/qc-grpo")]:
+        if _os.path.exists(_os.path.join(nbdir, _p)):
+            _opts[_label] = _p
+    ckpt_picker = mo.ui.dropdown(_opts, label="Checkpoint")
+    ex_slider = mo.ui.slider(0, len(eval_recs) - 1, value=0,
+                             label="Eval example")
+    mo.hstack([ckpt_picker, ex_slider], justify="start")
+    return ckpt_picker, eval_recs, ex_slider
+
+
+@app.cell
+def _(ROOT_CAUSE_CODES, TRIAGE_LABELS, ckpt_picker, eval_recs, ex_slider,
+      has_cuda, mo, nbdir, parse_deviations, parse_json_answer, parse_label,
+      score_structuring):
+    import os as _os
+    mo.stop(not has_cuda,
+            mo.md("⚠️ No CUDA GPU detected — inference needs the GPU."))
+    try:
+        import torch as _torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from peft import PeftModel
+        _infer_ok = True
+    except Exception as _e:
+        _infer_ok = False
+    mo.stop(not _infer_ok,
+            mo.md("⚠️ `transformers`/`peft`/`torch` not importable — install "
+                  "`requirements-gpu.txt` first."))
+
+    _INFER_MODEL = "Qwen/Qwen3-8B"
+    _CACHE = globals().setdefault("_infer_cache", {})
+    _key = ckpt_picker.value
+    if _key not in _CACHE:
+        for _k in list(_CACHE):
+            del _CACHE[_k]
+        _torch.cuda.empty_cache()
+        _tok = AutoTokenizer.from_pretrained(_INFER_MODEL)
+        if _tok.pad_token is None:
+            _tok.pad_token = _tok.eos_token
+        _model = AutoModelForCausalLM.from_pretrained(
+            _INFER_MODEL, torch_dtype=_torch.bfloat16, device_map="auto")
+        if _key:
+            _model = PeftModel.from_pretrained(_model,
+                                               _os.path.join(nbdir, _key))
+        _model.eval()
+        _CACHE[_key] = (_tok, _model)
+    _tok, _model = _CACHE[_key]
+
+    _rec = eval_recs[ex_slider.value]
+    _sys = ("You are a quality-assurance analyst for a formulated-products "
+            "plant. Read complaints, QC lab reports, and spec limits carefully, "
+            "reason from the evidence, and give the final answer as: "
+            "Answer: <result>.")
+    _prompt = _tok.apply_chat_template(
+        [{"role": "system", "content": _sys},
+         {"role": "user", "content": _rec["instruction"]}],
+        tokenize=False, add_generation_prompt=True)
+    _inputs = _tok(_prompt, return_tensors="pt").to(_model.device)
+    with _torch.no_grad():
+        _out = _model.generate(**_inputs, max_new_tokens=512, do_sample=False,
+                               pad_token_id=_tok.eos_token_id)
+    _gen = _tok.decode(_out[0][_inputs["input_ids"].shape[1]:],
+                       skip_special_tokens=True)
+
+    _t = _rec["task"]
+    if _t == "triage":
+        _parsed, _truth = parse_label(_gen, TRIAGE_LABELS), _rec["answer_label"]
+        _ok = _parsed == _truth
+    elif _t == "root_cause":
+        _parsed, _truth = parse_label(_gen, ROOT_CAUSE_CODES), _rec["answer_label"]
+        _ok = _parsed == _truth
+    elif _t == "spec_deviation":
+        _parsed, _truth = parse_deviations(_gen), _rec["answer_deviations"]
+        _ok = _parsed == _truth
+    elif _t == "qc_structuring":
+        _parsed = parse_json_answer(_gen)
+        _truth = _rec["answer_json"]
+        _s = score_structuring(_parsed, _truth)
+        _ok = _s == 1.0
+        _parsed, _truth = f"{_s:.3f} field-match", "1.000 field-match"
+    else:
+        _parsed, _truth, _ok = "(not graded — SFT-only)", "", None
+
+    _badge = "✅ correct" if _ok else ("❌ wrong" if _ok is False else "—")
+    mo.vstack([
+        mo.md(f"**Example** `{_rec['id']}` — task `{_t}`, batch `{_rec['batch_id']}`"),
+        mo.md("**Model output** (first 1200 chars):\n\n```\n" +
+              _gen[:1200] + "\n```"),
+        mo.md(f"**Parsed:** `{_parsed}`"),
+        mo.md(f"**Ground truth:** `{_truth}`"),
+        mo.md(f"**Verdict:** {_badge}"),
+    ])
     return
 
 

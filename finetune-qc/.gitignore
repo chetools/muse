@@ -1,0 +1,6 @@
+# Generated on the training machine -- never commit
+data/
+adapters/
+__pycache__/
+__marimo__/
+*.pyc

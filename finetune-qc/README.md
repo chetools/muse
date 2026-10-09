@@ -39,9 +39,33 @@ https://molab.marimo.io/github/chetools/muse/blob/main/finetune-qc/qc_finetune_d
 7. **Reward demos (§10).** The exact parsing/scoring functions from
    `train_grpo.py` applied to right/wrong/malformed sample completions,
    including per-field partial credit for JSON.
-8. **GPU training (§11).** The LoRA SFT and GRPO steps need torch + CUDA and
-   do not run on MoLab — the notebook checks for a GPU, states the limit
-   honestly, and gives the exact runbook commands for the RTX 6000 Pro.
+8. **GPU training (§11–§16).** Environment check (torch/CUDA, Unsloth, TRL,
+   vendored scripts — nothing installed automatically), canonical dataset
+   generation via the vendored scripts, LoRA SFT, GRPO, the base/SFT/SFT+GRPO
+   eval plus the spec-change test, and interactive inference with a cached
+   model. Every GPU cell skips gracefully with guidance on machines without
+   CUDA.
+
+## Running the GPU pipeline
+
+On a CUDA machine (e.g. an RTX 6000 Pro), open the notebook with
+`marimo edit qc_finetune_demo.py` from this directory and work through
+§11–§16 in order. The cells shell out to the vendored scripts, streaming
+their logs. Knobs (model, epochs, GRPO steps, output dirs) are plain
+variables at the top of each training cell — lower them for a smoke test.
+Generated `data/` and `adapters/` are git-ignored.
+
+Equivalently, the scripts run standalone:
+
+```bash
+pip install -r requirements-gpu.txt          # torch with CUDA 12.8 first
+python gen_data.py --n 6000 --seed 0 --out data
+python test_data.py --dir data && python test_rewards.py
+python train_sft.py --model Qwen/Qwen3-8B --epochs 2 --out adapters/qc-lora
+python train_grpo.py --model Qwen/Qwen3-8B --adapters adapters/qc-lora \
+    --steps 300 --out adapters/qc-grpo
+python eval.py --model Qwen/Qwen3-8B --adapters adapters/qc-grpo
+```
 
 ## Full package
 
