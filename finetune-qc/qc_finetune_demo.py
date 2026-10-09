@@ -1148,7 +1148,7 @@ def _(mo, pkgs, torch_ok):
     else:
         _msg = ("Click to `pip install` the missing packages: "
                 + ", ".join(f"`{p}`" for p in _missing) + ".")
-        install_btn = mo.ui.button(label="Install missing GPU packages")
+        install_btn = mo.ui.run_button(label="Install missing GPU packages")
     mo.vstack([mo.md(_msg)]
               + ([install_btn] if install_btn is not None else []))
     return (install_btn,)
@@ -1168,7 +1168,7 @@ def _(install_btn, mo, pkgs):
         "accelerate": "accelerate>=1.1.0",  # device_map="auto" in §16
     }
     _missing = [p for p, ok in pkgs.items() if not ok]
-    if install_btn is None or install_btn.value == 0 or not _missing:
+    if install_btn is None or not install_btn.value or not _missing:
         mo.stop(True)  # idle: button not shown or not clicked yet
     _specs = [_PIP_SPECS[p] for p in _missing]
     if "transformers" in _missing:
@@ -1749,7 +1749,7 @@ def _(mo):
     hub_grpo_repo = mo.ui.text(value="qc-grpo",
                                label="Hub repo name for the SFT+GRPO adapters")
     hub_private = mo.ui.checkbox(value=True, label="Private repositories")
-    hub_upload = mo.ui.button(label="Upload adapters to the Hub")
+    hub_upload = mo.ui.run_button(label="Upload adapters to the Hub")
     return hub_grpo_repo, hub_lora_repo, hub_private, hub_token, hub_upload
 
 

@@ -139,7 +139,7 @@ def _(mo, pkgs, torch_ok):
     else:
         _msg = ("Click to `pip install` the missing packages: "
                 + ", ".join(f"`{p}`" for p in _missing) + ".")
-        install_btn = mo.ui.button(label="Install missing packages")
+        install_btn = mo.ui.run_button(label="Install missing packages")
     mo.vstack([mo.md(_msg)]
               + ([install_btn] if install_btn is not None else []))
     return (install_btn,)
@@ -155,7 +155,7 @@ def _(install_btn, mo, pkgs):
         "tokenizers": "tokenizers>=0.23.1,<0.24.0",
     }
     _missing = [p for p, ok in pkgs.items() if not ok]
-    if install_btn is None or install_btn.value == 0 or not _missing:
+    if install_btn is None or not install_btn.value or not _missing:
         mo.stop(True)  # idle: button not shown or not clicked yet
     _specs = [_PIP_SPECS[p] for p in _missing]
     print("Installing: " + " ".join(_specs) + "\n", flush=True)
@@ -863,7 +863,7 @@ def _(mo):
                              label="Hub repo id for the SFT+GRPO adapters")
     hub_read_token = mo.ui.text(kind="password",
                                 label="Token (private repos only)")
-    hub_fetch = mo.ui.button(label="Download adapters from the Hub")
+    hub_fetch = mo.ui.run_button(label="Download adapters from the Hub")
     return hub_fetch, hub_grpo_id, hub_lora_id, hub_read_token
 
 
