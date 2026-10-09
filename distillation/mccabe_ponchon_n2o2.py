@@ -544,7 +544,7 @@ def _(mo, ):
 def _(mo, ):
     column_select = mo.ui.dropdown(
         {"LP column — 1.4 bar": 1.4e5, "HP column — 5.3 bar": 5.3e5},
-        value=1.4e5,
+        value="LP column — 1.4 bar",
         label="Column pressure",
     )
     R_slider = mo.ui.slider(0.5, 6.0, step=0.05, value=1.2, label="Reflux ratio R = L/D")
