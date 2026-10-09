@@ -697,8 +697,10 @@ def _(mo):
 
         **Large zips:** MoLab caps browser uploads at 100MB per file, and a
         rank-32 LoRA zip is 100–300MB. Split it on your own machine into
-        chunks under 100MB and upload all chunks together — they are
-        reassembled here automatically:
+        chunks under 100MB and upload **1–2 chunks at a time** (a single
+        upload of all chunks can exceed the browser's message size). Each
+        batch is saved, and the zip is reassembled automatically once every
+        chunk has arrived:
 
         ```
         import os
@@ -724,7 +726,7 @@ def _(mo):
         filetypes=[".zip", ".part01", ".part02", ".part03", ".part04",
                    ".part05", ".part06", ".part07", ".part08"],
         multiple=True, kind="button",
-        label="Upload adapter zip (or .zip.partNN chunks)")
+        label="Upload adapter zip (or .zip.partNN chunks, 1–2 at a time)")
     return (upload_picker,)
 @app.cell
 def _(mo, nbdir, upload_picker):
@@ -736,47 +738,73 @@ def _(mo, nbdir, upload_picker):
     _notes = []
     _restored = []
     _adir = _os.path.join(nbdir, "adapters")
+    # Chunk staging dir — deliberately *outside* adapters/ so the §4
+    # checkpoint picker and the §17 download list never see it.
+    _cdir = _os.path.join(nbdir, "_upload_chunks")
     _PART_RE = r"(.*\.zip)\.part(\d+)"
+    _os.makedirs(_adir, exist_ok=True)
+    _os.makedirs(_cdir, exist_ok=True)
+
+    # 1. Persist newly uploaded files. Chunks accumulate on disk across
+    #    uploads, because a single browser upload cannot exceed the
+    #    frontend's message size — upload 1–2 chunks at a time.
     if upload_picker.value:
-        _os.makedirs(_adir, exist_ok=True)
-        _zips, _parts = {}, {}
         for _fname, _contents in upload_picker.value:
-            _m = _re.fullmatch(_PART_RE, _fname)
-            if _m:
-                _parts.setdefault(_m.group(1), {})[int(_m.group(2))] = _contents
-            elif _fname.endswith(".zip"):
-                _zips[_fname] = _contents
+            if _re.fullmatch(_PART_RE, _fname) or _fname.endswith(".zip"):
+                with open(_os.path.join(_cdir, _fname), "wb") as _f:
+                    _f.write(_contents)
             else:
                 _notes.append(f"⚠️ `{_fname}` ignored — upload a `.zip` or "
                               f"`.zip.partNN` chunk.")
-        for _stem in sorted(_parts):
-            _idx = sorted(_parts[_stem])
+
+    # 2. Reassemble complete chunk sets from disk, then extract.
+    _stems = {}
+    for _f in sorted(_os.listdir(_cdir)):
+        _pm = _re.fullmatch(_PART_RE, _f)
+        if _pm:
+            _stems.setdefault(_pm.group(1), {}).setdefault("parts", {})[
+                int(_pm.group(2))] = _f
+        elif _f.endswith(".zip"):
+            _stems.setdefault(_f, {})["whole"] = _f
+    for _stem in sorted(_stems):
+        _info = _stems[_stem]
+        _blob, _srcs = None, []
+        if "whole" in _info:
+            with open(_os.path.join(_cdir, _info["whole"]), "rb") as _f:
+                _blob = _f.read()
+            _srcs = [_info["whole"]]
+        else:
+            _idx = sorted(_info["parts"])
+            _have = ", ".join(f".part{i:02d}" for i in _idx)
             if _idx != list(range(1, len(_idx) + 1)):
-                _notes.append(
-                    f"❌ `{_stem}`: chunk(s) missing — uploaded "
-                    f"{', '.join(f'.part{i:02d}' for i in _idx)}; upload "
-                    f"every chunk.")
+                _notes.append(f"⏳ `{_stem}`: chunks {_have} on disk — a "
+                              f"middle chunk is missing; upload it.")
                 continue
-            _zips[_stem] = b"".join(_parts[_stem][i] for i in _idx)
-            _notes.append(f"🧩 `{_stem}` reassembled from {len(_idx)} chunks "
-                          f"({len(_zips[_stem]) / 1e6:.1f} MB).")
-        for _fname, _contents in _zips.items():
-            try:
-                with _zipfile.ZipFile(_io.BytesIO(_contents)) as _z:
-                    _base = _os.path.realpath(_adir) + _os.sep
-                    for _m in _z.namelist():
-                        _dest = _os.path.realpath(_os.path.join(_adir, _m))
-                        if not _dest.startswith(_base):
-                            raise ValueError(f"unsafe path in zip: {_m}")
-                    _z.extractall(_adir)
-                    _tops = sorted({_m.split("/")[0] for _m in _z.namelist()
-                                    if "/" in _m})
-                _restored.extend(_tops)
-                _notes.append("✅ `" + _fname + "` → restored: " +
-                              ", ".join(f"`adapters/{_t}/`" for _t in _tops))
-            except Exception as _e:
-                _notes.append(f"❌ `{_fname}` could not be restored ({_e})")
-    else:
+            _notes.append(f"🧩 `{_stem}`: chunks {_have} on disk — "
+                          f"reassembling…")
+            _blob = b"".join(
+                open(_os.path.join(_cdir, _info["parts"][i]), "rb").read()
+                for i in _idx)
+            _srcs = [_info["parts"][i] for i in _idx]
+        try:
+            with _zipfile.ZipFile(_io.BytesIO(_blob)) as _z:
+                _base = _os.path.realpath(_adir) + _os.sep
+                for _m in _z.namelist():
+                    _dest = _os.path.realpath(_os.path.join(_adir, _m))
+                    if not _dest.startswith(_base):
+                        raise ValueError(f"unsafe path in zip: {_m}")
+                _z.extractall(_adir)
+                _tops = sorted({_m.split("/")[0] for _m in _z.namelist()
+                                if "/" in _m})
+            _restored.extend(_tops)
+            _notes.append("✅ `" + _stem + "` → restored: " +
+                          ", ".join(f"`adapters/{_t}/`" for _t in _tops))
+            for _sf in _srcs:
+                _os.remove(_os.path.join(_cdir, _sf))
+        except Exception as _e:
+            _notes.append(f"❌ `{_stem}` could not be restored ({_e}) — "
+                          f"if chunks are still missing, upload the rest.")
+    if not _notes:
         _notes.append("_No file uploaded yet — upload the `qc-lora.zip` / "
                       "`qc-grpo.zip` you downloaded above. §4 "
                       "detects restored adapters automatically._")
