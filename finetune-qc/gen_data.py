@@ -188,92 +188,300 @@ NOTE_DISTRACTORS = [
     "New box of sample jars opened; blanks were clean.",
 ]
 
-# Per-defect 8D corrective-action bodies (task 5, SFT-only).
+# Per-defect 8D corrective-action body banks (task 5, SFT-only).
+# Each defect maps to a LIST of variant D3--D7 bodies. All variants state the
+# same planted facts for that defect in different words; build_corrective_action
+# samples one per example with the seeded RNG. A single fixed body per defect
+# would let the SFT memorize ten canned paragraphs keyed on the defect code
+# instead of learning to compose a corrective action from the QC evidence.
 CORRECTIVE_ACTIONS = {
-    "salt_overdose": (
-        "D3 Containment: quarantined the batch and the two adjacent lots; sorted finished-goods "
-        "pallets for over-thickened units.\n"
-        "D4 Root cause: salt was weighed on a scale with a stale tare after the container change, "
-        "so roughly twice the specified NaCl was charged.\n"
-        "D5 Corrective action: installed an independent check-weigh with a hard interlock -- the "
-        "mixer cannot start until the check-weigh confirms the salt addition within +/-2%.\n"
-        "D6 Verification: three consecutive batches at target viscosity (950-1050 cP) released; "
-        "interlock challenged monthly.\n"
-        "D7 Prevention: scale-tare verification added to the pre-batch checklist; retrained both shifts."
-    ),
-    "salt_underdose": (
-        "D3 Containment: placed the batch on hold; notified the filler to segregate suspect pallets.\n"
-        "D4 Root cause: the salt addition step was signed off before the bag was fully emptied into "
-        "the hopper.\n"
-        "D5 Corrective action: revised the batch sheet so the salt charge requires a second-operator "
-        "witness signature and an empty-bag check.\n"
-        "D6 Verification: next five batches met the viscosity spec with no under-thickened units.\n"
-        "D7 Prevention: added salt-charge confirmation to the shift handover log."
-    ),
-    "citric_skip": (
-        "D3 Containment: quarantined the batch; QA hold on all lots blended that shift.\n"
-        "D4 Root cause: the pH-adjustment step was skipped when the batch sheet page was turned early "
-        "during a shift change.\n"
-        "D5 Corrective action: batch-sheet redesign -- pH adjustment is now a gated step with a pH "
-        "reading recorded before the operator may proceed.\n"
-        "D6 Verification: pH of the next ten batches 6.6-7.0; gate cannot be bypassed in the MES.\n"
-        "D7 Prevention: shift-change briefing checklist now includes open batch steps."
-    ),
-    "fragrance_overdose": (
-        "D3 Containment: quarantined the batch and retained samples; stopped the filler.\n"
-        "D4 Root cause: a decimal error on the handwritten fragrance addition (2.0% entered as the "
-        "charge instead of 0.20%).\n"
-        "D5 Corrective action: fragrance addition moved to the automated dosing skid with recipe "
-        "download -- manual entry disabled.\n"
-        "D6 Verification: three batches dosed automatically; odor panel scores 2-3, no separation.\n"
-        "D7 Prevention: all minor-ingredient additions above 0.5% now require automated dosing."
-    ),
-    "water_topup": (
-        "D3 Containment: batch placed on hold; reviewed tank-level logs for the week.\n"
-        "D4 Root cause: an operator topped up the blend tank with water to hit a level mark after a "
-        "transfer shortfall, diluting the batch by about 10%.\n"
-        "D5 Corrective action: tank top-ups now require QA approval and an actives re-test before release.\n"
-        "D6 Verification: subsequent batches met the actives spec; no unapproved top-ups logged.\n"
-        "D7 Prevention: level-mark practice replaced with mass-based batching on the new load cells."
-    ),
-    "undermixing": (
-        "D3 Containment: quarantined the batch; filtered retain through 100-micron screen to confirm "
-        "undissolved salt.\n"
-        "D4 Root cause: the mix timer was cut short when the tank was needed for the next batch; salt "
-        "had not fully dissolved.\n"
-        "D5 Corrective action: mixer timer interlocked -- discharge valve cannot open until the full "
-        "mix time elapses, plus a visual dissolution check.\n"
-        "D6 Verification: five batches with full mix time; no crystals on retain inspection.\n"
-        "D7 Prevention: production schedule buffer added so mix time is never compressed."
-    ),
-    "preservative_short": (
-        "D3 Containment: quarantined remaining inventory of the batch; accelerated micro testing.\n"
-        "D4 Root cause: the preservative pump was starved by a clogged suction strainer, under-dosing "
-        "for most of the batch.\n"
-        "D5 Corrective action: strainer added to the weekly preventive-maintenance list; installed a "
-        "low-flow alarm on the preservative dosing line.\n"
-        "D6 Verification: preservative assay on next batches within spec; micro counts acceptable.\n"
-        "D7 Prevention: dosing-line alarms now trended in the daily QA review."
-    ),
-    "dye_overfeed": (
-        "D3 Containment: batch held; shade compared against the standard -- out of tolerance.\n"
-        "D4 Root cause: the dye concentrate lot was twice the normal strength and the addition was "
-        "not adjusted.\n"
-        "D5 Corrective action: incoming dye lots are now assayed before use and the addition is "
-        "scaled to assay strength.\n"
-        "D6 Verification: next batches matched the color standard (delta_E < 1.0).\n"
-        "D7 Prevention: certificate-of-analysis check added to raw-material release for colorants."
-    ),
-    "hot_fill": (
-        "D3 Containment: batch held; fragrance assay showed loss vs the formula target.\n"
-        "D4 Root cause: the filler ran immediately after a hot CIP cycle without the cool-down hold, "
-        "so product was filled at 46 C and fragrance flashed off.\n"
-        "D5 Corrective action: filler interlocked to product temperature -- filling cannot start above "
-        "35 C.\n"
-        "D6 Verification: fill temperatures logged for two weeks; all below 32 C; odor panel normal.\n"
-        "D7 Prevention: CIP cool-down step added to the filler SOP with a temperature sign-off."
-    ),
+    "salt_overdose": [
+        (
+            "D3 Containment: quarantined the batch and the two adjacent lots; sorted finished-goods "
+            "pallets for over-thickened units.\n"
+            "D4 Root cause: salt was weighed on a scale with a stale tare after the container change, "
+            "so roughly twice the specified NaCl was charged.\n"
+            "D5 Corrective action: installed an independent check-weigh with a hard interlock -- the "
+            "mixer cannot start until the check-weigh confirms the salt addition within +/-2%.\n"
+            "D6 Verification: three consecutive batches at target viscosity (950-1050 cP) released; "
+            "interlock challenged monthly.\n"
+            "D7 Prevention: scale-tare verification added to the pre-batch checklist; retrained both shifts."
+        ),
+        (
+            "D3 Containment: the batch was quarantined together with the two lots blended before and "
+            "after it; finished-goods pallets were sorted to pull any over-thickened units.\n"
+            "D4 Root cause: after the salt container was changed, the scale still carried the old tare, "
+            "so the charge came out at roughly double the specified NaCl.\n"
+            "D5 Corrective action: a second, independent check-weigh was installed and hard-interlocked "
+            "to the mixer -- the mixer is locked out until the check-weigh reads the salt addition "
+            "within +/-2%.\n"
+            "D6 Verification: three back-to-back batches released at target viscosity (950-1050 cP); "
+            "the interlock is challenged on a monthly schedule.\n"
+            "D7 Prevention: tare verification is now a line item on the pre-batch checklist, and both "
+            "shifts were retrained on the changeover procedure."
+        ),
+        (
+            "D3 Containment: quarantined this batch plus the adjacent upstream and downstream lots; QA "
+            "sorted finished-goods pallets, removing over-thickened units from shippable stock.\n"
+            "D4 Root cause: the scale tare was not re-zeroed after the salt container swap, so "
+            "approximately twice the specified NaCl went into the batch.\n"
+            "D5 Corrective action: installed a redundant check-weigh on the salt addition with a hard "
+            "interlock -- mixer start is blocked unless the check-weigh confirms the addition within "
+            "+/-2% of target.\n"
+            "D6 Verification: released three consecutive batches inside the 950-1050 cP viscosity band; "
+            "interlock function is challenged monthly and logged.\n"
+            "D7 Prevention: added a tare-check step to the pre-batch checklist and retrained both shifts "
+            "on container-change discipline."
+        ),
+    ],
+    "salt_underdose": [
+        (
+            "D3 Containment: placed the batch on hold; notified the filler to segregate suspect pallets.\n"
+            "D4 Root cause: the salt addition step was signed off before the bag was fully emptied into "
+            "the hopper.\n"
+            "D5 Corrective action: revised the batch sheet so the salt charge requires a second-operator "
+            "witness signature and an empty-bag check.\n"
+            "D6 Verification: next five batches met the viscosity spec with no under-thickened units.\n"
+            "D7 Prevention: added salt-charge confirmation to the shift handover log."
+        ),
+        (
+            "D3 Containment: batch placed on QA hold; the filler was instructed to segregate all pallets "
+            "that could contain under-thickened units.\n"
+            "D4 Root cause: the operator signed off the salt addition while salt was still in the bag -- "
+            "it was never fully emptied into the hopper.\n"
+            "D5 Corrective action: the batch sheet now requires a second operator to witness the salt "
+            "charge and confirm the bag is empty before sign-off.\n"
+            "D6 Verification: the following five batches all met the viscosity specification with zero "
+            "under-thickened units found.\n"
+            "D7 Prevention: salt-charge confirmation was added as a required entry in the shift handover log."
+        ),
+        (
+            "D3 Containment: put the batch on hold and had the filler pull aside suspect pallets pending "
+            "QA disposition.\n"
+            "D4 Root cause: the salt-charge step was checked off before the bag had been completely emptied "
+            "into the hopper, shorting the batch on NaCl.\n"
+            "D5 Corrective action: batch-sheet revision -- the salt addition needs a witness signature from "
+            "a second operator plus a documented empty-bag verification.\n"
+            "D6 Verification: five subsequent batches passed the viscosity spec; none were under-thickened.\n"
+            "D7 Prevention: the shift handover log now carries a mandatory salt-charge confirmation line."
+        ),
+    ],
+    "citric_skip": [
+        (
+            "D3 Containment: quarantined the batch; QA hold on all lots blended that shift.\n"
+            "D4 Root cause: the pH-adjustment step was skipped when the batch sheet page was turned early "
+            "during a shift change.\n"
+            "D5 Corrective action: batch-sheet redesign -- pH adjustment is now a gated step with a pH "
+            "reading recorded before the operator may proceed.\n"
+            "D6 Verification: pH of the next ten batches 6.6-7.0; gate cannot be bypassed in the MES.\n"
+            "D7 Prevention: shift-change briefing checklist now includes open batch steps."
+        ),
+        (
+            "D3 Containment: batch quarantined; every lot blended during that shift was placed on QA hold.\n"
+            "D4 Root cause: during the shift change the batch sheet page was turned ahead, so the "
+            "pH-adjustment step was never executed.\n"
+            "D5 Corrective action: redesigned the batch sheet so pH adjustment is a hard gate -- the "
+            "operator must record a pH reading before the step can be closed.\n"
+            "D6 Verification: the next ten batches ran pH 6.6-7.0, and the MES gate has no bypass path.\n"
+            "D7 Prevention: the shift-change briefing checklist now requires a review of open batch steps."
+        ),
+        (
+            "D3 Containment: quarantined the batch and held all lots from that shift's blending.\n"
+            "D4 Root cause: the pH-adjust step was missed when the batch sheet was turned to the next page "
+            "early at shift change.\n"
+            "D5 Corrective action: pH adjustment converted to a gated batch-sheet step -- a recorded pH value "
+            "is required before the operator can move on.\n"
+            "D6 Verification: ten consecutive batches held pH 6.6-7.0; the MES enforces the gate with no "
+            "override.\n"
+            "D7 Prevention: open batch steps added to the mandatory shift-change briefing checklist."
+        ),
+    ],
+    "fragrance_overdose": [
+        (
+            "D3 Containment: quarantined the batch and retained samples; stopped the filler.\n"
+            "D4 Root cause: a decimal error on the handwritten fragrance addition (2.0% entered as the "
+            "charge instead of 0.20%).\n"
+            "D5 Corrective action: fragrance addition moved to the automated dosing skid with recipe "
+            "download -- manual entry disabled.\n"
+            "D6 Verification: three batches dosed automatically; odor panel scores 2-3, no separation.\n"
+            "D7 Prevention: all minor-ingredient additions above 0.5% now require automated dosing."
+        ),
+        (
+            "D3 Containment: batch quarantined with retain samples pulled; filling was stopped.\n"
+            "D4 Root cause: the handwritten fragrance charge read 2.0% -- a decimal slip for the specified "
+            "0.20%.\n"
+            "D5 Corrective action: fragrance is now dosed from the automated skid via recipe download; the "
+            "manual-entry path is disabled.\n"
+            "D6 Verification: three batches dosed through the skid; odor panel scored 2-3 with no phase "
+            "separation.\n"
+            "D7 Prevention: automated dosing is now mandatory for every minor-ingredient addition above 0.5%."
+        ),
+        (
+            "D3 Containment: quarantined the batch, retained samples, and halted the filler.\n"
+            "D4 Root cause: a handwritten decimal error charged 2.0% fragrance instead of the specified 0.20%.\n"
+            "D5 Corrective action: moved the fragrance addition to the automated dosing skid driven by recipe "
+            "download; manual entry is no longer possible.\n"
+            "D6 Verification: three automatically dosed batches passed with odor-panel scores of 2-3 and no "
+            "separation observed.\n"
+            "D7 Prevention: any minor-ingredient addition above 0.5% must now go through automated dosing."
+        ),
+    ],
+    "water_topup": [
+        (
+            "D3 Containment: batch placed on hold; reviewed tank-level logs for the week.\n"
+            "D4 Root cause: an operator topped up the blend tank with water to hit a level mark after a "
+            "transfer shortfall, diluting the batch by about 10%.\n"
+            "D5 Corrective action: tank top-ups now require QA approval and an actives re-test before release.\n"
+            "D6 Verification: subsequent batches met the actives spec; no unapproved top-ups logged.\n"
+            "D7 Prevention: level-mark practice replaced with mass-based batching on the new load cells."
+        ),
+        (
+            "D3 Containment: batch held; the week's tank-level logs were reviewed for other top-ups.\n"
+            "D4 Root cause: following a transfer shortfall, an operator added water to the blend tank to reach "
+            "a level mark, diluting the batch roughly 10%.\n"
+            "D5 Corrective action: any tank top-up now needs QA approval, and the batch must pass an actives "
+            "re-test before release.\n"
+            "D6 Verification: later batches met the actives specification; the logs show no unapproved top-ups "
+            "since.\n"
+            "D7 Prevention: batching by level marks is replaced with mass-based batching on the new load cells."
+        ),
+        (
+            "D3 Containment: put the batch on hold and audited the tank-level logs for the full week.\n"
+            "D4 Root cause: the operator topped up the blend tank with water to a level mark after a transfer "
+            "shortfall -- about 10% dilution.\n"
+            "D5 Corrective action: top-ups are now a QA-approved operation only, with a mandatory actives "
+            "re-test before the batch can release.\n"
+            "D6 Verification: subsequent batches cleared the actives spec and no unapproved top-ups appear in "
+            "the logs.\n"
+            "D7 Prevention: the level-mark habit is eliminated; the new load cells make all batching mass-based."
+        ),
+    ],
+    "undermixing": [
+        (
+            "D3 Containment: quarantined the batch; filtered retain through 100-micron screen to confirm "
+            "undissolved salt.\n"
+            "D4 Root cause: the mix timer was cut short when the tank was needed for the next batch; salt "
+            "had not fully dissolved.\n"
+            "D5 Corrective action: mixer timer interlocked -- discharge valve cannot open until the full "
+            "mix time elapses, plus a visual dissolution check.\n"
+            "D6 Verification: five batches with full mix time; no crystals on retain inspection.\n"
+            "D7 Prevention: production schedule buffer added so mix time is never compressed."
+        ),
+        (
+            "D3 Containment: batch quarantined; the retain was filtered through a 100-micron screen, "
+            "confirming undissolved salt.\n"
+            "D4 Root cause: the tank was needed for the next batch, so the mix timer was cut short before the "
+            "salt fully dissolved.\n"
+            "D5 Corrective action: interlocked the mixer timer to the discharge valve -- the valve cannot open "
+            "until the full mix time has elapsed -- and added a visual dissolution check.\n"
+            "D6 Verification: five batches run with the full mix time showed no crystals on retain inspection.\n"
+            "D7 Prevention: a buffer was added to the production schedule so mix time is never squeezed."
+        ),
+        (
+            "D3 Containment: quarantined the batch; filtering the retain through a 100-micron screen confirmed "
+            "undissolved salt present.\n"
+            "D4 Root cause: mix time was truncated because the tank was pulled for the next batch while salt was "
+            "still dissolving.\n"
+            "D5 Corrective action: the mixer timer now interlocks the discharge valve -- no discharge until the "
+            "full mix time elapses -- plus a required visual check that the salt has dissolved.\n"
+            "D6 Verification: five consecutive full-mix-time batches; retain inspections found no crystals.\n"
+            "D7 Prevention: scheduling now carries a buffer that protects the full mix time."
+        ),
+    ],
+    "preservative_short": [
+        (
+            "D3 Containment: quarantined remaining inventory of the batch; accelerated micro testing.\n"
+            "D4 Root cause: the preservative pump was starved by a clogged suction strainer, under-dosing "
+            "for most of the batch.\n"
+            "D5 Corrective action: strainer added to the weekly preventive-maintenance list; installed a "
+            "low-flow alarm on the preservative dosing line.\n"
+            "D6 Verification: preservative assay on next batches within spec; micro counts acceptable.\n"
+            "D7 Prevention: dosing-line alarms now trended in the daily QA review."
+        ),
+        (
+            "D3 Containment: remaining inventory of the batch quarantined; micro testing was expedited.\n"
+            "D4 Root cause: a clogged suction strainer starved the preservative pump, so most of the batch was "
+            "under-dosed.\n"
+            "D5 Corrective action: the strainer joined the weekly preventive-maintenance list, and a low-flow "
+            "alarm was installed on the preservative dosing line.\n"
+            "D6 Verification: preservative assay on following batches was within spec and micro counts were "
+            "acceptable.\n"
+            "D7 Prevention: the daily QA review now trends the dosing-line alarms."
+        ),
+        (
+            "D3 Containment: quarantined what was left of the batch and put micro testing on an accelerated "
+            "schedule.\n"
+            "D4 Root cause: the preservative pump ran starved because its suction strainer clogged, under-dosing "
+            "through most of the batch.\n"
+            "D5 Corrective action: added the strainer to weekly preventive maintenance and fitted the preservative "
+            "dosing line with a low-flow alarm.\n"
+            "D6 Verification: next batches assayed within the preservative spec; micro counts came back acceptable.\n"
+            "D7 Prevention: dosing-line alarm trends are now a standing item in the daily QA review."
+        ),
+    ],
+    "dye_overfeed": [
+        (
+            "D3 Containment: batch held; shade compared against the standard -- out of tolerance.\n"
+            "D4 Root cause: the dye concentrate lot was twice the normal strength and the addition was "
+            "not adjusted.\n"
+            "D5 Corrective action: incoming dye lots are now assayed before use and the addition is "
+            "scaled to assay strength.\n"
+            "D6 Verification: next batches matched the color standard (delta_E < 1.0).\n"
+            "D7 Prevention: certificate-of-analysis check added to raw-material release for colorants."
+        ),
+        (
+            "D3 Containment: batch held; the shade check against the standard came back out of tolerance.\n"
+            "D4 Root cause: the incoming dye concentrate lot was double the normal strength, and the addition "
+            "was charged unadjusted.\n"
+            "D5 Corrective action: every incoming dye lot is now assayed before use, and the addition is scaled "
+            "to the measured strength.\n"
+            "D6 Verification: subsequent batches matched the color standard with delta_E below 1.0.\n"
+            "D7 Prevention: raw-material release for colorants now requires a certificate-of-analysis check."
+        ),
+        (
+            "D3 Containment: batch placed on hold after the shade comparison failed against the standard.\n"
+            "D4 Root cause: the dye concentrate lot assayed at twice the normal strength, but the addition went "
+            "in without adjustment.\n"
+            "D5 Corrective action: dye lots are assayed on receipt and the charge is scaled to the assay result "
+            "before use.\n"
+            "D6 Verification: the next batches hit the color standard (delta_E < 1.0).\n"
+            "D7 Prevention: added a certificate-of-analysis verification to the raw-material release procedure "
+            "for colorants."
+        ),
+    ],
+    "hot_fill": [
+        (
+            "D3 Containment: batch held; fragrance assay showed loss vs the formula target.\n"
+            "D4 Root cause: the filler ran immediately after a hot CIP cycle without the cool-down hold, "
+            "so product was filled at 46 C and fragrance flashed off.\n"
+            "D5 Corrective action: filler interlocked to product temperature -- filling cannot start above "
+            "35 C.\n"
+            "D6 Verification: fill temperatures logged for two weeks; all below 32 C; odor panel normal.\n"
+            "D7 Prevention: CIP cool-down step added to the filler SOP with a temperature sign-off."
+        ),
+        (
+            "D3 Containment: batch held; the fragrance assay came in below the formula target.\n"
+            "D4 Root cause: filling started right after a hot CIP cycle with no cool-down hold, so product "
+            "entered the bottles at 46 C and the fragrance flashed off.\n"
+            "D5 Corrective action: the filler is now interlocked to product temperature -- it cannot start a "
+            "run above 35 C.\n"
+            "D6 Verification: two weeks of fill-temperature logs all read below 32 C, and the odor panel was "
+            "normal.\n"
+            "D7 Prevention: the filler SOP now includes the CIP cool-down step with a temperature sign-off."
+        ),
+        (
+            "D3 Containment: held the batch; fragrance assay confirmed loss against the formula target.\n"
+            "D4 Root cause: the filler was started immediately after a hot CIP cycle, skipping the cool-down "
+            "hold -- product filled at 46 C, flashing off fragrance.\n"
+            "D5 Corrective action: installed a product-temperature interlock on the filler; filling is blocked "
+            "above 35 C.\n"
+            "D6 Verification: fill temperatures logged over two weeks stayed below 32 C; odor panel results "
+            "normal.\n"
+            "D7 Prevention: CIP cool-down is now a signed step in the filler SOP."
+        ),
+    ],
 }
+
 
 # ----------------------------------------------------------------------------
 # Customer complaint templates, one bank per triage label. {product} is the
@@ -683,9 +891,12 @@ def build_root_cause(ex_id, report, complaints):
                 params=dict(n_complaints=len(complaints)))
 
 
-def build_corrective_action(ex_id, report):
+def build_corrective_action(ex_id, rng, report):
     dev = report["deviation"]
-    body = CORRECTIVE_ACTIONS[dev]
+    # Sample one phrasing variant per example: the planted facts are
+    # identical, but the wording differs, so the SFT cannot memorize
+    # one canned paragraph per defect code.
+    body = rng.choice(CORRECTIVE_ACTIONS[dev])
     meas = report["measurements"]
     meas_lines = "\n".join(
         f"  - {PRETTY[k]} ({k}): {meas[k]} {UNITS[k]}".strip()
@@ -736,7 +947,7 @@ def gen_batch_examples(rng, batch_id, formula_ver, deviation, ex_counter):
     for c in complaints:
         recs.append(build_triage(next(ex_counter), c))
     if deviation != "no_defect":
-        recs.append(build_corrective_action(next(ex_counter), report))
+        recs.append(build_corrective_action(next(ex_counter), rng, report))
     return recs, report
 
 

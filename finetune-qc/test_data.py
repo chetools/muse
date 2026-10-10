@@ -243,6 +243,19 @@ def main():
     if any(r["task"] == "corrective_action" for r in files["eval_spec_change"]):
         errs.append("spec-change file must not contain corrective_action")
 
+    # task-5 anti-template check: the corrective_action bodies must not collapse
+    # to one canned paragraph per defect, or the SFT would memorize templates
+    # instead of learning to compose from evidence. gen_data.py samples one of
+    # several phrasing variants per example, so every defect seen in train must
+    # show at least two distinct bodies.
+    ca_by_defect = {}
+    for r in files["train"]:
+        if r["task"] == "corrective_action":
+            ca_by_defect.setdefault(r["params"]["defect"], set()).add(r["solution"])
+    single = sorted(d for d, bodies in ca_by_defect.items() if len(bodies) < 2)
+    if single:
+        errs.append(f"corrective_action template collapse: single body for {single}")
+
     if errs:
         print(f"FAILED with {len(errs)} errors:")
         for e in errs[:30]:
