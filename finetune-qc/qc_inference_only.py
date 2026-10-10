@@ -16,11 +16,12 @@
 
 """QC fine-tune — inference-only companion notebook.
 
-No training cells. Upload trained LoRA adapter zips (from §17 of
-qc_finetune_demo.py), generate fresh eval examples on the CPU, and run
-interactive inference: pick a checkpoint, step through examples, and see
-each answer graded against planted ground truth. Sessions are ephemeral —
-keep your adapter zips somewhere safe.
+No training cells. Pull the trained LoRA adapters from HuggingFace Hub
+(§2; published from §17 of qc_finetune_demo.py), generate fresh eval
+examples on the CPU, and run interactive inference: pick a checkpoint,
+step through examples, and see each answer graded against planted ground
+truth. Sessions are ephemeral — the adapters live on the Hub, so a fresh
+session just re-downloads them.
 
 Run with `marimo edit qc_inference_only.py`, or open via MoLab:
 https://molab.marimo.io/github/chetools/muse/blob/main/finetune-qc/qc_inference_only.py
@@ -49,17 +50,17 @@ def _(mo):
 
         1. **§1** checks the environment: torch with CUDA, transformers,
            PEFT, accelerate.
-        2. **§2** uploads your trained adapter zips (`qc-lora.zip`,
-           `qc-grpo.zip`) — restored under `adapters/` next to the notebook.
+        2. **§2** downloads your trained adapters from HuggingFace Hub —
+           restored under `adapters/` next to the notebook.
         3. **§3** generates fresh eval examples on the CPU (new seed, unseen
            by the adapters — a small generalization check for free).
         4. **§4** runs interactive inference: pick a checkpoint, step through
            examples, and see each generated answer parsed and graded against
            the planted ground truth.
 
-        Train in the full notebook, download the adapters from its §17, and
-        bring the zips here. MoLab sessions are ephemeral — keep the zips
-        somewhere safe.
+        Train in the full notebook, publish the adapters from its §17, and
+        pull them here. MoLab sessions are ephemeral — the adapters live on
+        the Hub, so a fresh session just re-downloads them.
         """
     )
     return
@@ -687,167 +688,12 @@ def _(re):
 def _(mo):
     mo.md(
         r"""
-        ## §2 Upload trained adapters
+        ## §2 Download adapters from HuggingFace Hub
 
-        Upload the `qc-lora.zip` / `qc-grpo.zip` files you downloaded from
-        the training session. They are restored under `adapters/` next to
-        the notebook, and §4 picks them up automatically. This section needs
-        no GPU. In a new session, come back here first — sessions are
-        ephemeral and the container disk does not survive.
-
-        **Large zips:** two caps apply — MoLab caps browser uploads at
-        100MB per file, and each upload is one HTTP request to the server
-        that dies above ~100 MB ("Failed to fetch"). So first shrink the
-        zip, then split it into 50 MB chunks uploaded one at a time.
-
-        Before uploading, shrink the zip: the training output folders contain
-        `checkpoint-*/` subdirectories (intermediate trainer state — optimizer
-        and scheduler snapshots you do not need for inference). Only the
-        *final* adapter files matter. On the training machine, build a slim
-        zip with PowerShell:
-
-        ```
-        mkdir qc-lora-slim -Force | Out-Null
-        Copy-Item adapters\\qc-lora\\adapter_model.safetensors qc-lora-slim\\
-        Copy-Item adapters\\qc-lora\\adapter_config.json qc-lora-slim\\
-        Copy-Item adapters\\qc-lora\\tokenizer* qc-lora-slim\\ -ErrorAction SilentlyContinue
-        Compress-Archive qc-lora-slim qc-lora-slim.zip -Force
-        ```
-
-        (Same for `qc-grpo`.) This cuts a ~1.3 GB zip to ~180 MB.
-
-        Then split the slim zip into **50 MB** chunks — each upload is one
-        HTTP request to the MoLab server, and a request much above ~100 MB
-        dies with "Failed to fetch", so upload **exactly one chunk at a
-        time** (a 50 MB chunk travels as ~67 MB of base64, safely under the
-        cap). Each batch is saved, and the zip is reassembled automatically
-        once every chunk has arrived:
-
-        ```
-        import os
-        src = "qc-lora-slim.zip"     # the slim adapter zip
-        data = open(src, "rb").read()
-        for i in range(0, len(data), 50_000_000):
-            part = f"{src}.part{i // 50_000_000 + 1:02d}"
-            open(part, "wb").write(data[i:i + 50_000_000])
-            print(part, f"{os.path.getsize(part) / 1e6:.1f} MB")
-        ```
-        """
-    )
-    return
-@app.cell
-def _(mo):
-    # Created here, displayed and *read* in the cell below: marimo forbids
-    # reading a UI element's value in the cell that created it.
-    # MoLab caps browser uploads at 100MB per file, and each upload travels
-    # as one HTTP request that dies above ~100MB — so split slim (~180MB)
-    # adapter zips into 50MB chunks named <name>.zip.part01, ... (see the
-    # markdown above) and upload exactly ONE chunk at a time. The cell below
-    # accumulates chunks on disk and reassembles them automatically.
-    upload_picker = mo.ui.file(
-        filetypes=[".zip", ".part01", ".part02", ".part03", ".part04",
-                   ".part05", ".part06", ".part07", ".part08"],
-        multiple=True, kind="button",
-        label="Upload adapter zip (or .zip.partNN chunks, ONE at a time)")
-    return (upload_picker,)
-@app.cell
-def _(mo, nbdir, upload_picker):
-    import io as _io
-    import os as _os
-    import re as _re
-    import zipfile as _zipfile
-
-    _notes = []
-    _restored = []
-    _adir = _os.path.join(nbdir, "adapters")
-    # Chunk staging dir — deliberately *outside* adapters/ so the §4
-    # checkpoint picker and the §17 download list never see it.
-    _cdir = _os.path.join(nbdir, "_upload_chunks")
-    _PART_RE = r"(.*\.zip)\.part(\d+)"
-    _os.makedirs(_adir, exist_ok=True)
-    _os.makedirs(_cdir, exist_ok=True)
-
-    # 1. Persist newly uploaded files. Chunks accumulate on disk across
-    #    uploads, because each upload is one HTTP request to the MoLab
-    #    server and dies above ~100MB — upload exactly ONE chunk at a time.
-    if upload_picker.value:
-        for _fname, _contents in upload_picker.value:
-            if _re.fullmatch(_PART_RE, _fname) or _fname.endswith(".zip"):
-                with open(_os.path.join(_cdir, _fname), "wb") as _f:
-                    _f.write(_contents)
-            else:
-                _notes.append(f"⚠️ `{_fname}` ignored — upload a `.zip` or "
-                              f"`.zip.partNN` chunk.")
-
-    # 2. Reassemble complete chunk sets from disk, then extract.
-    _stems = {}
-    for _f in sorted(_os.listdir(_cdir)):
-        _pm = _re.fullmatch(_PART_RE, _f)
-        if _pm:
-            _stems.setdefault(_pm.group(1), {}).setdefault("parts", {})[
-                int(_pm.group(2))] = _f
-        elif _f.endswith(".zip"):
-            _stems.setdefault(_f, {})["whole"] = _f
-    for _stem in sorted(_stems):
-        _info = _stems[_stem]
-        _blob, _srcs = None, []
-        if "whole" in _info:
-            with open(_os.path.join(_cdir, _info["whole"]), "rb") as _f:
-                _blob = _f.read()
-            _srcs = [_info["whole"]]
-        else:
-            _idx = sorted(_info["parts"])
-            _have = ", ".join(f".part{i:02d}" for i in _idx)
-            if _idx != list(range(1, len(_idx) + 1)):
-                _notes.append(f"⏳ `{_stem}`: chunks {_have} on disk — a "
-                              f"middle chunk is missing; upload it.")
-                continue
-            _notes.append(f"🧩 `{_stem}`: chunks {_have} on disk — "
-                          f"reassembling…")
-            _blob = b"".join(
-                open(_os.path.join(_cdir, _info["parts"][i]), "rb").read()
-                for i in _idx)
-            _srcs = [_info["parts"][i] for i in _idx]
-        try:
-            with _zipfile.ZipFile(_io.BytesIO(_blob)) as _z:
-                _base = _os.path.realpath(_adir) + _os.sep
-                for _m in _z.namelist():
-                    _dest = _os.path.realpath(_os.path.join(_adir, _m))
-                    if not _dest.startswith(_base):
-                        raise ValueError(f"unsafe path in zip: {_m}")
-                _z.extractall(_adir)
-                _tops = sorted({_m.split("/")[0] for _m in _z.namelist()
-                                if "/" in _m})
-            _restored.extend(_tops)
-            _notes.append("✅ `" + _stem + "` → restored: " +
-                          ", ".join(f"`adapters/{_t}/`" for _t in _tops))
-            for _sf in _srcs:
-                _os.remove(_os.path.join(_cdir, _sf))
-        except Exception as _e:
-            _notes.append(f"❌ `{_stem}` could not be restored ({_e}) — "
-                          f"if chunks are still missing, upload the rest.")
-    if not _notes:
-        _notes.append("_No file uploaded yet — upload the `qc-lora.zip` / "
-                      "`qc-grpo.zip` you downloaded above. §4 "
-                      "detects restored adapters automatically._")
-    # Exposed so the download list above refreshes once adapters land.
-    # NOTE: keep the vstack expression *after* the assignment — marimo
-    # renders only the cell's last expression, so anything after it
-    # (other than `return`) would hide the upload button.
-    restored_adapters = tuple(_restored)
-    mo.vstack([upload_picker] + [mo.md(_n) for _n in _notes])
-    return (restored_adapters,)
-
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
-        ## §2b Download adapters from HuggingFace Hub (optional)
-
-        If you published the adapters to the Hub (§17b of the training
-        notebook), pull them here instead of uploading zips — no chunking.
-        Enter the repo ids (e.g. `yourname/qc-lora`); a token is only needed
-        for private repos.
+        Pull the adapters you published from §17 of the training notebook
+        (`qc_finetune_demo.py`) — they land under `adapters/` next to this
+        notebook, and §4 picks them up automatically. Enter the repo ids
+        (e.g. `yourname/qc-grpo`); a token is only needed for private repos.
         """
     )
     return
@@ -946,16 +792,16 @@ def _(mo):
         and see the parsed answer graded against planted ground truth. The
         model loads once per checkpoint and is cached, so moving the slider
         re-generates without reloading. **Nothing trains here** — this is
-        pure inference with your uploaded adapters.
+        pure inference with your Hub-published adapters.
         """
     )
     return
 @app.cell
-def _(eval_recs, hub_restored, mo, nbdir, restored_adapters):
+def _(eval_recs, hub_restored, mo, nbdir):
     import os as _os
-    # Refresh triggers: re-run this cell once adapters land via zip upload
-    # (§2) or Hub download (§2b).
-    _ = (hub_restored, restored_adapters)
+    # Refresh trigger: re-run this cell once adapters land via Hub download
+    # (§2).
+    _ = hub_restored
     _opts = {"base model (no adapters)": None}
     for _label, _p in [("SFT adapters", "adapters/qc-lora"),
                        ("SFT+GRPO adapters", "adapters/qc-grpo")]:
@@ -966,8 +812,8 @@ def _(eval_recs, hub_restored, mo, nbdir, restored_adapters):
                              label="Eval example")
     _ui = [mo.hstack([ckpt_picker, ex_slider], justify="start")]
     if len(_opts) == 1:
-        _ui = [mo.md("⚠️ No adapters under `adapters/` yet — upload a zip "
-                     "in §2 first.")] + _ui
+        _ui = [mo.md("⚠️ No adapters under `adapters/` yet — download them "
+                     "from the Hub in §2 first.")] + _ui
     # NOTE: the output must be a bare expression statement — marimo renders
     # only the cell's last expression.
     mo.vstack(_ui)

@@ -42,7 +42,8 @@ https://molab.marimo.io/github/chetools/muse/blob/main/finetune-qc/qc_finetune_d
 8. **GPU training (§11–§17).** Environment check (torch/CUDA, Unsloth, TRL,
    vendored scripts), canonical dataset generation via the vendored scripts,
    LoRA SFT, GRPO, the base/SFT/SFT+GRPO eval plus the spec-change test,
-   interactive inference with a cached model, and adapter download/upload.
+   interactive inference with a cached model, and publishing the adapters to
+   HuggingFace Hub.
    On MoLab the GPU packages install automatically from the notebook header;
    on your own machine use `requirements-gpu.txt`. Every GPU cell skips
    gracefully with guidance on machines without CUDA.
@@ -58,8 +59,9 @@ Generated `data/` and `adapters/` are git-ignored.
 
 On MoLab, attach a GPU via the notebook specs button in the app header —
 the GPU packages install automatically at session start. Sessions are
-ephemeral (12 h max, 90 min idle), so use §17 to download your adapters
-before the session ends, and upload the zip back in a fresh session.
+ephemeral (12 h max, 90 min idle), so use §17 to publish your adapters to
+the Hub before the session ends; a fresh session pulls them back in the
+inference notebook's §2.
 
 Equivalently, the scripts run standalone:
 

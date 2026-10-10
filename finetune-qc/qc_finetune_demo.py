@@ -32,7 +32,7 @@ demos (numpy/plotly only) — plus, on a CUDA machine, the full training
 pipeline. Attach a GPU on MoLab (notebook specs button in the app header)
 or run on your own CUDA box: §11 checks the environment, §12 builds the
 canonical dataset, §13 runs LoRA SFT, §14 GRPO, §15 eval, §16 interactive
-inference, and §17 downloads/uploads the trained adapters (MoLab sessions
+inference, and §17 publishes the trained adapters to HuggingFace Hub (MoLab sessions
 are ephemeral — save your adapters before the session ends). The GPU
 packages install automatically from this file's header on MoLab;
 `requirements-gpu.txt` covers your own machine. Without a GPU, §13–§16
@@ -91,7 +91,7 @@ def _(mo):
         - §10 demonstrates the GRPO reward functions on sample completions.
         - §11–§17 set up GPU training and inference: environment check,
           canonical dataset, LoRA SFT, GRPO, eval, interactive inference,
-          and adapter download/upload. They run on a CUDA machine and skip
+          and adapter publish to the Hub. They run on a CUDA machine and skip
           gracefully anywhere else (§17 needs no GPU).
 
         ## What runs where
@@ -105,7 +105,7 @@ def _(mo):
         | LoRA SFT (§13) | skips without CUDA | ✅ torch + Unsloth + CUDA |
         | GRPO (§14) | skips without CUDA | ✅ torch + TRL + CUDA |
         | Eval + interactive inference (§15, §16) | skips without CUDA | ✅ GPU for generation |
-        | Adapter download / upload (§17) | ✅ no GPU needed | — |
+        | Adapter publish to HuggingFace Hub (§17) | ✅ no GPU needed | — |
         """
     )
     return
@@ -1524,213 +1524,14 @@ def _(ROOT_CAUSE_CODES, TRIAGE_LABELS, ckpt_picker, eval_recs, ex_slider,
 def _(mo):
     mo.md(
         r"""
-        ## §17 Adapter download & upload
+        ## §17 Publish adapters to HuggingFace Hub
 
         MoLab sessions are **ephemeral**: a session ends after 12 hours (or
         90 minutes idle) and the container disk — including
         `adapters/qc-lora/` and `adapters/qc-grpo/` — is discarded with it.
-        **Download your adapters before the session ends.** In a fresh
-        session, upload the zip back here and §15/§16 will pick the adapters
-        up automatically. This section needs no GPU.
-
-        1. After §13/§14 finish, click a **Download** button below — one zip
-           per adapter directory. The zip holds only the final adapter
-           files (trainer `checkpoint-*` dirs are skipped — they are
-           intermediate optimizer state you do not need for inference),
-           so each zip is ~180 MB.
-        2. In a new session (or on another machine), come back to this
-           section and upload the zip with the button below. **Two caps
-           apply: MoLab caps browser uploads at 100MB per file, and each
-           upload is one HTTP request to the server that dies above
-           ~100 MB** — so split the zip on your own machine into **50 MB**
-           chunks named `<name>.zip.part01`, `<name>.zip.part02`, … and
-           upload **exactly one chunk at a time**. Each batch is saved,
-           and the zip is reassembled automatically once every chunk has
-           arrived:
-
-           ```
-           import os
-           src = "qc-lora.zip"          # the downloaded adapter zip
-           data = open(src, "rb").read()
-           for i in range(0, len(data), 50_000_000):
-               part = f"{src}.part{i // 50_000_000 + 1:02d}"
-               open(part, "wb").write(data[i:i + 50_000_000])
-               print(part, f"{os.path.getsize(part) / 1e6:.1f} MB")
-           ```
-
-           The adapters are restored under `adapters/` next to the notebook.
-        3. Re-run §11 to confirm, then §15/§16 to evaluate and chat with the
-           restored checkpoints.
-        """
-    )
-    return
-
-
-@app.cell
-def _(mo, nbdir, restored_adapters):
-    import io as _io
-    import os as _os
-    import zipfile as _zipfile
-
-    # `restored_adapters` is only a refresh trigger: this cell re-runs after
-    # a zip upload below restores adapters, so the download list updates.
-    _ = restored_adapters
-    _adir = _os.path.join(nbdir, "adapters")
-    _found = sorted(
-        _d for _d in (_os.listdir(_adir) if _os.path.isdir(_adir) else [])
-        if _os.path.isdir(_os.path.join(_adir, _d)))
-
-    def _zip_bytes(_name):
-        _buf = _io.BytesIO()
-        _root = _os.path.join(_adir, _name)
-        with _zipfile.ZipFile(_buf, "w", _zipfile.ZIP_DEFLATED) as _z:
-            for _dp, _dn, _fn in _os.walk(_root):
-                # Skip trainer checkpoint-* dirs: intermediate optimizer /
-                # scheduler state, not needed to restore the final adapters.
-                # This keeps the download ~180MB instead of ~1.3GB.
-                _dn[:] = [_d for _d in _dn
-                          if not _d.startswith("checkpoint-")]
-                for _f in _fn:
-                    _fp = _os.path.join(_dp, _f)
-                    _z.write(_fp,
-                             _os.path.join(_name,
-                                           _os.path.relpath(_fp, _root)))
-        return _buf.getvalue()
-
-    if not _found:
-        _dl_out = mo.md("⚠️ No adapters under `adapters/` yet — run §13 "
-                        "(and §14) first, then come back here to download "
-                        "them.")
-    else:
-        _cards = []
-        for _name in _found:
-            _data = _zip_bytes(_name)
-            _mb = len(_data) / 1e6
-            _cards.append(mo.hstack(
-                [mo.md(f"`adapters/{_name}/` — {_mb:.1f} MB"),
-                 mo.download(_data, filename=f"{_name}.zip",
-                             label=f"Download {_name}.zip")],
-                justify="space-between"))
-        _dl_out = mo.vstack(_cards)
-    # NOTE: the output must be a bare expression statement — marimo renders
-    # only the cell's last expression, so a trailing if/else shows nothing.
-    _dl_out
-    return
-
-
-@app.cell
-def _(mo):
-    # Created here, displayed and *read* in the cell below: marimo forbids
-    # reading a UI element's value in the cell that created it.
-    # MoLab caps browser uploads at 100MB per file, but a rank-32 LoRA zip is
-    # 100-300MB: split it locally into chunks <100MB named
-    # <name>.zip.part01, <name>.zip.part02, ... (see the markdown above) and
-    # upload all chunks together — the cell below reassembles them.
-    upload_picker = mo.ui.file(
-        filetypes=[".zip", ".part01", ".part02", ".part03", ".part04",
-                   ".part05", ".part06", ".part07", ".part08"],
-        multiple=True, kind="button",
-        label="Upload adapter zip (or .zip.partNN chunks, ONE at a time)")
-    return (upload_picker,)
-
-
-@app.cell
-def _(mo, nbdir, upload_picker):
-    import io as _io
-    import os as _os
-    import re as _re
-    import zipfile as _zipfile
-
-    _notes = []
-    _restored = []
-    _adir = _os.path.join(nbdir, "adapters")
-    # Chunk staging dir — deliberately *outside* adapters/ so the §4
-    # checkpoint picker and the §17 download list never see it.
-    _cdir = _os.path.join(nbdir, "_upload_chunks")
-    _PART_RE = r"(.*\.zip)\.part(\d+)"
-    _os.makedirs(_adir, exist_ok=True)
-    _os.makedirs(_cdir, exist_ok=True)
-
-    # 1. Persist newly uploaded files. Chunks accumulate on disk across
-    #    uploads, because each upload is one HTTP request to the MoLab
-    #    server and dies above ~100MB — upload exactly ONE chunk at a time.
-    if upload_picker.value:
-        for _fname, _contents in upload_picker.value:
-            if _re.fullmatch(_PART_RE, _fname) or _fname.endswith(".zip"):
-                with open(_os.path.join(_cdir, _fname), "wb") as _f:
-                    _f.write(_contents)
-            else:
-                _notes.append(f"⚠️ `{_fname}` ignored — upload a `.zip` or "
-                              f"`.zip.partNN` chunk.")
-
-    # 2. Reassemble complete chunk sets from disk, then extract.
-    _stems = {}
-    for _f in sorted(_os.listdir(_cdir)):
-        _pm = _re.fullmatch(_PART_RE, _f)
-        if _pm:
-            _stems.setdefault(_pm.group(1), {}).setdefault("parts", {})[
-                int(_pm.group(2))] = _f
-        elif _f.endswith(".zip"):
-            _stems.setdefault(_f, {})["whole"] = _f
-    for _stem in sorted(_stems):
-        _info = _stems[_stem]
-        _blob, _srcs = None, []
-        if "whole" in _info:
-            with open(_os.path.join(_cdir, _info["whole"]), "rb") as _f:
-                _blob = _f.read()
-            _srcs = [_info["whole"]]
-        else:
-            _idx = sorted(_info["parts"])
-            _have = ", ".join(f".part{i:02d}" for i in _idx)
-            if _idx != list(range(1, len(_idx) + 1)):
-                _notes.append(f"⏳ `{_stem}`: chunks {_have} on disk — a "
-                              f"middle chunk is missing; upload it.")
-                continue
-            _notes.append(f"🧩 `{_stem}`: chunks {_have} on disk — "
-                          f"reassembling…")
-            _blob = b"".join(
-                open(_os.path.join(_cdir, _info["parts"][i]), "rb").read()
-                for i in _idx)
-            _srcs = [_info["parts"][i] for i in _idx]
-        try:
-            with _zipfile.ZipFile(_io.BytesIO(_blob)) as _z:
-                _base = _os.path.realpath(_adir) + _os.sep
-                for _m in _z.namelist():
-                    _dest = _os.path.realpath(_os.path.join(_adir, _m))
-                    if not _dest.startswith(_base):
-                        raise ValueError(f"unsafe path in zip: {_m}")
-                _z.extractall(_adir)
-                _tops = sorted({_m.split("/")[0] for _m in _z.namelist()
-                                if "/" in _m})
-            _restored.extend(_tops)
-            _notes.append("✅ `" + _stem + "` → restored: " +
-                          ", ".join(f"`adapters/{_t}/`" for _t in _tops))
-            for _sf in _srcs:
-                _os.remove(_os.path.join(_cdir, _sf))
-        except Exception as _e:
-            _notes.append(f"❌ `{_stem}` could not be restored ({_e}) — "
-                          f"if chunks are still missing, upload the rest.")
-    if not _notes:
-        _notes.append("_No file uploaded yet — upload the `qc-lora.zip` / "
-                      "`qc-grpo.zip` you downloaded above. §15 and §16 "
-                      "detects restored adapters automatically._")
-    # Exposed so the download list above refreshes once adapters land.
-    # NOTE: keep the vstack expression *after* the assignment — marimo
-    # renders only the cell's last expression, so anything after it
-    # (other than `return`) would hide the upload button.
-    restored_adapters = tuple(_restored)
-    mo.vstack([upload_picker] + [mo.md(_n) for _n in _notes])
-    return (restored_adapters,)
-
-@app.cell
-def _(mo):
-    mo.md(
-        r"""
-        ## §17b Publish adapters to HuggingFace Hub (optional)
-
-        Zip downloads work, but the Hub is more convenient: the adapters live
-        under your HuggingFace account and any fresh session pulls them with
-        a single download — no chunking, no re-upload. Create a **write**
+        **Publish your adapters before the session ends.** They live under
+        your HuggingFace account and any fresh session pulls them in one
+        download (§2 of the inference notebook). Create a **write**
         token at <https://huggingface.co/settings/tokens> and paste it below.
         Trainer `checkpoint-*/` directories are never uploaded.
         """
@@ -1755,10 +1556,9 @@ def _(mo):
 
 @app.cell
 def _(hub_grpo_repo, hub_lora_repo, hub_private, hub_token, hub_upload, mo,
-        nbdir, restored_adapters):
+        nbdir):
     import os as _os
 
-    _ = restored_adapters  # re-run after a zip upload restores adapters
     _notes = []
     if hub_upload.value:
         if not hub_token.value:
