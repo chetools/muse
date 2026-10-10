@@ -914,7 +914,7 @@ def _(
         """
         % (
             _tick(a_ok), close_tot, close_N2,
-            _tick(b_ok), mt_q0["m_q"], mt_q0["b_q"], mt_q0["q_vertical"], mt_qh["m_q"],
+            _tick(b_ok), mt_q0["m_q"], mt_q0["b_q"], mt_q1["q_vertical"], mt_qh["m_q"],
             _tick(c_ok), mt_R500["N"], mt_TR["N"], N_fenske,
             _tick(d_ok), mt_v["R_min"], Rmin_scan, mt_hi["N"],
             "pinched" if mt_below["pinched"] else "not pinched",
