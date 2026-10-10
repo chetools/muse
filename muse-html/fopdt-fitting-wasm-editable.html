@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/favicon.ico" />
+    <!-- Preload is necessary because we show these images when we disconnect from the server,
+    but at that point we cannot load these images from the server -->
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/gradient-yHQUC_QB.png" as="image" />
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/noise-60BoTA8O.png" as="image" />
+    <!-- Preload the fonts -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/Lora-VariableFont_wght-CZceb_kH.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/PTSans-Regular-Bam3NpBI.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/PTSans-Bold-C_DwAp7Z.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/FiraMono-Regular-CEsLFVD9.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/FiraMono-Medium-D5MAsWEG.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/FiraMono-Bold-C6PDArdf.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="a marimo app" />
+    <link rel="apple-touch-icon" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/apple-touch-icon.png" />
+    <link rel="manifest" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/manifest.json" />
+
+    <script data-marimo="true">
+      function __resizeIframe(obj) {
+        const scrollbarHeight = 20; // Max between windows, mac, and linux
+
+        function setHeight() {
+          // Guard against race condition where iframe isn't ready
+          if (!obj.contentWindow?.document?.documentElement) {
+            return;
+          }
+          const element = obj.contentWindow.document.documentElement;
+          // If there is no vertical scrollbar, we don't need to resize the iframe
+          if (element.scrollHeight === element.clientHeight) {
+            return;
+          }
+
+          // Create a new height that includes the scrollbar height if it's visible
+          const hasHorizontalScrollbar = element.scrollWidth > element.clientWidth;
+          const newHeight = element.scrollHeight + (hasHorizontalScrollbar ? scrollbarHeight : 0);
+
+          // Only update the height if it's different from the current height
+          if (obj.style.height !== `${newHeight}px`) {
+            obj.style.height = `${newHeight}px`;
+          }
+        }
+
+        // Resize the iframe to the height of the content and bottom scrollbar height
+        setHeight();
+
+        // Resize the iframe when the content changes
+        const resizeObserver = new ResizeObserver((_entries) => {
+          setHeight();
+        });
+        // Only observe if iframe content is ready
+        if (obj.contentWindow?.document?.body) {
+          resizeObserver.observe(obj.contentWindow.document.body);
+        }
+      }
+    </script>
+    <marimo-filename hidden>notebook.py</marimo-filename>
+    <!-- TODO(Trevor): Legacy, required by VS Code plugin. Remove when plugin is updated (see marimo/server/_templates/template.py) -->
+    <marimo-version data-version="{{ version }}" hidden></marimo-version>
+    <marimo-user-config data-config="{{ user_config }}" hidden></marimo-user-config>
+    <marimo-server-token data-token="{{ server_token }}" hidden></marimo-server-token>
+    <!-- /TODO -->
+    <title>fopdt wasm demo</title>
+    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/index-DafnX1Xx.js"></script>
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/rolldown-runtime-B0Z9INg1.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/react-CUdNIagt.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/compiler-runtime-BQ9S8nyo.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/useEvent-Dc9HkKI2.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/react-dom-CKsE8sC1.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/schemas-BL-NsLlF.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/isObject-BCaOs5rp.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/isSymbol-oX0TOjjx.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/now-Cmx0b_zA.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/debounce-aFmHgJZY.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/isArrayLikeObject-DnwgSs_Z.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/_baseMerge-CQpUq7ep.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/objects-snlMn4yk.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/jsx-runtime-B74pBk57.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/useEventListener-BdZUApHd.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/invariant-Ci2dTZ72.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/config-BxZgoFvi.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/utils-B4K466FK.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/session-DXKMv4Bs.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/Deferred-CrTnjj37.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/config-DpGPGznL.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/clsx-DB0hHKMi.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/cn-ldLVeaqm.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/fullscreen-BmzAqMKq.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-CyYN7zJg.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/menu-items-BBdeXCvU.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/use-restore-focus-B98SEiGc.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/button-BoklZTGL.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/createLucideIcon-rHn2EdoM.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/check-Wea4hZ6R.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/context-BFOBKCJB.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/useNumberFormatter-C4-_TnkF.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/select-BplWpfFo.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/circle-CeQt3rdW.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/toast-KNfsFUiB.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/tooltip-DR2Z2N4w.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/paths-CzfpItSz.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/useLifecycle-DKSBdWUf.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/toDate-BbJ1_N2T.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/database-zap-CrkOvbyN.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/alert-dialog-CeE3i3Qa.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/arrays-BqUx5USx.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/once-Haz_uxEL.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/numbers-DsgsDslU.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/useDebounce-DMbg9X18.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/input-BDakodZ2.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/use-toast-CC89xOwH.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/requests-yTHMxhVa.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/uuid-k9DpjH68.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/write-secret-modal-BiG2tahJ.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/plus-gbN72xHe.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/trash-2-BJG-7Qob.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/preload-helper-HclGiUj8.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-BczecT6V.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-BTskHGpb.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/capabilities-Bj3s1hGN.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/cjs-C49f7GXV.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/createReducer-BPvK7C_R.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-Ccyblc8N.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/marked.esm-B_3iMIUq.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/strings-BHZPE0Mc.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-BN-7G8qZ.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/badge-DFf033uX.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-CiUBikfn.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-MRn68vX1.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-Bviq_Dee.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-DBqBVprh.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dist-DueXZKz9.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/stex-CJTNBbet.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/useTheme-DcnXlv0_.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/useAsyncData-DucTwMkf.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/purify.es-CYRiAeUx.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/cells-CzugpTQu.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/get-DjNf4SIX.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/copy-RyCOE8jo.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/copy-BhJktFeI.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/copy-icon-DFhUGBjO.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/ErrorBoundary-BeE1cdgM.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/config-B4VJJibu.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/chevron-right-DOPs2jx8.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/dropdown-menu-VuyoeQOD.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/LazyAnyLanguageCodeMirror-B_IYTCX5.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/hat-glasses-DVgK5i5l.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/package-BeYhVWvM.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/errors-D9vyuMar.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/defaultLocale-CNPGWpMu.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/precisionRound-Bq_nmf5u.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/defaultLocale-D5bOh7g6.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/vega-loader.browser-CLRkNgm7.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/tooltip-PLkI_UfK.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/filename-fxG7K_MU.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/micromark-factory-space-D9Dr-k4J.js">
+    <link rel="modulepreload" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/chunk-YOKDWASO-CaoEAGJk.js">
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/cells-0PFKL3SH.css">
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.25.1/dist/assets/index--sT8xf-8.css">
+  <marimo-wasm hidden=""></marimo-wasm>
+    <style>
+        #save-button {
+            display: none !important;
+        }
+        #filename-input {
+            display: none !important;
+        }
+    </style>
+    
+<script data-marimo="true">
+    Object.defineProperty(window, "__MARIMO_EXPORT_CONTEXT__", {
+        value: Object.freeze({
+            trusted: true,
+            notebookCode: "# /// script\n# dependencies = [\"numpy\", \"scipy\", \"matplotlib\"]\n# ///\n\"\"\"Minimal marimo (WASM) demo: fitting a first-order-plus-dead-time model.\n\nRuns entirely in the browser via `marimo export html-wasm`. Only uses\nnumpy/scipy/matplotlib, which the marimo WASM runtime provides.\nPlain functions only -- no classes.\n\"\"\"\n\nimport marimo\n\n__generated_with = \"0.25.1\"\napp = marimo.App()\n\n\n@app.cell\ndef _():\n    import marimo as mo\n    import numpy as np\n    import matplotlib.pyplot as plt\n    from scipy.optimize import curve_fit, minimize_scalar\n\n    return curve_fit, minimize_scalar, mo, np, plt\n\n\n@app.cell\ndef _(mo):\n    _out = mo.md(\n        r\"\"\"\n        # Fitting a first-order-plus-dead-time (FOPDT) model\n\n        The model describes how a process output responds to a step change in\n        the input. Symbols, defined before use: $t$ is time (min); $y$ is the\n        measured output (output units); $u$ is the step input magnitude (input\n        units, fixed at $u = 1$ below); $K$ is the steady-state gain (output\n        units per input unit); $\\tau$ is the time constant (min); $\\theta$ is\n        the dead time (min), the delay before the output first starts to move.\n\n        $$y(t) = \\begin{cases}\n        0 \u0026 t \u003C \\theta \\\\\n        K\\,u\\left(1 - e^{-(t-\\theta)/\\tau}\\right) \u0026 t \\ge \\theta\n        \\end{cases}$$\n\n        Fitting strategy: $\\theta$ is hard for a gradient optimizer because the\n        model is flat before $\\theta$, so we scan a coarse grid of $\\theta$\n        values, fit $K$ and $\\tau$ at each one with nonlinear least squares,\n        and keep the $\\theta$ with the smallest sum of squared errors (SSE,\n        the sum of squared differences between data and model). A scalar\n        refinement then polishes $\\theta$.\n        \"\"\"\n    )\n    # NOTE: marimo renders only the cell's last expression, so end on _out\n    _out\n    return\n\n\n@app.cell\ndef _(mo):\n    K_slider = mo.ui.slider(0.5, 3.0, step=0.1, value=1.5, label=\"K, steady-state gain\")\n    tau_slider = mo.ui.slider(2.0, 20.0, step=0.5, value=8.0, label=\"tau, time constant (min)\")\n    theta_slider = mo.ui.slider(0.0, 10.0, step=0.5, value=3.0, label=\"theta, dead time (min)\")\n    noise_slider = mo.ui.slider(0.0, 0.3, step=0.01, value=0.05, label=\"noise, measurement-noise std dev (output units)\")\n    _title = mo.md(\"### True process \u2014 move the sliders and the fit re-runs\")\n    # NOTE: marimo renders only the cell's last expression, so end on the layout\n    mo.vstack([_title, K_slider, tau_slider, theta_slider, noise_slider])\n    return K_slider, noise_slider, tau_slider, theta_slider\n\n\n@app.cell\ndef _(K_slider, noise_slider, np, tau_slider, theta_slider):\n    K_true = float(K_slider.value)\n    tau_true = float(tau_slider.value)\n    theta_true = float(theta_slider.value)\n    noise_true = float(noise_slider.value)\n\n    def fopdt(t, K, tau, theta):\n        # step response of the FOPDT model to a unit step (u = 1);\n        # the clip keeps the optimizer's trial values from overflowing exp\n        _responding = t \u003E= theta\n        _exponent = np.clip(-(t - theta) / tau, -500.0, 500.0)\n        _rise = 1.0 - np.exp(_exponent)\n        return K * np.where(_responding, _rise, 0.0)\n\n    t_end = theta_true + 6.0 * tau_true\n    t_data = np.linspace(0.0, t_end, 200)\n    _rng = np.random.default_rng(0)\n    y_clean = fopdt(t_data, K_true, tau_true, theta_true)\n    y_data = y_clean + _rng.normal(0.0, noise_true, t_data.shape)\n    return K_true, fopdt, t_data, tau_true, theta_true, y_data\n\n\n@app.cell\ndef _(curve_fit, fopdt, minimize_scalar, np, t_data, y_data):\n    def fit_fixed_theta(theta):\n        # fit K and tau at one fixed dead time; return (K, tau, SSE)\n        try:\n            _K0 = float(np.mean(y_data[-20:]))\n            _tau0 = float((t_data[-1] - theta) / 3.0)\n            (_K, _tau), _ = curve_fit(\n                lambda t, K, tau: fopdt(t, K, tau, theta),\n                t_data, y_data, p0=(_K0, _tau0), bounds=(0.0, np.inf),\n            )\n            _resid = y_data - fopdt(t_data, _K, _tau, theta)\n            return _K, _tau, float(np.sum(_resid ** 2))\n        except RuntimeError:\n            return np.nan, np.nan, np.inf\n\n    _thetas = np.linspace(0.0, 0.5 * t_data[-1], 21)\n    _sses = [fit_fixed_theta(_th)[2] for _th in _thetas]\n    _best = int(np.argmin(_sses))\n    _lo = _thetas[max(0, _best - 1)]\n    _hi = _thetas[min(len(_thetas) - 1, _best + 1)]\n\n    _refined = minimize_scalar(\n        lambda th: fit_fixed_theta(th)[2], bounds=(_lo, _hi), method=\"bounded\"\n    )\n    theta_fit = float(_refined.x)\n    K_fit, tau_fit, _ = fit_fixed_theta(theta_fit)\n    return K_fit, tau_fit, theta_fit\n\n\n@app.cell\ndef _(K_fit, K_true, mo, tau_fit, tau_true, theta_fit, theta_true):\n    _out = mo.md(\n        f\"\"\"\n        ### Fit results\n\n        | parameter | true | fitted | relative error |\n        |---|---|---|---|\n        | $K$ | {K_true:.3f} | {K_fit:.3f} | {abs(K_fit - K_true) / K_true:.1%} |\n        | $\\\\tau$ | {tau_true:.3f} | {tau_fit:.3f} | {abs(tau_fit - tau_true) / tau_true:.1%} |\n        | $\\\\theta$ | {theta_true:.3f} | {theta_fit:.3f} | {abs(theta_fit - theta_true) / max(theta_true, 1e-6):.1%} |\n        \"\"\"\n    )\n    # NOTE: marimo renders only the cell's last expression, so end on _out\n    _out\n    return\n\n\n@app.cell\ndef _(\n    K_fit,\n    K_true,\n    fopdt,\n    np,\n    plt,\n    t_data,\n    tau_fit,\n    tau_true,\n    theta_fit,\n    theta_true,\n    y_data,\n):\n    _t_fine = np.linspace(0.0, t_data[-1], 400)\n    fig, ax = plt.subplots()\n    ax.plot(t_data, y_data, \".\", markersize=4, label=\"noisy step data\")\n    ax.plot(_t_fine, fopdt(_t_fine, K_true, tau_true, theta_true), label=\"true model\")\n    ax.plot(_t_fine, fopdt(_t_fine, K_fit, tau_fit, theta_fit), \"--\", label=\"fitted model\")\n    ax.set_xlabel(\"time t (min)\")\n    ax.set_ylabel(\"output y (output units)\")\n    ax.legend(loc=\"lower right\")\n    # NOTE: marimo renders only the cell's last expression, so end on fig\n    fig\n    return\n\n\nif __name__ == \"__main__\":\n    app.run()\n",
+        }),
+        writable: false,
+        configurable: false,
+    });
+</script>
+<marimo-code hidden="">%23%20%2F%2F%2F%20script%0A%23%20dependencies%20%3D%20%5B%22numpy%22%2C%20%22scipy%22%2C%20%22matplotlib%22%5D%0A%23%20%2F%2F%2F%0A%22%22%22Minimal%20marimo%20(WASM)%20demo%3A%20fitting%20a%20first-order-plus-dead-time%20model.%0A%0ARuns%20entirely%20in%20the%20browser%20via%20%60marimo%20export%20html-wasm%60.%20Only%20uses%0Anumpy%2Fscipy%2Fmatplotlib%2C%20which%20the%20marimo%20WASM%20runtime%20provides.%0APlain%20functions%20only%20--%20no%20classes.%0A%22%22%22%0A%0Aimport%20marimo%0A%0A__generated_with%20%3D%20%220.25.1%22%0Aapp%20%3D%20marimo.App()%0A%0A%0A%40app.cell%0Adef%20_()%3A%0A%20%20%20%20import%20marimo%20as%20mo%0A%20%20%20%20import%20numpy%20as%20np%0A%20%20%20%20import%20matplotlib.pyplot%20as%20plt%0A%20%20%20%20from%20scipy.optimize%20import%20curve_fit%2C%20minimize_scalar%0A%0A%20%20%20%20return%20curve_fit%2C%20minimize_scalar%2C%20mo%2C%20np%2C%20plt%0A%0A%0A%40app.cell%0Adef%20_(mo)%3A%0A%20%20%20%20_out%20%3D%20mo.md(%0A%20%20%20%20%20%20%20%20r%22%22%22%0A%20%20%20%20%20%20%20%20%23%20Fitting%20a%20first-order-plus-dead-time%20(FOPDT)%20model%0A%0A%20%20%20%20%20%20%20%20The%20model%20describes%20how%20a%20process%20output%20responds%20to%20a%20step%20change%20in%0A%20%20%20%20%20%20%20%20the%20input.%20Symbols%2C%20defined%20before%20use%3A%20%24t%24%20is%20time%20(min)%3B%20%24y%24%20is%20the%0A%20%20%20%20%20%20%20%20measured%20output%20(output%20units)%3B%20%24u%24%20is%20the%20step%20input%20magnitude%20(input%0A%20%20%20%20%20%20%20%20units%2C%20fixed%20at%20%24u%20%3D%201%24%20below)%3B%20%24K%24%20is%20the%20steady-state%20gain%20(output%0A%20%20%20%20%20%20%20%20units%20per%20input%20unit)%3B%20%24%5Ctau%24%20is%20the%20time%20constant%20(min)%3B%20%24%5Ctheta%24%20is%0A%20%20%20%20%20%20%20%20the%20dead%20time%20(min)%2C%20the%20delay%20before%20the%20output%20first%20starts%20to%20move.%0A%0A%20%20%20%20%20%20%20%20%24%24y(t)%20%3D%20%5Cbegin%7Bcases%7D%0A%20%20%20%20%20%20%20%200%20%26%20t%20%3C%20%5Ctheta%20%5C%5C%0A%20%20%20%20%20%20%20%20K%5C%2Cu%5Cleft(1%20-%20e%5E%7B-(t-%5Ctheta)%2F%5Ctau%7D%5Cright)%20%26%20t%20%5Cge%20%5Ctheta%0A%20%20%20%20%20%20%20%20%5Cend%7Bcases%7D%24%24%0A%0A%20%20%20%20%20%20%20%20Fitting%20strategy%3A%20%24%5Ctheta%24%20is%20hard%20for%20a%20gradient%20optimizer%20because%20the%0A%20%20%20%20%20%20%20%20model%20is%20flat%20before%20%24%5Ctheta%24%2C%20so%20we%20scan%20a%20coarse%20grid%20of%20%24%5Ctheta%24%0A%20%20%20%20%20%20%20%20values%2C%20fit%20%24K%24%20and%20%24%5Ctau%24%20at%20each%20one%20with%20nonlinear%20least%20squares%2C%0A%20%20%20%20%20%20%20%20and%20keep%20the%20%24%5Ctheta%24%20with%20the%20smallest%20sum%20of%20squared%20errors%20(SSE%2C%0A%20%20%20%20%20%20%20%20the%20sum%20of%20squared%20differences%20between%20data%20and%20model).%20A%20scalar%0A%20%20%20%20%20%20%20%20refinement%20then%20polishes%20%24%5Ctheta%24.%0A%20%20%20%20%20%20%20%20%22%22%22%0A%20%20%20%20)%0A%20%20%20%20%23%20NOTE%3A%20marimo%20renders%20only%20the%20cell's%20last%20expression%2C%20so%20end%20on%20_out%0A%20%20%20%20_out%0A%20%20%20%20return%0A%0A%0A%40app.cell%0Adef%20_(mo)%3A%0A%20%20%20%20K_slider%20%3D%20mo.ui.slider(0.5%2C%203.0%2C%20step%3D0.1%2C%20value%3D1.5%2C%20label%3D%22K%2C%20steady-state%20gain%22)%0A%20%20%20%20tau_slider%20%3D%20mo.ui.slider(2.0%2C%2020.0%2C%20step%3D0.5%2C%20value%3D8.0%2C%20label%3D%22tau%2C%20time%20constant%20(min)%22)%0A%20%20%20%20theta_slider%20%3D%20mo.ui.slider(0.0%2C%2010.0%2C%20step%3D0.5%2C%20value%3D3.0%2C%20label%3D%22theta%2C%20dead%20time%20(min)%22)%0A%20%20%20%20noise_slider%20%3D%20mo.ui.slider(0.0%2C%200.3%2C%20step%3D0.01%2C%20value%3D0.05%2C%20label%3D%22noise%2C%20measurement-noise%20std%20dev%20(output%20units)%22)%0A%20%20%20%20_title%20%3D%20mo.md(%22%23%23%23%20True%20process%20%E2%80%94%20move%20the%20sliders%20and%20the%20fit%20re-runs%22)%0A%20%20%20%20%23%20NOTE%3A%20marimo%20renders%20only%20the%20cell's%20last%20expression%2C%20so%20end%20on%20the%20layout%0A%20%20%20%20mo.vstack(%5B_title%2C%20K_slider%2C%20tau_slider%2C%20theta_slider%2C%20noise_slider%5D)%0A%20%20%20%20return%20K_slider%2C%20noise_slider%2C%20tau_slider%2C%20theta_slider%0A%0A%0A%40app.cell%0Adef%20_(K_slider%2C%20noise_slider%2C%20np%2C%20tau_slider%2C%20theta_slider)%3A%0A%20%20%20%20K_true%20%3D%20float(K_slider.value)%0A%20%20%20%20tau_true%20%3D%20float(tau_slider.value)%0A%20%20%20%20theta_true%20%3D%20float(theta_slider.value)%0A%20%20%20%20noise_true%20%3D%20float(noise_slider.value)%0A%0A%20%20%20%20def%20fopdt(t%2C%20K%2C%20tau%2C%20theta)%3A%0A%20%20%20%20%20%20%20%20%23%20step%20response%20of%20the%20FOPDT%20model%20to%20a%20unit%20step%20(u%20%3D%201)%3B%0A%20%20%20%20%20%20%20%20%23%20the%20clip%20keeps%20the%20optimizer's%20trial%20values%20from%20overflowing%20exp%0A%20%20%20%20%20%20%20%20_responding%20%3D%20t%20%3E%3D%20theta%0A%20%20%20%20%20%20%20%20_exponent%20%3D%20np.clip(-(t%20-%20theta)%20%2F%20tau%2C%20-500.0%2C%20500.0)%0A%20%20%20%20%20%20%20%20_rise%20%3D%201.0%20-%20np.exp(_exponent)%0A%20%20%20%20%20%20%20%20return%20K%20*%20np.where(_responding%2C%20_rise%2C%200.0)%0A%0A%20%20%20%20t_end%20%3D%20theta_true%20%2B%206.0%20*%20tau_true%0A%20%20%20%20t_data%20%3D%20np.linspace(0.0%2C%20t_end%2C%20200)%0A%20%20%20%20_rng%20%3D%20np.random.default_rng(0)%0A%20%20%20%20y_clean%20%3D%20fopdt(t_data%2C%20K_true%2C%20tau_true%2C%20theta_true)%0A%20%20%20%20y_data%20%3D%20y_clean%20%2B%20_rng.normal(0.0%2C%20noise_true%2C%20t_data.shape)%0A%20%20%20%20return%20K_true%2C%20fopdt%2C%20t_data%2C%20tau_true%2C%20theta_true%2C%20y_data%0A%0A%0A%40app.cell%0Adef%20_(curve_fit%2C%20fopdt%2C%20minimize_scalar%2C%20np%2C%20t_data%2C%20y_data)%3A%0A%20%20%20%20def%20fit_fixed_theta(theta)%3A%0A%20%20%20%20%20%20%20%20%23%20fit%20K%20and%20tau%20at%20one%20fixed%20dead%20time%3B%20return%20(K%2C%20tau%2C%20SSE)%0A%20%20%20%20%20%20%20%20try%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20_K0%20%3D%20float(np.mean(y_data%5B-20%3A%5D))%0A%20%20%20%20%20%20%20%20%20%20%20%20_tau0%20%3D%20float((t_data%5B-1%5D%20-%20theta)%20%2F%203.0)%0A%20%20%20%20%20%20%20%20%20%20%20%20(_K%2C%20_tau)%2C%20_%20%3D%20curve_fit(%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20lambda%20t%2C%20K%2C%20tau%3A%20fopdt(t%2C%20K%2C%20tau%2C%20theta)%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20t_data%2C%20y_data%2C%20p0%3D(_K0%2C%20_tau0)%2C%20bounds%3D(0.0%2C%20np.inf)%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20)%0A%20%20%20%20%20%20%20%20%20%20%20%20_resid%20%3D%20y_data%20-%20fopdt(t_data%2C%20_K%2C%20_tau%2C%20theta)%0A%20%20%20%20%20%20%20%20%20%20%20%20return%20_K%2C%20_tau%2C%20float(np.sum(_resid%20**%202))%0A%20%20%20%20%20%20%20%20except%20RuntimeError%3A%0A%20%20%20%20%20%20%20%20%20%20%20%20return%20np.nan%2C%20np.nan%2C%20np.inf%0A%0A%20%20%20%20_thetas%20%3D%20np.linspace(0.0%2C%200.5%20*%20t_data%5B-1%5D%2C%2021)%0A%20%20%20%20_sses%20%3D%20%5Bfit_fixed_theta(_th)%5B2%5D%20for%20_th%20in%20_thetas%5D%0A%20%20%20%20_best%20%3D%20int(np.argmin(_sses))%0A%20%20%20%20_lo%20%3D%20_thetas%5Bmax(0%2C%20_best%20-%201)%5D%0A%20%20%20%20_hi%20%3D%20_thetas%5Bmin(len(_thetas)%20-%201%2C%20_best%20%2B%201)%5D%0A%0A%20%20%20%20_refined%20%3D%20minimize_scalar(%0A%20%20%20%20%20%20%20%20lambda%20th%3A%20fit_fixed_theta(th)%5B2%5D%2C%20bounds%3D(_lo%2C%20_hi)%2C%20method%3D%22bounded%22%0A%20%20%20%20)%0A%20%20%20%20theta_fit%20%3D%20float(_refined.x)%0A%20%20%20%20K_fit%2C%20tau_fit%2C%20_%20%3D%20fit_fixed_theta(theta_fit)%0A%20%20%20%20return%20K_fit%2C%20tau_fit%2C%20theta_fit%0A%0A%0A%40app.cell%0Adef%20_(K_fit%2C%20K_true%2C%20mo%2C%20tau_fit%2C%20tau_true%2C%20theta_fit%2C%20theta_true)%3A%0A%20%20%20%20_out%20%3D%20mo.md(%0A%20%20%20%20%20%20%20%20f%22%22%22%0A%20%20%20%20%20%20%20%20%23%23%23%20Fit%20results%0A%0A%20%20%20%20%20%20%20%20%7C%20parameter%20%7C%20true%20%7C%20fitted%20%7C%20relative%20error%20%7C%0A%20%20%20%20%20%20%20%20%7C---%7C---%7C---%7C---%7C%0A%20%20%20%20%20%20%20%20%7C%20%24K%24%20%7C%20%7BK_true%3A.3f%7D%20%7C%20%7BK_fit%3A.3f%7D%20%7C%20%7Babs(K_fit%20-%20K_true)%20%2F%20K_true%3A.1%25%7D%20%7C%0A%20%20%20%20%20%20%20%20%7C%20%24%5C%5Ctau%24%20%7C%20%7Btau_true%3A.3f%7D%20%7C%20%7Btau_fit%3A.3f%7D%20%7C%20%7Babs(tau_fit%20-%20tau_true)%20%2F%20tau_true%3A.1%25%7D%20%7C%0A%20%20%20%20%20%20%20%20%7C%20%24%5C%5Ctheta%24%20%7C%20%7Btheta_true%3A.3f%7D%20%7C%20%7Btheta_fit%3A.3f%7D%20%7C%20%7Babs(theta_fit%20-%20theta_true)%20%2F%20max(theta_true%2C%201e-6)%3A.1%25%7D%20%7C%0A%20%20%20%20%20%20%20%20%22%22%22%0A%20%20%20%20)%0A%20%20%20%20%23%20NOTE%3A%20marimo%20renders%20only%20the%20cell's%20last%20expression%2C%20so%20end%20on%20_out%0A%20%20%20%20_out%0A%20%20%20%20return%0A%0A%0A%40app.cell%0Adef%20_(%0A%20%20%20%20K_fit%2C%0A%20%20%20%20K_true%2C%0A%20%20%20%20fopdt%2C%0A%20%20%20%20np%2C%0A%20%20%20%20plt%2C%0A%20%20%20%20t_data%2C%0A%20%20%20%20tau_fit%2C%0A%20%20%20%20tau_true%2C%0A%20%20%20%20theta_fit%2C%0A%20%20%20%20theta_true%2C%0A%20%20%20%20y_data%2C%0A)%3A%0A%20%20%20%20_t_fine%20%3D%20np.linspace(0.0%2C%20t_data%5B-1%5D%2C%20400)%0A%20%20%20%20fig%2C%20ax%20%3D%20plt.subplots()%0A%20%20%20%20ax.plot(t_data%2C%20y_data%2C%20%22.%22%2C%20markersize%3D4%2C%20label%3D%22noisy%20step%20data%22)%0A%20%20%20%20ax.plot(_t_fine%2C%20fopdt(_t_fine%2C%20K_true%2C%20tau_true%2C%20theta_true)%2C%20label%3D%22true%20model%22)%0A%20%20%20%20ax.plot(_t_fine%2C%20fopdt(_t_fine%2C%20K_fit%2C%20tau_fit%2C%20theta_fit)%2C%20%22--%22%2C%20label%3D%22fitted%20model%22)%0A%20%20%20%20ax.set_xlabel(%22time%20t%20(min)%22)%0A%20%20%20%20ax.set_ylabel(%22output%20y%20(output%20units)%22)%0A%20%20%20%20ax.legend(loc%3D%22lower%20right%22)%0A%20%20%20%20%23%20NOTE%3A%20marimo%20renders%20only%20the%20cell's%20last%20expression%2C%20so%20end%20on%20fig%0A%20%20%20%20fig%0A%20%20%20%20return%0A%0A%0Aif%20__name__%20%3D%3D%20%22__main__%22%3A%0A%20%20%20%20app.run()%0A</marimo-code></head>
+  <body>
+    <div id="root"></div>
+    <script data-marimo="true">
+      Object.defineProperty(window, "__MARIMO_MOUNT_CONFIG__", {
+        value: Object.freeze({
+            "filename": "notebook.py",
+            "cwd": "",
+            "lspWorkspace": null,
+            "mode": "edit",
+            "version": "0.25.1",
+            "serverToken": "unused",
+            "config": {"ai": {"allow_provider_config": true, "custom_providers": {}, "enabled": true, "models": {"custom_models": [], "displayed_models": []}}, "completion": {"activate_on_typing": true, "auto_close_pairs": true, "copilot": false, "signature_hint_on_typing": false}, "diagnostics": {"sql_linter": true}, "display": {"cell_output": "below", "code_editor_font_size": 14, "code_lens": true, "dataframes": "rich", "default_table_max_columns": 50, "default_table_page_size": 10, "default_width": "medium", "reference_highlighting": true, "theme": "light"}, "formatting": {"line_length": 79}, "keymap": {"overrides": {}, "preset": "default"}, "language_servers": {"pylsp": {"enable_flake8": false, "enable_mypy": true, "enable_pydocstyle": false, "enable_pyflakes": false, "enable_pylint": false, "enable_ruff": true, "enabled": false}}, "mcp": {"mcpServers": {}, "presets": []}, "package_management": {"manager": "pip"}, "runtime": {"auto_instantiate": false, "auto_reload": "off", "default_csv_encoding": "utf-8", "default_sql_output": "auto", "on_cell_change": "autorun", "output_max_bytes": 8000000, "reactive_tests": true, "show_tracebacks": false, "std_stream_max_bytes": 1000000, "watcher_on_save": "lazy"}, "save": {"autosave": "off", "autosave_delay": 1000, "format_on_save": false}, "server": {"browser": "default", "follow_symlink": false}, "snippets": {"custom_paths": [], "include_default_snippets": true}},
+            "configOverrides": {},
+            "appConfig": {"sql_output": "auto", "width": "compact"},
+            "layout": null,
+            "view": {"showAppCode": false},
+            "notebook": null,
+            "session": null,
+            "runtimeConfig": null
+        }),
+        writable: false,
+        configurable: false,
+      });
+    </script>
+  </body>
+</html>
