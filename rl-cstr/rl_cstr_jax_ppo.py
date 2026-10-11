@@ -449,7 +449,8 @@ def _(mo):
         Both controllers plug into the same rollout loop. The observation is
         $[C_A, T, C_A^{SP}]$ normalised to $[-1, 1]$; the action is the
         normalised $T_c$ move in $[-1, 1]$. $e_k$ is the normalised tracking
-        error, $u_k$ the normalised action.
+        error, $u_k$ the normalised action; the proportional term uses
+        setpoint weighting ($b = 0.35$) to soften the kick on setpoint steps.
         """
     )
     # NOTE: marimo renders only the cell's last expression
@@ -460,19 +461,25 @@ def _(mo):
 @app.cell
 def _(np):
     class PID:
-        """Discrete PID with anti-windup. predict() mirrors a policy call."""
+        """Discrete PID with anti-windup and setpoint weighting.
 
-        def __init__(self, kp=-4.0, ki=-0.5, kd=-0.2):  # grid-tuned on IAE
-            self.kp, self.ki, self.kd = kp, ki, kd
+        predict() mirrors a policy call. Gains tuned for IAE on the JAX
+        simulator (360-point grid over kp/ki/kd/setpoint-weight, refined
+        twice more): kp=-14.0, ki=-0.01, kd=-1.2, b=0.35.
+        """
+
+        def __init__(self, kp=-14.0, ki=-0.01, kd=-1.2, b=0.35):
+            self.kp, self.ki, self.kd, self.b = kp, ki, kd, b
             self.integral = 0.0
             self.prev_e = 0.0
 
         def predict(self, o):
-            e = float(o[2]) - float(o[0])  # normalised setpoint minus normalised Ca
+            e = float(o[2]) - float(o[0])  # normalised tracking error
+            e_p = float(self.b * o[2] - o[0])  # setpoint-weighted P error
             self.integral = float(np.clip(self.integral + e, -3.0, 3.0))
             d = e - self.prev_e
             self.prev_e = e
-            u = float(np.clip(self.kp * e + self.ki * self.integral + self.kd * d, -1.0, 1.0))
+            u = float(np.clip(self.kp * e_p + self.ki * self.integral + self.kd * d, -1.0, 1.0))
             return np.array([u], dtype=np.float32)
 
     return (PID,)
@@ -508,6 +515,7 @@ def _(
     have_jax_rl,
     init_agent,
     jax,
+    mo,
     ppo_cfg,
     set_model,
     set_stats,
@@ -528,22 +536,29 @@ def _(
         _params, _opt = init_agent(_key)
         _curve = []
         _n = _n_envs * _roll
-        for _u in range(_n_updates):
-            _key, _k1, _k2 = jax.random.split(_key, 3)
-            _traj, _last_val, _ep_ret = _rollout(_params, _k1)
-            _adv, _ret = compute_gae(_traj, _last_val)
-            _adv = (_adv - _adv.mean()) / (_adv.std() + 1e-8)
-            _flat = {k: v.reshape((_n,) + v.shape[2:]) for k, v in _traj.items()}
-            _adv_f, _ret_f = _adv.reshape((_n,)), _ret.reshape((_n,))
-            for _e in range(ppo_cfg["epochs"]):
-                _key, _kp = jax.random.split(_key)
-                _perm = jax.random.permutation(_kp, _n)
-                for _m in range(ppo_cfg["n_mini"]):
-                    _idx = _perm[_m * _mb : (_m + 1) * _mb]
-                    _b = {k: v[_idx] for k, v in _flat.items()}
-                    _b["adv"], _b["ret"] = _adv_f[_idx], _ret_f[_idx]
-                    _params, _opt = _update(_params, _opt, _b, _key)
-            _curve.append(float(_ep_ret))
+        with mo.status.progress_bar(
+            total=_n_updates,
+            title="Training PPO",
+            show_rate=True,
+            show_eta=True,
+        ) as _bar:
+            for _u in range(_n_updates):
+                _key, _k1, _k2 = jax.random.split(_key, 3)
+                _traj, _last_val, _ep_ret = _rollout(_params, _k1)
+                _adv, _ret = compute_gae(_traj, _last_val)
+                _adv = (_adv - _adv.mean()) / (_adv.std() + 1e-8)
+                _flat = {k: v.reshape((_n,) + v.shape[2:]) for k, v in _traj.items()}
+                _adv_f, _ret_f = _adv.reshape((_n,)), _ret.reshape((_n,))
+                for _e in range(ppo_cfg["epochs"]):
+                    _key, _kp = jax.random.split(_key)
+                    _perm = jax.random.permutation(_kp, _n)
+                    for _m in range(ppo_cfg["n_mini"]):
+                        _idx = _perm[_m * _mb : (_m + 1) * _mb]
+                        _b = {k: v[_idx] for k, v in _flat.items()}
+                        _b["adv"], _b["ret"] = _adv_f[_idx], _ret_f[_idx]
+                        _params, _opt = _update(_params, _opt, _b, _key)
+                _curve.append(float(_ep_ret))
+                _bar.update()
         _secs = _time.time() - _t0
         set_model(_params)
         set_stats(
