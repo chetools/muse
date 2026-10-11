@@ -25,13 +25,17 @@ percent, settling time to a 2% band.
 
 ## Files
 
-- `modal_app.py` — Modal app `pid-mc`: `run_batch` runs 500 realizations on
-  one worker; the `monte_carlo` HTTPS endpoint fans `n_total` realizations
-  out over workers and returns the concatenated metric arrays as JSON.
-- `pid_monte_carlo.py` — marimo notebook (the MoLab deploy target). Sliders
-  for $\sigma$, $\theta$, $\lambda$; a paste box for the
-  `modal token set --token-id ... --token-secret ...` command; a run button;
-  an IAE histogram plus summary statistics.
+- `modal_app.py` — Modal app `pid-mc`: `run_batch*` workers run 500
+  realizations each, on CPU (`run_batch`) or GPU (`run_batch_t4`,
+  `run_batch_a100`, `run_batch_h100`); the `monte_carlo` HTTPS endpoint
+  fans `n_total` realizations out over the selected workers and returns
+  the concatenated metric arrays as JSON. The `"gpu"` body field picks
+  the worker (`"cpu"` default).
+- `pid_monte_carlo.py` — marimo notebook (the MoLab deploy target).
+  Token paste box + compute dropdown at the top (blank = MoLab CPU,
+  400 realizations, no tokens; otherwise Modal CPU / T4 / A100 / H100);
+  sliders for $\sigma$, $\theta$, $\lambda$; a run button; an IAE
+  histogram plus summary statistics.
 - `test_core.py`, `check_all.py` — sim-core sanity tests and notebook static
   audits (marimo cell semantics, KaTeX parse, sim-core mirror check).
 
@@ -58,10 +62,12 @@ The deploy prints the endpoint URL; it is baked into the notebook's
 
 ## Run on MoLab
 
-Open the mirror URL for `pid_monte_carlo.py`, move the sliders, optionally
-paste the `modal token set` command, and press **Run Monte Carlo**. Without
-tokens the notebook runs a small local fallback (400 realizations) so the
-page still works.
+Open the mirror URL for `pid_monte_carlo.py`. The compute dropdown at the
+top picks the backend: blank runs 400 realizations on MoLab's CPU (no
+tokens needed); the Modal options fan the full $N$ out over Modal workers
+and need the pasted `modal token set` command. GPU prices checked
+2026-10-11 (USD/hr): T4 0.59 (cheapest), A100-40GB 2.10, H100 3.95 (best
+f64 perf per dollar). Then move the sliders and press **Run Monte Carlo**.
 
 ## Why this shape
 

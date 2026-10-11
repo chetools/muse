@@ -37,6 +37,32 @@ def _():
 
 @app.cell
 def _(mo):
+    auth_box = mo.ui.text(
+        kind="password",
+        label="paste: modal token set --token-id ... --token-secret ...",
+        full_width=True,
+    )
+    gpu_dropdown = mo.ui.dropdown(
+        {
+            "MoLab CPU (local)": "",
+            "Modal CPU": "cpu",
+            "T4": "T4",
+            "A100": "A100",
+            "H100": "H100",
+        },
+        value="MoLab CPU (local)",
+        label="compute",
+    )
+    return auth_box, gpu_dropdown
+
+
+@app.cell
+def _(mo, auth_box, gpu_dropdown):
+    mo.vstack([auth_box, gpu_dropdown])
+
+
+@app.cell
+def _(mo):
     mo.md(
         r"""
         # Noisy PID Monte Carlo
@@ -55,8 +81,12 @@ def _(mo):
 
         Each realization is one closed-loop step response; metrics use the
         noise-free error, with $\mathrm{IAE}$ = integral of absolute error.
-        With a pasted token command the $N$ realizations fan out over Modal
-        workers, otherwise a small local run fills in.
+
+        Compute: leave the dropdown blank to run on MoLab's CPU (400
+        realizations, no tokens needed); otherwise the $N$ realizations fan
+        out over Modal workers. GPU prices 2026-10-11, USD/hr: T4 0.59
+        (cheapest), A100-40GB 2.10, H100 3.95 (best f64 perf per dollar).
+        This demo is float-64 numpy throughout.
         """
     )
 
@@ -71,18 +101,13 @@ def _(mo):
         value="20000",
         label="N",
     )
-    auth_box = mo.ui.text(
-        kind="password",
-        label="paste: modal token set --token-id ... --token-secret ...",
-        full_width=True,
-    )
     run_btn = mo.ui.run_button(label="Run Monte Carlo")
-    return sigma_s, theta_s, lam_s, n_s, auth_box, run_btn
+    return sigma_s, theta_s, lam_s, n_s, run_btn
 
 
 @app.cell
-def _(mo, sigma_s, theta_s, lam_s, n_s, auth_box, run_btn):
-    mo.vstack([sigma_s, theta_s, lam_s, n_s, auth_box, run_btn])
+def _(mo, sigma_s, theta_s, lam_s, n_s, run_btn):
+    mo.vstack([sigma_s, theta_s, lam_s, n_s, run_btn])
 
 
 @app.cell
@@ -157,6 +182,7 @@ def _(
     mo,
     run_btn,
     auth_box,
+    gpu_dropdown,
     sigma_s,
     theta_s,
     lam_s,
@@ -188,11 +214,39 @@ def _(
         "lam": float(lam_s.value),
         "sigma": float(sigma_s.value),
     }
+    gpu_sel = gpu_dropdown.value  # "" | "cpu" | "T4" | "A100" | "H100"
     n_total = int(n_s.value)
     t0 = time.time()
-    if tid and tsec:
-        backend = "Modal"
-        payload = {"auth": tsec, "params": params, "n_total": n_total, "seed": 0}
+    if gpu_sel == "":
+        backend = "MoLab CPU (local)"
+        n_total = 400
+        fb_res = simulate_batch(
+            n_total,
+            K=params["K"],
+            tau=params["tau"],
+            theta=params["theta"],
+            lam=params["lam"],
+            sigma=params["sigma"],
+            seed=0,
+        )
+        data = {k: v.tolist() for k, v in fb_res.items()}
+    else:
+        if not (tid and tsec):
+            mo.stop(
+                True,
+                mo.md(
+                    "**Modal compute needs the pasted token command** — "
+                    "or leave the compute dropdown blank for MoLab CPU."
+                ),
+            )
+        backend = f"Modal {gpu_sel}"
+        payload = {
+            "auth": tsec,
+            "params": params,
+            "n_total": n_total,
+            "seed": 0,
+            "gpu": gpu_sel,
+        }
         try:
             resp = requests.post(endpoint_url, json=payload, timeout=900)
             resp.raise_for_status()
@@ -206,19 +260,6 @@ def _(
                     + " — check the pasted token command."
                 ),
             )
-    else:
-        backend = "local fallback"
-        n_total = 400
-        fb_res = simulate_batch(
-            n_total,
-            K=params["K"],
-            tau=params["tau"],
-            theta=params["theta"],
-            lam=params["lam"],
-            sigma=params["sigma"],
-            seed=0,
-        )
-        data = {k: v.tolist() for k, v in fb_res.items()}
     wall = time.time() - t0
     set_results(
         {

@@ -94,8 +94,7 @@ def simulate_batch(n, K=1.0, tau=1.0, theta=0.5, lam=0.5, sigma=0.05,
 # ---------------------------------------------------------------------------
 
 
-@app.function(image=image)
-def run_batch(params: dict, seed: int) -> dict:
+def _run_batch_impl(params: dict, seed: int) -> dict:
     """Run BATCH closed-loop simulations on one worker; return metric lists."""
     res = simulate_batch(
         BATCH,
@@ -109,13 +108,46 @@ def run_batch(params: dict, seed: int) -> dict:
     return {k: v.tolist() for k, v in res.items()}
 
 
+@app.function(image=image)
+def run_batch(params: dict, seed: int) -> dict:
+    """CPU worker."""
+    return _run_batch_impl(params, seed)
+
+
+@app.function(image=image, gpu="T4")
+def run_batch_t4(params: dict, seed: int) -> dict:
+    """T4 worker — cheapest GPU option."""
+    return _run_batch_impl(params, seed)
+
+
+@app.function(image=image, gpu="A100")
+def run_batch_a100(params: dict, seed: int) -> dict:
+    """A100 (40 GB) worker — balanced cost / f64 throughput."""
+    return _run_batch_impl(params, seed)
+
+
+@app.function(image=image, gpu="H100")
+def run_batch_h100(params: dict, seed: int) -> dict:
+    """H100 worker — best f64 perf-per-dollar."""
+    return _run_batch_impl(params, seed)
+
+
+_WORKERS = {
+    "cpu": run_batch,
+    "T4": run_batch_t4,
+    "A100": run_batch_a100,
+    "H100": run_batch_h100,
+}
+
+
 @app.function(image=image, secrets=[modal.Secret.from_name("pid-mc-auth")])
 @modal.fastapi_endpoint(method="POST")
 def monte_carlo(body: dict) -> dict:
     """Run the full Monte Carlo across workers; return concatenated metrics.
 
     POST JSON body: {"auth": <token secret>, "params": {...},
-                     "n_total": 20000, "seed": 0}.
+                     "n_total": 20000, "seed": 0, "gpu": "cpu"}.
+    "gpu" is one of "cpu", "T4", "A100", "H100" (default "cpu").
     """
     from fastapi import HTTPException
 
@@ -124,13 +156,18 @@ def monte_carlo(body: dict) -> dict:
     if not expected or not hmac.compare_digest(got, expected):
         raise HTTPException(status_code=401, detail="bad or missing auth")
 
+    gpu = body.get("gpu") or "cpu"
+    worker = _WORKERS.get(gpu)
+    if worker is None:
+        raise HTTPException(status_code=400, detail=f"unknown gpu {gpu!r}")
+
     params = body["params"]
     n_total = int(body["n_total"])
     seed0 = int(body.get("seed", 0))
     n_batches = max(1, -(-n_total // BATCH))
 
     out = {"iae": [], "overshoot": [], "settling": []}
-    for b in run_batch.starmap([(params, seed0 + i) for i in range(n_batches)]):
+    for b in worker.starmap([(params, seed0 + i) for i in range(n_batches)]):
         for k in out:
             out[k].extend(b[k])
     for k in out:
