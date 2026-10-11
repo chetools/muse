@@ -39,6 +39,12 @@ percent, settling time to a 2% band.
 - `test_core.py`, `check_all.py` — sim-core sanity tests and notebook static
   audits (marimo cell semantics, KaTeX parse, sim-core mirror check).
 - `modal_app_jax.py` — Modal app `pid-mc-jax`: JAX twin of `modal_app.py`.
+  CPU workers run 500 realizations each; GPU workers run up to 25,000 each
+  (one container and one XLA compile per worker — fanning small batches
+  over dozens of GPU containers spends ~40x the fixed costs on
+  milliseconds of compute each). Same endpoint contract; each worker also
+  reports `jax.devices()[0]` (`"device"` field) so the caller can confirm
+  the GPU actually ran.
   The sim core uses `jax.lax.scan` (time) + `jax.vmap` (realizations),
   JIT-compiled, with `jax_enable_x64` so the float-64 numerics match the
   numpy version (mean IAE agrees to 3 decimals). Same worker layout and

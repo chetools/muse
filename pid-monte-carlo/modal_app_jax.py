@@ -33,7 +33,12 @@ app = modal.App("pid-mc-jax")
 image = modal.Image.debian_slim(python_version="3.13").pip_install(
     "jax[cuda12]", "fastapi")
 
-BATCH = 500  # noise realizations per Modal worker call
+BATCH = 500    # noise realizations per CPU worker call
+BATCH_GPU = 25000  # noise realizations per GPU worker call
+# GPU batches are large on purpose: each worker pays one container
+# provisioning plus one XLA JIT compile, while the compute itself is
+# milliseconds. Fanning 20k realizations over 40 GPU containers spends ~40x
+# those fixed costs; one container per ~25k realizations does not.
 
 
 # ---------------------------------------------------------------------------
@@ -117,10 +122,10 @@ def simulate_batch_jax(n, K=1.0, tau=1.0, theta=0.5, lam=0.5, sigma=0.05,
 # ---------------------------------------------------------------------------
 
 
-def _run_batch_impl(params: dict, seed: int) -> dict:
-    """Run BATCH closed-loop simulations on one worker; return metric lists."""
+def _run_batch_impl(params: dict, seed: int, n: int) -> dict:
+    """Run n closed-loop simulations on one worker; return metric lists."""
     res = simulate_batch_jax(
-        BATCH,
+        n,
         K=params["K"],
         tau=params["tau"],
         theta=params["theta"],
@@ -134,27 +139,27 @@ def _run_batch_impl(params: dict, seed: int) -> dict:
 
 
 @app.function(image=image, timeout=600)
-def run_batch(params: dict, seed: int) -> dict:
+def run_batch(params: dict, seed: int, n: int) -> dict:
     """CPU worker."""
-    return _run_batch_impl(params, seed)
+    return _run_batch_impl(params, seed, n)
 
 
 @app.function(image=image, gpu="T4", timeout=600)
-def run_batch_t4(params: dict, seed: int) -> dict:
+def run_batch_t4(params: dict, seed: int, n: int) -> dict:
     """T4 worker — cheapest GPU option."""
-    return _run_batch_impl(params, seed)
+    return _run_batch_impl(params, seed, n)
 
 
 @app.function(image=image, gpu="A100", timeout=600)
-def run_batch_a100(params: dict, seed: int) -> dict:
+def run_batch_a100(params: dict, seed: int, n: int) -> dict:
     """A100 (40 GB) worker — balanced cost / f64 throughput."""
-    return _run_batch_impl(params, seed)
+    return _run_batch_impl(params, seed, n)
 
 
 @app.function(image=image, gpu="H100", timeout=600)
-def run_batch_h100(params: dict, seed: int) -> dict:
+def run_batch_h100(params: dict, seed: int, n: int) -> dict:
     """H100 worker — best f64 perf-per-dollar."""
-    return _run_batch_impl(params, seed)
+    return _run_batch_impl(params, seed, n)
 
 
 _WORKERS = {
@@ -190,16 +195,17 @@ def monte_carlo(body: dict) -> dict:
     params = body["params"]
     n_total = int(body["n_total"])
     seed0 = int(body.get("seed", 0))
-    n_batches = max(1, -(-n_total // BATCH))
+    bs = BATCH if gpu == "cpu" else BATCH_GPU
+    n_batches = max(1, -(-n_total // bs))
+    sizes = [bs] * (n_batches - 1) + [n_total - bs * (n_batches - 1)]
 
     out = {"iae": [], "overshoot": [], "settling": []}
     device = None
-    for b in worker.starmap([(params, seed0 + i) for i in range(n_batches)]):
+    calls = [(params, seed0 + j, sizes[j]) for j in range(n_batches)]
+    for b in worker.starmap(calls):
         for k in out:
             out[k].extend(b[k])
         device = device or b.get("device")
-    for k in out:
-        out[k] = out[k][:n_total]
     out["n"] = n_total
     out["batches"] = n_batches
     out["device"] = device

@@ -107,7 +107,8 @@ def _(mo):
     theta_s = mo.ui.slider(0.0, 2.0, value=0.5, step=0.1, label="theta")
     lam_s = mo.ui.slider(0.1, 3.0, value=0.5, step=0.1, label="lambda")
     n_s = mo.ui.dropdown(
-        {"2000": 2000, "10000": 10000, "20000": 20000},
+        {"2000": 2000, "10000": 10000, "20000": 20000,
+         "50000": 50000, "100000": 100000},
         value="20000",
         label="N",
     )
