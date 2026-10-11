@@ -249,7 +249,6 @@ def _(
     if gpu_sel == "":
         device = jax.devices()[0]
         backend = f"MoLab {device.device_kind} (local JAX)"
-        n_total = 400
         data = simulate_batch_jax(
             n_total,
             K=params["K"],
