@@ -117,9 +117,12 @@ def _(mo, pts, rosenbrock):
     fig.update_layout(
         title="Rosenbrock surface with BFGS iterate path (red)",
         scene=dict(
-            xaxis_title="x (decision variable 1, dimensionless)",
-            yaxis_title="y (decision variable 2, dimensionless)",
-            zaxis_title="f(x, y) (objective value, capped at 2000)",
+            # Short titles: x, y, f are defined with units in the intro
+            # cell. Long 3D axis titles overlap each other at narrow
+            # viewport widths (seen on the MoLab render).
+            xaxis_title="x",
+            yaxis_title="y",
+            zaxis_title="f(x, y)",
             zaxis=dict(range=[0, 2000]),
         ),
         # Horizontal legend below the scene: the surface colorbar already
