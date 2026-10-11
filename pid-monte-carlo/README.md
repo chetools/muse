@@ -38,6 +38,18 @@ percent, settling time to a 2% band.
   histogram plus summary statistics.
 - `test_core.py`, `check_all.py` — sim-core sanity tests and notebook static
   audits (marimo cell semantics, KaTeX parse, sim-core mirror check).
+- `modal_app_jax.py` — Modal app `pid-mc-jax`: JAX twin of `modal_app.py`.
+  The sim core uses `jax.lax.scan` (time) + `jax.vmap` (realizations),
+  JIT-compiled, with `jax_enable_x64` so the float-64 numerics match the
+  numpy version (mean IAE agrees to 3 decimals). Same worker layout and
+  endpoint contract; each worker also reports `jax.devices()[0]`
+  (`"device"` field) so the caller can confirm the GPU actually ran.
+- `pid_monte_carlo_jax.py` — marimo notebook for the JAX backend. The blank
+  compute option runs JAX locally and reports the device — on MoLab it
+  picks up an attached RTX Pro 6000 automatically; otherwise Modal
+  CPU / T4 / A100 / H100. Results always name the executing device.
+- `test_core_jax.py`, `check_all_jax.py` — JAX core tests (determinism,
+  physics sanity, JAX-vs-numpy cross-check) and JAX notebook audits.
 
 ## Auth model
 
@@ -56,10 +68,12 @@ Needs `MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET` in the environment:
 ```bash
 modal secret create pid-mc-auth PID_MC_AUTH=<your modal token secret>
 modal deploy modal_app.py
+modal deploy modal_app_jax.py   # JAX twin; needs `jax` importable locally
 ```
 
 The deploy prints the endpoint URL; it is baked into the notebook's
-`endpoint_url` before pushing.
+`endpoint_url` before pushing. (The `pid-mc-auth` secret is shared by both
+apps.)
 
 ## Run on MoLab
 
