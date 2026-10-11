@@ -47,6 +47,14 @@ BATCH_GPU = 25000  # noise realizations per GPU worker call
 # mirror session cannot import sibling repo files). Keep the two copies
 # identical; check_mirror_jax.py enforces this.
 # BEGIN SIM CORE JAX
+# Hoisted JIT cache, keyed by static shapes (n_steps, d). A fresh jax.jit
+# wrapper recompiles on EVERY call; caching the built simulator here means
+# each shape compiles once per process, and jit's per-shape internals handle
+# the rest (each batch size n compiles once, then hits). In the notebook
+# this cell runs once per session, so the dict survives across Run clicks.
+_SIM_CACHE = {}
+
+
 def imc_pi_tuning_jax(K, tau, theta, lam):
     """IMC PI tuning (Rivera) for a FOPDT process.
 
@@ -110,7 +118,10 @@ def simulate_batch_jax(n, K=1.0, tau=1.0, theta=0.5, lam=0.5, sigma=0.05,
     """
     n_steps = int(round(T / Ts))
     d = int(round(theta / Ts))
-    simulate = make_simulate_batch(n_steps, d)
+    key = (n_steps, d)
+    simulate = _SIM_CACHE.get(key)
+    if simulate is None:
+        simulate = _SIM_CACHE[key] = make_simulate_batch(n_steps, d)
     keys = jax.random.split(jax.random.PRNGKey(seed), n)
     iae, overshoot, settling = simulate(keys, K, tau, theta, lam, sigma, Ts)
     out = {}
