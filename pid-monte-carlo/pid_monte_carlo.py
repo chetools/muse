@@ -8,11 +8,11 @@
 
 """Noisy PID Monte Carlo — marimo front end, Modal compute backend.
 
-Run on MoLab via the mirror URL for this file. Move the sliders, paste a
-`modal token set --token-id ... --token-secret ...` command into the auth
-box (optional), and press Run Monte Carlo. With tokens, the realizations fan
-out over Modal workers through the deployed endpoint; without them, a small
-local run fills in so the page still works.
+Run on MoLab via the mirror URL for this file. Move the sliders, paste your
+Modal token secret into the auth box (optional), and press Run Monte Carlo.
+With the secret, the realizations fan out over Modal workers through the
+deployed endpoint; without it, a small local run fills in so the page still
+works.
 """
 
 import marimo
@@ -39,7 +39,7 @@ def _():
 def _(mo):
     auth_box = mo.ui.text(
         kind="password",
-        label="paste: modal token set --token-id ... --token-secret ...",
+        label="paste: Modal token secret (as-...)",
         full_width=True,
     )
     gpu_dropdown = mo.ui.dropdown(
@@ -197,15 +197,16 @@ def _(
     mo.stop(not run_btn.value)
 
     text = (auth_box.value or "").strip()
-    tid, tsec = None, None
+    tsec = None
     try:
         parts = shlex.split(text)
-        if "--token-id" in parts:
-            tid = parts[parts.index("--token-id") + 1]
         if "--token-secret" in parts:
+            # tolerate a full `modal token set ...` paste
             tsec = parts[parts.index("--token-secret") + 1]
+        elif len(parts) == 1 and parts[0]:
+            tsec = parts[0]
     except (ValueError, IndexError):
-        tid, tsec = None, None
+        tsec = None
 
     params = {
         "K": 1.0,
@@ -231,11 +232,11 @@ def _(
         )
         data = {k: v.tolist() for k, v in fb_res.items()}
     else:
-        if not (tid and tsec):
+        if not tsec:
             mo.stop(
                 True,
                 mo.md(
-                    "**Modal compute needs the pasted token command** — "
+                    "**Modal compute needs your token secret** — "
                     "or leave the compute dropdown blank for MoLab CPU."
                 ),
             )
@@ -257,7 +258,7 @@ def _(
                 mo.md(
                     "**Modal call failed:** "
                     + str(exc)
-                    + " — check the pasted token command."
+                    + " — check the pasted token secret."
                 ),
             )
     wall = time.time() - t0
@@ -281,8 +282,8 @@ def _(mo, get_results, go, np):
     mo.stop(
         res is None,
         mo.md(
-            "Set the sliders, optionally paste your `modal token set` "
-            "command, then press **Run Monte Carlo**."
+            "Set the sliders, optionally paste your Modal token secret, "
+            "then press **Run Monte Carlo**."
         ),
     )
     iae = np.asarray(res["iae"])
