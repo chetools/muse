@@ -95,8 +95,9 @@ def _(install_btn, mo):
     import subprocess
     import sys
 
-    _pkgs = ("diffrax", "optax")
-    _need = [p for p in _pkgs if importlib.util.find_spec(p) is None]
+    # Pinned to the versions this notebook was verified against (rl-cstr venv).
+    _specs = {"diffrax": "diffrax==0.7.2", "optax": "optax==0.2.8"}
+    _need = [s for m, s in _specs.items() if importlib.util.find_spec(m) is None]
     if install_btn.value and _need:
         # jax itself is pre-installed on MoLab, so this only adds diffrax/optax
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", *_need])
@@ -113,10 +114,13 @@ def _(install_btn, mo):
 
         have_jax_rl = True
         _msg = "Packages ready: `diffrax`, `optax`, `jax`."
-    except ImportError:
+    except ImportError as e:
         diffrax, optax = None, None
         have_jax_rl = False
-        _msg = "Click **Install diffrax + optax** above and wait for it to finish."
+        _msg = (
+            "Click **Install diffrax + optax** above and wait for it to finish. "
+            f"Last import error: `{str(e)[:300]}`."
+        )
     _out = mo.md("**Environment setup** — " + _msg)
     # NOTE: marimo renders only the cell's last expression
     _out

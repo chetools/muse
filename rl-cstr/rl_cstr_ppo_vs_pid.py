@@ -78,8 +78,9 @@ def _(install_btn, mo):
     import subprocess
     import sys
 
-    _pkgs = ("pcgym", "stable-baselines3")
-    _need = [p for p in _pkgs if importlib.util.find_spec(p) is None]
+    # Pinned to the versions this notebook was verified against (rl-cstr venv).
+    _specs = {"pcgym": "pcgym==0.1.8", "stable_baselines3": "stable-baselines3==2.9.0"}
+    _need = [s for m, s in _specs.items() if importlib.util.find_spec(m) is None]
     if install_btn.value and _need:
         # torch is pre-installed on MoLab, so this only adds pcgym/sb3 + deps
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", *_need])
@@ -95,12 +96,12 @@ def _(install_btn, mo):
 
         have_rl = True
         _msg = "Packages ready: `pcgym`, `stable-baselines3`."
-    except ImportError:
+    except ImportError as e:
         make_env, PPO, Monitor = None, None, None
         have_rl = False
         _msg = (
             "Click **Install pcgym + stable-baselines3** above and wait "
-            "for it to finish."
+            f"for it to finish. Last import error: `{str(e)[:300]}`."
         )
     _out = mo.md("**Environment setup** — " + _msg)
     # NOTE: marimo renders only the cell's last expression
