@@ -849,6 +849,8 @@ function boot(){
   var done=false;
   var timer=setTimeout(function(){ if(!done) drawFallback(); },45000);
   loadPyodide().then(function(py){
+    return py.loadPackage('numpy').then(function(){ return py; });
+  }).then(function(py){
     try{
       py.runPython(document.getElementById('pycode').textContent);
       window.PV.py=py; done=true; clearTimeout(timer);
