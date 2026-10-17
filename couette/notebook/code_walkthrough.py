@@ -10,10 +10,14 @@ so every array shape and every physical assumption stays visible. Written
 for chemical engineers: the prose explains what each operation means
 physically, not just what it does in code.
 
-Run on MoLab (signed in) this notebook imports the `couette` package from
-the repository. The single-file WASM export carries the physics module
-inlined by couette/notebook/build_wasm_inline.py, because sibling imports
-do not resolve in single-file WASM builds.
+Run on MoLab (signed in) via the self-contained generated variant
+couette/notebook/code_walkthrough_molab.py (physics inlined by
+couette/notebook/build_wasm_inline.py --molab), because the MoLab GitHub
+mirror serves a single file with no repository checkout. The single-file
+WASM export likewise carries the physics module inlined by
+couette/notebook/build_wasm_inline.py, because sibling imports
+do not resolve in single-file WASM builds. This source variant imports
+the `couette` package from the repository and is for local development.
 """
 
 import marimo

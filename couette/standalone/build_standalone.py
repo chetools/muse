@@ -576,7 +576,7 @@ __BUILD_KATEX_CSS__
         use the editable notebook in MoLab.</p>
         __BUILD_WALKTHROUGH_HTML__
         <h3>Editable notebook</h3>
-        <ul><li><a href="https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough.py">Open the editable notebook in MoLab (signed in)</a></li></ul>
+        <ul><li><a href="https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough_molab.py">Open the editable notebook in MoLab (signed in)</a></li></ul>
         <p class="caption">The MoLab notebook is editable; run all cells once
         after opening (notebook-level Run).</p>
       </section>

@@ -155,7 +155,7 @@ with tab_code:
         "- [Open the pre-run walkthrough (no sign-in)]"
         "(https://chetools.github.io/muse/muse-html/couette-code-walkthrough-editable.html)\n"
         "- [Open the editable notebook in MoLab (signed in)]"
-        "(https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough.py)"
+        "(https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough_molab.py)"
     )
     st.caption(
         "The pre-run page executes automatically on load and is read-only. "

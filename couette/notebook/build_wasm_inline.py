@@ -1,4 +1,4 @@
-"""Build the single-file WASM variant of the code-walkthrough notebook.
+"""Build the single-file variants of the code-walkthrough notebook.
 
 Reads couette/notebook/code_walkthrough.py, replaces the marked import
 block (between >>> COUETTE_PHYSICS_IMPORT_BEGIN and
@@ -8,23 +8,32 @@ notebook cell already provides), and writes
 couette/notebook/code_walkthrough_wasm.py.
 
 Rationale: sibling imports do not resolve in single-file WASM exports,
-so the physics module is inlined. The notebook cells call the physics API
-through the name `P` (`P.validate`, `P.torque_per_length`, ...); in the
-source variant `P` is the imported module, so the generated variant
-additionally binds `P` to a namespace over the inlined functions (names
-derived from physics.py itself, keeping the single source of truth).
+and the MoLab GitHub mirror serves a single file with no repository
+checkout, so both targets need the physics module inlined. The notebook
+cells call the physics API through the name `P` (`P.validate`,
+`P.torque_per_length`, ...); in the source variant `P` is the imported
+module, so the generated variant additionally binds `P` to a namespace
+over the inlined functions (names derived from physics.py itself, keeping
+the single source of truth).
 The script then verifies by AST that
 every function defined in physics.py appears byte-identical (modulo
 indentation) in the generated file, keeping the single source of truth.
 
 Usage (from the repository root):
-    python couette/notebook/build_wasm_inline.py [--run-mode]
+    python couette/notebook/build_wasm_inline.py [--run-mode | --molab]
 
 With --run-mode, additionally rewrites the intro texts for the read-only
 run-mode page (the notebook executes automatically on load there, so the
 "edit a value and re-run" / "Re-run all cells" instructions would be wrong)
-and writes couette/notebook/code_walkthrough_wasm_run.py instead. The
-source notebook keeps the editable wording used by MoLab.
+and writes couette/notebook/code_walkthrough_wasm_run.py instead.
+
+With --molab, writes couette/notebook/code_walkthrough_molab.py instead:
+the same self-contained notebook with the editable wording, committed to
+the repository so the MoLab GitHub mirror
+(https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough_molab.py)
+resolves without the repository-local `couette` package. The
+code_walkthrough_wasm*.py files stay gitignored build artifacts; the
+molab variant is a committed deliverable.
 """
 
 import argparse
@@ -36,6 +45,7 @@ NOTEBOOK_SRC = HERE / "code_walkthrough.py"
 PHYSICS_SRC = HERE.parent / "physics.py"
 NOTEBOOK_WASM = HERE / "code_walkthrough_wasm.py"
 NOTEBOOK_WASM_RUN = HERE / "code_walkthrough_wasm_run.py"
+NOTEBOOK_MOLAB = HERE / "code_walkthrough_molab.py"
 
 BEGIN = "# >>> COUETTE_PHYSICS_IMPORT_BEGIN\n"
 END = "# >>> COUETTE_PHYSICS_IMPORT_END\n"
@@ -73,8 +83,16 @@ RUN_MODE_REPLACEMENTS = [
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-mode", action="store_true")
+    parser.add_argument("--molab", action="store_true")
     args = parser.parse_args()
-    out_path = NOTEBOOK_WASM_RUN if args.run_mode else NOTEBOOK_WASM
+    if args.run_mode and args.molab:
+        raise SystemExit("--run-mode and --molab are mutually exclusive")
+    if args.run_mode:
+        out_path = NOTEBOOK_WASM_RUN
+    elif args.molab:
+        out_path = NOTEBOOK_MOLAB
+    else:
+        out_path = NOTEBOOK_WASM
     notebook = NOTEBOOK_SRC.read_text()
     physics = PHYSICS_SRC.read_text()
 
