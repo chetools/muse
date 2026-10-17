@@ -84,9 +84,13 @@ def vector_field_figure(R1, R2, N1, N2, w1, w2, R1_mm, R2_mm,
     # grayscale), so speed is double-encoded as length and colour.
     # scale_units="xy" with scale=1.0 makes one data unit equal one arrow
     # unit: arrow lengths are true to the metre scale of the axes.
+    # Dark edges on every arrow: viridis's bright-yellow top end is nearly
+    # invisible against the pale-blue annulus fill, so each arrow carries a
+    # thin dark-navy edge (the figure's structure colour) for contrast.
     ax.quiver(X, Y, U * L, V * L, np.abs(vv), cmap="viridis",
               scale=1.0, scale_units="xy", width=0.012 * R2,
-              headwidth=4.2, headlength=5.0, zorder=3)
+              headwidth=4.2, headlength=5.0, zorder=3,
+              edgecolor="#1f3a5f", linewidth=0.3)
     cb = fig.colorbar(
         plt.cm.ScalarMappable(norm=plt.Normalize(0, vmax), cmap="viridis"),
         ax=ax, shrink=0.75, pad=0.02)
