@@ -414,9 +414,12 @@ def _(L, R1, R2, U, V, X, Y, np, plt, vmax, vv):
     ax.add_patch(plt.Circle((0, 0), R1, color="white", zorder=1))
     ax.add_patch(plt.Circle((0, 0), R2, fill=False, ec="#1f3a5f", lw=2.5, zorder=4))
     ax.add_patch(plt.Circle((0, 0), R1, fill=False, ec="#1f3a5f", lw=2.5, zorder=4))
+    # Dark edges on every arrow: viridis's bright-yellow top end is nearly
+    # invisible against the pale-blue annulus fill.
     ax.quiver(X, Y, U * L, V * L, np.abs(vv), cmap="viridis",
               scale=1.0, scale_units="xy", width=0.012 * R2,
-              headwidth=4.2, headlength=5.0, zorder=3)
+              headwidth=4.2, headlength=5.0, zorder=3,
+              edgecolor="#1f3a5f", linewidth=0.3)
     cb = fig.colorbar(
         plt.cm.ScalarMappable(norm=plt.Normalize(0, vmax), cmap="viridis"),
         ax=ax, shrink=0.75, pad=0.02)

@@ -29,6 +29,8 @@ import re
 import subprocess
 import sys
 
+from build_walkthrough import render_walkthrough
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_COUETTE = os.path.join(HERE, os.pardir)          # couette/ package dir
 VENDOR = os.path.join(HERE, 'vendor')
@@ -211,17 +213,23 @@ h3{font-size:1.2rem;font-weight:600;margin:1.2rem 0 .4rem}
   .charts{grid-template-columns:1fr}
   h1{font-size:1.9rem}
 }
+.wt-step{margin:0 0 .8rem;padding:1rem 0;border-top:1px solid var(--card-border)}
+.wt-step:first-of-type{border-top:none;padding-top:0}
+.wt-stepnum{font-size:.78rem;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:.35rem}
+.wt-prose{max-width:78ch}
+.wt-prose .eq{text-align:center;margin:1rem 0;overflow-x:auto}
+.wt-prose .katex{font-size:1.02em}
+.wt-code{margin:.6rem 0}
+.wt-code summary{cursor:pointer;font-size:.88rem;color:var(--muted);
+  margin-bottom:.35rem}
+.wt-out{margin:.6rem 0}
+.wt-img{max-width:640px;width:100%;height:auto;display:block}
+.wt-pre{background:#fafbfc;border:1px solid var(--card-border);border-radius:.4rem;
+  padding:.6rem .8rem;font-size:.85rem;overflow-x:auto}
+.wt-plot{height:400px;max-width:700px}
 """
 
-NOTEBOOK_LINKS = """
-<h3>Notebook walkthrough</h3>
-<ul>
-<li><a href="https://chetools.github.io/muse/muse-html/couette-code-walkthrough-editable.html">Open the pre-run walkthrough (no sign-in)</a></li>
-<li><a href="https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough.py">Open the editable notebook in MoLab (signed in)</a></li>
-</ul>
-<p class="caption">The pre-run page executes automatically on load and is read-only.
-The MoLab notebook is editable; run all cells once after opening (notebook-level Run).</p>
-"""
 
 # ------------------------------------------------- Pyodide compute driver
 # This exact source is embedded in the page AND exec'd locally for the
@@ -301,8 +309,20 @@ document.querySelectorAll('.tabs').forEach((bar) => {
       p.hidden = (p.id !== btn.dataset.tab);
     });
     if (btn.dataset.tab === 'sub-profiles') { setTimeout(relayoutCharts, 30); }
+    setTimeout(renderPendingPlots, 30);
   });
 });
+function renderPendingPlots(){
+  // Walkthrough plots render lazily: plotly needs a visible container for
+  // sizing, and the Code panel starts hidden.
+  document.querySelectorAll('[data-wt-plot]:not([data-rendered])').forEach((el) => {
+    if (el.offsetParent === null) return;
+    const j = WT_PLOTS[el.getAttribute('data-wt-plot')];
+    if (!j) return;
+    Plotly.newPlot(el, j.data, j.layout, {responsive:true, displaylogo:false});
+    el.setAttribute('data-rendered','1');
+  });
+}
 function relayoutCharts(){
   ['chart-v','chart-t'].forEach((id) => {
     const el = $(id);
@@ -546,14 +566,27 @@ __BUILD_KATEX_CSS__
       <div class="theory">__BUILD_THEORY_HTML__</div>
     </section>
     <section id="panel-code" class="tpanel" hidden>
-      <p>The complete computational code behind this app, exactly as executed.
-      The companion notebook below breaks the same computation into short
-      educational steps.</p>
-      __BUILD_NOTEBOOK_LINKS__
-      <h3>physics.py &mdash; flow physics</h3>
-      __BUILD_PHYSICS_HTML__
-      <h3>viz.py &mdash; vector-field figure</h3>
-      __BUILD_VIZ_HTML__
+      <nav class="tabs" data-panels="cpanel">
+        <button data-tab="sub-walkthrough" class="active">Walkthrough</button>
+        <button data-tab="sub-listings">Listings</button>
+      </nav>
+      <section id="sub-walkthrough" class="cpanel">
+        <p>The 24 steps below were executed when this page was built; every
+        value shown is the computed result. To explore different input values,
+        use the editable notebook in MoLab.</p>
+        __BUILD_WALKTHROUGH_HTML__
+        <h3>Editable notebook</h3>
+        <ul><li><a href="https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough.py">Open the editable notebook in MoLab (signed in)</a></li></ul>
+        <p class="caption">The MoLab notebook is editable; run all cells once
+        after opening (notebook-level Run).</p>
+      </section>
+      <section id="sub-listings" class="cpanel" hidden>
+        <p>The complete computational code behind this app, exactly as executed.</p>
+        <h3>physics.py &mdash; flow physics</h3>
+        __BUILD_PHYSICS_HTML__
+        <h3>viz.py &mdash; vector-field figure</h3>
+        __BUILD_VIZ_HTML__
+      </section>
     </section>
   </div>
 </main>
@@ -563,6 +596,9 @@ __BUILD_PLOTLY_JS__
 <script>
 __BUILD_COMMON_JS__
 __BUILD_BOOT_JS__
+</script>
+<script>
+const WT_PLOTS = __BUILD_WT_PLOTS__;
 </script>
 </body>
 </html>
@@ -595,6 +631,11 @@ def main():
     log('highlighting code listings...')
     phys_html, pyg_css = highlight_py(physics)
     viz_html, _ = highlight_py(viz)
+    log('rendering walkthrough...')
+    wt_html, wt_plots = render_walkthrough(
+        theory_md_to_html, ssr_katex, highlight_py)
+    log(f'walkthrough: {wt_html.count("wt-stepnum")} steps, '
+        f'{len(wt_plots)} plots')
     plotly_path = os.path.join(VENDOR, 'plotly.min.js')
     if not os.path.exists(plotly_path):
         log('downloading plotly.js (pinned)...')
@@ -614,9 +655,12 @@ def main():
     page = sub_once(page, '__BUILD_THEORY_HTML__', theory_html)
     page = sub_once(page, '__BUILD_PHYSICS_HTML__', phys_html)
     page = sub_once(page, '__BUILD_VIZ_HTML__', viz_html)
-    page = sub_once(page, '__BUILD_NOTEBOOK_LINKS__', NOTEBOOK_LINKS)
+    page = sub_once(page, '__BUILD_WALKTHROUGH_HTML__', wt_html)
     page = sub_once(page, '__BUILD_PLOTLY_JS__', plotly_js)
     page = sub_once(page, '__BUILD_COMMON_JS__', COMMON_JS)
+    wt_plots_js = ('{' + ','.join(f'{json.dumps(k)}:{v}'
+                                  for k, v in wt_plots.items()) + '}')
+    page = sub_once(page, '__BUILD_WT_PLOTS__', wt_plots_js)
     if stub:
         log('generating stub compute data (local run of DRIVER_SRC)...')
         boot = STUB_BOOT_JS.replace('__BUILD_STUB_JSON__', make_stub_data())
@@ -630,8 +674,8 @@ def main():
 
     for tok in ('__BUILD_PAGE_CSS__', '__BUILD_KATEX_CSS__', '__BUILD_THEORY_HTML__',
                 '__BUILD_PHYSICS_HTML__', '__BUILD_VIZ_HTML__',
-                '__BUILD_NOTEBOOK_LINKS__', '__BUILD_PLOTLY_JS__',
-                '__BUILD_COMMON_JS__', '__BUILD_BOOT_JS__',
+                '__BUILD_WALKTHROUGH_HTML__', '__BUILD_PLOTLY_JS__',
+                '__BUILD_COMMON_JS__', '__BUILD_BOOT_JS__', '__BUILD_WT_PLOTS__',
                 '__BUILD_PHYSICS_SRC__', '__BUILD_VIZ_SRC__',
                 '__BUILD_DRIVER_SRC__', '__BUILD_PYODIDE_URL__',
                 '__BUILD_STUB_JSON__'):
