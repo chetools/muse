@@ -8,7 +8,12 @@ notebook cell already provides), and writes
 couette/notebook/code_walkthrough_wasm.py.
 
 Rationale: sibling imports do not resolve in single-file WASM exports,
-so the physics module is inlined. The script then verifies by AST that
+so the physics module is inlined. The notebook cells call the physics API
+through the name `P` (`P.validate`, `P.torque_per_length`, ...); in the
+source variant `P` is the imported module, so the generated variant
+additionally binds `P` to a namespace over the inlined functions (names
+derived from physics.py itself, keeping the single source of truth).
+The script then verifies by AST that
 every function defined in physics.py appears byte-identical (modulo
 indentation) in the generated file, keeping the single source of truth.
 
@@ -46,6 +51,22 @@ def main():
         inlined_lines.append(("    " + line) if line.strip() else line)
     inlined = "".join(inlined_lines)
 
+    # The notebook cells call the physics API through the name `P`. In the
+    # source variant `P` is the imported module; here the functions are
+    # inlined as plain names, so re-expose them under `P`. The member names
+    # come from physics.py's own function definitions (parsed below), so a
+    # new function in physics.py is picked up automatically.
+    func_names = sorted(
+        n.name
+        for n in ast.walk(ast.parse(physics))
+        if isinstance(n, ast.FunctionDef)
+    )
+    inlined += "    import types as _types\n"
+    inlined += "    P = _types.SimpleNamespace(\n"
+    for name in func_names:
+        inlined += f"        {name}={name},\n"
+    inlined += "    )\n"
+
     start_idx = next(
         i for i, ln in enumerate(notebook.splitlines(keepends=True))
         if BEGIN.strip() in ln
@@ -81,6 +102,7 @@ def main():
         if wasm_funcs[name] != src:
             raise SystemExit(f"function {name} differs from physics.py")
     print(f"wrote {NOTEBOOK_WASM} ({len(wasm_funcs)} functions verified identical)")
+    print(f"P namespace members: {', '.join(func_names)}")
 
 
 if __name__ == "__main__":
