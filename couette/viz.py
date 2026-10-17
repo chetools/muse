@@ -17,11 +17,13 @@ from couette import physics as P  # noqa: E402
 
 
 def vector_field_figure(R1, R2, N1, N2, w1, w2, R1_mm, R2_mm,
-                        n_rings=4, n_theta=24):
+                        n_rings=4, n_theta=24, arrow_frac=0.55):
     """Cross-section (top view) of the annulus with tangential velocity arrows.
 
     Arrow length is proportional to local speed; the longest arrow is capped at
-    55% of the tightest grid spacing so arrows cannot overlap each other.
+    arrow_frac (default 0.55) of the tightest grid spacing so arrows cannot
+    overlap each other. Larger fractions give bolder, more visible arrows;
+    inspect the rendered figure and tune per use.
     Returns the matplotlib Figure (caller closes it).
 
     Grid construction, step by step (shapes annotated; with the defaults
@@ -56,12 +58,12 @@ def vector_field_figure(R1, R2, N1, N2, w1, w2, R1_mm, R2_mm,
     V = np.cos(Tg) * sgn
     # Tightest grid spacing [m]: radial gap between neighbouring rings
     # (dr) versus arc length between neighbouring stations on the
-    # innermost ring (arc_min).  Capping the longest arrow at 55% of the
-    # smaller keeps every arrow shorter than the distance to its
+    # innermost ring (arc_min).  Capping the longest arrow at arrow_frac
+    # of the smaller keeps every arrow shorter than the distance to its
     # neighbours, so arrows cannot overlap.
     dr = (R2 - R1) / (n_rings + 1)
     arc_min = rr[0] * (2 * np.pi / n_theta)
-    Lmax = 0.55 * min(dr, arc_min)
+    Lmax = arrow_frac * min(dr, arc_min)
     # Arrow length per station [m], shape (n_theta, n_rings): proportional
     # to the local speed, normalized by the maximum so the fastest fluid
     # gets exactly Lmax.  The vmax > 0 guard avoids division by zero when

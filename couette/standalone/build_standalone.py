@@ -276,7 +276,8 @@ def compute(R1_mm, R2_mm, N1, N2, mu_mPas):
     }
     if vmax > 0:
         fig = V.vector_field_figure(R1, R2, float(N1), float(N2), w1, w2,
-                                    float(R1_mm), float(R2_mm))
+                                    float(R1_mm), float(R2_mm),
+                                    arrow_frac=0.85)
         buf = io.BytesIO()
         fig.savefig(buf, format="png")
         plt.close(fig)
@@ -515,8 +516,8 @@ __BUILD_KATEX_CSS__
     |&tau;| &#8733; 1/r&sup2; always.</p>
     <nav class="tabs" data-panels="tpanel">
       <button data-tab="panel-app" class="active">App</button>
+      <button data-tab="panel-theory">Theory</button>
       <button data-tab="panel-code">Code</button>
-      <button data-tab="panel-breakdown">Breakdown</button>
     </nav>
     <section id="panel-app" class="tpanel">
       <nav class="tabs" data-panels="spanel">
@@ -537,9 +538,12 @@ __BUILD_KATEX_CSS__
         &mdash; the fluid is at rest.</div>
         <img id="field-img" alt="Cross-section of the annulus with the velocity vector field">
         <p class="caption">Cross-section of the annulus, top view. Arrow length
-        &#8733; local speed; the longest arrow is capped at 55% of the tightest grid
+        &#8733; local speed; the longest arrow is capped at 85% of the tightest grid
         spacing so arrows never overlap. Colour encodes |v&#952;|.</p>
       </section>
+    </section>
+    <section id="panel-theory" class="tpanel" hidden>
+      <div class="theory">__BUILD_THEORY_HTML__</div>
     </section>
     <section id="panel-code" class="tpanel" hidden>
       <p>The complete computational code behind this app, exactly as executed.
@@ -550,9 +554,6 @@ __BUILD_KATEX_CSS__
       __BUILD_PHYSICS_HTML__
       <h3>viz.py &mdash; vector-field figure</h3>
       __BUILD_VIZ_HTML__
-    </section>
-    <section id="panel-breakdown" class="tpanel" hidden>
-      <div class="theory">__BUILD_THEORY_HTML__</div>
     </section>
   </div>
 </main>
