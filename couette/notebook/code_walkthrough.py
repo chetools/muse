@@ -49,8 +49,10 @@ def _(mo):
     # Couette flow: the computation, step by step
 
     Companion to the Couette flow app. Each cell below performs **one**
-    transformation and displays its intermediate result. Change a slider
-    and every downstream cell recomputes.
+    transformation and displays its intermediate result, so the focus
+    stays on the calculation and how it breaks down. To experiment, edit
+    an input value in the inputs cell and re-run: every downstream cell
+    recomputes.
 
     To run: after the page finishes loading, execute all cells once via
     the command palette ("Re-run all cells") — cells do not run on load
@@ -75,37 +77,31 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
-    r1_slider = mo.ui.slider(10, 80, value=50, step=5, label="Inner radius [mm]")
-    r2_slider = mo.ui.slider(40, 150, value=100, step=5, label="Outer radius [mm]")
-    n1_slider = mo.ui.slider(-120, 120, value=60, step=5, label="Inner speed [rpm]")
-    n2_slider = mo.ui.slider(-120, 120, value=0, step=5, label="Outer speed [rpm]")
-    mu_dropdown = mo.ui.dropdown(
-        {"Water (20 °C) — 1.00 mPa·s": 1.0,
-         "Glycerol (20 °C) — 1410 mPa·s": 1410.0},
-        value="Water (20 °C) — 1.00 mPa·s",
-        label="Fluid",
-    )
-    mo.vstack([r1_slider, r2_slider, n1_slider, n2_slider, mu_dropdown])
-    return mu_dropdown, n1_slider, n2_slider, r1_slider, r2_slider
+def _():
+    # Inputs, exactly as entered in the app (millimetres, rpm, mPa·s).
+    # No widgets: the focus stays on the calculation. To experiment,
+    # edit a value and re-run — every downstream cell recomputes.
+    R1_mm = 50.0    # inner radius [mm]
+    R2_mm = 100.0   # outer radius [mm]
+    N1 = 60.0       # inner cylinder speed [rpm]; negative = clockwise
+    N2 = 0.0        # outer cylinder speed [rpm]
+    mu_mPas = 1.0   # dynamic viscosity [mPa·s]; water at 20 °C
+    return R1_mm, R2_mm, N1, N2, mu_mPas
 
 
 @app.cell
-def _(P, mo, mu_dropdown, n1_slider, n2_slider, r1_slider, r2_slider):
-    # Unit conversion, one line per quantity: the app takes millimetres and
-    # revolutions per minute, but the physics is done in SI (metres, rad/s).
-    # rpm_to_rad_s preserves the sign, so negative rpm stays clockwise.
-    R1 = r1_slider.value / 1000.0
-    R2 = r2_slider.value / 1000.0
-    mu = float(mu_dropdown.value) / 1000.0  # mPa·s -> Pa·s
-    w1 = float(P.rpm_to_rad_s(n1_slider.value))
-    w2 = float(P.rpm_to_rad_s(n2_slider.value))
-    # Geometry guard: an annulus needs 0 < R1 < R2. If the sliders violate
-    # it, stop here with a plain message instead of computing nonsense.
-    try:
-        P.validate(R1, R2, w1, w2, mu)
-    except ValueError as e:
-        mo.stop(True, mo.md(f"Invalid input: {e}"))
+def _(P, mo, R1_mm, R2_mm, N1, N2, mu_mPas):
+    # Unit conversion, one line per quantity: the physics is done in SI
+    # (metres, rad/s, Pa·s). rpm_to_rad_s preserves the sign, so negative
+    # rpm stays clockwise.
+    R1 = R1_mm / 1000.0
+    R2 = R2_mm / 1000.0
+    mu = mu_mPas / 1000.0
+    w1 = float(P.rpm_to_rad_s(N1))
+    w2 = float(P.rpm_to_rad_s(N2))
+    # Geometry guard: an annulus needs 0 < R1 < R2 (and finite, positive
+    # viscosity). Raises ValueError with a plain message otherwise.
+    P.validate(R1, R2, w1, w2, mu)
     mo.md(
         f"R1 = {R1} m, R2 = {R2} m, mu = {mu} Pa·s, "
         f"w1 = {w1:.4f} rad/s, w2 = {w2:.4f} rad/s"
