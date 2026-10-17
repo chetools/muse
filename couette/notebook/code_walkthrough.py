@@ -52,6 +52,10 @@ def _(mo):
     transformation and displays its intermediate result. Change a slider
     and every downstream cell recomputes.
 
+    To run: after the page finishes loading, execute all cells once via
+    the command palette ("Re-run all cells") — cells do not run on load
+    by themselves.
+
     Symbols, defined before use (SI units):
 
     - $R_1$: inner cylinder radius [m]; $R_2$: outer cylinder radius [m]
