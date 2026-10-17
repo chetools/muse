@@ -150,17 +150,17 @@ with tab_code:
         "The companion notebook below breaks the same computation into short "
         "educational steps."
     )
-    st.subheader("Editable notebook")
+    st.subheader("Notebook walkthrough")
     st.markdown(
-        "- [Open the editable notebook (no sign-in)]"
+        "- [Open the pre-run walkthrough (no sign-in)]"
         "(https://chetools.github.io/muse/muse-html/couette-code-walkthrough-editable.html)\n"
-        "- [Open in MoLab (signed in)]"
+        "- [Open the editable notebook in MoLab (signed in)]"
         "(https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough.py)"
     )
     st.caption(
-        "Edits in the no-sign-in page live only in the browser tab; reloading "
-        "loses them — use the notebook menu Download entry to keep a copy as a "
-        ".py file."
+        "The pre-run page executes automatically on load and is read-only. "
+        "The MoLab notebook is editable; run all cells once after opening "
+        "(notebook-level Run)."
     )
     st.subheader("physics.py — flow physics")
     st.code((Path(__file__).parent / "physics.py").read_text(), language="python")

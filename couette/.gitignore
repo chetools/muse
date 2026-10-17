@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 data/
 notebook/code_walkthrough_wasm.py
+notebook/code_walkthrough_wasm_run.py

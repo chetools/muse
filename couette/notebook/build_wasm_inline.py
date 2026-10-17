@@ -18,9 +18,16 @@ every function defined in physics.py appears byte-identical (modulo
 indentation) in the generated file, keeping the single source of truth.
 
 Usage (from the repository root):
-    python couette/notebook/build_wasm_inline.py
+    python couette/notebook/build_wasm_inline.py [--run-mode]
+
+With --run-mode, additionally rewrites the intro texts for the read-only
+run-mode page (the notebook executes automatically on load there, so the
+"edit a value and re-run" / "Re-run all cells" instructions would be wrong)
+and writes couette/notebook/code_walkthrough_wasm_run.py instead. The
+source notebook keeps the editable wording used by MoLab.
 """
 
+import argparse
 import ast
 from pathlib import Path
 
@@ -28,13 +35,46 @@ HERE = Path(__file__).resolve().parent
 NOTEBOOK_SRC = HERE / "code_walkthrough.py"
 PHYSICS_SRC = HERE.parent / "physics.py"
 NOTEBOOK_WASM = HERE / "code_walkthrough_wasm.py"
+NOTEBOOK_WASM_RUN = HERE / "code_walkthrough_wasm_run.py"
 
 BEGIN = "# >>> COUETTE_PHYSICS_IMPORT_BEGIN\n"
 END = "# >>> COUETTE_PHYSICS_IMPORT_END\n"
 DROP_IMPORTS = {"import math\n", "import numpy as np\n"}
 
+# Run-mode text replacements: (old, new) pairs applied to the WASM variant
+# when --run-mode is given. The source notebook is untouched.
+RUN_MODE_REPLACEMENTS = [
+    (
+        "    stays on the calculation and how it breaks down. To experiment, edit\n"
+        "    an input value in the inputs cell and re-run: every downstream cell\n"
+        "    recomputes.\n"
+        "\n"
+        "    To run: after the page finishes loading, execute all cells once via\n"
+        "    the command palette (\"Re-run all cells\") \u2014 cells do not run on load\n"
+        "    by themselves.\n",
+        "    stays on the calculation and how it breaks down. The notebook executes\n"
+        "    automatically on load; every result below is computed live in the\n"
+        "    browser. Different input values can be explored in the editable MoLab\n"
+        "    notebook (link on the app's Code tab), where every downstream cell\n"
+        "    recomputes.\n",
+    ),
+    (
+        "    # Inputs, exactly as entered in the app (millimetres, rpm, mPa\u00b7s).\n"
+        "    # No widgets: the focus stays on the calculation. To experiment,\n"
+        "    # edit a value and re-run \u2014 every downstream cell recomputes.\n",
+        "    # Inputs, exactly as entered in the app (millimetres, rpm, mPa\u00b7s).\n"
+        "    # No widgets: the focus stays on the calculation. This page is read-only;\n"
+        "    # different values can be explored in the editable MoLab notebook\n"
+        "    # (link on the app's Code tab).\n",
+    ),
+]
+
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-mode", action="store_true")
+    args = parser.parse_args()
+    out_path = NOTEBOOK_WASM_RUN if args.run_mode else NOTEBOOK_WASM
     notebook = NOTEBOOK_SRC.read_text()
     physics = PHYSICS_SRC.read_text()
 
@@ -77,7 +117,16 @@ def main():
     )
     lines = notebook.splitlines(keepends=True)
     wasm_text = "".join(lines[:start_idx]) + inlined + "".join(lines[end_idx + 1:])
-    NOTEBOOK_WASM.write_text(wasm_text)
+
+    if args.run_mode:
+        for old, new in RUN_MODE_REPLACEMENTS:
+            if wasm_text.count(old) != 1:
+                raise SystemExit(
+                    "run-mode replacement target not found exactly once"
+                )
+            wasm_text = wasm_text.replace(old, new)
+
+    out_path.write_text(wasm_text)
 
     # Verify: every function in physics.py must appear identically
     # (modulo indentation) in the generated file.
@@ -101,7 +150,7 @@ def main():
     for name, src in orig_funcs.items():
         if wasm_funcs[name] != src:
             raise SystemExit(f"function {name} differs from physics.py")
-    print(f"wrote {NOTEBOOK_WASM} ({len(wasm_funcs)} functions verified identical)")
+    print(f"wrote {out_path} ({len(wasm_funcs)} functions verified identical)")
     print(f"P namespace members: {', '.join(func_names)}")
 
 
