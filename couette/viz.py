@@ -87,13 +87,16 @@ def vector_field_figure(R1, R2, N1, N2, w1, w2, R1_mm, R2_mm,
     # Dark edges on every arrow: viridis's bright-yellow top end is nearly
     # invisible against the pale-blue annulus fill, so each arrow carries a
     # thin dark-navy edge (the figure's structure colour) for contrast.
-    ax.quiver(X, Y, U * L, V * L, np.abs(vv), cmap="viridis",
+    # One shared normalization for arrows and colorbar: quiver would otherwise
+    # autoscale its colours to the arrow data range [min|vv|, vmax], so the
+    # darkest arrow would wear the colour the bar labels 0 m/s.
+    cnorm = plt.Normalize(0, vmax)
+    ax.quiver(X, Y, U * L, V * L, np.abs(vv), cmap="viridis", norm=cnorm,
               scale=1.0, scale_units="xy", width=0.012 * R2,
               headwidth=4.2, headlength=5.0, zorder=3,
               edgecolor="#1f3a5f", linewidth=0.3)
-    cb = fig.colorbar(
-        plt.cm.ScalarMappable(norm=plt.Normalize(0, vmax), cmap="viridis"),
-        ax=ax, shrink=0.75, pad=0.02)
+    cb = fig.colorbar(plt.cm.ScalarMappable(norm=cnorm, cmap="viridis"),
+                      ax=ax, shrink=0.75, pad=0.02)
     cb.set_label("|vθ| [m/s]")
     ax.text(0, 0, f"R₁={R1_mm:g} mm\n{N1:g} rpm", ha="center", va="center",
             fontsize=10, color="#1f3a5f", zorder=5)

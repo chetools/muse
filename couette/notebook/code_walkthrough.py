@@ -416,13 +416,16 @@ def _(L, R1, R2, U, V, X, Y, np, plt, vmax, vv):
     ax.add_patch(plt.Circle((0, 0), R1, fill=False, ec="#1f3a5f", lw=2.5, zorder=4))
     # Dark edges on every arrow: viridis's bright-yellow top end is nearly
     # invisible against the pale-blue annulus fill.
-    ax.quiver(X, Y, U * L, V * L, np.abs(vv), cmap="viridis",
+    # One shared normalization for arrows and colorbar: quiver would otherwise
+    # autoscale its colours to the arrow data range, so the darkest arrow
+    # would wear the colour the bar labels 0 m/s.
+    cnorm = plt.Normalize(0, vmax)
+    ax.quiver(X, Y, U * L, V * L, np.abs(vv), cmap="viridis", norm=cnorm,
               scale=1.0, scale_units="xy", width=0.012 * R2,
               headwidth=4.2, headlength=5.0, zorder=3,
               edgecolor="#1f3a5f", linewidth=0.3)
-    cb = fig.colorbar(
-        plt.cm.ScalarMappable(norm=plt.Normalize(0, vmax), cmap="viridis"),
-        ax=ax, shrink=0.75, pad=0.02)
+    cb = fig.colorbar(plt.cm.ScalarMappable(norm=cnorm, cmap="viridis"),
+                      ax=ax, shrink=0.75, pad=0.02)
     cb.set_label("|v| [m/s]")
     fig
     return
