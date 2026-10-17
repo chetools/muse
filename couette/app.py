@@ -23,16 +23,20 @@ from couette.viz import vector_field_figure
 
 matplotlib.rcParams["font.family"] = "DejaVu Sans"
 
+# Plotly theme for this app: legends sit outside the plot area (right side)
+# so they never cover data; axis titles stay short, with symbols defined in
+# the surrounding text.
+_LEGEND_OUTSIDE = dict(x=1.02, y=1.0, xanchor="left", yanchor="top")
+
 st.set_page_config(
     page_title="Couette Flow — Concentric Cylinders",
-    page_icon="🌀",
     layout="wide",
 )
 
-st.title("🌀 Couette flow between concentric cylinders")
+st.title("Couette flow between concentric cylinders")
 st.markdown(
     "Steady laminar velocity profile of a Newtonian fluid in the annulus between "
-    "two rotating cylinders — derived from **torque balance alone**, no Navier–Stokes. "
+    "two rotating cylinders — derived from torque balance alone, no Navier–Stokes. "
     "Positive rpm = counter-clockwise viewed from above."
 )
 
@@ -85,8 +89,8 @@ m4.metric("Max |velocity| in gap", f"{vmax:.4g} m/s")
 st.caption("Sign convention: τᵣθ > 0 pulls the +r face of a fluid element in the +θ "
            "(counter-clockwise) direction. |τ| ∝ 1/r² always.")
 
-tab_prof, tab_field, tab_theory = st.tabs(
-    ["📈 Profiles", "🧭 Vector field", "📚 Theory"])
+tab_prof, tab_field, tab_theory, tab_code = st.tabs(
+    ["Profiles", "Vector field", "Theory", "Code"])
 
 # ---------------------------------------------------------------- profiles ---
 with tab_prof:
@@ -101,7 +105,8 @@ with tab_prof:
                                    name=f"outer wall: {v[-1]:.4g} m/s"))
         fig_v.update_layout(title="Azimuthal velocity profile vθ(r)",
                             xaxis_title="r [mm]", yaxis_title="vθ [m/s]",
-                            height=420, margin=dict(l=10, r=10, t=50, b=10))
+                            legend=_LEGEND_OUTSIDE,
+                            height=420, margin=dict(l=10, r=130, t=50, b=10))
         st.plotly_chart(fig_v, width="stretch")
     with c2:
         fig_t = go.Figure()
@@ -113,7 +118,8 @@ with tab_prof:
                                    name=f"outer wall: {tau2:.4g} Pa"))
         fig_t.update_layout(title="Shear-stress distribution τᵣθ(r) ∝ 1/r²",
                             xaxis_title="r [mm]", yaxis_title="τᵣθ [Pa]",
-                            height=420, margin=dict(l=10, r=10, t=50, b=10))
+                            legend=_LEGEND_OUTSIDE,
+                            height=420, margin=dict(l=10, r=130, t=50, b=10))
         st.plotly_chart(fig_t, width="stretch")
     st.info("Note how the stress curve is fixed by the torque balance "
             "(τ ∝ 1/r²) regardless of the rotation rates, while the velocity "
@@ -128,13 +134,38 @@ with tab_field:
         st.pyplot(fig, width="content")
         fig.clear()
         plt.close(fig)
-        st.caption("Arrow length ∝ local speed; the longest arrow is capped at 55% "
+        st.caption("Cross-section of the annulus, top view. Arrow length ∝ local "
+                   "speed; the longest arrow is capped at 55% "
                    "of the tightest grid spacing so arrows never overlap. Colour "
                    "encodes |vθ|.")
 
 # ------------------------------------------------------------------ theory ---
 with tab_theory:
     st.markdown(THEORY_MD)
+
+# -------------------------------------------------------------------- code ---
+with tab_code:
+    st.markdown(
+        "The complete computational code behind this app, exactly as executed. "
+        "The companion notebook below breaks the same computation into short "
+        "educational steps."
+    )
+    st.subheader("Editable notebook")
+    st.markdown(
+        "- [Open the editable notebook (no sign-in)]"
+        "(https://chetools.github.io/muse/muse-html/couette-code-walkthrough-editable.html)\n"
+        "- [Open in MoLab (signed in)]"
+        "(https://molab.marimo.io/github/chetools/muse/blob/main/couette/notebook/code_walkthrough.py)"
+    )
+    st.caption(
+        "Edits in the no-sign-in page live only in the browser tab; reloading "
+        "loses them — use the notebook menu Download entry to keep a copy as a "
+        ".py file."
+    )
+    st.subheader("physics.py — flow physics")
+    st.code((Path(__file__).parent / "physics.py").read_text(), language="python")
+    st.subheader("viz.py — vector-field figure")
+    st.code((Path(__file__).parent / "viz.py").read_text(), language="python")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Newtonian, steady, laminar. Torque is computed, not prescribed.")

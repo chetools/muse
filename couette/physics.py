@@ -1,5 +1,21 @@
 """Steady laminar Newtonian Couette flow between concentric cylinders.
 
+Symbols, defined before use (SI units):
+    R1: inner cylinder radius [m]
+    R2: outer cylinder radius [m]
+    w1: angular velocity of the inner cylinder [rad/s]
+    w2: angular velocity of the outer cylinder [rad/s]
+    mu: dynamic viscosity of the fluid [Pa.s]
+    r: radial coordinate, R1 <= r <= R2 [m]
+    omega(r): angular velocity of the fluid at radius r [rad/s]
+    v_theta(r): azimuthal (tangential) velocity of the fluid at r [m/s]
+    tau(r): shear stress, r-theta component, at radius r [Pa]
+    gamma_dot(r): shear rate at radius r [1/s]
+    T/L: torque per unit axial length exerted by the inner cylinder on the
+        fluid [N.m/m]
+    A, B: integration constants in omega(r) = A + B / r**2;
+        A in [rad/s], B in [rad.m^2/s]
+
 The velocity field is derived from a torque balance alone — no Navier-Stokes
 equations are invoked:
 
@@ -28,11 +44,23 @@ equations are invoked:
        A = (w2*R2**2 - w1*R1**2) / (R2**2 - R1**2)
        B = R1**2 * R2**2 * (w1 - w2) / (R2**2 - R1**2)
 
+   Physical reading: A is the solid-body-rotation part (the whole fluid
+   turning together at A rad/s carries no shear); B is the
+   differential-rotation part (B = 0 means no shear anywhere, because then
+   gamma_dot = -2*B/r**2 = 0).
+
 Sign convention: tau_rtheta is positive when, on the outward (+r) face of a
 fluid element, it pulls the fluid in the +theta direction.  The torque per
 unit length T/L reported here is the torque the inner cylinder must exert on
 the fluid (positive when driving it in the +theta sense); the shear stress is
 then  tau(r) = -(T/L) / (2*pi*r**2).
+
+Array-shape convention used by every profile function below: the radius
+argument r may be a scalar or a numpy array of shape (n,) holding n radial
+positions [m]; the returned array has the same shape (n,) with one value per
+input radius.  Scalar parameters (R1, R2, w1, w2, mu) broadcast against r
+in the usual numpy way, so each output element depends only on the
+corresponding input radius.
 """
 
 import math
@@ -41,7 +69,16 @@ import numpy as np
 
 
 def validate(R1, R2, w1, w2, mu):
-    """Check inputs; raise ValueError with a plain message on bad input."""
+    """Check inputs; raise ValueError with a plain message on bad input.
+
+    Physical meaning of the checks: the annulus geometry requires a
+    positive inner radius (R1 > 0) and an outer radius strictly outside
+    it (R2 > R1); a real (Newtonian) fluid has positive dynamic viscosity
+    (mu > 0).  Rotation rates w1, w2 may be zero, positive
+    (counter-clockwise seen from above) or negative (clockwise).
+    All inputs are scalars here; finiteness is checked element-wise so a
+    NaN or inf can never silently propagate into a profile.
+    """
     for name, val in (("R1", R1), ("R2", R2), ("mu", mu)):
         if not np.isfinite(val):
             raise ValueError(f"{name} must be a finite number, got {val!r}.")
@@ -57,7 +94,13 @@ def validate(R1, R2, w1, w2, mu):
 
 
 def coefficients(R1, R2, w1, w2):
-    """Return (A, B) with omega(r) = A + B / r**2.  Inputs validated."""
+    """Return (A, B) with omega(r) = A + B / r**2.  Inputs validated.
+
+    A [rad/s] and B [rad.m^2/s] are scalars fixed by the no-slip boundary
+    conditions omega(R1) = w1 and omega(R2) = w2: the fluid layer touching
+    each wall moves with that wall.  Solving those two linear equations
+    for A and B gives the expressions evaluated below.
+    """
     validate(R1, R2, w1, w2, mu=1.0)
     den = R2**2 - R1**2
     A = (w2 * R2**2 - w1 * R1**2) / den
@@ -66,6 +109,10 @@ def coefficients(R1, R2, w1, w2):
 
 
 def _check_r(r, R1, R2):
+    # Accept a scalar or an array of shape (n,); return a float array of
+    # shape (n,) (0-d for scalar input).  Every element must lie inside
+    # the annulus [R1, R2]: evaluating outside the fluid domain is a
+    # caller error, and failing loudly here beats returning nonsense.
     r = np.asarray(r, dtype=float)
     if np.any(r < R1) or np.any(r > R2):
         raise ValueError("Evaluation radius r must lie inside the annulus [R1, R2].")
@@ -73,28 +120,56 @@ def _check_r(r, R1, R2):
 
 
 def angular_velocity(r, R1, R2, w1, w2):
-    """Angular velocity omega(r) [rad/s] of the fluid."""
+    """Angular velocity omega(r) [rad/s] of the fluid.
+
+    r: scalar or array of shape (n,) [m]; returns same shape [rad/s].
+    Each output element is A + B / r_i**2 for the corresponding input
+    radius r_i: the 1/r**2 term is the differential-rotation part, so
+    the fluid shears most where r is smallest (near the inner wall).
+    """
     A, B = coefficients(R1, R2, w1, w2)
     r = _check_r(r, R1, R2)
     return A + B / r**2
 
 
 def tangential_velocity(r, R1, R2, w1, w2):
-    """Azimuthal velocity v_theta(r) = r * omega(r) [m/s]."""
+    """Azimuthal velocity v_theta(r) = r * omega(r) [m/s].
+
+    r: scalar or array of shape (n,) [m]; returns same shape [m/s].
+    Multiplication by r converts angular velocity [rad/s] to the linear
+    speed of the fluid at that radius — the quantity a probe fixed in the
+    laboratory would measure.
+    """
     r = _check_r(np.asarray(r, dtype=float), R1, R2)
     return r * angular_velocity(r, R1, R2, w1, w2)
 
 
 def shear_rate(r, R1, R2, w1, w2):
-    """Shear rate gamma_dot(r) = r * d(omega)/dr [1/s] (signed)."""
+    """Shear rate gamma_dot(r) = r * d(omega)/dr [1/s] (signed).
+
+    r: scalar or array of shape (n,) [m]; returns same shape [1/s].
+    Differentiating omega(r) = A + B/r**2 gives d(omega)/dr = -2*B/r**3,
+    and multiplying by r yields -2*B/r**2: the shear rate falls as
+    1/r**2, strongest at the inner wall.  The sign follows the sign of
+    (w2 - w1): shearing one way when the inner cylinder outruns the
+    outer, the other way for counter-rotation.
+    """
     _, B = coefficients(R1, R2, w1, w2)
     r = _check_r(r, R1, R2)
     return -2.0 * B / r**2
 
 
 def torque_per_length(R1, R2, w1, w2, mu):
-    """Torque per unit axial length [N*m/m] the inner cylinder exerts on the
-    fluid.  Positive when driving the fluid in the +theta sense (w1 > w2)."""
+    """Torque per unit axial length [N.m/m] the inner cylinder exerts on the
+    fluid.  Positive when driving the fluid in the +theta sense (w1 > w2).
+
+    All inputs scalar; returns a scalar.  From the torque balance,
+    tau(r) = -(T/L)/(2*pi*r**2), and Newton's law at the inner wall,
+    tau(R1) = mu * gamma_dot(R1) = mu * (-2*B/R1**2); eliminating
+    tau(R1) gives T/L = 4*pi*mu*B.  Torque is therefore proportional to
+    viscosity and to the differential-rotation constant B: no relative
+    rotation (B = 0) means no torque, as expected.
+    """
     validate(R1, R2, w1, w2, mu)
     _, B = coefficients(R1, R2, w1, w2)
     return 4.0 * math.pi * mu * B
@@ -103,8 +178,11 @@ def torque_per_length(R1, R2, w1, w2, mu):
 def shear_stress(r, R1, R2, w1, w2, mu):
     """Shear stress tau_rtheta(r) [Pa] (signed; see module docstring).
 
-    Falls as 1/r**2 — a direct consequence of the torque balance, independent
-    of the velocity profile details.
+    r: scalar or array of shape (n,) [m]; returns same shape [Pa].
+    Falls as 1/r**2 — a direct consequence of the torque balance,
+    independent of the velocity profile details: the same torque crosses
+    every cylindrical shell, but the shell area grows with r, so the
+    stress (torque per area per lever arm) must decay as 1/r**2.
     """
     validate(R1, R2, w1, w2, mu)
     r = _check_r(r, R1, R2)
@@ -112,5 +190,11 @@ def shear_stress(r, R1, R2, w1, w2, mu):
 
 
 def rpm_to_rad_s(n_rpm):
-    """Convert revolutions per minute to rad/s (sign preserved)."""
+    """Convert revolutions per minute to rad/s (sign preserved).
+
+    n_rpm: scalar or array of shape (n,) [rpm]; returns same shape
+    [rad/s].  One revolution is 2*pi radians and one minute is 60 s, so
+    the factor is 2*pi/60; the sign is preserved so negative rpm
+    (clockwise) stays negative in rad/s.
+    """
     return np.asarray(n_rpm, dtype=float) * 2.0 * math.pi / 60.0
