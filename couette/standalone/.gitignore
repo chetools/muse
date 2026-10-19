@@ -1,0 +1,5 @@
+# Build artifacts: the generated HTML pages are published to the gh-pages
+# branch (muse-html/), not tracked on main. vendor/ holds the downloaded
+# plotly.js, fetched automatically by build_standalone.py when missing.
+*.html
+vendor/

@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+notebook/code_walkthrough_wasm.py
+notebook/code_walkthrough_wasm_run.py
+# ... but the MoLab variant is a committed deliverable (mirrored by MoLab):
+!notebook/code_walkthrough_molab.py
