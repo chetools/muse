@@ -18,6 +18,7 @@ not a project.
 | Couette flow | `couette/` | Streamlit app: steady laminar velocity profile of a Newtonian fluid between rotating concentric cylinders | `streamlit run couette/app.py` |
 | Tanks in series | `tube/` | Streamlit app + notebooks: tracer pulse through N equal CSTRs, band broadening, plug-flow limit | `streamlit run tube/app.py` |
 | Absorber (tray) | `absorber/` | Streamlit app: absorption-column calculations | `streamlit run absorber/app.py` |
+| CSTR digital twin | `twin-cstr/` | WASM educational page: jacketed exothermic CSTR digital twin — model-vs-twin drift, soft sensor, what-if analysis (Python-only) | [Standalone page](https://chetools.github.io/muse/muse-html/twin-cstr-standalone-v1.html) |
 
 ## Deploying a Streamlit app from here
 
