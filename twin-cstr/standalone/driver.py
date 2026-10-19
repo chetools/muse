@@ -897,7 +897,16 @@ def render_pf_scene(name):
 # TwinMHE on the short parity scenario. Nothing above this banner is
 # modified.
 # ======================================================================
-import twin_mhe as TMHE
+def _tmhe():
+    """Import twin_mhe lazily.
+
+    twin_mhe.py needs scipy.optimize at module import time. A scipy load
+    failure must only break the labeled Python fallback, never page boot,
+    so the import happens here, on first fallback use, instead of at
+    driver import time.
+    """
+    import twin_mhe as TMHE
+    return TMHE
 
 MHE_UA_MIN = 1.0  # J/(s K); matches twin_mhe.STATE_BOUNDS
 MHE_CHUNK = 240
@@ -1282,7 +1291,7 @@ def start_mhe_py(params_json):
         params=params, dt=dt, n=n, i=0, H=H, fault=fault,
         plant=M.Plant(p=p, seed=int(params.get("seed", 7)),
                       lab_interval=float(params.get("lab_interval", 1200.0))),
-        twin=TMHE.TwinMHE(dt=dt, H=H, n_iter=25),
+        twin=_tmhe().TwinMHE(dt=dt, H=H, n_iter=25),
         rec=_new_mhe_rec())
     return json.dumps({"n_steps": n, "H": H, "note": "python-fallback"})
 
@@ -1379,7 +1388,7 @@ def start_mhe_cmp_py(samples_json):
     req = json.loads(samples_json)
     CACHE["_mhe_cmp"] = dict(
         samples=req["samples"], n=req["n"], i=0,
-        twin=TMHE.TwinMHE(dt=10.0, H=req["H"], n_iter=50),
+        twin=_tmhe().TwinMHE(dt=10.0, H=req["H"], n_iter=50),
         ests=[])
     return json.dumps({"n_steps": req["n"]})
 

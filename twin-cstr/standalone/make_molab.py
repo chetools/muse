@@ -223,6 +223,13 @@ def main():
     assert "'''" not in model_src, "triple quotes break the inline string"
     assert "</script" not in model_src.lower()
     model_b64 = base64.b64encode(model_src.encode("utf-8")).decode("ascii")
+    # --- shared EKF-style arrival-cost recursion (imported by cstr_model.py
+    # --- and twin_mhe.py; registered in sys.modules before cstr_model) ---
+    arrival_src = open(os.path.join(PYTHON_DIR, "arrival_cost.py"),
+                       encoding="utf-8").read()
+    assert "'''" not in arrival_src, "triple quotes break the inline string"
+    assert "</script" not in arrival_src.lower()
+    arrival_b64 = base64.b64encode(arrival_src.encode("utf-8")).decode("ascii")
     # --- Particle-filter panel (PF track): inline twin_pf.py (v2) ---
     twpf_src = open(os.path.join(PYTHON_DIR, "twin_pf.py"),
                     encoding="utf-8").read()
@@ -273,13 +280,21 @@ def main():
     ]
     # The model source is byte-identical to python/cstr_model.py (asserted
     # below); it is base64-wrapped only so the blob need not be re-indented
-    # inside the cell body. twin_pf.py is inlined the same way (PF track, v2);
-    # it imports cstr_model, so it is exec'd after cstr_model is registered.
+    # inside the cell body. arrival_cost.py is inlined the same way and
+    # registered first, because cstr_model.py imports from it. twin_pf.py is
+    # inlined the same way (PF track, v2); it imports cstr_model, so it is
+    # exec'd after cstr_model is registered.
     setup_body = [
         "    import marimo as mo",
         "    import numpy as np, base64",
         "    import plotly.graph_objects as go",
             "    import sys as _sys, types as _types",
+        # arrival_cost must be registered before cstr_model is exec'd,
+        # because cstr_model.py does `from arrival_cost import ...`
+        f'    ARRIVAL_SRC = base64.b64decode("{arrival_b64}").decode("utf-8")',
+        "    _mod_ac = _types.ModuleType('arrival_cost')",
+        '    exec(compile(ARRIVAL_SRC, "arrival_cost.py", "exec"), _mod_ac.__dict__)',
+        '    _sys.modules["arrival_cost"] = _mod_ac',
         f'    MODEL_SRC = base64.b64decode("{model_b64}").decode("utf-8")',
         "    _mod = _types.ModuleType('cstr_model')",
         '    exec(compile(MODEL_SRC, "cstr_model.py", "exec"), _mod.__dict__)',
@@ -349,14 +364,15 @@ def main():
     out_text = "\n".join(parts) + "\n"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(out_text)
-    # byte-identity: what the notebook executes is exactly cstr_model.py,
-    # twin_pf.py (and twin_mhe.py with --mhe)
+    # byte-identity: what the notebook executes is exactly arrival_cost.py,
+    # cstr_model.py, twin_pf.py (and twin_mhe.py with --mhe)
     blobs = re.findall(r'base64\.b64decode\("([A-Za-z0-9+/=]+)"\)', out_text)
-    expect = ["cstr_model.py", "twin_pf.py"] + (["twin_mhe.py"] if with_mhe
-                                               else [])
+    expect = (["arrival_cost.py", "cstr_model.py", "twin_pf.py"]
+              + (["twin_mhe.py"] if with_mhe else []))
     assert len(blobs) == len(expect), \
         f"expected {len(expect)} b64 blobs, found {len(blobs)}"
-    srcs = [model_src, twpf_src] + ([twmhe_src] if with_mhe else [])
+    srcs = [arrival_src, model_src, twpf_src] + ([twmhe_src] if with_mhe
+                                                else [])
     for blob, src, nm in zip(blobs, srcs, expect):
         assert base64.b64decode(blob).decode("utf-8") == src, \
             f"byte-identity failed for {nm}"

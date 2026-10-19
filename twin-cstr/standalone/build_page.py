@@ -4,7 +4,8 @@
 Reads python/cstr_model.py and standalone/{driver.py,theory.md,walkthrough.py},
 server-renders the theory KaTeX at build time, inlines plotly.js, and emits a
 single self-contained HTML file. At open time the page boots Pyodide (with
-SciPy) from CDN, installs cstr_model.py and driver.py verbatim, and runs the
+SciPy) from CDN, installs cstr_model.py, arrival_cost.py, twin_pf.py,
+twin_mhe.py and driver.py verbatim, and runs the
 plant/twin scenarios in Python on every Run click. If the Python runtime
 cannot load, the page shows an explicit error -- calculations are never
 reimplemented in JavaScript.
@@ -56,10 +57,10 @@ PYODIDE_URL = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/pyodide
 
 # --- MHE panel (MHE track): v3 output names (additive change) ---
 # v1/v2 files are untouched; v2 remains published.
-OUT_NAME = "twin-cstr-standalone-v3.html"
-STUB_NAME = "twin-cstr-standalone-v3-stub.html"
+OUT_NAME = "twin-cstr-standalone-v4.html"
+STUB_NAME = "twin-cstr-standalone-v4-stub.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
-             "twin-cstr/walkthrough_molab_v3.py")
+             "twin-cstr/walkthrough_molab_v4.py")
 
 # --- MHE panel (MHE track): WASM locations (v3) ---
 WASM_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "solver", "wasm"))
@@ -150,8 +151,13 @@ def load_sources():
     mhe_theory_md = open(os.path.join(HERE, os.pardir, "drafts",
                                       "theory_mhe.md"),
                          encoding="utf-8").read()
+    # --- shared EKF-style arrival-cost recursion (imported by cstr_model.py
+    # --- and twin_mhe.py; must be installed into the Pyodide FS at boot) ---
+    arrival = open(os.path.join(PYTHON_DIR, "arrival_cost.py"),
+                   encoding="utf-8").read()
     for name, src in (("cstr_model.py", model), ("driver.py", driver),
-                       ("twin_pf.py", twpf), ("twin_mhe.py", twmhe)):
+                       ("twin_pf.py", twpf), ("twin_mhe.py", twmhe),
+                       ("arrival_cost.py", arrival)):
         if "</script" in src.lower():
             raise SystemExit(f"{name} contains a closing script tag; refusing to embed")
     # --- MHE panel (MHE track): WASM sources (v3) ---
@@ -164,7 +170,7 @@ def load_sources():
     if _re.search(r"(?<![A-Za-z_.])TextEncoder\s*\(", wasm_api_src):
         raise SystemExit("mhe_api.mjs uses a browser-only API")
     return model, driver, theory_md, twpf, pf_theory_md, twmhe, \
-        mhe_theory_md, wasm_b64, wasm_api_src
+        mhe_theory_md, wasm_b64, wasm_api_src, arrival
 
 
 EXTRA_CSS = """
@@ -909,6 +915,8 @@ const DRIVER_SRC = __BUILD_DRIVER_SRC__;
 const TWPF_SRC = __BUILD_TWPF_SRC__;
 // --- MHE panel (MHE track): additive source (v3) ---
 const TWMHE_SRC = __BUILD_TWMHE_SRC__;
+// --- shared EKF-style arrival-cost recursion (imported by cstr_model.py) ---
+const ARRIVAL_SRC = __BUILD_ARRIVAL_SRC__;
 const PYODIDE_URL = "__BUILD_PYODIDE_URL__";
 const STUB_MODE = false;
 function loadScript(src){
@@ -935,6 +943,8 @@ async function boot(){
     pyodide.FS.writeFile('/twin_pf.py', TWPF_SRC);
     // --- MHE panel (MHE track): additive source (v3) ---
     pyodide.FS.writeFile('/twin_mhe.py', TWMHE_SRC);
+    // --- shared arrival-cost module (imported by cstr_model.py) ---
+    pyodide.FS.writeFile('/arrival_cost.py', ARRIVAL_SRC);
     await pyodide.runPythonAsync("import sys; sys.path.insert(0, '/');\nimport driver");
     driver = pyodide.globals.get('driver');
     $('boot').hidden = true;
@@ -1285,6 +1295,8 @@ __BUILD_KATEX_CSS__
         <!-- MHE panel (MHE track): code listing (v3, additive) -->
         <h3>twin_mhe.py &mdash; moving-horizon-estimation twin</h3>
         __BUILD_TWMHE_HTML__
+        <h3>arrival_cost.py &mdash; shared EKF-style arrival-cost recursion</h3>
+        __BUILD_ARRIVAL_HTML__
       </section>
     </section>
   </div>
@@ -1597,7 +1609,7 @@ def main():
     stub = "--stub" in sys.argv[1:]
     log("loading sources...")
     model, driver_src, theory_md, twpf_src, pf_theory_md, twmhe_src, \
-        mhe_theory_md, wasm_b64, wasm_api_src = load_sources()
+        mhe_theory_md, wasm_b64, wasm_api_src, arrival_src = load_sources()
     log("converting theory markdown...")
     theory_html = S.ssr_katex(theory_md_to_html(theory_md))
     # --- Particle-filter panel (PF track): PF theory sub-panel (v2) ---
@@ -1617,6 +1629,7 @@ def main():
     driver_html, _ = S.highlight_py(driver_src)
     twpf_html, _ = S.highlight_py(twpf_src)  # PF track (v2)
     twmhe_html, _ = S.highlight_py(twmhe_src)  # MHE track (v3)
+    arrival_html, _ = S.highlight_py(arrival_src)  # shared arrival-cost module
     log("building MHE Web-Worker source...")
     worker_src = _worker_src(wasm_api_src)
     log(f"worker source: {len(worker_src)} chars; "
@@ -1642,6 +1655,7 @@ def main():
     # --- MHE panel (MHE track): additive tokens (v3) ---
     page = sub_once(page, "__BUILD_MHE_THEORY_HTML__", mhe_theory_html)
     page = sub_once(page, "__BUILD_TWMHE_HTML__", twmhe_html)
+    page = sub_once(page, "__BUILD_ARRIVAL_HTML__", arrival_html)
     page = sub_once(page, "__BUILD_MHE_JS__", MHE_JS)
     page = sub_once(page, "__BUILD_WASM_B64__", wasm_b64)
     page = sub_once(page, "__BUILD_WORKER_SRC__", json.dumps(worker_src))
@@ -1670,6 +1684,7 @@ def main():
                 .replace("__BUILD_TWPF_SRC__", json.dumps(twpf_src))
                 # --- MHE panel (MHE track): additive src (v3) ---
                 .replace("__BUILD_TWMHE_SRC__", json.dumps(twmhe_src))
+                .replace("__BUILD_ARRIVAL_SRC__", json.dumps(arrival_src))
                 .replace("__BUILD_PYODIDE_URL__", PYODIDE_URL))
         log("precomputing default run for instant first paint...")
         pre = json.loads(make_prestart_data())
@@ -1692,8 +1707,10 @@ def main():
                 "__BUILD_TWPF_SRC__", "__BUILD_PF_THEORY_HTML__",
                 "__BUILD_TWPF_HTML__",
                 # --- MHE panel (MHE track): additive tokens (v3) ---
-                "__BUILD_TWMHE_SRC__", "__BUILD_MHE_THEORY_HTML__",
-                "__BUILD_TWMHE_HTML__", "__BUILD_WASM_B64__",
+                "__BUILD_TWMHE_SRC__", "__BUILD_ARRIVAL_SRC__",
+                "__BUILD_MHE_THEORY_HTML__",
+                "__BUILD_TWMHE_HTML__", "__BUILD_ARRIVAL_HTML__",
+                "__BUILD_WASM_B64__",
                 "__BUILD_WORKER_SRC__", "__BUILD_MHE_JS__"):
         if tok in page:
             raise SystemExit(f"unreplaced token: {tok}")
