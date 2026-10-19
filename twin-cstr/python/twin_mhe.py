@@ -152,8 +152,9 @@ def _rk4_batch(X, Fj, F, T0, tp, dt, n_sub):
 class TwinMHE:
     """Moving-horizon twin estimator on [C_A, T, T_j, UA].
 
-    Consumes only the published stream. step(sample) returns the same keys
-    as TwinEKF.step plus a diagnostics entry.
+    Consumes only the published stream. step(sample) returns exactly the
+    keys of TwinEKF.step (estimator panel contract, section 2.2);
+    per-step optimizer health is exposed through diagnostics().
     """
 
     def __init__(self, tp=None, c=None, dt=10.0, H=30, n_iter=50,
@@ -186,19 +187,21 @@ class TwinMHE:
                             sigma_T=sigma_T, sigma_Tj=sigma_Tj,
                             sigma_lab=sigma_lab, q_UA=q_UA,
                             lab_delay=lab_delay)
-        self.resid_T = []
-        self.resid_Tj = []
+        self._n_iter_trace = []   # per-step SLSQP iteration counts
+        self._status_trace = []   # per-step solve statuses
+        self._bounds_trace = []   # per-step active-bound name lists
 
     # -- public interface -------------------------------------------------
     def step(self, sample):
         """Consume one published sample; return the twin's state estimate.
 
-        Returns dict(C_A, T, T_j, UA, resid_T, resid_Tj, Fj, diagnostics),
-        where diagnostics carries solve_status (converged / iteration-limit
-        / infeasible), n_iter, and active_bounds (bound names active at the
-        solution, e.g. "UA_lb@3" for the UA lower bound at window node 3).
-        resid_T and resid_Tj are the posterior measurement residuals of the
-        latest sample.
+        Returns dict(C_A, T, T_j, UA, resid_T, resid_Tj, Fj) with exactly
+        the keys of TwinEKF.step (estimator panel contract, section 2.2).
+        resid_T and resid_Tj are the pre-update measurement residuals of
+        the latest sample, taken from the shared arrival-cost EKF recursion
+        stepped on the same stream -- identical gating to TwinEKF, so the
+        laboratory-innovation fault flag fires under the same conditions.
+        Per-step optimizer health is available from diagnostics().
         """
         dt, c = self.dt, self.c
         # the twin runs its own copy of the published PI controller,
@@ -208,8 +211,11 @@ class TwinMHE:
             pass
         else:
             self.I_ctrl += e * dt
-        # advance the arrival-cost filter on the same published stream
+        # advance the arrival-cost filter on the same published stream;
+        # its pre-update residuals are this step's resid_T / resid_Tj
         self._ekf.step(sample)
+        rT = float(self._ekf.resid_T[-1])
+        rTj = float(self._ekf.resid_Tj[-1])
         self._buf.append(dict(t=sample["t"], yT=sample["T"],
                               yTj=sample["T_j"], F=sample["F"],
                               T0=sample["T0"], Fj=Fj,
@@ -217,15 +223,36 @@ class TwinMHE:
                               lab_t=sample.get("lab_t_sample")))
         H_eff = min(self.H, len(self._buf) - 1)
         nodes = self._buf[len(self._buf) - H_eff - 1:]
-        x_hat, diagnostics = self._solve_window(nodes, H_eff)
-        self.resid_T.append(float(sample["T"] - x_hat[1]))
-        self.resid_Tj.append(float(sample["T_j"] - x_hat[2]))
+        x_hat, diag = self._solve_window(nodes, H_eff)
+        self._n_iter_trace.append(diag["n_iter"])
+        self._status_trace.append(diag["solve_status"])
+        self._bounds_trace.append(diag["active_bounds"])
         while len(self._buf) > self.H + 1:
             self._buf.pop(0)
         return dict(C_A=float(x_hat[0]), T=float(x_hat[1]),
                     T_j=float(x_hat[2]), UA=float(x_hat[3]),
-                    resid_T=self.resid_T[-1], resid_Tj=self.resid_Tj[-1],
-                    Fj=float(Fj), diagnostics=diagnostics)
+                    resid_T=rT, resid_Tj=rTj, Fj=float(Fj))
+
+    def diagnostics(self):
+        """Per-step health traces (estimator panel contract, section 2.3).
+
+        lab_innov is the list of (t, innovation, innovation_std) tuples
+        recorded before each delayed laboratory-sample update, produced by
+        the shared arrival-cost EKF recursion on the same stream -- the
+        same discrepancy-against-estimate-at-sampling-time that TwinEKF
+        records, so fault-detection gating is identical across estimators.
+        n_iter, solve_status, and active_bounds are the per-step optimizer
+        traces (solve_status entries are one of converged /
+        iteration-limit / infeasible; active_bounds entries name bounds
+        active at the solution, e.g. "UA_lb@3").
+        """
+        return dict(
+            lab_innov=[(float(t), float(v), float(s))
+                       for (t, v, s) in self._ekf.lab_innov],
+            n_iter=list(self._n_iter_trace),
+            solve_status=list(self._status_trace),
+            active_bounds=[list(b) for b in self._bounds_trace],
+        )
 
     # -- window problem ----------------------------------------------------
     def _arrival_pair(self, t0):

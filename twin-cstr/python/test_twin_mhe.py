@@ -43,15 +43,15 @@ def test_mhe_deterministic():
         for _ in range(180):
             e = twin.step(plant.step(DT))
             out.append((e["C_A"], e["T"], e["T_j"], e["UA"], e["Fj"],
-                        e["resid_T"], e["resid_Tj"],
-                        e["diagnostics"]["solve_status"],
-                        e["diagnostics"]["n_iter"]))
-        return out
+                        e["resid_T"], e["resid_Tj"]))
+        return out, twin.diagnostics()
 
-    first, second = trajectory(), trajectory()
+    (first, d1), (second, d2) = trajectory(), trajectory()
     assert len(first) == len(second) == 180
     for a, b in zip(first, second):
         assert a == b
+    assert d1["solve_status"] == d2["solve_status"]
+    assert d1["n_iter"] == d2["n_iter"]
 
 
 def test_mhe_matches_ekf_nominal():
@@ -62,12 +62,10 @@ def test_mhe_matches_ekf_nominal():
     mhe = TwinMHE(H=6, n_iter=50)
     n = 360
     ua_true, ua_ekf, ua_mhe = [], [], []
-    mhe_ests = []
     for _ in range(n):
         s = plant.step(DT)
         e = ekf.step(s)
         m = mhe.step(s)
-        mhe_ests.append(m)
         ua_true.append(s["_true"]["UA"])
         ua_ekf.append(e["UA"])
         ua_mhe.append(m["UA"])
@@ -77,8 +75,8 @@ def test_mhe_matches_ekf_nominal():
     assert abs(rmse_mhe - rmse_ekf) / rmse_ekf <= 0.05, \
         (rmse_ekf, rmse_mhe)
     # the nominal run must not touch the bounds
-    assert all(len(e["diagnostics"]["active_bounds"]) == 0
-               for e in mhe_ests)
+    assert all(len(b) == 0
+               for b in mhe.diagnostics()["active_bounds"])
 
 
 def test_mhe_respects_ua_bound():
@@ -90,12 +88,13 @@ def test_mhe_respects_ua_bound():
     plant = Plant(p=dict(PLANT_P, UA0=0.8, tau_foul=1e12), seed=21)
     mhe = TwinMHE(H=N_SMALL_H, n_iter=50)
     ests = [mhe.step(plant.step(DT)) for _ in range(360)]
+    diag = mhe.diagnostics()
     uas = [e["UA"] for e in ests]
     assert min(uas) >= 1.0 - 1e-6
-    assert any(any(b.startswith("UA_lb") for b in
-                   e["diagnostics"]["active_bounds"]) for e in ests)
-    assert all(e["diagnostics"]["solve_status"] in
-               ("converged", "iteration-limit") for e in ests)
+    assert any(any(b.startswith("UA_lb") for b in step_b)
+               for step_b in diag["active_bounds"])
+    assert all(s in ("converged", "iteration-limit")
+               for s in diag["solve_status"])
 
 
 def _single_shooting_reference(buf, xbar, Pbar, tp, dt, n_sub,
@@ -189,6 +188,24 @@ def test_mhe_agrees_with_single_shooting():
                     ests[-1]["T_j"], ests[-1]["UA"]])
     rel = np.abs(got - ref) / np.maximum(1.0, np.abs(ref))
     assert np.all(rel <= 1e-4), (got, ref, rel)
+
+
+def test_mhe_step_conforms_to_panel_contract():
+    """step() returns exactly the seven TwinEKF.step keys (contract 2.2);
+    diagnostics() exposes lab_innov plus MHE health traces (contract 2.3)."""
+    plant = Plant(seed=3)
+    twin = TwinMHE(H=N_SMALL_H, n_iter=50)
+    keys = None
+    for _ in range(12):
+        e = twin.step(plant.step(DT))
+        keys = set(e.keys())
+    assert keys == {"C_A", "T", "T_j", "UA", "resid_T", "resid_Tj", "Fj"}, keys
+    d = twin.diagnostics()
+    assert "lab_innov" in d and "n_iter" in d and "solve_status" in d
+    assert len(d["n_iter"]) == 12 and len(d["solve_status"]) == 12
+    for t, v, s in d["lab_innov"]:
+        assert isinstance(t, float) and isinstance(v, float) \
+            and isinstance(s, float)
 
 
 def test_honesty_mhe_cannot_see_plant():
