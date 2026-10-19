@@ -237,7 +237,9 @@ with $UA \ge UA_{\min}$ cannot take that route and must instead distribute
 the mismatch across the noise terms, which is precisely the behavior that
 keeps the fault detectable. Haseltine and Rawlings (2005) exhibit EKF
 failures on chemical reaction networks even without plant-model mismatch,
-with constrained MHE succeeding on the same examples.
+with constrained MHE succeeding on the same examples. Constrained linear
+state estimation by moving horizon is due to Rao, Rawlings, and Lee (2001);
+constrained process monitoring to Rao and Rawlings (2002).
 
 ## Delayed laboratory samples
 
