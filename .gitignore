@@ -5,3 +5,6 @@ __pycache__/
 *.log
 data/raw/
 .DS_Store
+# Built WASM pages are published to muse-html/ on the gh-pages branch,
+# never committed here. (Does not affect already-tracked .html files.)
+*.html
