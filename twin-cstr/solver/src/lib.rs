@@ -58,6 +58,10 @@ pub mod model;
 pub mod params;
 pub mod qp;
 pub mod rti;
+/// WebAssembly C-ABI bindings for the estimator (Phase 3). Compiled for
+/// `wasm32` targets only; see `wasm/README.md` for the ABI contract.
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
 
 /// One published sensor-stream sample consumed by the estimators.
 ///

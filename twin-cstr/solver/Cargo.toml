@@ -4,7 +4,21 @@ version = "0.1.0"
 edition = "2021"
 description = "Real-time-iteration moving-horizon estimator for the jacketed-CSTR digital twin"
 
+[lib]
+# rlib for the native tests/examples; cdylib so the wasm32 release build
+# emits mhe_rti.wasm with the C-ABI exports (Phase 3).
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 # Intentionally empty. All linear algebra is hand-rolled in src/linalg.rs so
 # that the crate builds for wasm32-unknown-unknown with no dependency tree
 # (Phase 3). See src/linalg.rs for the rationale.
+
+# Phase 3: release settings for the WebAssembly build. Applied to native
+# release builds as well; `cargo test --release` still runs (a panicking
+# test aborts the harness instead of unwinding).
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
