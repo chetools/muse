@@ -588,4 +588,101 @@ figure(
 )
 """,
     ),
+    # --- MHE panel (MHE track): additive cells (v3) ---
+    # Reduced-scope scenario: 1 h window, estimation decimated to every
+    # 60 s (the plant still publishes every 10 s). The App tab runs the
+    # Rust RTI estimator live; these cells use the Python TwinMHE
+    # reference, which is also the labeled in-browser fallback.
+    dict(
+        title="The twin: moving-horizon estimation", mhe=True,
+        md=r"""
+The moving-horizon-estimation twin reconstructs the same augmented state
+vector $x = [C_A\;\; T\;\; T_j\;\; UA]^{\mathsf{T}}$ as the EKF twin, where
+$C_A$ is the reactant concentration (mol L$^{-1}$), $T$ the reactor
+temperature (K), $T_j$ the jacket temperature (K), and $UA$ the fouling
+conductance (J s$^{-1}$ K$^{-1}$). Each step it solves a small nonlinear
+program over a moving window of the last $H$ samples ($H = 30$ below):
+minimize the arrival cost on the window's initial state plus
+process-noise, temperature-measurement, and lab-sample stage costs,
+subject to box bounds ($C_A \ge 0$, $UA \ge UA_{\min} = 1.0$
+J s$^{-1}$ K$^{-1}$). The bounds are the structural difference from the
+EKF: they are enforced inside the optimization, not projected afterwards.
+The App tab runs this estimator live as Rust compiled to WebAssembly
+(one Gauss--Newton SQP iteration per measurement); the cell below uses
+the Python reference implementation with a converged SLSQP solve.
+""",
+        code=r"""
+import twin_mhe as MHE
+
+twin = MHE.TwinMHE(dt=60.0, H=30, n_iter=25)
+print("twin state: [C_A, T, T_j, UA] over a moving window")
+print(f"H = {twin.H} samples, dt = {twin.dt} s, "
+      f"solver iterations per step <= {twin.n_iter}")
+print("box bounds (C_A, T, T_j, UA):", MHE.STATE_BOUNDS)
+print("step() returns:", ["C_A", "T", "T_j", "UA", "resid_T", "resid_Tj",
+                          "Fj"])
+print("diagnostics():", sorted(twin.diagnostics().keys()))
+""",
+    ),
+    dict(
+        title="MHE on a reduced-scope fouling scenario", mhe=True,
+        md=r"""
+Reduced-scope scenario: a 1 h fouling run with the estimator stepped
+every 60 s (the plant still publishes every $\Delta t = 10$ s; only every
+sixth sample reaches the twin, so the twin's sampling interval is
+$60$ s). This keeps the Python reference run to about a minute while
+showing the full MHE machinery — window optimization, bound handling,
+and the per-step health traces. The App tab runs the same estimator at
+full scope (8 h, every 10 s) as compiled Rust.
+""",
+        code=r"""
+import twin_mhe as MHE
+
+DT, DEC = 10.0, 6  # plant publishes every 10 s; the twin steps every 60 s
+plant = M.Plant(seed=7)
+twin = MHE.TwinMHE(dt=DT * DEC, H=30, n_iter=25)
+n = int(1.0 * 3600 / DT)
+t, ua_t, ua_e, ca_t, ca_e = [], [], [], [], []
+for i in range(n):
+    s = plant.step(DT)
+    if i % DEC:
+        continue
+    pub = {k: v for k, v in s.items() if not k.startswith("_")}
+    est = twin.step(pub)
+    tr = s["_true"]
+    t.append(s["t"] / 3600.0)
+    ua_t.append(tr["UA"]); ua_e.append(est["UA"])
+    ca_t.append(tr["C_A"]); ca_e.append(est["C_A"])
+ua_rmse = float(np.sqrt(np.mean((np.array(ua_e) - np.array(ua_t))**2)))
+ca_rmse = float(np.sqrt(np.mean((np.array(ca_e) - np.array(ca_t))**2)))
+diag = twin.diagnostics()
+print(f"reduced scope: 1 h run, twin stepped every {DEC * DT:.0f} s "
+      f"({len(t)} MHE steps)")
+print(f"MHE UA  RMSE: {ua_rmse:.3f} J s-1 K-1")
+print(f"MHE C_A RMSE: {ca_rmse:.4f} mol L-1")
+print(f"bound activations: "
+      f"{sum(1 for b in diag['active_bounds'] if b)} steps")
+print(f"solve statuses: {sorted(set(diag['solve_status']))}")
+figure(
+    [
+        dict(x=t, y=ua_t, mode="lines", name="UA true (hidden)"),
+        dict(x=t, y=ua_e, mode="lines", name="UA MHE estimate"),
+    ],
+    dict(title="Reduced-scope fouling tracking (1 h, 60 s steps)",
+         xaxis=dict(title="time [h]"), yaxis=dict(title="UA [J s-1 K-1]"),
+         legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+         margin=dict(r=170)),
+)
+figure(
+    [
+        dict(x=t, y=ca_t, mode="lines", name="C_A true (hidden)"),
+        dict(x=t, y=ca_e, mode="lines", name="C_A MHE estimate"),
+    ],
+    dict(title="Reduced-scope soft sensor (1 h, 60 s steps)",
+         xaxis=dict(title="time [h]"), yaxis=dict(title="C_A [mol L-1]"),
+         legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+         margin=dict(r=170)),
+)
+""",
+    ),
 ]

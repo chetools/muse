@@ -16,6 +16,8 @@ import math
 
 import numpy as np
 
+from arrival_cost import ekf_predict, ekf_update
+
 # ---------------------------------------------------------------------------
 # PLANT: hidden true parameters (never visible to the twin)
 # ---------------------------------------------------------------------------
@@ -374,29 +376,26 @@ class TwinEKF:
         self.lab_innov = []  # (t_deliver, innovation, std) per lab sample
 
     def _predict(self, x, Pm, Fj, F, T0):
-        sol = _solve_ivp(lambda t, xa: _twin_rhs_s(xa, Fj, F, T0, self.tp),
-                         (0, self.dt), x, rtol=1e-6, atol=1e-8)
-        xp = sol.y[:, -1]
-        J = twin_jac(xp, Fj, F, T0, self.tp)   # linearize at the prediction
-        # discrete transition: Euler is accurate here (|J|*dt ~ 1e-2) and
-        # far cheaper than expm; verified against expm in analysis/bench.py
-        Phi = np.eye(4) + J * self.dt
-        Pp = Phi @ Pm @ Phi.T + self.Q
-        return xp, Pp
+        tp = self.tp
+        def transition(xx, dt_):
+            sol = _solve_ivp(lambda t, xa: _twin_rhs_s(xa, Fj, F, T0, tp),
+                             (0, dt_), xx, rtol=1e-6, atol=1e-8)
+            xp = sol.y[:, -1]
+            # linearize at the prediction; discrete transition by Euler,
+            # accurate here (|J|*dt ~ 1e-2) and far cheaper than expm;
+            # verified against expm in analysis/bench.py
+            Phi = np.eye(4) + twin_jac(xp, Fj, F, T0, tp) * dt_
+            return xp, Phi
+        # shared EKF-style recursion (see arrival_cost.py)
+        return ekf_predict(x, Pm, transition, self.dt, self.Q)
 
     def _update_T(self, xp, Pp, y):
         H = np.array([[0., 1., 0., 0.], [0., 0., 1., 0.]])
-        r = y - H @ xp
-        S = H @ Pp @ H.T + self.R
-        K = Pp @ H.T @ np.linalg.inv(S)
-        return xp + K @ r, (np.eye(4) - K @ H) @ Pp, r
+        return ekf_update(xp, Pp, y, H, self.R)
 
     def _update_lab(self, xp, Pp, c_meas):
         H = np.array([[1., 0., 0., 0.]])
-        r = np.array([c_meas]) - H @ xp
-        S = H @ Pp @ H.T + self.R_lab
-        K = Pp @ H.T @ np.linalg.inv(S)
-        return xp + K @ r, (np.eye(4) - K @ H) @ Pp
+        return ekf_update(xp, Pp, np.array([c_meas]), H, self.R_lab)
 
     def step(self, sample):
         """Consume one published sample; return the twin's state estimate."""
@@ -436,7 +435,7 @@ class TwinEKF:
         innov = float(sample["lab_C_A"] - h["x"][0])
         innov_std = float(np.sqrt(h["Pm"][0, 0] + self.R_lab[0, 0]))
         self.lab_innov.append((sample["t"], innov, innov_std))
-        x, Pm = self._update_lab(h["x"], h["Pm"], sample["lab_C_A"])
+        x, Pm, _ = self._update_lab(h["x"], h["Pm"], sample["lab_C_A"])
         self.hist[idx] = dict(h, x=x.copy(), Pm=Pm.copy())
         for j in range(idx + 1, len(self.hist)):
             hj = self.hist[j]
@@ -444,4 +443,5 @@ class TwinEKF:
             x, Pm, _ = self._update_T(xp, Pp, hj["y"])
             self.hist[j] = dict(hj, x=x.copy(), Pm=Pm.copy())
         xp, Pp = self._predict(x, Pm, Fj_now, sample["F"], sample["T0"])
-        return self._update_lab(xp, Pp, sample["lab_C_A"])
+        x, Pm, _ = self._update_lab(xp, Pp, sample["lab_C_A"])
+        return x, Pm
