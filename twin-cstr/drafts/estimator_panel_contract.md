@@ -1,6 +1,15 @@
 # Estimator panel contract — App-tab selector registry
 
 > STABLE. This document defines the shared interface between the standalone page App tab and every estimator twin (EKF, particle filter, MHE). It is read by the Bayesian panel track and the MHE track. Any change must be announced to both tracks before it is made; unannounced edits are not accepted.
+>
+> MHE TRACK DECLARATION (2026-10-19, v3 page integration) — the rows below
+> marked "to be declared by the MHE track" are hereby declared, per section 8,
+> announced to the Bayesian panel track via this contract update:
+> section 1 (`TwinMHE`, `twin_mhe.py`); section 2.3 (`n_iter`,
+> `solve_status`, `active_bounds` per-step traces); section 3 ($H$ default
+> 30, $H$ selector control); section 4 (live via the Rust RTI core compiled
+> to WebAssembly, with an explicitly labeled Pyodide-Python fallback);
+> section 5 (code listing `python/twin_mhe.py`).
 
 Notation: the symbol $N$ denotes particle count; $N_{\mathrm{eff}}$ denotes effective sample size; $dt$ denotes the sampling interval ($10$ s); $k$ denotes the discrete time index.
 
@@ -19,7 +28,7 @@ The page's estimator selector is driven by a registry keyed on a string estimato
 |---|---|---|
 | `"ekf"` | Extended Kalman filter | `TwinEKF`, `cstr_model.py` |
 | `"pf"` | Particle filter | `TwinPF`, `twin_pf.py` |
-| `"mhe"` | Moving horizon estimation | Class and module to be declared by the MHE track |
+| `"mhe"` | Moving horizon estimation | `TwinMHE`, `twin_mhe.py` (declared by the MHE track, 2026-10-19) |
 
 The selector offers all three keys plus a side-by-side mode that runs the selected pair on the identical scenario and the identical seed.
 
@@ -69,7 +78,7 @@ Each estimator class exposes a method `diagnostics()` returning a dict of estima
 | `lab_innov` | All estimators | List of `(t, innovation, innovation_std)` tuples recorded before each delayed laboratory-sample update |
 | `N_eff` | `"pf"` | Per-step effective sample size trace; required for the $N_{\mathrm{eff}}$ acceptance criterion and for the particle degeneracy scenes |
 | `P_diag` | `"ekf"` | Per-step state-covariance diagonal trace |
-| MHE-specific fields | `"mhe"` | To be declared by the MHE track; must include at least one per-step health trace (e.g. horizon cost or optimizer iterations) |
+| MHE-specific fields | `"mhe"` | Per-step health traces declared by the MHE track (2026-10-19): `n_iter` (optimizer iterations that step), `solve_status` (one of `converged` / `iteration-limit` / `infeasible`), `active_bounds` (bound names active at the solution, e.g. `"UA_lb@3"`). The WebAssembly RTI reports the same three quantities per step in its output slots 7–9 (`n_iter` is always 1: one Gauss–Newton SQP iteration per measurement). |
 
 New fields may be added by an estimator track without contract changes, but the fields above are mandatory and their names are fixed.
 
@@ -81,7 +90,7 @@ Default parameters per estimator and their exposure in the page controls:
 |---|---|---|
 | `"ekf"` | Process-noise covariance and measurement-noise covariance as in `cstr_model.py` | $\sigma_p$ scales (three sliders: $C_A$, $T$, $T_j$, $\pm 1$ decade around the defaults); random seed; scenario buttons |
 | `"pf"` | $N = 200$; resampling threshold $N_{\mathrm{thr}} = N/2$; Liu–West discount factor $\gamma = 0.97$; per-step process-noise standard deviations $\sigma_{p,C_A}$, $\sigma_{p,T}$, $\sigma_{p,Tj}$ matched to the EKF twin's process-noise covariance | $N$ (log-scale slider, $200$–$20000$); resampling toggle with threshold slider ($0.1N$–$N$); $\sigma_p$ scales (three sliders, $\pm 1$ decade); $\gamma$ ($0.90$–$1.00$); random seed; scenario buttons |
-| `"mhe"` | To be declared by the MHE track (horizon length $H$ at minimum) | To be declared by the MHE track |
+| `"mhe"` | Horizon length $H = 30$ samples (declared by the MHE track, 2026-10-19); real-time-iteration solver fixed at one Gauss–Newton SQP iteration per measurement; tunings $\sigma_T = \sigma_{T_j} = 0.3$ K, $\sigma_{\mathrm{lab}} = 0.05$ mol L$^{-1}$, $q_{UA} = 10^{-5}$ (J s$^{-1}$ K$^{-1}$)$^2$ s$^{-1}$, $dt = 10$ s, $n_{\mathrm{rk4}} = 10$ substeps; box bounds $C_A \ge 0$, $UA \ge UA_{\min} = 1.0$ J s$^{-1}$ K$^{-1}$, $T \in [300, 500]$ K, $T_j \in [290, 400]$ K. The labeled Pyodide-Python fallback (`TwinMHE`) additionally uses $N_{\mathrm{iter}} = 50$, $f_{\mathrm{tol}} = 10^{-9}$, warm start on. | $H$ selector ($30$, $60$, $90$, $120$ samples, default $30$); random seed and scenario controls shared with the other estimators. Note: $H = 30$ covers $300$ s, less than the $600$ s laboratory delay, so the most recently delivered lab sample lies outside the window and is carried by the arrival cost. |
 
 Tunable parameters carry short control labels; units appear in the surrounding prose, not in the labels.
 
@@ -91,7 +100,7 @@ Tunable parameters carry short control labels; units appear in the surrounding p
 |---|---|
 | `"ekf"` | Live: the full $8$ h run ($2880$ steps at $dt = 10$ s) completes in ~$1.3$ s in-browser under the stated 3x Pyodide slowdown assumption (source: `drafts/perf_estimates.md`) |
 | `"pf"` | Live if and only if $N \le 200$; precompute-only for $N > 200$, with an explanatory note and no live execution attempted. The vectorized numpy formulation is required for live execution |
-| `"mhe"` | To be declared by the MHE track; the measured verdict is precompute at build time (source: `drafts/perf_estimates.md`) |
+| `"mhe"` | Live via the Rust real-time-iteration core compiled to WebAssembly (`solver/wasm/mhe_rti.wasm`), driven from a Web Worker in chunked runs with stale-input abort; measured $1.2$ ms/step native at $H = 30$ (the full $8$ h run completes in seconds). The measured per-step time in the visitor's browser is reported in the panel's Performance tab after each run. Fallback: the Pyodide-Python `TwinMHE` reference, explicitly labeled on the page whenever it is used — never JavaScript, never a silent fallback. The default run is precomputed at build time and embedded for instant first paint (declared by the MHE track, 2026-10-19; supersedes the precompute-only verdict). |
 
 ## 5. Theory and Code sources per estimator
 
@@ -99,7 +108,7 @@ Tunable parameters carry short control labels; units appear in the surrounding p
 |---|---|---|
 | `"ekf"` | `standalone/theory.md` | `python/cstr_model.py` (`TwinEKF`) |
 | `"pf"` | `drafts/theory_particle_filter.md`, promoted to the Theory tab as a sub-panel single-sourced from the draft (v2 page) | `python/twin_pf.py` |
-| `"mhe"` | `drafts/theory_mhe.md` | To be declared by the MHE track |
+| `"mhe"` | `drafts/theory_mhe.md` | `python/twin_mhe.py` (`TwinMHE`; declared by the MHE track, 2026-10-19) |
 
 ## 6. Scene definitions
 

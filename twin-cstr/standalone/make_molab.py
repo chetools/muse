@@ -39,7 +39,9 @@ PYTHON_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "python"))
 DRAFTS_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "drafts"))
 OUT = os.path.join(HERE, "notebook", "walkthrough_molab.py")
 
-SETUP_PUBLIC = {"mo", "np", "go", "M", "PF", "MODEL_SRC", "figure"}
+SETUP_PUBLIC = {"mo", "np", "go", "M", "PF", "MODEL_SRC", "figure",
+                # --- MHE panel (MHE track): MHE module (v3, --mhe) ---
+                "MHE", "TWMHE_SRC"}
 
 
 class _Rename(ast.NodeTransformer):
@@ -209,8 +211,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=OUT,
                     help="output notebook path (versioned variants allowed)")
+    # --- MHE panel (MHE track): --mhe flag (v3) ---
+    ap.add_argument("--mhe", action="store_true",
+                    help="inline twin_mhe.py as MHE, add scipy to the "
+                         "dependencies, and append the MHE theory appendix")
     args = ap.parse_args()
     out_path = args.out
+    with_mhe = args.mhe  # captured now: `args` is reused below for cell args
     model_src = open(os.path.join(PYTHON_DIR, "cstr_model.py"),
                      encoding="utf-8").read()
     assert "'''" not in model_src, "triple quotes break the inline string"
@@ -226,13 +233,33 @@ def main():
     pf_theory_md = open(os.path.join(DRAFTS_DIR, "theory_particle_filter.md"),
                         encoding="utf-8").read()
     assert '"""' not in pf_theory_md, "triple quotes break the r-string cell"
+    # --- MHE panel (MHE track): twin_mhe.py + theory appendix (--mhe, v3) ---
+    twmhe_src = twmhe_b64 = mhe_theory_md = None
+    if with_mhe:
+        twmhe_src = open(os.path.join(PYTHON_DIR, "twin_mhe.py"),
+                         encoding="utf-8").read()
+        assert "'''" not in twmhe_src, "triple quotes break the inline string"
+        assert "</script" not in twmhe_src.lower()
+        twmhe_b64 = base64.b64encode(twmhe_src.encode("utf-8")).decode("ascii")
+        mhe_theory_md = open(os.path.join(DRAFTS_DIR, "theory_mhe.md"),
+                             encoding="utf-8").read()
+        assert '"""' not in mhe_theory_md, \
+            "triple quotes break the r-string cell"
     sys.path.insert(0, HERE)
     from walkthrough import CELLS
 
+    # --- MHE panel (MHE track): --mhe flag (v3) ---
+    # MHE cells are marked mhe=True in walkthrough.py; without --mhe they
+    # are excluded so the v2 notebook regenerates byte-identically.
+    cells = [c for c in CELLS if with_mhe or not c.get("mhe")]
+
+    deps_line = ('# dependencies = ["marimo", "numpy", "plotly"]'
+                 if not with_mhe else
+                 '# dependencies = ["marimo", "numpy", "plotly", "scipy"]')
     parts = [
         '# /// script',
         '# requires-python = ">=3.10"',
-        '# dependencies = ["marimo", "numpy", "plotly"]',
+        deps_line,
         '# ///',
         '"""Editable MoLab notebook generated from walkthrough.py CELLS.',
         '',
@@ -265,11 +292,21 @@ def main():
         "    import twin_pf as PF",
         "    def figure(data, layout=None, **kw):",
         "        return go.Figure(data=data, layout=layout or kw)",
-        "    return (mo, np, go, M, PF, MODEL_SRC, figure)",
     ]
+    if with_mhe:
+        setup_body += [
+            f'    TWMHE_SRC = base64.b64decode("{twmhe_b64}").decode("utf-8")',
+            "    _mod_mhe = _types.ModuleType('twin_mhe')",
+            '    exec(compile(TWMHE_SRC, "twin_mhe.py", "exec"), '
+            "_mod_mhe.__dict__)",
+            '    _sys.modules["twin_mhe"] = _mod_mhe',
+            "    import twin_mhe as MHE",
+        ]
+    setup_body += ["    return (mo, np, go, M, PF, MODEL_SRC, figure"
+                   + (", MHE, TWMHE_SRC)" if with_mhe else ")")]
     parts.append(cell(setup_body, set()))
 
-    for ci, c in enumerate(CELLS, start=1):
+    for ci, c in enumerate(cells, start=1):
         md_text = c.get("md", "").strip()
         title = c["title"].replace("\n", " ")
         md_lines = ['    mo.md(r"""']
@@ -297,17 +334,32 @@ def main():
     th_lines += ['    """)']
     parts.append(cell(th_lines, {"mo"}))
 
+    # --- MHE panel (MHE track): MHE theory appendix cell (--mhe, v3) ---
+    # Verbatim from drafts/theory_mhe.md: the same single source as the
+    # page's Theory sub-panel (estimator panel contract, sec. 5).
+    if with_mhe:
+        mhe_th_lines = ['    mo.md(r"""']
+        mhe_th_lines += ["    " + ln if ln.strip() else ""
+                         for ln in mhe_theory_md.strip().split("\n")]
+        mhe_th_lines += ['    """)']
+        parts.append(cell(mhe_th_lines, {"mo"}))
+
     parts.append('if __name__ == "__main__":\n    app.run()\n')
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     out_text = "\n".join(parts) + "\n"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(out_text)
-    # byte-identity: what the notebook executes is exactly cstr_model.py
-    # and twin_pf.py
+    # byte-identity: what the notebook executes is exactly cstr_model.py,
+    # twin_pf.py (and twin_mhe.py with --mhe)
     blobs = re.findall(r'base64\.b64decode\("([A-Za-z0-9+/=]+)"\)', out_text)
-    assert len(blobs) == 2, f"expected 2 b64 blobs, found {len(blobs)}"
-    assert base64.b64decode(blobs[0]).decode("utf-8") == model_src
-    assert base64.b64decode(blobs[1]).decode("utf-8") == twpf_src
+    expect = ["cstr_model.py", "twin_pf.py"] + (["twin_mhe.py"] if with_mhe
+                                               else [])
+    assert len(blobs) == len(expect), \
+        f"expected {len(expect)} b64 blobs, found {len(blobs)}"
+    srcs = [model_src, twpf_src] + ([twmhe_src] if with_mhe else [])
+    for blob, src, nm in zip(blobs, srcs, expect):
+        assert base64.b64decode(blob).decode("utf-8") == src, \
+            f"byte-identity failed for {nm}"
     print(f"[make_molab] wrote {out_path} ({out_text.count('@app.cell')} cells)")
 
 

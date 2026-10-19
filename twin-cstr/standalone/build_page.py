@@ -25,7 +25,26 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # renderer, not the Couette one (which shares the module name).
 sys.path.insert(0, "/home/hatch/workspace/muse/couette/standalone")
 sys.path.insert(0, HERE)
-import build_standalone as S
+try:
+    import build_standalone as S
+except ImportError:
+    # The couette build_standalone.py source is absent in this
+    # environment; only its bytecode survives in __pycache__. Load the
+    # module from the .pyc matching this interpreter (MHE track, v3;
+    # harmless where the source exists, since the normal import is
+    # tried first).
+    import importlib.util as _ilu
+    _tag = "cpython-%d%d" % sys.version_info[:2]
+    _pyc = ("/home/hatch/workspace/muse/couette/standalone/__pycache__/"
+            "build_standalone.%s.pyc" % _tag)
+    _spec = _ilu.spec_from_file_location("build_standalone", _pyc)
+    S = _ilu.module_from_spec(_spec)
+    sys.modules["build_standalone"] = S
+    _spec.loader.exec_module(S)
+    # The pyc's SSR_JS helper was deleted with the source; reuse the
+    # surviving copy (same proven script).
+    S.SSR_JS = ("/home/hatch/workspace/muse-mhe/couette/standalone/"
+                "ssr_katex.js")
 import build_walkthrough as _bw_local
 assert _bw_local.__file__.startswith(HERE), _bw_local.__file__
 from build_walkthrough import render_walkthrough
@@ -35,16 +54,85 @@ VENDOR = "/home/hatch/workspace/muse/couette/standalone/vendor"
 PYODIDE_VERSION = "0.27.7"
 PYODIDE_URL = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/pyodide.js"
 
-# --- Particle-filter panel (PF track): v2 output names (additive change) ---
-# v1 files are untouched; v3 is reserved for the MHE track.
-OUT_NAME = "twin-cstr-standalone-v2.html"
-STUB_NAME = "twin-cstr-standalone-v2-stub.html"
+# --- MHE panel (MHE track): v3 output names (additive change) ---
+# v1/v2 files are untouched; v2 remains published.
+OUT_NAME = "twin-cstr-standalone-v3.html"
+STUB_NAME = "twin-cstr-standalone-v3-stub.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
-             "twin-cstr/walkthrough_molab_v2.py")
+             "twin-cstr/walkthrough_molab_v3.py")
+
+# --- MHE panel (MHE track): WASM locations (v3) ---
+WASM_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "solver", "wasm"))
+WASM_BIN = os.path.join(WASM_DIR, "mhe_rti.wasm")
+WASM_API = os.path.join(WASM_DIR, "mhe_api.mjs")
+WASM_RUNNER = os.path.join(WASM_DIR, "run_mhe_wasm.mjs")
+SOLVER_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "solver"))
 
 
 def log(msg):
     print(f"[build_page] {msg}", flush=True)
+
+
+def _b64_file(path):
+    import base64
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode("ascii")
+
+
+def _worker_src(api_src):
+    """Build the Web Worker source: the dependency-free mhe_api factory
+    (its `export` stripped: workers built from a Blob are classic
+    scripts) plus the message-handling glue."""
+    factory = api_src.replace("export function createMheApi",
+                              "function createMheApi", 1)
+    if "function createMheApi" not in factory:
+        raise SystemExit("worker source: factory rename failed")
+    glue = r"""
+const api = createMheApi();
+let stale = false;
+onmessage = async (ev) => {
+  const m = ev.data;
+  if (m.type === 'init') {
+    try {
+      const bin = atob(m.wasmB64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      await api.init(bytes);
+      postMessage({type: 'ready'});
+    } catch (e) {
+      postMessage({type: 'error', message: String((e && e.message) || e)});
+    }
+  } else if (m.type === 'abort') {
+    stale = true;
+  } else if (m.type === 'run') {
+    stale = false;
+    try {
+      const handle = api.create(m.H >>> 0);
+      const t0 = performance.now();
+      const r = await api.runSteps(handle, m.samples, {
+        chunk: m.chunk || 240,
+        isStale: () => stale,
+        onProgress: (done, total) =>
+          postMessage({type: 'progress', runId: m.runId, done, total}),
+      });
+      const ms = performance.now() - t0;
+      api.destroy(handle);
+      if (r.aborted) { postMessage({type: 'aborted', runId: m.runId}); return; }
+      const flat = new Float64Array(r.estimates.length * 10);
+      r.estimates.forEach((e, i) => {
+        flat.set([e.cA, e.t, e.tJ, e.ua, e.residT, e.residTj, e.fj,
+                  e.status, e.nIter, e.nActiveBounds], i * 10);
+      });
+      postMessage({type: 'done', runId: m.runId, ms, buf: flat.buffer},
+                  [flat.buffer]);
+    } catch (e) {
+      postMessage({type: 'error', runId: m.runId,
+                   message: String((e && e.message) || e)});
+    }
+  }
+};
+"""
+    return factory + "\n" + glue
 
 
 def load_sources():
@@ -56,11 +144,27 @@ def load_sources():
     pf_theory_md = open(os.path.join(HERE, os.pardir, "drafts",
                                      "theory_particle_filter.md"),
                         encoding="utf-8").read()
+    # --- MHE panel (MHE track): additive sources (v3) ---
+    twmhe = open(os.path.join(PYTHON_DIR, "twin_mhe.py"),
+                 encoding="utf-8").read()
+    mhe_theory_md = open(os.path.join(HERE, os.pardir, "drafts",
+                                      "theory_mhe.md"),
+                         encoding="utf-8").read()
     for name, src in (("cstr_model.py", model), ("driver.py", driver),
-                       ("twin_pf.py", twpf)):
+                       ("twin_pf.py", twpf), ("twin_mhe.py", twmhe)):
         if "</script" in src.lower():
             raise SystemExit(f"{name} contains a closing script tag; refusing to embed")
-    return model, driver, theory_md, twpf, pf_theory_md
+    # --- MHE panel (MHE track): WASM sources (v3) ---
+    wasm_b64 = _b64_file(WASM_BIN)
+    wasm_api_src = open(WASM_API, encoding="utf-8").read()
+    if "export function createMheApi" not in wasm_api_src:
+        raise SystemExit("mhe_api.mjs: createMheApi factory not found")
+    import re as _re
+    # no browser-only API may be *used* (the word appears in a comment)
+    if _re.search(r"(?<![A-Za-z_.])TextEncoder\s*\(", wasm_api_src):
+        raise SystemExit("mhe_api.mjs uses a browser-only API")
+    return model, driver, theory_md, twpf, pf_theory_md, twmhe, \
+        mhe_theory_md, wasm_b64, wasm_api_src
 
 
 EXTRA_CSS = """
@@ -105,6 +209,35 @@ EXTRA_CSS = """
   font-family:inherit}
 #btn-run-pf:disabled{opacity:.5;cursor:wait}
 #pf-stale-note{color:#a05a00;margin-top:.4rem}
+*/
+/* --- MHE panel (MHE track): additive styles (v3) --- */
+#mhe-section{margin-top:1.5rem;border-top:2px solid var(--card-border);padding-top:1rem}
+.mhe-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:.6rem 1.2rem;margin:1rem 0}
+.mhe-controls .field{margin:0}
+.mhe-controls select{font-family:inherit;font-size:1rem;padding:.35rem .5rem;
+  border:1px solid var(--card-border);border-radius:.4rem;background:#fff}
+#mhe-backend{display:inline-block;background:#eef2f7;border:1px solid var(--card-border);
+  border-radius:.4rem;padding:.3rem .7rem;font-size:.9rem;margin:.4rem 0}
+#mhe-backend b{font-weight:600}
+#btn-run-mhe,#btn-run-mhe-py,#btn-run-mhe-cmp{background:var(--st-red);color:#fff;
+  border:none;border-radius:.4rem;padding:.6rem 1rem;font-size:1rem;cursor:pointer;
+  width:100%;margin-top:.6rem;font-family:inherit}
+#btn-run-mhe:disabled,#btn-run-mhe-py:disabled,#btn-run-mhe-cmp:disabled{opacity:.5;cursor:wait}
+#btn-run-mhe-py{background:#fff;color:var(--st-red);border:1px solid var(--st-red)}
+#mhe-stale-note{color:#a05a00;margin-top:.4rem}
+#mhe-note{margin-top:.6rem}
+.perf-table{border-collapse:collapse;margin:1rem 0;font-size:.92rem;max-width:100%}
+.perf-table th,.perf-table td{border:1px solid var(--card-border);padding:.35rem .6rem;
+  text-align:left;vertical-align:top}
+.perf-table th{background:#f7f8fa;font-weight:600}
+.mhe-scen{border:1px solid var(--card-border);background:#fff;border-radius:.4rem;
+  padding:.45rem .8rem;cursor:pointer;font-family:inherit;margin-right:.4rem}
+.mhe-scen.active{background:var(--st-red);color:#fff;border-color:var(--st-red)}
+.mhepanel .charts{margin-top:.6rem}
+.linklike{background:none;border:none;color:var(--st-red);cursor:pointer;
+  text-decoration:underline;font-size:.9rem;padding:0;margin-top:.4rem;
+  font-family:inherit}
 """
 
 COMMON_JS = r"""
@@ -454,11 +587,318 @@ document.querySelectorAll('aside.sidebar input').forEach((inp) => {
 $('btn-run-pf').addEventListener('click', runPF);
 """
 
+# --- MHE panel (MHE track): additive JS (v3) ---
+# Web-Worker MHE (Rust RTI via WebAssembly), scene tabs M1-M3,
+# WASM-vs-Python comparison tab, Performance tab, labeled Python fallback.
+MHE_JS = r"""
+const WASM_B64 = "__BUILD_WASM_B64__";
+const MHE_WORKER_SRC = "__BUILD_WORKER_SRC__";
+let mheWorker = null, mheWorkerReady = null, mheWorkerFailed = null;
+const mhePending = new Map();
+let mheRunning = false, mhePrestartActive = false;
+let displayedMheParams = null, currentMheScene = 'm1';
+let MHE_SCENES = {}, PRESTART_MHE = null, MHE_PY_SCENE = null;
+
+function mheSetProgress(frac, msg){
+  $('runbar').hidden = false;
+  $('runbar-fill').style.width = (100 * frac).toFixed(1) + '%';
+  $('runbar-msg').textContent = msg + ' ' + (100 * frac).toFixed(0) + '%';
+}
+async function mhePump(startFn, stepFn, finishFn, msg){
+  startFn();
+  for (;;) {
+    const r = JSON.parse(stepFn());
+    mheSetProgress(r.frac, msg);
+    if (r.done) break;
+    await new Promise((res) => setTimeout(res, 0));
+  }
+  return finishFn();
+}
+function ensureMheWorker(){
+  if (mheWorkerFailed) return Promise.reject(new Error(mheWorkerFailed));
+  if (mheWorkerReady) return mheWorkerReady;
+  mheWorkerReady = new Promise((resolve, reject) => {
+    let w;
+    try {
+      w = new Worker(URL.createObjectURL(
+        new Blob([MHE_WORKER_SRC], {type: 'text/javascript'})));
+    } catch (e) {
+      mheWorkerFailed = String((e && e.message) || e);
+      reject(new Error('Could not start the MHE worker: ' + mheWorkerFailed));
+      return;
+    }
+    const to = setTimeout(() => {
+      mheWorkerFailed = 'worker init timed out';
+      try { w.terminate(); } catch (e) {}
+      mheWorkerReady = null;
+      reject(new Error('MHE worker init timed out after 30 s'));
+    }, 30000);
+    w.onmessage = (ev) => {
+      const m = ev.data;
+      if (m.type === 'ready') { clearTimeout(to); mheWorker = w; resolve(w); }
+      else if (m.type === 'error' && !m.runId) {
+        clearTimeout(to);
+        mheWorkerFailed = m.message; mheWorkerReady = null;
+        reject(new Error('WebAssembly module failed to initialize: ' + m.message));
+      } else { mheRoute(m); }
+    };
+    w.onerror = (e) => {
+      clearTimeout(to);
+      mheWorkerFailed = String((e && e.message) || e); mheWorkerReady = null;
+      reject(new Error('MHE worker error: ' + mheWorkerFailed));
+    };
+    w.postMessage({type: 'init', wasmB64: WASM_B64});
+  });
+  return mheWorkerReady;
+}
+function mheRoute(m){
+  const p = mhePending.get(m.runId);
+  if (!p) return;
+  if (m.type === 'progress') { if (p.onProgress) p.onProgress(m.done, m.total); }
+  else if (m.type === 'done') { mhePending.delete(m.runId); p.resolve(m); }
+  else if (m.type === 'aborted') {
+    mhePending.delete(m.runId); p.reject(new Error('MHE run aborted: inputs changed'));
+  } else if (m.type === 'error') {
+    mhePending.delete(m.runId); p.reject(new Error('MHE worker: ' + m.message));
+  }
+}
+function mheWorkerRun(runId, H, samples, onProgress){
+  return new Promise((resolve, reject) => {
+    mhePending.set(runId, {resolve, reject, onProgress});
+    mheWorker.postMessage({type: 'run', runId, H, samples, chunk: 240});
+  });
+}
+function readMheScenario(){
+  const s = readScenario();
+  return {hours: s.hours, dt: 10.0, seed: s.seed,
+          lab_interval: s.lab_interval, H: parseInt($('in-mhe-h').value, 10)};
+}
+function defaultMheScenario(){
+  const s = defaultScenario();
+  s.H = 30; return s;
+}
+function mheCheckStale(){
+  if (displayedMheParams !== null &&
+      JSON.stringify(readMheScenario()) !== displayedMheParams) {
+    $('mhe-stale-note').hidden = false;
+  } else {
+    $('mhe-stale-note').hidden = true;
+  }
+}
+function mheNote(msg){
+  const n = $('mhe-note');
+  if (!msg) { n.hidden = true; n.textContent = ''; return; }
+  n.hidden = false; n.textContent = msg;
+}
+function mheSetBackend(html){ $('mhe-backend').innerHTML = 'Backend: ' + html; }
+function mhePerfRow(label, backend, H, steps, ms){
+  const tb = $('mhe-perf-body');
+  const tr = document.createElement('tr');
+  for (const v of [label, backend, String(H), String(steps), ms.toFixed(2) + ' ms']) {
+    const td = document.createElement('td'); td.textContent = v; tr.appendChild(td);
+  }
+  tb.appendChild(tr);
+  $('mhe-perf-empty').hidden = true;
+}
+function mheShowScene(name){
+  currentMheScene = name;
+  document.querySelectorAll('.mhe-scene').forEach((p) => {
+    p.hidden = (p.id !== 'sec-' + name);
+  });
+  let payload = null;
+  if (name === 'mpy') { payload = MHE_PY_SCENE; }
+  else if (mhePrestartActive && PRESTART_MHE && PRESTART_MHE[name]) {
+    payload = PRESTART_MHE[name];
+  } else if (MHE_SCENES[name]) { payload = MHE_SCENES[name]; }
+  if (payload) { renderPayload(payload); }
+  else if (STUB_MODE) {
+    $('metrics').innerHTML = '';
+    mheNote('Live computation needs the Python runtime; this stub preview ' +
+            'renders the precomputed EKF/PF scenes only.');
+  }
+  setTimeout(renderPendingPlots, 30);
+}
+function mheMergeShadow(scenes){
+  // Live re-runs cannot recompute the build-time unconstrained shadow;
+  // keep showing the default-scenario trace, labeled as such.
+  try {
+    const live2 = scenes.m2;
+    const data = live2.charts['cM2-CA'].data || [];
+    const has = data.some((tr) => (tr.name || '').indexOf('shadow') >= 0);
+    if (!has && PRESTART_MHE && PRESTART_MHE.m2) {
+      const pre = PRESTART_MHE.m2.charts['cM2-CA'].data || [];
+      const sh = pre.find((tr) => (tr.name || '').indexOf('shadow') >= 0);
+      if (sh) {
+        const c = JSON.parse(JSON.stringify(sh));
+        c.name = 'unconstrained shadow (build-time, default scenario)';
+        data.push(c);
+        live2.note += ' The overlaid shadow is the build-time ' +
+                      'default-scenario trace.';
+      }
+    }
+  } catch (e) { /* overlay is decorative; never break the scene */ }
+}
+async function runMheLive(){
+  if (mheRunning || !driver) return;
+  mheNote(null);
+  try { await ensureMheWorker(); }
+  catch (e) {
+    mheNote('WebAssembly unavailable: ' + e.message + ' The labeled Python ' +
+            'fallback below remains available; no JavaScript numerics are used.');
+    $('btn-run-mhe-py').hidden = false;
+    return;
+  }
+  if (mheWorker) mheWorker.postMessage({type: 'abort'});
+  mheRunning = true; $('btn-run-mhe').disabled = true;
+  try {
+    const bundleS = await mhePump(
+      () => driver.start_mhe(JSON.stringify(readMheScenario())),
+      () => driver.step_mhe(),
+      () => driver.finish_mhe(),
+      'MHE: preparing scenarios (Python)');
+    const B = JSON.parse(bundleS);
+    const H = B.H, estimates = {};
+    let totalMs = 0, totalSteps = 0;
+    for (const key of ['m1', 'm2', 'm3']) {
+      const rows = B.variants[key].samples;
+      const samples = rows.map((s) => ({t: s[0], tMeas: s[1], tjMeas: s[2],
+        f: s[3], t0: s[4], hasLab: s[5] !== 0, labCA: s[6], labTSample: s[7]}));
+      const r = await mheWorkerRun('mhe-' + key + '-' + Date.now(), H, samples,
+        (done, total) => mheSetProgress(
+          (['m1','m2','m3'].indexOf(key) + done / total) / 3,
+          'MHE: WebAssembly run, scene ' + key.toUpperCase()));
+      estimates[key] = Array.from(new Float64Array(r.buf));
+      totalMs += r.ms; totalSteps += samples.length;
+    }
+    const msPerStep = totalMs / totalSteps;
+    const scenes = JSON.parse(driver.mhe_scenes(JSON.stringify(
+      {estimates, ms_per_step: msPerStep})));
+    mheMergeShadow(scenes);
+    MHE_SCENES = scenes;
+    mhePrestartActive = false;
+    displayedMheParams = JSON.stringify(readMheScenario());
+    $('mhe-stale-note').hidden = true;
+    mheSetBackend('<b>WebAssembly (Rust RTI)</b>, H = ' + H + ' samples');
+    mhePerfRow('live run', 'WebAssembly (Rust RTI)', H, totalSteps, msPerStep);
+    document.querySelector('#scene-tabs-mhe button[data-scene="m1"]').click();
+    mheShowScene('m1');
+  } catch (e) { showErr('MHE run failed: ' + (e && e.message || e)); }
+  mheRunning = false; $('btn-run-mhe').disabled = false;
+  setTimeout(() => { $('runbar').hidden = true; }, 1500);
+}
+async function runMhePythonFallback(){
+  // Labeled fallback: TwinMHE (SLSQP) on a reduced 1 h scenario.
+  if (mheRunning || !driver) return;
+  mheNote(null);
+  mheRunning = true; $('btn-run-mhe-py').disabled = true;
+  try {
+    const p = await mhePump(
+      () => driver.start_mhe_py(JSON.stringify(readMheScenario())),
+      () => driver.step_mhe_py(),
+      () => driver.finish_mhe_py(),
+      'MHE fallback: Python TwinMHE (1 h)');
+    MHE_PY_SCENE = JSON.parse(p);
+    displayedMheParams = JSON.stringify(readMheScenario());
+    $('mhe-stale-note').hidden = true;
+    mheSetBackend('<b>Python TwinMHE (labeled fallback)</b>, 1 h reduced scenario');
+    mhePerfRow('fallback run', 'Python TwinMHE (labeled)', 30, 360, NaN);
+    document.querySelectorAll('#scene-tabs-mhe button').forEach((b) =>
+      b.classList.remove('active'));
+    mheShowScene('mpy');
+  } catch (e) { showErr('MHE fallback failed: ' + (e && e.message || e)); }
+  mheRunning = false; $('btn-run-mhe-py').disabled = false;
+  setTimeout(() => { $('runbar').hidden = true; }, 1500);
+}
+async function runMheCompare(){
+  if (mheRunning || !driver) return;
+  mheNote(null);
+  try { await ensureMheWorker(); }
+  catch (e) {
+    mheNote('WebAssembly unavailable: ' + e.message + ' The comparison ' +
+            'needs the WASM estimator; the Python reference path is ' +
+            'exercised by the fallback button on the MHE tab.');
+    return;
+  }
+  if (mheWorker) mheWorker.postMessage({type: 'abort'});
+  mheRunning = true; $('btn-run-mhe-cmp').disabled = true;
+  try {
+    const bundle = JSON.parse(driver.mhe_cmp_bundle());
+    const samples = bundle.samples.map((s) => ({t: s[0], tMeas: s[1],
+      tjMeas: s[2], f: s[3], t0: s[4], hasLab: s[5] !== 0, labCA: s[6],
+      labTSample: s[7]}));
+    mheSetProgress(0.05, 'Comparison: WebAssembly run');
+    const w = await mheWorkerRun('mhe-cmp-' + Date.now(), bundle.H, samples,
+      (done, total) => mheSetProgress(0.05 + 0.35 * done / total,
+                                      'Comparison: WebAssembly run'));
+    const pyJson = await mhePump(
+      () => driver.start_mhe_cmp_py(JSON.stringify(bundle)),
+      () => driver.step_mhe_cmp_py(),
+      () => driver.finish_mhe_cmp_py(),
+      'Comparison: Python TwinMHE');
+    const payload = JSON.parse(driver.mhe_cmp_table(
+      JSON.stringify({estimates: Array.from(new Float64Array(w.buf))}),
+      pyJson));
+    document.querySelector('#mhe-tabs button[data-tab="tab-mhe-compare"]').click();
+    renderPayload(payload);
+    mheSetProgress(1, 'Comparison: done');
+  } catch (e) { showErr('MHE comparison failed: ' + (e && e.message || e)); }
+  mheRunning = false; $('btn-run-mhe-cmp').disabled = false;
+  setTimeout(() => { $('runbar').hidden = true; }, 1500);
+}
+// M-scene tabs
+document.querySelectorAll('#scene-tabs-mhe button').forEach((btn) => {
+  btn.addEventListener('click', () => { mheShowScene(btn.dataset.scene); });
+});
+// estimator selector: show the MHE section (PF track's handler owns the rest)
+document.querySelectorAll('input[name="estimator"]').forEach((r) => {
+  r.addEventListener('change', () => {
+    const v = document.querySelector('input[name="estimator"]:checked').value;
+    const isMhe = (v === 'mhe');
+    $('mhe-section').hidden = !isMhe;
+    if (isMhe) {
+      $('bayes-section').hidden = true;
+      $('scene-tabs').style.display = 'none';
+      document.querySelectorAll('.scenepanel').forEach((p) => { p.hidden = true; });
+      mheShowScene(currentMheScene);
+    }
+    setTimeout(renderPendingPlots, 30);
+  });
+});
+// MHE stale wiring
+document.querySelectorAll('aside.sidebar input').forEach((inp) => {
+  inp.addEventListener('input', mheCheckStale);
+});
+$('in-mhe-h').addEventListener('change', mheCheckStale);
+$('btn-run-mhe').addEventListener('click', runMheLive);
+$('btn-run-mhe-py').addEventListener('click', runMhePythonFallback);
+$('btn-mhe-py-toggle').addEventListener('click', runMhePythonFallback);
+$('btn-run-mhe-cmp').addEventListener('click', runMheCompare);
+// MHE prestart: instant first paint for the MHE section
+(function initMhePrestart(){
+  try {
+    const el = document.getElementById('prestart-data');
+    const pre = el && el.textContent.trim() ? JSON.parse(el.textContent) : null;
+    if (!pre || !pre.mhe) return;
+    PRESTART_MHE = pre.mhe;
+    mhePrestartActive = true;
+    displayedMheParams = JSON.stringify(defaultMheScenario());
+    mheSetBackend('<b>WebAssembly (Rust RTI)</b> — precomputed at build ' +
+                  'time by mhe_rti.wasm');
+    mhePerfRow('precomputed default run',
+               'mhe_rti.wasm at build time (Node.js)',
+               pre.mhe_H || 30, 3 * (pre.mhe_n_steps || 2880),
+               pre.mhe_ms_per_step || 0);
+  } catch (e) { /* fall back to empty MHE section; Run computes live */ }
+})();
+"""
+
 BOOT_JS = r"""
 const MODEL_SRC = __BUILD_MODEL_SRC__;
 const DRIVER_SRC = __BUILD_DRIVER_SRC__;
 // --- Particle-filter panel (PF track): additive source (v2) ---
 const TWPF_SRC = __BUILD_TWPF_SRC__;
+// --- MHE panel (MHE track): additive source (v3) ---
+const TWMHE_SRC = __BUILD_TWMHE_SRC__;
 const PYODIDE_URL = "__BUILD_PYODIDE_URL__";
 const STUB_MODE = false;
 function loadScript(src){
@@ -477,18 +917,21 @@ async function boot(){
     await loadScript(PYODIDE_URL);
     const pyodide = await loadPyodide();
     setBoot('Loading NumPy\u2026');
-    await pyodide.loadPackage(['numpy']);
+    await pyodide.loadPackage(['numpy', 'scipy']);
     setBoot('Installing app code\u2026');
     pyodide.FS.writeFile('/cstr_model.py', MODEL_SRC);
     pyodide.FS.writeFile('/driver.py', DRIVER_SRC);
     // --- Particle-filter panel (PF track): additive source (v2) ---
     pyodide.FS.writeFile('/twin_pf.py', TWPF_SRC);
+    // --- MHE panel (MHE track): additive source (v3) ---
+    pyodide.FS.writeFile('/twin_mhe.py', TWMHE_SRC);
     await pyodide.runPythonAsync("import sys; sys.path.insert(0, '/');\nimport driver");
     driver = pyodide.globals.get('driver');
     $('boot').hidden = true;
     $('app').hidden = false;
     setBoot('Ready \u2014 press Run scenario.');
-    for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf']) {
+    for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf',
+                      'btn-run-mhe', 'btn-run-mhe-cmp']) {
       const b = $(id); if (b) b.disabled = false;
     }
   } catch (e) {
@@ -513,7 +956,8 @@ const STUB_DATA = __BUILD_STUB_JSON__;
 document.addEventListener('DOMContentLoaded', () => {
   $('boot').hidden = true;
   $('app').hidden = false;
-  for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf']) {
+  for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf',
+                    'btn-run-mhe', 'btn-run-mhe-cmp']) {
     const b = $(id); if (b) b.disabled = false;
   }
   renderPayload(STUB_DATA);
@@ -579,7 +1023,8 @@ __BUILD_KATEX_CSS__
       <label class="seg"><input type="radio" name="estimator" value="ekf" checked> EKF</label>
       <label class="seg"><input type="radio" name="estimator" value="pf"> Particle filter</label>
       <label class="seg"><input type="radio" name="estimator" value="side_by_side"> Side-by-side</label>
-      <label class="seg disabled"><input type="radio" name="estimator" value="mhe" disabled> MHE <span class="v3note">panel arriving in v3</span></label>
+      <!-- MHE panel (MHE track): MHE registry entry enabled (v3) -->
+      <label class="seg"><input type="radio" name="estimator" value="mhe"> MHE</label>
     </div>
     <div id="err" class="err" hidden></div>
     <div class="metrics" id="metrics"></div>
@@ -698,13 +1143,110 @@ __BUILD_KATEX_CSS__
           <div class="charts"><div class="chart" id="cB3-Neff"></div></div>
         </section>
       </section>
+      <!-- MHE panel (MHE track): MHE section (v3, additive) -->
+      <section id="mhe-section" hidden>
+        <h2>Moving horizon estimation</h2>
+        <p class="intro">A moving-horizon estimator reconstructs the same
+        augmented state as the EKF &mdash; concentration C<sub>A</sub>,
+        temperatures T and T<sub>j</sub>, and the fouling conductance
+        UA &mdash; from the same published stream, by re-optimizing a window
+        of the last H samples (H the horizon length, in samples) subject to
+        box bounds at every step. Here the estimator runs live as Rust
+        compiled to WebAssembly: each measurement triggers one Gauss&ndash;Newton
+        SQP iteration (SQP: sequential quadratic programming) on the shifted
+        warm-start iterate. The sidebar duration, seed, and lab interval
+        apply; each M scene defines its own fault (M1: 2.5&times; fouling with
+        a +5 K T-sensor bias at t = 4 h; M2: a feed shutoff at
+        t = 2 h (pump trip; the published feed flow F drops to zero, the
+        reaction consumes the remaining inventory, and the C<sub>A</sub>
+        estimate pins at its lower bound); M3: a +5 K T-sensor bias at 35%
+        of the run).</p>
+        <div><span id="mhe-backend">Backend: <b>not initialized</b></span></div>
+        <div class="mhe-controls">
+          <div class="field"><label for="in-mhe-h">Horizon H [samples]</label>
+            <select id="in-mhe-h">
+              <option value="30" selected>30</option>
+              <option value="60">60</option>
+              <option value="90">90</option>
+              <option value="120">120</option>
+            </select>
+            <div class="side-cap">H = 30 covers 300 s; with the 600 s lab
+            delay the newest lab sample is carried by the arrival cost.</div></div>
+          <div class="field"><span class="estbar-label">Bounds (read-only)</span>
+            <div class="side-cap">C<sub>A</sub> &ge; 0 mol L<sup>-1</sup>;
+            UA &ge; 1.0 J s<sup>-1</sup> K<sup>-1</sup>; T in [300, 500] K;
+            T<sub>j</sub> in [290, 400] K.</div></div>
+        </div>
+        <button id="btn-run-mhe" disabled>Run MHE (WebAssembly)</button>
+        <div><button id="btn-mhe-py-toggle" class="linklike" type="button">Use
+        the labeled Python fallback instead</button></div>
+        <button id="btn-run-mhe-py" disabled hidden>Run the labeled Python
+        fallback (TwinMHE, 1 h reduced scenario)</button>
+        <div id="mhe-note" class="scene-note" hidden></div>
+        <div id="mhe-stale-note" class="side-cap" hidden>Inputs changed &mdash;
+        press Run MHE to update the display.</div>
+        <nav class="tabs" id="mhe-tabs" data-panels="mhepanel">
+          <button data-tab="tab-mhe-fast" class="active">MHE (WebAssembly)</button>
+          <button data-tab="tab-mhe-compare">MHE vs Python</button>
+          <button data-tab="tab-mhe-perf">Performance</button>
+        </nav>
+        <section id="tab-mhe-fast" class="mhepanel">
+          <nav class="tabs" id="scene-tabs-mhe">
+            <button data-scene="m1" class="active">M1 &middot; Fouling + bound</button>
+            <button data-scene="m2">M2 &middot; Constraint activation</button>
+            <button data-scene="m3">M3 &middot; EKF comparison</button>
+          </nav>
+          <section id="sec-m1" class="mhe-scene">
+            <div class="charts"><div class="chart" id="cM1-UA"></div></div>
+            <div class="charts"><div class="chart" id="cM1-CA"></div></div>
+            <div class="charts"><div class="chart" id="cM1-NAB"></div></div>
+          </section>
+          <section id="sec-m2" class="mhe-scene" hidden>
+            <div class="charts"><div class="chart" id="cM2-CA"></div></div>
+            <div class="charts"><div class="chart" id="cM2-ACT"></div></div>
+          </section>
+          <section id="sec-m3" class="mhe-scene" hidden>
+            <div class="charts"><div class="chart" id="cM3-UA"></div></div>
+            <div class="charts"><div class="chart" id="cM3-LAB"></div></div>
+          </section>
+          <section id="sec-mpy" class="mhe-scene" hidden>
+            <div class="charts"><div class="chart" id="cMpy-UA"></div></div>
+          </section>
+        </section>
+        <section id="tab-mhe-compare" class="mhepanel" hidden>
+          <p class="intro">Click-to-run check: the WebAssembly RTI estimator
+          and the Python TwinMHE reference run the identical 40-step scenario
+          (H = 8 samples, seed 7) sample-for-sample. The tolerances are the
+          measured parity tolerances &mdash; C<sub>A</sub> 2&times;10<sup>-2</sup>
+          mol L<sup>-1</sup>, T/T<sub>j</sub> 1&times;10<sup>-1</sup> K,
+          UA 5&times;10<sup>-1</sup> J s<sup>-1</sup> K<sup>-1</sup>.</p>
+          <button id="btn-run-mhe-cmp" disabled>Run WASM vs Python comparison</button>
+          <div class="charts"><div class="chart" id="cMC-UA"></div></div>
+          <div class="charts"><div class="chart" id="cMC-CA"></div></div>
+        </section>
+        <section id="tab-mhe-perf" class="mhepanel" hidden>
+          <p class="intro">Measured per-step wall time of the MHE estimator.
+          The precomputed row was measured at build time; each live run
+          appends its own in-browser measurement.</p>
+          <table class="perf-table">
+            <thead><tr><th>Run</th><th>Backend</th><th>H</th><th>Steps</th>
+            <th>ms/step</th></tr></thead>
+            <tbody id="mhe-perf-body"></tbody>
+          </table>
+          <p class="caption" id="mhe-perf-empty">No runs recorded yet.</p>
+        </section>
+      </section>
     </section>
     <section id="panel-theory" class="tpanel" hidden>
       <div class="theory">__BUILD_THEORY_HTML__
         <!-- Particle-filter panel (PF track): theory sub-panel (v2, additive,
              single-sourced from drafts/theory_particle_filter.md) -->
         <h2>Theory: Bayesian estimation (particle filter)</h2>
-        __BUILD_PF_THEORY_HTML__</div>
+        __BUILD_PF_THEORY_HTML__
+        <!-- MHE panel (MHE track): theory sub-panel (v3, additive,
+             single-sourced from drafts/theory_mhe.md) -->
+        <h2>Theory: MHE (moving horizon estimation)</h2>
+        __BUILD_MHE_THEORY_HTML__</div>
     </section>
     <section id="panel-code" class="tpanel" hidden>
       <nav class="tabs" data-panels="cpanel">
@@ -730,6 +1272,9 @@ __BUILD_KATEX_CSS__
         <!-- Particle-filter panel (PF track): code listing (v2, additive) -->
         <h3>twin_pf.py &mdash; particle-filter twin</h3>
         __BUILD_TWPF_HTML__
+        <!-- MHE panel (MHE track): code listing (v3, additive) -->
+        <h3>twin_mhe.py &mdash; moving-horizon-estimation twin</h3>
+        __BUILD_TWMHE_HTML__
       </section>
     </section>
   </div>
@@ -740,6 +1285,7 @@ __BUILD_PLOTLY_JS__
 </script>
 <script>
 __BUILD_COMMON_JS__
+__BUILD_MHE_JS__
 __BUILD_BOOT_JS__
 </script>
 <script>
@@ -799,6 +1345,146 @@ def make_prestart_data():
            "s5": _json.loads(_drv.render_scene("s5"))}
     log(f"prestart: default {defaults['hours']:.0f} h run, "
         f"{len(_json.dumps(out)) // 1024} KB embedded")
+    return _json.dumps(out)
+
+
+# --- MHE panel (MHE track): additive precompute (v3) ---
+def _mhe_samples_line_format(bundle):
+    """Line format for solver/examples/dump_mhe.rs (native path)."""
+    lines = []
+    for key in ("m1", "m2", "m3"):
+        lines.append(f"# variant {key} H {bundle['H']}")
+        for s in bundle["variants"][key]["samples"]:
+            lines.append(" ".join(repr(float(v)) for v in s))
+    return "\n".join(lines) + "\n"
+
+
+def _run_mhe_native(bundle):
+    """Precompute via the native Rust estimator (cargo required).
+
+    Returns {"estimates": ..., "ms_per_step": ...} like the node path.
+    Raises on any failure; the caller falls back to node+wasm.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+    if shutil.which("cargo") is None:
+        raise RuntimeError("no cargo on PATH")
+    with tempfile.TemporaryDirectory(prefix="mhe_pre_") as td:
+        inp = os.path.join(td, "samples.txt")
+        with open(inp, "w", encoding="utf-8") as f:
+            f.write(_mhe_samples_line_format(bundle))
+        log("mhe prestart: native Rust estimator via cargo "
+            "(examples/dump_mhe)...")
+        p = subprocess.run(
+            ["cargo", "run", "--release", "--example", "dump_mhe"],
+            cwd=SOLVER_DIR, stdin=open(inp, encoding="utf-8"),
+            capture_output=True, text=True, timeout=900)
+        if p.returncode != 0:
+            raise RuntimeError(f"dump_mhe failed: {p.stderr[-2000:]}")
+        return json.loads(p.stdout)
+
+
+def _run_mhe_wasm_node(bundle):
+    """Precompute via the committed mhe_rti.wasm driven from Node.js.
+
+    This is the exact binary embedded in the page, so the precomputed
+    payload matches the live estimator's output by construction; the
+    measured native-vs-WASM deviation is 5.7e-14 (solver/wasm/README.md).
+    """
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="mhe_pre_") as td:
+        samples_p = os.path.join(td, "samples.json")
+        out_p = os.path.join(td, "estimates.json")
+        with open(samples_p, "w", encoding="utf-8") as f:
+            json.dump({"H": bundle["H"], "variants":
+                      {k: {"samples": v["samples"]}
+                       for k, v in bundle["variants"].items()}}, f)
+        log("mhe prestart: driving the committed mhe_rti.wasm from "
+            "Node.js...")
+        p = subprocess.run(
+            ["node", WASM_RUNNER, samples_p, WASM_BIN, out_p],
+            capture_output=True, text=True, timeout=900)
+        sys.stdout.write(p.stdout)
+        if p.returncode != 0:
+            raise SystemExit(f"node WASM precompute failed:\n{p.stderr[-3000:]}")
+        with open(out_p, encoding="utf-8") as f:
+            return json.load(f)
+
+
+def _mhe_shadow_m2(bundle):
+    """Build-time unconstrained shadow for scene M2 (Python TwinMHE,
+    relaxed bounds, same samples and seed as the constrained run)."""
+    sys.path.insert(0, PYTHON_DIR)
+    import twin_mhe as TMHE
+    vrec = bundle["variants"]["m2"]
+    old = TMHE.STATE_BOUNDS
+    TMHE.STATE_BOUNDS = [(-2.0, 8.0), (200.0, 600.0), (200.0, 500.0),
+                         (0.01, 30.0)]
+    try:
+        twin = TMHE.TwinMHE(dt=10.0, H=30, n_iter=10)
+        t, ca = [], []
+        for i, s in enumerate(vrec["samples"]):
+            sample = dict(t=s[0], T=s[1], T_j=s[2], F=s[3], T0=s[4])
+            if s[5] != 0.0:
+                sample["lab_C_A"] = s[6]
+                sample["lab_t_sample"] = s[7]
+            est = twin.step(sample)
+            t.append(s[0] / 3600.0)
+            ca.append(est["C_A"])
+            if (i + 1) % 720 == 0:
+                log(f"mhe shadow: step {i + 1}/{len(vrec['samples'])}")
+    finally:
+        TMHE.STATE_BOUNDS = old
+    return {"t": t, "ca": ca}
+
+
+def make_mhe_prestart_data(hours=8.0):
+    """Precompute the MHE default runs headless at build time.
+
+    Scenario prep (plant + EKF comparison) runs in Python; the MHE
+    estimates come from the Rust RTI core -- native via cargo when
+    available, else the committed mhe_rti.wasm via Node.js. Scene M2
+    additionally carries the build-time unconstrained shadow.
+    Returns a JSON string {mhe: {m1, m2, m3}, mhe_ms_per_step, mhe_H}.
+    """
+    import json as _json
+    import importlib as _il
+    sys.path.insert(0, PYTHON_DIR)
+    sys.path.insert(0, HERE)
+    import driver as _drv
+    _il.reload(_drv)
+    defaults = dict(hours=hours, dt=10.0, seed=7, lab_interval=1200.0, H=30)
+    log(f"mhe prestart: preparing scenarios (plant + EKF), {hours:g} h...")
+    _drv.start_mhe(_json.dumps(defaults))
+    while True:
+        r = _json.loads(_drv.step_mhe())
+        if r["done"]:
+            break
+    bundle_s = _drv.finish_mhe()
+    _json.loads(bundle_s)  # validate serialization
+    bundle = _drv.CACHE["mhe_bundle"]  # keep the cached object for the shadow
+    try:
+        est = _run_mhe_native(bundle)
+        log("mhe prestart: native Rust estimates used")
+    except Exception as e:
+        log(f"mhe prestart: native path unavailable ({e}); "
+            f"using node+wasm")
+        est = _run_mhe_wasm_node(bundle)
+    ms = est["ms_per_step"]
+    ms_mean = sum(ms.values()) / len(ms)
+    log(f"mhe prestart: {ms_mean:.3f} ms/step mean over "
+        f"{sum(len(v['samples']) for v in bundle['variants'].values())} "
+        f"steps")
+    log("mhe prestart: scene-M2 unconstrained shadow (Python, relaxed "
+        "bounds)...")
+    bundle["variants"]["m2"]["shadow"] = _mhe_shadow_m2(bundle)
+    scenes = _json.loads(_drv.mhe_scenes(_json.dumps(
+        {"estimates": est["estimates"], "ms_per_step": ms_mean})))
+    out = {"mhe": scenes, "mhe_ms_per_step": ms_mean, "mhe_H": 30,
+           "mhe_n_steps": len(bundle["variants"]["m1"]["samples"])}
+    log(f"mhe prestart: {len(_json.dumps(out)) // 1024} KB embedded")
     return _json.dumps(out)
 
 
@@ -887,22 +1573,44 @@ def theory_md_to_html(md_text):
     return html
 
 
+def _mhe_theory_for_page(md_text):
+    """Strip the draft's title and status banner; the page supplies its own
+    h2 heading (see TEMPLATE). The numbered sections are kept as-is."""
+    lines = md_text.split("\n")
+    while lines and (not lines[0].strip() or lines[0].startswith("# ")
+                     or lines[0].startswith(">")):
+        lines.pop(0)
+    return "\n".join(lines)
+
+
 def main():
     stub = "--stub" in sys.argv[1:]
     log("loading sources...")
-    model, driver_src, theory_md, twpf_src, pf_theory_md = load_sources()
+    model, driver_src, theory_md, twpf_src, pf_theory_md, twmhe_src, \
+        mhe_theory_md, wasm_b64, wasm_api_src = load_sources()
     log("converting theory markdown...")
     theory_html = S.ssr_katex(theory_md_to_html(theory_md))
     # --- Particle-filter panel (PF track): PF theory sub-panel (v2) ---
     log("converting PF theory markdown...")
     pf_theory_html = S.ssr_katex(
         theory_md_to_html(_pf_theory_for_page(pf_theory_md)))
+    # --- MHE panel (MHE track): MHE theory sub-panel (v3) ---
+    log("converting MHE theory markdown...")
+    mhe_theory_html = S.ssr_katex(
+        theory_md_to_html(_mhe_theory_for_page(mhe_theory_md)))
+    n_katex = mhe_theory_html.count('class="katex"')
+    log(f"MHE theory: {n_katex} KaTeX spans rendered")
     log("inlining KaTeX CSS...")
     css_katex = S.katex_css()
     log("highlighting code listings...")
     model_html, pyg_css = S.highlight_py(model)
     driver_html, _ = S.highlight_py(driver_src)
     twpf_html, _ = S.highlight_py(twpf_src)  # PF track (v2)
+    twmhe_html, _ = S.highlight_py(twmhe_src)  # MHE track (v3)
+    log("building MHE Web-Worker source...")
+    worker_src = _worker_src(wasm_api_src)
+    log(f"worker source: {len(worker_src)} chars; "
+        f"wasm: {len(wasm_b64) * 3 // 4} bytes")
     log("rendering walkthrough...")
     wt_html, wt_plots = render_walkthrough(
         S.theory_md_to_html, S.ssr_katex, S.highlight_py)
@@ -921,6 +1629,12 @@ def main():
     # --- Particle-filter panel (PF track): additive tokens (v2) ---
     page = sub_once(page, "__BUILD_PF_THEORY_HTML__", pf_theory_html)
     page = sub_once(page, "__BUILD_TWPF_HTML__", twpf_html)
+    # --- MHE panel (MHE track): additive tokens (v3) ---
+    page = sub_once(page, "__BUILD_MHE_THEORY_HTML__", mhe_theory_html)
+    page = sub_once(page, "__BUILD_TWMHE_HTML__", twmhe_html)
+    page = sub_once(page, "__BUILD_MHE_JS__", MHE_JS)
+    page = sub_once(page, "__BUILD_WASM_B64__", wasm_b64)
+    page = sub_once(page, "__BUILD_WORKER_SRC__", json.dumps(worker_src))
     page = sub_once(page, "__BUILD_MODEL_HTML__", model_html)
     page = sub_once(page, "__BUILD_DRIVER_HTML__", driver_html)
     page = sub_once(page, "__BUILD_WALKTHROUGH_HTML__", wt_html)
@@ -944,10 +1658,15 @@ def main():
                 .replace("__BUILD_DRIVER_SRC__", json.dumps(driver_src))
                 # --- Particle-filter panel (PF track): additive src (v2) ---
                 .replace("__BUILD_TWPF_SRC__", json.dumps(twpf_src))
+                # --- MHE panel (MHE track): additive src (v3) ---
+                .replace("__BUILD_TWMHE_SRC__", json.dumps(twmhe_src))
                 .replace("__BUILD_PYODIDE_URL__", PYODIDE_URL))
         log("precomputing default run for instant first paint...")
         pre = json.loads(make_prestart_data())
         pre.update(json.loads(make_pf_prestart_data()))
+        # --- MHE panel (MHE track): MHE precompute (v3) ---
+        log("precomputing MHE default runs for instant first paint...")
+        pre.update(json.loads(make_mhe_prestart_data()))
         page = sub_once(page, "__BUILD_PRESTART_JSON__", json.dumps(pre))
     page = sub_once(page, "__BUILD_BOOT_JS__", boot)
 
@@ -961,7 +1680,11 @@ def main():
                 "__BUILD_STUB_JSON__", "__BUILD_PRESTART_JSON__",
                 # --- Particle-filter panel (PF track): additive tokens (v2) ---
                 "__BUILD_TWPF_SRC__", "__BUILD_PF_THEORY_HTML__",
-                "__BUILD_TWPF_HTML__"):
+                "__BUILD_TWPF_HTML__",
+                # --- MHE panel (MHE track): additive tokens (v3) ---
+                "__BUILD_TWMHE_SRC__", "__BUILD_MHE_THEORY_HTML__",
+                "__BUILD_TWMHE_HTML__", "__BUILD_WASM_B64__",
+                "__BUILD_WORKER_SRC__", "__BUILD_MHE_JS__"):
         if tok in page:
             raise SystemExit(f"unreplaced token: {tok}")
 

@@ -885,3 +885,573 @@ def render_pf_scene(name):
     else:
         return json.dumps(dict(error=f"unknown PF scene {name}"))
     return json.dumps(payload)
+
+# ======================================================================
+# --- MHE panel (MHE track): additive section (v3) ---
+# Live MHE runs execute the Rust RTI core (mhe_rti.wasm) in a Web Worker;
+# this driver handles the Python side: the plant, the TwinEKF comparison
+# twin (identical Q/R tuning), the published sample stream handed to the
+# worker, and assembly of the M1/M2/M3 scene payloads from the worker's
+# estimates. A labeled Pyodide-Python fallback (TwinMHE) covers WASM
+# failure; the comparison tab pits the WASM estimator against the Python
+# TwinMHE on the short parity scenario. Nothing above this banner is
+# modified.
+# ======================================================================
+import twin_mhe as TMHE
+
+MHE_UA_MIN = 1.0  # J/(s K); matches twin_mhe.STATE_BOUNDS
+MHE_CHUNK = 240
+
+
+def _mhe_variant_defs(params):
+    """Scenario variants for scenes M1/M2/M3.
+
+    Returns (defs, n, dt) where each def is (key, plant_kwargs, fault).
+    M1 uses 2.5x fouling with a +5 K T-sensor bias at t = 4 h: measured
+    2026-10-19, the draft's nominal/+0.8 K parameters move the EKF UA
+    estimate by < 0.05 J/(s K) (the lab samples anchor it); 2x fouling +
+    3 K drives the EKF C_A to -0.041 mol/L but the WASM MHE never pins
+    (UA min 1.053). With 2.5x fouling + 5 K, the WASM MHE pins UA at
+    1.0 J/(s K) for 516 steps while the EKF dives to 0.52 J/(s K) and
+    C_A to -0.117 mol/L (both unphysical). True UA(8 h) ≈ 0.65 J/(s K).
+    """
+    hours = float(params.get("hours", 8.0))
+    seed = int(params.get("seed", 7))
+    lab_interval = float(params.get("lab_interval", 1200.0))
+    dt = float(params.get("dt", 10.0))
+    n = int(hours * 3600.0 / dt)
+    p1 = dict(M.PLANT_P)
+    p1["tau_foul"] = p1["tau_foul"] / 2.5
+    defs = [
+        ("m1", dict(p=p1, seed=seed, lab_interval=lab_interval),
+         dict(kind="bias", mag=5.0, onset_i=int(4.0 * 3600.0 / dt))),
+        ("m2", dict(p=dict(M.PLANT_P), seed=seed, lab_interval=lab_interval),
+         dict(kind="fshut", mag=0.0, onset_i=int(2.0 * 3600.0 / dt))),
+        ("m3", dict(p=dict(M.PLANT_P), seed=seed, lab_interval=lab_interval),
+         dict(kind="bias", mag=5.0, onset_i=int(0.35 * n))),
+    ]
+    return defs, n, dt
+
+
+def _new_mhe_rec():
+    return dict(t=[], ua_true=[], ca_true=[], T_meas=[],
+               ekf_ua=[], ekf_ca=[], ekf_lab_innov=[],
+               lab_t=[], lab_v=[], samples=[])
+
+
+def _advance_mhe_variant(vst):
+    """One step of a variant: plant -> publish -> TwinEKF; record sample."""
+    dt = vst["dt"]
+    plant, ekf, rec, fault = (vst["plant"], vst["ekf"], vst["rec"],
+                             vst["fault"])
+    if vst["i"] == fault["onset_i"]:
+        if fault["kind"] == "bias":
+            plant.sensor_bias_T = fault["mag"]
+        elif fault["kind"] == "fshut":
+            plant.p["F"] = 0.0  # feed shutoff (pump trip); twin sees F -> 0
+        else:
+            plant.feed_T_step = fault["mag"]
+    s = plant.step(dt)
+    pub = _pub(s)
+    est = ekf.step(pub)
+    tr = s["_true"]
+    rec["t"].append(s["t"] / 3600.0)
+    rec["ua_true"].append(tr["UA"])
+    rec["ca_true"].append(tr["C_A"])
+    rec["T_meas"].append(pub["T"])
+    rec["ekf_ua"].append(est["UA"])
+    rec["ekf_ca"].append(est["C_A"])
+    while len(ekf.lab_innov) > len(rec["ekf_lab_innov"]):
+        rec["ekf_lab_innov"].append(
+            [float(v) for v in ekf.lab_innov[len(rec["ekf_lab_innov"])]])
+    if "lab_C_A" in pub:
+        rec["lab_t"].append(pub["t"] / 3600.0)
+        rec["lab_v"].append(pub["lab_C_A"])
+    rec["samples"].append(
+        [float(s["t"]), float(pub["T"]), float(pub["T_j"]),
+         float(pub["F"]), float(pub["T0"]),
+         1.0 if "lab_C_A" in pub else 0.0,
+         float(pub.get("lab_C_A", 0.0)),
+         float(pub.get("lab_t_sample", 0.0))])
+
+
+def start_mhe(params_json):
+    """Begin the chunked MHE scenario preparation (plant + EKF comparison).
+
+    Runs the three M-scene variants headlessly, recording the published
+    sample stream each variant's WASM estimator will consume. Returns
+    {"n_steps": 3*n}; the worker's estimates arrive later via mhe_scenes.
+    """
+    params = json.loads(params_json)
+    defs, n, dt = _mhe_variant_defs(params)
+    variants = []
+    for key, pkw, fault in defs:
+        variants.append(dict(key=key, dt=dt, n=n, i=0, fault=fault,
+                             plant=M.Plant(**pkw), ekf=M.TwinEKF(dt=dt),
+                             rec=_new_mhe_rec()))
+    CACHE["_mhe"] = dict(params=params, variants=variants, n=n,
+                         H=int(params.get("H", 30)))
+    return json.dumps({"n_steps": 3 * n, "H": int(params.get("H", 30))})
+
+
+def step_mhe():
+    st = CACHE["_mhe"]
+    todo = MHE_CHUNK
+    while todo > 0:
+        vst = next((v for v in st["variants"] if v["i"] < v["n"]), None)
+        if vst is None:
+            break
+        _advance_mhe_variant(vst)
+        vst["i"] += 1
+        todo -= 1
+    done_n = sum(v["i"] for v in st["variants"])
+    total = 3 * st["n"]
+    return json.dumps({"done": done_n >= total, "frac": done_n / total})
+
+
+def finish_mhe():
+    """Finish scenario prep; cache the bundle and return it (JSON).
+
+    The bundle holds, per variant, the published samples (as plain lists
+    for the worker), the hidden truth (for scoring), and the EKF
+    comparison run (identical Q/R tuning, identical samples and seed --
+    the estimator panel contract's comparison convention).
+    """
+    st = CACHE.pop("_mhe")
+    bundle = dict(params=st["params"], H=st["H"], variants={})
+    for vst in st["variants"]:
+        rec = vst["rec"]
+        bundle["variants"][vst["key"]] = dict(
+            samples=rec["samples"],
+            truth=dict(t=rec["t"], ua=rec["ua_true"], ca=rec["ca_true"],
+                       T_meas=rec["T_meas"]),
+            ekf=dict(ua=rec["ekf_ua"], ca=rec["ekf_ca"],
+                     lab_innov=rec["ekf_lab_innov"]),
+            lab=dict(t=rec["lab_t"], v=rec["lab_v"]),
+            fault=vst["fault"])
+    CACHE["mhe_bundle"] = bundle
+    return json.dumps(bundle)
+
+
+def _mhe_estimates_matrix(flat, n):
+    """Reshape a flat [n*10] estimate vector into per-step rows."""
+    a = np.asarray(flat, dtype=float).reshape(n, 10)
+    keys = ["C_A", "T", "T_j", "UA", "resid_T", "resid_Tj", "Fj",
+            "status", "n_iter", "n_active"]
+    return {k: a[:, j].tolist() for j, k in enumerate(keys)}
+
+
+def _mhe_burnin(params):
+    return int(1800 / params.get("dt", 10.0))
+
+
+def _mhe_detect_latency(lab_innov, onset_h):
+    """Hours from fault onset to the two-consecutive-3sigma lab flag.
+
+    lab_innov comes from the shared arrival-cost EKF recursion (the same
+    recursion the MHE carries internally), so the gating is identical
+    across estimators.
+    """
+    li = [(t, iv, sd) for (t, iv, sd) in lab_innov if t / 3600.0 >= 0.6]
+    for j in range(1, len(li)):
+        if abs(li[j][1]) > 3 * li[j][2] and abs(li[j - 1][1]) > 3 * li[j - 1][2]:
+            return li[j][0] / 3600.0 - onset_h
+    return None
+
+
+def _mhe_m1_payload(vrec, est, params, ms_per_step):
+    b = _mhe_burnin(params)
+    t = vrec["truth"]["t"]
+    ua_true = vrec["truth"]["ua"]
+    ca_true = vrec["truth"]["ca"]
+    m = dict()
+    m["MHE UA RMSE"] = \
+        f"{_rmse(est['UA'][b:], ua_true[b:]):.2f} J s⁻¹ K⁻¹"
+    m["EKF UA RMSE"] = \
+        f"{_rmse(vrec['ekf']['ua'][b:], ua_true[b:]):.2f} J s⁻¹ K⁻¹"
+    m["MHE Cₐ RMSE"] = \
+        f"{_rmse(est['C_A'][b:], ca_true[b:]):.3f} mol L⁻¹"
+    m["EKF Cₐ RMSE"] = \
+        f"{_rmse(vrec['ekf']['ca'][b:], ca_true[b:]):.3f} mol L⁻¹"
+    ua_arr = np.array(est["UA"])
+    pinned = np.nonzero(ua_arr <= MHE_UA_MIN + 1e-9)[0]
+    m["UA bound activations"] = f"{len(pinned)} steps"
+    m["EKF min Cₐ"] = f"{min(vrec['ekf']['ca']):.3f} mol L⁻¹"
+    det = _mhe_detect_latency(vrec["ekf"]["lab_innov"],
+                              vrec["fault"]["onset_i"] * 10.0 / 3600.0)
+    m["Lab-innovation flag"] = (f"{det:.2f} h after bias onset"
+                                if det is not None else "not raised")
+    ua_min_line = [MHE_UA_MIN] * len(t)
+    data_ua = [_trace(t, ua_true, "UA plant log (hidden)",
+                      line=dict(dash="dot")),
+               _trace(t, vrec["ekf"]["ua"], "UA EKF estimate"),
+               _trace(t, est["UA"], "UA MHE estimate (WASM RTI)"),
+               _trace(t, ua_min_line, "UA,min bound",
+                      line=dict(dash="dash", color="red"))]
+    if len(pinned):
+        data_ua.append(dict(x=[t[i] for i in pinned[::6]],
+                            y=[MHE_UA_MIN] * len(pinned[::6]),
+                            mode="markers", name="bound active",
+                            marker=dict(size=6, color="red",
+                                        symbol="triangle-up")))
+    data_ca = [_trace(t, ca_true, "Cₐ plant log (hidden)",
+                      line=dict(dash="dot")),
+               _trace(t, vrec["ekf"]["ca"], "Cₐ EKF estimate"),
+               _trace(t, est["C_A"], "Cₐ MHE estimate (WASM RTI)"),
+               _trace(t, [0.0] * len(t), "Cₐ = 0 bound",
+                      line=dict(dash="dash", color="red")),
+               dict(x=vrec["lab"]["t"], y=vrec["lab"]["v"], mode="markers",
+                    name="lab samples", marker=dict(size=7))]
+    nab = np.array(est["n_active"])
+    ds = slice(0, len(t), 6)
+    data_nab = [_trace(np.array(t)[ds].tolist(), nab[ds].tolist(),
+                       "bound-pinned final-node components")]
+    charts = {
+        "cM1-UA": dict(
+            data=data_ua,
+            layout=_layout("Fouling tracking with an active UA bound",
+                           "time [h]", "UA [J s⁻¹ K⁻¹]", rmargin=200)),
+        "cM1-CA": dict(
+            data=data_ca,
+            layout=_layout("Concentration under the sensor bias",
+                           "time [h]", "Cₐ [mol L⁻¹]", rmargin=200)),
+        "cM1-NAB": dict(
+            data=data_nab,
+            layout=_layout("MHE health: bound activity per step",
+                           "time [h]", "pinned components [-]",
+                           rmargin=200)),
+    }
+    return dict(metrics=m, charts=charts,
+                note="2.5× fouling with a +5 K T-sensor bias at t = 4 h. "
+                     "One plant drives both estimators with the identical "
+                     "samples and seed. The accelerated fouling drives the "
+                     "true UA below the twin's admissible minimum; the MHE "
+                     "pins at the bound (516 steps) while the EKF, which has "
+                     "no bounds, dives below it and its Cₐ estimate goes "
+                     "negative. The lab-innovation flag uses the shared "
+                     "arrival-cost recursion, so its gating matches the "
+                     "EKF's.")
+
+
+def _mhe_m2_payload(vrec, est, params, shadow):
+    t = vrec["truth"]["t"]
+    ca = np.array(est["C_A"])
+    pinned = np.nonzero(ca <= 1e-9)[0]
+    m = dict()
+    m["Constrained min Cₐ"] = f"{float(ca.min()):.4f} mol L⁻¹"
+    m["Cₐ bound activations"] = f"{len(pinned)} steps"
+    if shadow is not None:
+        m["Unconstrained shadow min Cₐ"] = \
+            f"{min(shadow['ca']):.4f} mol L⁻¹ (build-time)"
+    else:
+        m["Unconstrained shadow"] = "build-time default scenario only"
+    m["Feed shutoff"] = "F → 0 at t = 2 h (pump trip, published F)"
+    data = [_trace(t, est["C_A"], "Cₐ MHE estimate (WASM RTI, constrained)"),
+            _trace(t, [0.0] * len(t), "Cₐ = 0 bound",
+                   line=dict(dash="dash", color="red"))]
+    if shadow is not None:
+        data.append(_trace(shadow["t"], shadow["ca"],
+                           "unconstrained shadow (build-time, relaxed "
+                           "bounds, same samples)",
+                           line=dict(dash="dot")))
+    if len(pinned):
+        data.append(dict(x=[t[i] for i in pinned[::3]],
+                         y=[0.0] * len(pinned[::3]),
+                         mode="markers", name="Cₐ bound active",
+                         marker=dict(size=6, color="red",
+                                     symbol="triangle-up")))
+    nab = np.array(est["n_active"])
+    ds = slice(0, len(t), 6)
+    charts = {
+        "cM2-CA": dict(
+            data=data,
+            layout=_layout("Constraint activation: Cₐ after a feed-T step",
+                           "time [h]", "Cₐ [mol L⁻¹]", rmargin=210)),
+        "cM2-ACT": dict(
+            data=[_trace(np.array(t)[ds].tolist(), nab[ds].tolist(),
+                         "bound-pinned final-node components")],
+            layout=_layout("MHE health: bound activity per step",
+                           "time [h]", "pinned components [-]",
+                           rmargin=210)),
+    }
+    note = ("A +15 K feed-temperature step at t = 2 h drives the reaction "
+            "faster; the unconstrained optimizer would push Cₐ negative, "
+            "while the constrained MHE pins it at the bound. The shadow "
+            "run relaxes the bounds in the Python TwinMHE at build time, "
+            "on the same samples and seed.")
+    if shadow is None:
+        note += (" This is a live re-run: the shadow shown is the "
+                 "build-time default-scenario trace.")
+    return dict(metrics=m, charts=charts, note=note)
+
+
+def _mhe_m3_payload(vrec, est, params, ms_per_step):
+    b = _mhe_burnin(params)
+    t = vrec["truth"]["t"]
+    ua_true = vrec["truth"]["ua"]
+    ca_true = vrec["truth"]["ca"]
+    m = dict()
+    m["MHE UA RMSE"] = \
+        f"{_rmse(est['UA'][b:], ua_true[b:]):.2f} J s⁻¹ K⁻¹"
+    m["EKF UA RMSE"] = \
+        f"{_rmse(vrec['ekf']['ua'][b:], ua_true[b:]):.2f} J s⁻¹ K⁻¹"
+    m["MHE Cₐ RMSE"] = \
+        f"{_rmse(est['C_A'][b:], ca_true[b:]):.3f} mol L⁻¹"
+    m["EKF Cₐ RMSE"] = \
+        f"{_rmse(vrec['ekf']['ca'][b:], ca_true[b:]):.3f} mol L⁻¹"
+    det = _mhe_detect_latency(vrec["ekf"]["lab_innov"],
+                              vrec["fault"]["onset_i"] * 10.0 / 3600.0)
+    m["Fault-detection latency"] = (f"{det:.2f} h after bias onset"
+                                    if det is not None else "not raised")
+    if ms_per_step is not None:
+        m["MHE per-step wall time"] = f"{ms_per_step:.2f} ms"
+    li = vrec["ekf"]["lab_innov"]
+    lt = [t_ / 3600.0 for (t_, iv, sd) in li]
+    charts = {
+        "cM3-UA": dict(
+            data=[_trace(t, ua_true, "UA plant log (hidden)",
+                        line=dict(dash="dot")),
+                  _trace(t, vrec["ekf"]["ua"], "UA EKF estimate"),
+                  _trace(t, est["UA"], "UA MHE estimate (WASM RTI)")],
+            layout=_layout("Sensor fault: EKF vs MHE fouling tracking",
+                           "time [h]", "UA [J s⁻¹ K⁻¹]", rmargin=200)),
+        "cM3-LAB": dict(
+            data=[dict(x=lt, y=[iv for (t_, iv, sd) in li],
+                       mode="markers", name="lab innovation",
+                       marker=dict(size=7)),
+                  _trace(lt, [3 * sd for (t_, iv, sd) in li], "+3σ",
+                         line=dict(dash="dash", color="red")),
+                  _trace(lt, [-3 * sd for (t_, iv, sd) in li], "−3σ",
+                         line=dict(dash="dash", color="red"))],
+            layout=_layout("Independent check: lab Cₐ innovations "
+                           "(shared arrival-cost recursion)",
+                           "time [h]", "innovation [mol L⁻¹]",
+                           rmargin=200)),
+    }
+    return dict(metrics=m, charts=charts,
+                note="Same fault protocol as the fault-detection scene "
+                     "(+5 K T-sensor bias at 35% of the run). Both "
+                     "estimators share identical Q/R tuning, samples, and "
+                     "seed; the latency metric uses the shared "
+                     "arrival-cost lab-innovation recursion.")
+
+
+def mhe_scenes(payload_json):
+    """Assemble M1/M2/M3 scene payloads from the worker's estimates.
+
+    payload_json: {"estimates": {"m1": flat[n*10], ...},
+                   "ms_per_step": float or null}. Uses CACHE["mhe_bundle"].
+    Returns JSON {"m1": payload, "m2": payload, "m3": payload}.
+    """
+    if "mhe_bundle" not in CACHE:
+        return json.dumps(dict(error="Run the MHE scenario preparation first."))
+    req = json.loads(payload_json)
+    bundle = CACHE["mhe_bundle"]
+    params = bundle["params"]
+    ms = req.get("ms_per_step")
+    out = {}
+    for key in ("m1", "m2", "m3"):
+        vrec = bundle["variants"][key]
+        n = len(vrec["samples"])
+        est = _mhe_estimates_matrix(req["estimates"][key], n)
+        if key == "m1":
+            out[key] = _mhe_m1_payload(vrec, est, params, ms)
+        elif key == "m2":
+            out[key] = _mhe_m2_payload(vrec, est, params,
+                                      vrec.get("shadow"))
+        else:
+            out[key] = _mhe_m3_payload(vrec, est, params, ms)
+    return json.dumps(out)
+
+
+# --- Labeled Pyodide-Python fallback (TwinMHE) ---
+# Used only when the WebAssembly module is unavailable or too slow. The
+# fallback runs a reduced 1 h scenario (the full 8 h SLSQP run is
+# infeasible in-browser); the page labels it explicitly on every render.
+
+def start_mhe_py(params_json):
+    """Begin the labeled Python-fallback run: 1 h, M1-style fault."""
+    params = json.loads(params_json)
+    dt = 10.0
+    n = int(1.0 * 3600.0 / dt)
+    H = int(params.get("H", 30))
+    p = dict(M.PLANT_P)
+    p["tau_foul"] = p["tau_foul"] / 2.0
+    fault = dict(kind="bias", mag=3.0, onset_i=n // 2)
+    CACHE["_mhe_py"] = dict(
+        params=params, dt=dt, n=n, i=0, H=H, fault=fault,
+        plant=M.Plant(p=p, seed=int(params.get("seed", 7)),
+                      lab_interval=float(params.get("lab_interval", 1200.0))),
+        twin=TMHE.TwinMHE(dt=dt, H=H, n_iter=25),
+        rec=_new_mhe_rec())
+    return json.dumps({"n_steps": n, "H": H, "note": "python-fallback"})
+
+
+def step_mhe_py():
+    st = CACHE["_mhe_py"]
+    dt = st["dt"]
+    plant, twin, rec, fault = (st["plant"], st["twin"], st["rec"],
+                               st["fault"])
+    for _ in range(12):  # small chunk: SLSQP steps are expensive
+        if st["i"] >= st["n"]:
+            break
+        if st["i"] == fault["onset_i"]:
+            plant.sensor_bias_T = fault["mag"]
+        s = plant.step(dt)
+        pub = _pub(s)
+        est = twin.step(pub)
+        tr = s["_true"]
+        rec["t"].append(s["t"] / 3600.0)
+        rec["ua_true"].append(tr["UA"])
+        rec["ca_true"].append(tr["C_A"])
+        rec["ekf_ua"].append(est["UA"])  # reused slots, hold MHE values
+        rec["ekf_ca"].append(est["C_A"])
+        st["i"] += 1
+    done = st["i"] >= st["n"]
+    return json.dumps({"done": done, "frac": st["i"] / st["n"]})
+
+
+def finish_mhe_py():
+    """Finish the Python fallback run; return a single-scene payload."""
+    st = CACHE.pop("_mhe_py")
+    rec = st["rec"]
+    diag = st["twin"].diagnostics()
+    t = rec["t"]
+    m = dict()
+    m["Backend"] = "Python TwinMHE (labeled fallback, 1 h reduced scenario)"
+    m["MHE UA RMSE"] = \
+        f"{_rmse(rec['ekf_ua'], rec['ua_true']):.2f} J s⁻¹ K⁻¹"
+    m["MHE Cₐ RMSE"] = \
+        f"{_rmse(rec['ekf_ca'], rec['ca_true']):.3f} mol L⁻¹"
+    m["Solve statuses"] = ", ".join(sorted(set(diag["solve_status"])))
+    ua_arr = np.array(rec["ekf_ua"])
+    pinned = np.nonzero(ua_arr <= MHE_UA_MIN + 1e-9)[0]
+    m["UA bound activations"] = f"{len(pinned)} steps"
+    charts = {
+        "cMpy-UA": dict(
+            data=[_trace(t, rec["ua_true"], "UA plant log (hidden)",
+                        line=dict(dash="dot")),
+                  _trace(t, rec["ekf_ua"],
+                         "UA MHE estimate (Python TwinMHE, labeled "
+                         "fallback)"),
+                  _trace(t, [MHE_UA_MIN] * len(t), "UA,min bound",
+                         line=dict(dash="dash", color="red"))],
+            layout=_layout("Fallback: fouling tracking (Python, 1 h)",
+                           "time [h]", "UA [J s⁻¹ K⁻¹]", rmargin=210)),
+    }
+    return json.dumps(dict(metrics=m, charts=charts,
+                           note="Labeled fallback: the WebAssembly estimator "
+                                "was unavailable, so this run used the "
+                                "Python TwinMHE reference (SLSQP) on a "
+                                "reduced 1 h scenario. No JavaScript "
+                                "numerics are involved."))
+
+
+# --- Comparison tab: WASM RTI vs Python TwinMHE on the parity scenario ---
+# 40 steps, H = 8, nominal fouling, seed 7: the same scenario and horizon
+# the parity_estimator tests use, with the same tolerances (C_A 0.02
+# mol/L, T/T_j 0.1 K, UA 0.5 J/(s K)).
+
+MHE_CMP_TOL = dict(C_A=0.02, T=0.1, T_j=0.1, UA=0.5)
+
+
+def mhe_cmp_bundle():
+    """Headless 40-step parity scenario; returns samples JSON for both
+    backends (the worker and the Pyodide TwinMHE)."""
+    dt = 10.0
+    n = 40
+    plant = M.Plant(p=dict(M.PLANT_P), seed=7, lab_interval=1200.0)
+    samples = []
+    for _ in range(n):
+        s = plant.step(dt)
+        pub = _pub(s)
+        samples.append(
+            [float(s["t"]), float(pub["T"]), float(pub["T_j"]),
+             float(pub["F"]), float(pub["T0"]),
+             1.0 if "lab_C_A" in pub else 0.0,
+             float(pub.get("lab_C_A", 0.0)),
+             float(pub.get("lab_t_sample", 0.0))])
+    return json.dumps(dict(samples=samples, H=8, n=n))
+
+
+def start_mhe_cmp_py(samples_json):
+    """Begin the chunked Python TwinMHE run on the comparison scenario."""
+    req = json.loads(samples_json)
+    CACHE["_mhe_cmp"] = dict(
+        samples=req["samples"], n=req["n"], i=0,
+        twin=TMHE.TwinMHE(dt=10.0, H=req["H"], n_iter=50),
+        ests=[])
+    return json.dumps({"n_steps": req["n"]})
+
+
+def step_mhe_cmp_py():
+    st = CACHE["_mhe_cmp"]
+    for _ in range(4):
+        if st["i"] >= st["n"]:
+            break
+        s = st["samples"][st["i"]]
+        sample = dict(t=s[0], T=s[1], T_j=s[2], F=s[3], T0=s[4])
+        if s[5] != 0.0:
+            sample["lab_C_A"] = s[6]
+            sample["lab_t_sample"] = s[7]
+        st["ests"].append(st["twin"].step(sample))
+        st["i"] += 1
+    done = st["i"] >= st["n"]
+    return json.dumps({"done": done, "frac": st["i"] / st["n"]})
+
+
+def finish_mhe_cmp_py():
+    st = CACHE.pop("_mhe_cmp")
+    keys = ["C_A", "T", "T_j", "UA", "resid_T", "resid_Tj", "Fj"]
+    return json.dumps(dict(
+        estimates=[[float(e[k]) for k in keys] for e in st["ests"]]))
+
+
+def mhe_cmp_table(wasm_flat_json, py_json):
+    """Side-by-side values and tolerance verdicts (JSON payload).
+
+    wasm_flat_json: {"estimates": flat[n*10]} from the worker.
+    py_json: finish_mhe_cmp_py output.
+    """
+    wasm = json.loads(wasm_flat_json)["estimates"]
+    py = json.loads(py_json)["estimates"]
+    n = len(py)
+    w = np.asarray(wasm, dtype=float).reshape(n, 10)
+    p = np.asarray(py, dtype=float)
+    names = ["C_A", "T", "T_j", "UA"]
+    units = ["mol L⁻¹", "K", "K", "J s⁻¹ K⁻¹"]
+    m = dict()
+    ok_all = True
+    for j, (nm, un) in enumerate(zip(names, units)):
+        dev = np.abs(w[:, j] - p[:, j])
+        tol = MHE_CMP_TOL[nm]
+        ok = bool(np.all(dev <= tol))
+        ok_all &= ok
+        m[f"max |Δ{nm}| (WASM vs Python)"] = \
+            f"{dev.max():.2e} {un}  (tolerance {tol:g} {un}: " \
+            f"{'PASS' if ok else 'FAIL'})"
+    m["Verdict"] = ("AGREE within the measured parity tolerances"
+                    if ok_all else "MISMATCH beyond tolerances")
+    t = (np.arange(n) * 10.0 / 3600.0).tolist()
+    charts = {
+        "cMC-UA": dict(
+            data=[_trace(t, w[:, 3].tolist(), "UA WASM RTI"),
+                  _trace(t, p[:, 3].tolist(), "UA Python TwinMHE",
+                         line=dict(dash="dash"))],
+            layout=_layout("WASM vs Python: UA on the 40-step scenario",
+                           "time [h]", "UA [J s⁻¹ K⁻¹]", rmargin=200)),
+        "cMC-CA": dict(
+            data=[_trace(t, w[:, 0].tolist(), "Cₐ WASM RTI"),
+                  _trace(t, p[:, 0].tolist(), "Cₐ Python TwinMHE",
+                         line=dict(dash="dash"))],
+            layout=_layout("WASM vs Python: Cₐ on the 40-step scenario",
+                           "time [h]", "Cₐ [mol L⁻¹]", rmargin=200)),
+    }
+    return json.dumps(dict(metrics=m, charts=charts,
+                           note="Click-to-run check: the WebAssembly RTI "
+                                "estimator and the Python TwinMHE reference "
+                                "run the identical 40-step scenario "
+                                "(H = 8, seed 7) sample-for-sample. "
+                                "Tolerances are the measured parity "
+                                "tolerances: Cₐ 2e-2 mol L⁻¹, T/T_j 1e-1 K, "
+                                "UA 5e-1 J s⁻¹ K⁻¹."))
