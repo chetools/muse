@@ -6,12 +6,22 @@ App tab all come from the same CELLS plus cstr_model.py. The generator
 inlines cstr_model.py (byte-identity asserted) so the mirrored notebook is
 self-contained -- the MoLab mirror serves a single file.
 
+The PF track (v2) adds, all additive:
+- twin_pf.py is inlined the same way (byte-identity asserted) and exposed
+  as PF in the setup cell, so the B-scene walkthrough cells run;
+- `--out PATH` selects the output file (default: notebook/walkthrough_molab.py),
+  so versioned variants (e.g. walkthrough_molab_v2.py) can be generated
+  without overwriting the v1 notebook the v1 page links to;
+- a closing theory-appendix cell is generated verbatim from
+  drafts/theory_particle_filter.md -- the same single source as the page's
+  Theory sub-panel (estimator panel contract, sec. 5).
+
 marimo cell-semantics transforms applied here (documented, mechanical):
 - `figure(data, layout)` statement calls become `_figN = go.Figure(...)`
   with the cell ending in the figure (or mo.vstack of several);
 - `open(MODEL_PATH).read()` becomes MODEL_SRC (already inlined);
 - every public name a cell defines that is NOT provided by the setup cell
-  (mo, np, go, M, MODEL_SRC, figure) is renamed to an underscore-private
+  (mo, np, go, M, PF, MODEL_SRC, figure) is renamed to an underscore-private
   cell-local name, so no two cells define the same global (marimo
   multiple-defs rule). The Walkthrough panel shows the original names;
   the logic is identical.
@@ -26,9 +36,10 @@ import textwrap
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYTHON_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "python"))
+DRAFTS_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "drafts"))
 OUT = os.path.join(HERE, "notebook", "walkthrough_molab.py")
 
-SETUP_PUBLIC = {"mo", "np", "go", "M", "MODEL_SRC", "figure"}
+SETUP_PUBLIC = {"mo", "np", "go", "M", "PF", "MODEL_SRC", "figure"}
 
 
 class _Rename(ast.NodeTransformer):
@@ -194,11 +205,27 @@ def cell(body_lines, args):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default=OUT,
+                    help="output notebook path (versioned variants allowed)")
+    args = ap.parse_args()
+    out_path = args.out
     model_src = open(os.path.join(PYTHON_DIR, "cstr_model.py"),
                      encoding="utf-8").read()
     assert "'''" not in model_src, "triple quotes break the inline string"
     assert "</script" not in model_src.lower()
     model_b64 = base64.b64encode(model_src.encode("utf-8")).decode("ascii")
+    # --- Particle-filter panel (PF track): inline twin_pf.py (v2) ---
+    twpf_src = open(os.path.join(PYTHON_DIR, "twin_pf.py"),
+                    encoding="utf-8").read()
+    assert "'''" not in twpf_src, "triple quotes break the inline string"
+    assert "</script" not in twpf_src.lower()
+    twpf_b64 = base64.b64encode(twpf_src.encode("utf-8")).decode("ascii")
+    # --- Particle-filter panel (PF track): theory appendix source (v2) ---
+    pf_theory_md = open(os.path.join(DRAFTS_DIR, "theory_particle_filter.md"),
+                        encoding="utf-8").read()
+    assert '"""' not in pf_theory_md, "triple quotes break the r-string cell"
     sys.path.insert(0, HERE)
     from walkthrough import CELLS
 
@@ -219,7 +246,8 @@ def main():
     ]
     # The model source is byte-identical to python/cstr_model.py (asserted
     # below); it is base64-wrapped only so the blob need not be re-indented
-    # inside the cell body.
+    # inside the cell body. twin_pf.py is inlined the same way (PF track, v2);
+    # it imports cstr_model, so it is exec'd after cstr_model is registered.
     setup_body = [
         "    import marimo as mo",
         "    import numpy as np, base64",
@@ -230,9 +258,14 @@ def main():
         '    exec(compile(MODEL_SRC, "cstr_model.py", "exec"), _mod.__dict__)',
         '    _sys.modules["cstr_model"] = _mod',
         "    import cstr_model as M",
+        f'    TWPF_SRC = base64.b64decode("{twpf_b64}").decode("utf-8")',
+        "    _mod_pf = _types.ModuleType('twin_pf')",
+        '    exec(compile(TWPF_SRC, "twin_pf.py", "exec"), _mod_pf.__dict__)',
+        '    _sys.modules["twin_pf"] = _mod_pf',
+        "    import twin_pf as PF",
         "    def figure(data, layout=None, **kw):",
         "        return go.Figure(data=data, layout=layout or kw)",
-        "    return (mo, np, go, M, MODEL_SRC, figure)",
+        "    return (mo, np, go, M, PF, MODEL_SRC, figure)",
     ]
     parts.append(cell(setup_body, set()))
 
@@ -255,16 +288,27 @@ def main():
             args |= {"mo"}
         parts.append(cell(textwrap.indent(code, "    ").split("\n"), args))
 
+    # --- Particle-filter panel (PF track): theory appendix cell (v2) ---
+    # Verbatim from drafts/theory_particle_filter.md: the same single source
+    # as the page's Theory sub-panel (estimator panel contract, sec. 5).
+    th_lines = ['    mo.md(r"""']
+    th_lines += ["    " + ln if ln.strip() else ""
+                 for ln in pf_theory_md.strip().split("\n")]
+    th_lines += ['    """)']
+    parts.append(cell(th_lines, {"mo"}))
+
     parts.append('if __name__ == "__main__":\n    app.run()\n')
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     out_text = "\n".join(parts) + "\n"
-    with open(OUT, "w", encoding="utf-8") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write(out_text)
     # byte-identity: what the notebook executes is exactly cstr_model.py
-    m = re.search(r'base64\.b64decode\("([A-Za-z0-9+/=]+)"\)', out_text)
-    assert m, "b64 blob not found"
-    assert base64.b64decode(m.group(1)).decode("utf-8") == model_src
-    print(f"[make_molab] wrote {OUT} ({out_text.count('@app.cell')} cells)")
+    # and twin_pf.py
+    blobs = re.findall(r'base64\.b64decode\("([A-Za-z0-9+/=]+)"\)', out_text)
+    assert len(blobs) == 2, f"expected 2 b64 blobs, found {len(blobs)}"
+    assert base64.b64decode(blobs[0]).decode("utf-8") == model_src
+    assert base64.b64decode(blobs[1]).decode("utf-8") == twpf_src
+    print(f"[make_molab] wrote {out_path} ({out_text.count('@app.cell')} cells)")
 
 
 if __name__ == "__main__":

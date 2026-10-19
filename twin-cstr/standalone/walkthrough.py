@@ -361,4 +361,231 @@ print("twin receives per sample:", sample_keys)
 print("twin never receives: C_A (except delayed lab), UA, k0, E_a")
 """,
     ),
+    # --- Particle-filter panel (PF track): additive cells (v2) ---
+    dict(
+        title="The twin: particle filter",
+        md=r"""
+The particle-filter twin estimates the same augmented state vector
+$x = [C_A\;\; T\;\; T_j\;\; UA]^{\mathsf{T}}$ as the EKF twin, where
+$C_A$ is the reactant concentration (mol L$^{-1}$), $T$ the reactor
+temperature (K), $T_j$ the jacket temperature (K), and $UA$ the fouling
+conductance (J s$^{-1}$ K$^{-1}$). It represents the posterior by a
+weighted ensemble of $N$ particles ($N = 200$ by default): each step
+propagates every particle through the nominal twin model with process
+noise, reweights the ensemble by the $T$/$T_j$ measurement likelihood,
+and resamples systematically when the effective sample size $N_{\mathrm{eff}}$
+falls below the threshold $N_{\mathrm{thr}} = N/2$. The drifting
+conductance is tracked with Liu--West kernel smoothing (discount factor
+$\gamma = 0.97$). The point estimate is the weighted particle mean, and
+uncertainty is reported as weighted particle quantiles. The `step`
+interface is identical to the EKF twin's, so the driver feeds both
+twins the same published samples.
+""",
+        code=r"""
+import twin_pf as PF
+
+twin = PF.TwinPF(dt=10.0, N=200, seed=0)
+print("twin state: [C_A, T, T_j, UA] as a weighted particle ensemble")
+print(f"N = {twin.N}, gamma = {twin.gamma}, "
+      f"resample_thr = {twin.resample_thr * twin.N:.0f}")
+print(f"per-step sigma_p: C_A = {twin.sigma_p_CA:.2e} mol L-1, "
+      f"T = {twin.sigma_p_T:.2e} K, T_j = {twin.sigma_p_Tj:.2e} K")
+plant = M.Plant(seed=7)
+s = plant.step(10.0)
+est = twin.step({k: v for k, v in s.items() if not k.startswith("_")})
+print("step() returns:", sorted(est.keys()))
+print(f"weighted-mean UA after one step: {est['UA']:.3f} J s-1 K-1")
+print(f"N_eff after one step: {twin.n_eff_hist[-1]:.1f} of {twin.N}")
+print("diagnostics():", sorted(twin.diagnostics().keys()))
+""",
+    ),
+    dict(
+        title="Scene B1: fouling tracking, PF against EKF",
+        md=r"""
+One plant drives both twins with the identical seed and the identical
+published samples, so differences in the outputs are attributable to the
+estimators. The comparison-scene convention of the estimator panel
+contract is honored exactly: the seed is shared, the samples are shared,
+and only the estimators differ. The numbers below come from a 2 h
+nominal-fouling run with $N = 100$ particles; the App tab reproduces the
+comparison live at $N = 200$.
+""",
+        code=r"""
+import twin_pf as PF
+
+DT = 10.0
+plant = M.Plant(seed=7)
+ekf = M.TwinEKF(dt=DT)
+pf = PF.TwinPF(dt=DT, N=100, seed=7)
+n = int(2 * 3600 / DT)
+t, ua_t, ua_e, ua_p, ca_t, ca_e, ca_p = ([] for _ in range(7))
+for _ in range(n):
+    s = plant.step(DT)
+    pub = {k: v for k, v in s.items() if not k.startswith("_")}
+    ee, ep = ekf.step(pub), pf.step(pub)
+    tr = s["_true"]
+    t.append(s["t"] / 3600.0)
+    ua_t.append(tr["UA"]); ua_e.append(ee["UA"]); ua_p.append(ep["UA"])
+    ca_t.append(tr["C_A"]); ca_e.append(ee["C_A"]); ca_p.append(ep["C_A"])
+b = int(1800 / DT)
+
+
+def _rmse(a, c):
+    return float(np.sqrt(np.mean((np.array(a[b:]) - np.array(c[b:])) ** 2)))
+
+
+print(f"EKF UA  RMSE: {_rmse(ua_e, ua_t):.3f} J s-1 K-1")
+print(f"PF  UA  RMSE: {_rmse(ua_p, ua_t):.3f} J s-1 K-1")
+print(f"EKF C_A RMSE: {_rmse(ca_e, ca_t):.4f} mol L-1")
+print(f"PF  C_A RMSE: {_rmse(ca_p, ca_t):.4f} mol L-1")
+print(f"PF N_eff: min {min(pf.n_eff_step):.1f}, "
+      f"median {float(np.median(pf.n_eff_step)):.1f} of {pf.N}")
+figure(
+    [
+        dict(x=t, y=ua_t, mode="lines", name="UA true (hidden)"),
+        dict(x=t, y=ua_e, mode="lines", name="UA EKF estimate"),
+        dict(x=t, y=ua_p, mode="lines", name="UA PF weighted mean"),
+    ],
+    dict(title="Fouling tracking: PF against EKF",
+         xaxis=dict(title="time [h]"), yaxis=dict(title="UA [J s-1 K-1]"),
+         legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+         margin=dict(r=160)),
+)
+""",
+    ),
+    dict(
+        title="Scene B2: sensor-bias fault and the particle cloud",
+        md=r"""
+A temperature-sensor bias of $+5$ K is injected at $t = 1.1$ h of a 3 h
+run. A biased temperature reading admits two explanations -- sensor bias
+or accelerated fouling -- and the particle cloud sustains both
+hypotheses: the three histograms below show the $UA$ particle density
+(40 bins) at the last lab delivery before the fault, the first delivery
+after it (whose sample still predates the fault), and the second
+delivery after it (whose sample postdates the fault and discriminates
+between the hypotheses). The delayed lab innovations are the independent
+check: they stay small until a post-fault lab sample arrives.
+""",
+        code=r"""
+import twin_pf as PF
+
+DT = 10.0
+plant = M.Plant(seed=21)
+pf = PF.TwinPF(dt=DT, N=100, seed=21)
+n = int(3 * 3600 / DT)
+onset_h = 1.1
+onset_i = int(onset_h * 3600 / DT)
+snaps = []
+for i in range(n):
+    if i == onset_i:
+        plant.sensor_bias_T = 5.0  # fault injected
+    s = plant.step(DT)
+    pub = {k: v for k, v in s.items() if not k.startswith("_")}
+    pf.step(pub)
+    if "lab_C_A" in pub:
+        snaps.append((s["t"] / 3600.0, pf.X[:, 3].copy(), pf.w.copy()))
+pre = [sn for sn in snaps if sn[0] < onset_h][-1]
+post0, post1 = [sn for sn in snaps if sn[0] >= onset_h][:2]
+print(f"fault injected at t = {onset_h:.1f} h "
+      f"(+5 K bias on the T sensor)")
+for lbl, sn in (("pre-fault", pre), ("post-fault, pre-lab", post0),
+                ("post-lab", post1)):
+    mu = float(np.sum(sn[2] * sn[1]))
+    print(f"{lbl:>20s} (t = {sn[0]:.2f} h): "
+          f"UA cloud mean {mu:.2f} J s-1 K-1")
+print("lab innovations after the fault:")
+shown = 0
+for (td, iv, sd) in pf.lab_innov:
+    if td / 3600.0 >= onset_h and shown < 4:
+        print(f"  t = {td / 3600.0:.2f} h: "
+              f"{iv:+.3f} mol L-1 ({iv / sd:+.1f} sigma)")
+        shown += 1
+traces = []
+for lbl, sn in (("pre-fault", pre), ("post-fault, pre-lab", post0),
+                ("post-lab", post1)):
+    counts, edges = np.histogram(sn[1], bins=40, weights=sn[2], density=True)
+    ctr = ((edges[:-1] + edges[1:]) / 2.0).tolist()
+    traces.append(dict(x=ctr, y=counts.tolist(), type="bar", name=lbl,
+                       opacity=0.6))
+figure(
+    traces,
+    dict(title="UA particle cloud around a +5 K sensor bias",
+         xaxis=dict(title="UA [J s-1 K-1]"),
+         yaxis=dict(title="density [-]"),
+         legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+         margin=dict(r=170), barmode="overlay"),
+)
+""",
+    ),
+    dict(
+        title="Scene B3: UA forecast with uncertainty bands",
+        md=r"""
+The fouling trend is fitted to the particle-filter weighted-mean $UA$
+trajectory, exactly as for the EKF twin. The credible band at each lead
+time comes from the particle cloud itself: every final particle is
+projected forward with the shared fitted trend, and weighted quantiles
+of the projected cloud give the 5--95% band and the median. The band is
+double-encoded (band plus median line) and widens with lead time as the
+level uncertainty compounds with the fouling trend. The numbers below
+come from a 2 h run with $N = 100$ particles.
+""",
+        code=r"""
+import twin_pf as PF
+
+DT = 10.0
+plant = M.Plant(seed=11)
+pf = PF.TwinPF(dt=DT, N=100, seed=11)
+n = int(2 * 3600 / DT)
+hist_t, hist_ua = [], []
+for _ in range(n):
+    s = plant.step(DT)
+    pub = {k: v for k, v in s.items() if not k.startswith("_")}
+    pf.step(pub)
+    hist_t.append(s["t"])
+    hist_ua.append(float(np.sum(pf.w * pf.X[:, 3])))
+hist_t, hist_ua = np.array(hist_t), np.array(hist_ua)
+use = hist_t > hist_t[0] + 0.25 * (hist_t[-1] - hist_t[0])
+slope, intercept = np.polyfit(hist_t[use],
+                              np.log(np.maximum(hist_ua[use], 1e-6)), 1)
+t_now = hist_t[-1]
+t_grid = np.linspace(t_now, t_now + 12 * 3600.0, 120)
+trend = np.exp(slope * (t_grid - t_now))
+ua_now, w_now = pf.X[:, 3], pf.w
+o = np.argsort(ua_now)
+xs = ua_now[o]
+c = np.cumsum(w_now[o])
+c = c / c[-1]
+xx = np.concatenate(([0.0], c))
+yy = np.concatenate(([xs[0]], xs))
+
+
+def _wq(q):
+    return float(np.interp(q, xx, yy))
+
+
+q5, q50, q95 = _wq(0.05), _wq(0.50), _wq(0.95)
+print(f"fitted fouling rate: {slope * 3600:.4f} h-1")
+print(f"UA now:  median {q50:.2f}, 5-95% [{q5:.2f}, {q95:.2f}] J s-1 K-1")
+print(f"UA +12 h: median {q50 * trend[-1]:.2f}, "
+      f"5-95% [{q5 * trend[-1]:.2f}, {q95 * trend[-1]:.2f}] J s-1 K-1")
+figure(
+    [
+        dict(x=(hist_t / 3600.0).tolist(), y=hist_ua.tolist(),
+             mode="lines", name="UA PF weighted mean"),
+        dict(x=(t_grid / 3600.0).tolist(), y=(q50 * trend).tolist(),
+             mode="lines", name="forecast median", line=dict(dash="dash")),
+        dict(x=(t_grid / 3600.0).tolist(), y=(q95 * trend).tolist(),
+             mode="lines", name="95%", line=dict(width=0),
+             showlegend=False),
+        dict(x=(t_grid / 3600.0).tolist(), y=(q5 * trend).tolist(),
+             mode="lines", name="5-95% band", fill="tonexty",
+             line=dict(width=0)),
+    ],
+    dict(title="UA forecast with particle credible band",
+         xaxis=dict(title="time [h]"), yaxis=dict(title="UA [J s-1 K-1]"),
+         legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+         margin=dict(r=170)),
+)
+""",
+    ),
 ]

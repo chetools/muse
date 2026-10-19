@@ -10,8 +10,8 @@ cannot load, the page shows an explicit error -- calculations are never
 reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          # -> twin-cstr-standalone-v1.html
-  python3 build_page.py --stub   # -> twin-cstr-standalone-v1-stub.html
+  python3 build_page.py          # -> twin-cstr-standalone-v2.html
+  python3 build_page.py --stub   # -> twin-cstr-standalone-v2-stub.html
         # compute stubbed with build-time data; layout screenshots only,
         # never published.
 """
@@ -35,10 +35,12 @@ VENDOR = "/home/hatch/workspace/muse/couette/standalone/vendor"
 PYODIDE_VERSION = "0.27.7"
 PYODIDE_URL = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/pyodide.js"
 
-OUT_NAME = "twin-cstr-standalone-v1.html"
-STUB_NAME = "twin-cstr-standalone-v1-stub.html"
+# --- Particle-filter panel (PF track): v2 output names (additive change) ---
+# v1 files are untouched; v3 is reserved for the MHE track.
+OUT_NAME = "twin-cstr-standalone-v2.html"
+STUB_NAME = "twin-cstr-standalone-v2-stub.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
-             "twin-cstr/walkthrough_molab.py")
+             "twin-cstr/walkthrough_molab_v2.py")
 
 
 def log(msg):
@@ -49,10 +51,16 @@ def load_sources():
     model = open(os.path.join(PYTHON_DIR, "cstr_model.py"), encoding="utf-8").read()
     driver = open(os.path.join(HERE, "driver.py"), encoding="utf-8").read()
     theory_md = open(os.path.join(HERE, "theory.md"), encoding="utf-8").read()
-    for name, src in (("cstr_model.py", model), ("driver.py", driver)):
+    # --- Particle-filter panel (PF track): additive sources (v2) ---
+    twpf = open(os.path.join(PYTHON_DIR, "twin_pf.py"), encoding="utf-8").read()
+    pf_theory_md = open(os.path.join(HERE, os.pardir, "drafts",
+                                     "theory_particle_filter.md"),
+                        encoding="utf-8").read()
+    for name, src in (("cstr_model.py", model), ("driver.py", driver),
+                       ("twin_pf.py", twpf)):
         if "</script" in src.lower():
             raise SystemExit(f"{name} contains a closing script tag; refusing to embed")
-    return model, driver, theory_md
+    return model, driver, theory_md, twpf, pf_theory_md
 
 
 EXTRA_CSS = """
@@ -75,6 +83,28 @@ EXTRA_CSS = """
 .theory td:first-child{white-space:nowrap}
 .tabs{flex-wrap:wrap}
 .tabs button{white-space:nowrap}
+/* --- Particle-filter panel (PF track): additive styles (v2) --- */
+.estbar{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:1rem 0}
+.estbar-label{font-weight:600;margin-right:.4rem}
+.seg{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--card-border);
+  border-radius:.4rem;padding:.45rem .8rem;cursor:pointer;background:#fff}
+.seg input{accent-color:var(--st-red)}
+.seg.disabled{opacity:.45;cursor:not-allowed;background:#f4f5f7}
+.seg .v3note{font-size:.8rem;color:#666}
+#bayes-section{margin-top:1.5rem;border-top:2px solid var(--card-border);padding-top:1rem}
+.pf-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:.6rem 1.2rem;margin:1rem 0}
+.pf-controls .field{margin:0}
+.pf-controls input[type=range]{width:100%}
+.pf-val{font-variant-numeric:tabular-nums;font-weight:600}
+.pf-scen{border:1px solid var(--card-border);background:#fff;border-radius:.4rem;
+  padding:.45rem .8rem;cursor:pointer;font-family:inherit;margin-right:.4rem}
+.pf-scen.active{background:var(--st-red);color:#fff;border-color:var(--st-red)}
+#btn-run-pf{background:var(--st-red);color:#fff;border:none;border-radius:.4rem;
+  padding:.6rem 1rem;font-size:1rem;cursor:pointer;width:100%;margin-top:.6rem;
+  font-family:inherit}
+#btn-run-pf:disabled{opacity:.5;cursor:wait}
+#pf-stale-note{color:#a05a00;margin-top:.4rem}
 """
 
 COMMON_JS = r"""
@@ -142,8 +172,11 @@ const PRESTART_SCENES = {};
     renderPayload(pre.base);
     for (const k of ['s2', 's3', 's5']) if (pre[k]) PRESTART_SCENES[k] = pre[k];
     PRESTART_SCENES['s1'] = pre.base;
+    // --- Particle-filter panel (PF track): additive prestart keys (v2) ---
+    for (const k of ['pf_b1', 'pf_b2', 'pf_b3']) if (pre[k]) PRESTART_SCENES[k] = pre[k];
     prestartActive = true;
     displayedParams = JSON.stringify(defaultScenario());
+    if (pre.pf_b1) displayedPFParams = JSON.stringify(defaultPFScenario());
   } catch (e) { /* fall back to empty app; Run computes live */ }
 })();
 function defaultScenario(){
@@ -272,11 +305,160 @@ async function runWhatIf(){
 $('btn-run').addEventListener('click', runBase);
 $('btn-whatif').addEventListener('click', runWhatIf);
 $('btn-closed').addEventListener('click', runClosed);
+
+// ======================================================================
+// --- Particle-filter panel (PF track): additive JS (v2) ---
+// Estimator selector, PF controls, B1-B3 scene tabs, chunked PF run.
+// ======================================================================
+let displayedPFParams = null;
+let pfScenario = 'nominal';  // or 'fault'
+let currentPFScene = 'b1';
+
+function pfN(){ return Math.round(Math.pow(10, parseFloat($('in-pf-n').value))); }
+function pfDecades(id){ return Math.pow(10, parseFloat($(id).value)); }
+
+function readPFScenario(){
+  const s = readScenario();
+  const sel = document.querySelector('input[name="estimator"]:checked').value;
+  s.mode = (sel === 'side_by_side') ? 'side_by_side' : 'pf';
+  s.N = pfN();
+  s.gamma = parseFloat($('in-pf-gamma').value);
+  s.resample = $('in-pf-resample').checked;
+  s.resample_thr = parseFloat($('in-pf-thr').value);
+  s.sigma_p_scale_ca = pfDecades('in-pf-sca');
+  s.sigma_p_scale_t = pfDecades('in-pf-st');
+  s.sigma_p_scale_tj = pfDecades('in-pf-stj');
+  if (pfScenario === 'fault') { s.sensor_bias_T = 5.0; s.bias_onset_frac = 0.35; }
+  return s;
+}
+function defaultPFScenario(){
+  const s = defaultScenario();
+  s.mode = 'side_by_side'; s.N = 200; s.gamma = 0.97;
+  s.resample = true; s.resample_thr = 0.5;
+  s.sigma_p_scale_ca = 1.0; s.sigma_p_scale_t = 1.0; s.sigma_p_scale_tj = 1.0;
+  return s;
+}
+function pfCheckStale(){
+  if (displayedPFParams !== null &&
+      JSON.stringify(readPFScenario()) !== displayedPFParams) {
+    $('pf-stale-note').hidden = false;
+  } else {
+    $('pf-stale-note').hidden = true;
+  }
+}
+function showScenePf(name){
+  currentPFScene = name;
+  const key = 'pf_' + name;
+  if (prestartActive && PRESTART_SCENES[key]) {
+    renderPayload(PRESTART_SCENES[key]); return;
+  }
+  if (STUB_MODE) {
+    $('metrics').innerHTML = '';
+    $('scene-note').hidden = false;
+    $('scene-note').textContent = 'Live computation needs the Python runtime; ' +
+      'this stub preview renders the precomputed B scenes only.';
+    return;
+  }
+  if (!driver) { return; }
+  try {
+    const p = JSON.parse(driver.render_pf_scene(name));
+    renderPayload(p);
+  } catch (e) { showErr('Scene failed: ' + (e && e.message || e)); }
+}
+async function runPF(){
+  if (running || !driver) return;
+  const N = pfN();
+  if (N > 200) {
+    const n = $('pf-note');
+    n.hidden = false;
+    n.textContent = 'N = ' + N + ' exceeds the live-run cap: the particle ' +
+      'filter runs live only for N \u2264 200; larger N is precompute-only. ' +
+      'No live execution was attempted \u2014 lower N and re-run, or use ' +
+      'the precomputed default run (N = 200).';
+    return;
+  }
+  $('pf-note').hidden = true;
+  running = true; $('btn-run-pf').disabled = true;
+  try {
+    const p = await pump(
+      () => driver.start_pf(JSON.stringify(readPFScenario())),
+      () => driver.step_pf(),
+      () => driver.finish_pf());
+    renderPayload(p);
+    prestartActive = false;
+    displayedPFParams = JSON.stringify(readPFScenario());
+    $('pf-stale-note').hidden = true;
+    document.querySelector('#scene-tabs-pf button[data-scene="b1"]').click();
+  } catch (e) { showErr('Particle-filter run failed: ' + (e && e.message || e)); }
+  running = false; $('btn-run-pf').disabled = false;
+  setTimeout(() => { $('runbar').hidden = true; }, 1500);
+}
+// B-scene tabs
+document.querySelectorAll('#scene-tabs-pf button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#scene-tabs-pf button').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.bpanel').forEach((p) => {
+      p.hidden = (p.id !== 'sec-' + btn.dataset.scene);
+    });
+    showScenePf(btn.dataset.scene);
+    setTimeout(renderPendingPlots, 30);
+  });
+});
+// estimator selector: EKF <-> PF scenes
+document.querySelectorAll('input[name="estimator"]').forEach((r) => {
+  r.addEventListener('change', () => {
+    const v = document.querySelector('input[name="estimator"]:checked').value;
+    const isPF = (v === 'pf' || v === 'side_by_side');
+    $('bayes-section').hidden = !isPF;
+    $('scene-tabs').style.display = isPF ? 'none' : '';
+    document.querySelectorAll('.scenepanel').forEach((p) => { p.hidden = true; });
+    document.querySelectorAll('.bpanel').forEach((p) => { p.hidden = true; });
+    if (isPF) {
+      $('sec-b1').hidden = false;
+      document.querySelectorAll('#scene-tabs-pf button').forEach((b) =>
+        b.classList.toggle('active', b.dataset.scene === 'b1'));
+      showScenePf('b1');
+    } else {
+      document.querySelector('#scene-tabs').style.display = '';
+      $('sec-s1').hidden = false;
+      document.querySelectorAll('#scene-tabs button').forEach((b) =>
+        b.classList.toggle('active', b.dataset.scene === 's1'));
+      showScene('s1');
+    }
+    setTimeout(renderPendingPlots, 30);
+  });
+});
+// PF control wiring: live labels, scenario buttons, stale note
+function pfLabel(id, val){ $(id).textContent = val; }
+$('in-pf-n').addEventListener('input', () => { pfLabel('pf-n-val', String(pfN())); pfCheckStale(); });
+$('in-pf-gamma').addEventListener('input', () => { pfLabel('pf-gamma-val', parseFloat($('in-pf-gamma').value).toFixed(2)); pfCheckStale(); });
+$('in-pf-thr').addEventListener('input', () => { pfLabel('pf-thr-val', parseFloat($('in-pf-thr').value).toFixed(2)); pfCheckStale(); });
+$('in-pf-resample').addEventListener('input', pfCheckStale);
+for (const [id, lab] of [['in-pf-sca', 'pf-sca-val'], ['in-pf-st', 'pf-st-val'], ['in-pf-stj', 'pf-stj-val']]) {
+  $(id).addEventListener('input', () => {
+    pfLabel(lab, '\u00d7' + pfDecades(id).toFixed(1)); pfCheckStale();
+  });
+}
+for (const [bid, mode] of [['btn-pf-nominal', 'nominal'], ['btn-pf-fault', 'fault']]) {
+  $(bid).addEventListener('click', () => {
+    pfScenario = mode;
+    $('btn-pf-nominal').classList.toggle('active', mode === 'nominal');
+    $('btn-pf-fault').classList.toggle('active', mode === 'fault');
+    pfCheckStale();
+  });
+}
+document.querySelectorAll('aside.sidebar input').forEach((inp) => {
+  inp.addEventListener('input', pfCheckStale);
+});
+$('btn-run-pf').addEventListener('click', runPF);
 """
 
 BOOT_JS = r"""
 const MODEL_SRC = __BUILD_MODEL_SRC__;
 const DRIVER_SRC = __BUILD_DRIVER_SRC__;
+// --- Particle-filter panel (PF track): additive source (v2) ---
+const TWPF_SRC = __BUILD_TWPF_SRC__;
 const PYODIDE_URL = "__BUILD_PYODIDE_URL__";
 const STUB_MODE = false;
 function loadScript(src){
@@ -299,16 +481,20 @@ async function boot(){
     setBoot('Installing app code\u2026');
     pyodide.FS.writeFile('/cstr_model.py', MODEL_SRC);
     pyodide.FS.writeFile('/driver.py', DRIVER_SRC);
+    // --- Particle-filter panel (PF track): additive source (v2) ---
+    pyodide.FS.writeFile('/twin_pf.py', TWPF_SRC);
     await pyodide.runPythonAsync("import sys; sys.path.insert(0, '/');\nimport driver");
     driver = pyodide.globals.get('driver');
     $('boot').hidden = true;
     $('app').hidden = false;
     setBoot('Ready \u2014 press Run scenario.');
-    for (const id of ['btn-run', 'btn-whatif', 'btn-closed']) {
+    for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf']) {
       const b = $(id); if (b) b.disabled = false;
     }
   } catch (e) {
     $('boot').hidden = true;
+    $('app').hidden = false;  // v2: keep the precomputed run visible; only
+                              // live recompute needs the runtime
     const f = $('fatal');
     f.hidden = false;
     f.innerHTML = '<b>Could not start the Python runtime.</b><br>' +
@@ -327,7 +513,7 @@ const STUB_DATA = __BUILD_STUB_JSON__;
 document.addEventListener('DOMContentLoaded', () => {
   $('boot').hidden = true;
   $('app').hidden = false;
-  for (const id of ['btn-run', 'btn-whatif', 'btn-closed']) {
+  for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf']) {
     const b = $(id); if (b) b.disabled = false;
   }
   renderPayload(STUB_DATA);
@@ -387,6 +573,14 @@ __BUILD_KATEX_CSS__
     the plant; an extended Kalman filter that sees only the sensor stream plays
     the twin. Six scenes show the twin staying synchronized with a fouling
     jacket &mdash; and what that synchronization is good for.</p>
+    <!-- Particle-filter panel (PF track): estimator selector (v2, additive) -->
+    <div class="estbar" role="radiogroup" aria-label="Estimator">
+      <span class="estbar-label">Estimator</span>
+      <label class="seg"><input type="radio" name="estimator" value="ekf" checked> EKF</label>
+      <label class="seg"><input type="radio" name="estimator" value="pf"> Particle filter</label>
+      <label class="seg"><input type="radio" name="estimator" value="side_by_side"> Side-by-side</label>
+      <label class="seg disabled"><input type="radio" name="estimator" value="mhe" disabled> MHE <span class="v3note">panel arriving in v3</span></label>
+    </div>
     <div id="err" class="err" hidden></div>
     <div class="metrics" id="metrics"></div>
     <div class="scene-note" id="scene-note" hidden></div>
@@ -440,9 +634,77 @@ __BUILD_KATEX_CSS__
         <button id="btn-closed" disabled>Run closed-loop demo</button>
         <div class="charts"><div class="chart" id="c6-T"></div></div>
       </section>
+      <!-- Particle-filter panel (PF track): Bayesian section (v2, additive) -->
+      <section id="bayes-section" hidden>
+        <h2>Bayesian estimator (particle filter)</h2>
+        <p class="intro">A bootstrap particle filter estimates the same
+        augmented state as the EKF &mdash; concentration C<sub>A</sub>,
+        temperatures T and T<sub>j</sub>, and the fouling conductance
+        UA &mdash; from the same published stream. Here N is the particle
+        count, &gamma; the Liu&ndash;West discount factor for UA tracking,
+        &sigma;<sub>p</sub> the per-step process-noise standard deviations,
+        N<sub>eff</sub> the effective sample size, and N<sub>thr</sub> the
+        resampling threshold. Uncertainty is reported as weighted particle
+        quantiles, not a covariance. Side-by-side drives both estimators
+        with one plant, the identical samples, and the identical seed.</p>
+        <div class="pf-controls">
+          <div class="field"><label for="in-pf-n">Particles N (log scale)</label>
+            <input id="in-pf-n" type="range" min="2.30103" max="4.30103" step="0.01" value="2.30103">
+            <div><span class="pf-val" id="pf-n-val">200</span>
+            <span class="side-cap">N &le; 200 runs live; larger N is precompute-only.</span></div></div>
+          <div class="field"><label for="in-pf-gamma">Liu&ndash;West discount &gamma;</label>
+            <input id="in-pf-gamma" type="range" min="0.90" max="1.00" step="0.005" value="0.97">
+            <div><span class="pf-val" id="pf-gamma-val">0.97</span></div></div>
+          <div class="field"><label for="in-pf-thr">Resampling threshold N<sub>thr</sub>/N</label>
+            <input id="in-pf-resample" type="checkbox" checked>
+            <label for="in-pf-resample" class="side-cap">resample when N<sub>eff</sub> &lt; N<sub>thr</sub></label>
+            <input id="in-pf-thr" type="range" min="0.1" max="1.0" step="0.05" value="0.5">
+            <div><span class="pf-val" id="pf-thr-val">0.50</span></div></div>
+          <div class="field"><label for="in-pf-sca">&sigma;<sub>p</sub> scale: C<sub>A</sub> [&times;]</label>
+            <input id="in-pf-sca" type="range" min="-1" max="1" step="0.05" value="0">
+            <div><span class="pf-val" id="pf-sca-val">&times;1.0</span></div></div>
+          <div class="field"><label for="in-pf-st">&sigma;<sub>p</sub> scale: T [&times;]</label>
+            <input id="in-pf-st" type="range" min="-1" max="1" step="0.05" value="0">
+            <div><span class="pf-val" id="pf-st-val">&times;1.0</span></div></div>
+          <div class="field"><label for="in-pf-stj">&sigma;<sub>p</sub> scale: T<sub>j</sub> [&times;]</label>
+            <input id="in-pf-stj" type="range" min="-1" max="1" step="0.05" value="0">
+            <div><span class="pf-val" id="pf-stj-val">&times;1.0</span></div></div>
+          <div class="field"><span class="estbar-label">Scenario</span><br>
+            <button id="btn-pf-nominal" class="pf-scen active">Nominal fouling</button>
+            <button id="btn-pf-fault" class="pf-scen">Sensor-bias fault</button>
+            <div class="side-cap">The fault injects a +5 K T-sensor bias at 35% of the run; the sidebar seed still applies.</div></div>
+        </div>
+        <button id="btn-run-pf" disabled>Run particle filter</button>
+        <div id="pf-note" class="scene-note" hidden></div>
+        <div id="pf-stale-note" class="side-cap" hidden>Inputs changed &mdash; press Run particle filter to update the display.</div>
+        <nav class="tabs" id="scene-tabs-pf" data-panels="bpanel">
+          <button data-scene="b1" class="active">B1 &middot; Fouling tracking</button>
+          <button data-scene="b2">B2 &middot; Posterior spread</button>
+          <button data-scene="b3">B3 &middot; UA trend</button>
+        </nav>
+        <section id="sec-b1" class="bpanel">
+          <div class="charts"><div class="chart" id="cB1-UA"></div></div>
+          <div class="charts"><div class="chart" id="cB1-CA"></div></div>
+          <div class="charts"><div class="chart" id="cB1-Neff"></div></div>
+        </section>
+        <section id="sec-b2" class="bpanel" hidden>
+          <div class="charts"><div class="chart" id="cB2-H"></div></div>
+          <div class="charts"><div class="chart" id="cB2-LAB"></div></div>
+          <div class="charts"><div class="chart" id="cB2-Neff"></div></div>
+        </section>
+        <section id="sec-b3" class="bpanel" hidden>
+          <div class="charts"><div class="chart" id="cB3-fan"></div></div>
+          <div class="charts"><div class="chart" id="cB3-hist"></div></div>
+          <div class="charts"><div class="chart" id="cB3-Neff"></div></div>
+        </section>
+      </section>
     </section>
     <section id="panel-theory" class="tpanel" hidden>
-      <div class="theory">__BUILD_THEORY_HTML__</div>
+      <div class="theory">__BUILD_THEORY_HTML__
+        <!-- Particle-filter panel (PF track): theory sub-panel (v2, additive,
+             single-sourced from drafts/theory_particle_filter.md) -->
+        <h2>Theory: Bayesian estimation (particle filter)</h2>
+        __BUILD_PF_THEORY_HTML__</div>
     </section>
     <section id="panel-code" class="tpanel" hidden>
       <nav class="tabs" data-panels="cpanel">
@@ -465,6 +727,9 @@ __BUILD_KATEX_CSS__
         __BUILD_MODEL_HTML__
         <h3>driver.py &mdash; scenario runner (page driver)</h3>
         __BUILD_DRIVER_HTML__
+        <!-- Particle-filter panel (PF track): code listing (v2, additive) -->
+        <h3>twin_pf.py &mdash; particle-filter twin</h3>
+        __BUILD_TWPF_HTML__
       </section>
     </section>
   </div>
@@ -537,6 +802,57 @@ def make_prestart_data():
     return _json.dumps(out)
 
 
+# --- Particle-filter panel (PF track): additive precompute (v2) ---
+def make_pf_prestart_data(hours=8.0):
+    """Precompute the PF default runs headless at build time.
+
+    Two side-by-side runs (one Plant; the identical published samples feed
+    TwinEKF and TwinPF under the identical seed): nominal fouling for
+    scenes B1/B3, and the sensor-bias fault scenario for scene B2.
+    Returns a JSON string {pf_b1, pf_b2, pf_b3}.
+    """
+    import json as _json
+    import importlib as _il
+    sys.path.insert(0, PYTHON_DIR)
+    sys.path.insert(0, HERE)
+    import driver as _drv
+    _il.reload(_drv)
+    base = dict(hours=hours, dt=10.0, seed=7, fouling_rate_mult=1.0,
+                lab_interval=1200.0, sensor_bias_T=0.0, feed_T_step=0.0,
+                mode="side_by_side", N=200, gamma=0.97,
+                resample=True, resample_thr=0.5)
+    log(f"pf prestart: nominal {hours:g} h side-by-side run...")
+    _drv.start_pf(_json.dumps(base))
+    while True:
+        r = _json.loads(_drv.step_pf())
+        if r["done"]:
+            break
+    b1 = _json.loads(_drv.finish_pf())
+    b3 = _json.loads(_drv.render_pf_scene("b3"))
+    log("pf prestart: sensor-bias fault run for B2...")
+    fault = dict(base, sensor_bias_T=5.0, bias_onset_frac=0.35)
+    _drv.start_pf(_json.dumps(fault))
+    while True:
+        r = _json.loads(_drv.step_pf())
+        if r["done"]:
+            break
+    _drv.finish_pf()  # B1 of the fault run; not embedded
+    b2 = _json.loads(_drv.render_pf_scene("b2"))
+    out = {"pf_b1": b1, "pf_b2": b2, "pf_b3": b3}
+    log(f"pf prestart: {len(_json.dumps(out)) // 1024} KB embedded")
+    return _json.dumps(out)
+
+
+def _pf_theory_for_page(md_text):
+    """Strip the draft's title and status banner; the page supplies its own
+    h2 heading (see TEMPLATE). The numbered sections are kept as-is."""
+    lines = md_text.split("\n")
+    while lines and (not lines[0].strip() or lines[0].startswith("# ")
+                     or lines[0].startswith(">")):
+        lines.pop(0)
+    return "\n".join(lines)
+
+
 def theory_md_to_html(md_text):
     """Local variant of the Couette converter with the `tables` extension
     enabled (the nomenclature is a table). Otherwise identical."""
@@ -574,14 +890,19 @@ def theory_md_to_html(md_text):
 def main():
     stub = "--stub" in sys.argv[1:]
     log("loading sources...")
-    model, driver_src, theory_md = load_sources()
+    model, driver_src, theory_md, twpf_src, pf_theory_md = load_sources()
     log("converting theory markdown...")
     theory_html = S.ssr_katex(theory_md_to_html(theory_md))
+    # --- Particle-filter panel (PF track): PF theory sub-panel (v2) ---
+    log("converting PF theory markdown...")
+    pf_theory_html = S.ssr_katex(
+        theory_md_to_html(_pf_theory_for_page(pf_theory_md)))
     log("inlining KaTeX CSS...")
     css_katex = S.katex_css()
     log("highlighting code listings...")
     model_html, pyg_css = S.highlight_py(model)
     driver_html, _ = S.highlight_py(driver_src)
+    twpf_html, _ = S.highlight_py(twpf_src)  # PF track (v2)
     log("rendering walkthrough...")
     wt_html, wt_plots = render_walkthrough(
         S.theory_md_to_html, S.ssr_katex, S.highlight_py)
@@ -597,6 +918,9 @@ def main():
     page = sub_once(page, "__BUILD_PAGE_CSS__", S.page_css(pyg_css) + EXTRA_CSS)
     page = sub_once(page, "__BUILD_KATEX_CSS__", css_katex)
     page = sub_once(page, "__BUILD_THEORY_HTML__", theory_html)
+    # --- Particle-filter panel (PF track): additive tokens (v2) ---
+    page = sub_once(page, "__BUILD_PF_THEORY_HTML__", pf_theory_html)
+    page = sub_once(page, "__BUILD_TWPF_HTML__", twpf_html)
     page = sub_once(page, "__BUILD_MODEL_HTML__", model_html)
     page = sub_once(page, "__BUILD_DRIVER_HTML__", driver_html)
     page = sub_once(page, "__BUILD_WALKTHROUGH_HTML__", wt_html)
@@ -608,15 +932,23 @@ def main():
     page = sub_once(page, "__BUILD_WT_PLOTS__", wt_plots_js)
     if stub:
         log("generating stub compute data (headless driver run)...")
-        boot = STUB_BOOT_JS.replace("__BUILD_STUB_JSON__", make_stub_data())
-        page = sub_once(page, "__BUILD_PRESTART_JSON__", "null")
+        stub_s1 = make_stub_data()
+        boot = STUB_BOOT_JS.replace("__BUILD_STUB_JSON__", stub_s1)
+        # --- Particle-filter panel (PF track): stub PF payloads (v2) ---
+        stub_pre = {"base": json.loads(stub_s1)}
+        stub_pre.update(json.loads(make_pf_prestart_data(hours=2.0)))
+        page = sub_once(page, "__BUILD_PRESTART_JSON__", json.dumps(stub_pre))
     else:
         boot = (BOOT_JS
                 .replace("__BUILD_MODEL_SRC__", json.dumps(model))
                 .replace("__BUILD_DRIVER_SRC__", json.dumps(driver_src))
+                # --- Particle-filter panel (PF track): additive src (v2) ---
+                .replace("__BUILD_TWPF_SRC__", json.dumps(twpf_src))
                 .replace("__BUILD_PYODIDE_URL__", PYODIDE_URL))
         log("precomputing default run for instant first paint...")
-        page = sub_once(page, "__BUILD_PRESTART_JSON__", make_prestart_data())
+        pre = json.loads(make_prestart_data())
+        pre.update(json.loads(make_pf_prestart_data()))
+        page = sub_once(page, "__BUILD_PRESTART_JSON__", json.dumps(pre))
     page = sub_once(page, "__BUILD_BOOT_JS__", boot)
 
     for tok in ("__BUILD_PAGE_CSS__", "__BUILD_KATEX_CSS__",
@@ -626,7 +958,10 @@ def main():
                 "__BUILD_COMMON_JS__", "__BUILD_BOOT_JS__",
                 "__BUILD_WT_PLOTS__", "__BUILD_MODEL_SRC__",
                 "__BUILD_DRIVER_SRC__", "__BUILD_PYODIDE_URL__",
-                "__BUILD_STUB_JSON__", "__BUILD_PRESTART_JSON__"):
+                "__BUILD_STUB_JSON__", "__BUILD_PRESTART_JSON__",
+                # --- Particle-filter panel (PF track): additive tokens (v2) ---
+                "__BUILD_TWPF_SRC__", "__BUILD_PF_THEORY_HTML__",
+                "__BUILD_TWPF_HTML__"):
         if tok in page:
             raise SystemExit(f"unreplaced token: {tok}")
 

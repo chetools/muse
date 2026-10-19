@@ -33,6 +33,8 @@ def render_walkthrough(md_to_html, ssr_katex, highlight_py):
     sys.path.insert(0, PYTHON_DIR)
     sys.path.insert(0, HERE)
     import cstr_model as M  # noqa: F401
+    # --- Particle-filter panel (PF track): additive namespace (v2) ---
+    import twin_pf as PF  # noqa: F401
     from walkthrough import CELLS
 
     figs = []
@@ -40,7 +42,7 @@ def render_walkthrough(md_to_html, ssr_katex, highlight_py):
     def figure(data, layout=None, **kw):
         figs.append({"data": data, "layout": layout or kw})
 
-    ns = {"np": np, "go": go, "M": M, "figure": figure,
+    ns = {"np": np, "go": go, "M": M, "PF": PF, "figure": figure,
           "MODEL_PATH": MODEL_PATH, "USER_INPUTS": {}}
     steps = []
     plot_jsons = {}
