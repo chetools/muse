@@ -294,8 +294,8 @@ async function boot(){
     setBoot('Loading Python runtime\u2026');
     await loadScript(PYODIDE_URL);
     const pyodide = await loadPyodide();
-    setBoot('Loading NumPy and SciPy\u2026');
-    await pyodide.loadPackage(['numpy', 'scipy']);
+    setBoot('Loading NumPy\u2026');
+    await pyodide.loadPackage(['numpy']);
     setBoot('Installing app code\u2026');
     pyodide.FS.writeFile('/cstr_model.py', MODEL_SRC);
     pyodide.FS.writeFile('/driver.py', DRIVER_SRC);

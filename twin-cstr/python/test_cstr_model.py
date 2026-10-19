@@ -5,10 +5,12 @@ architecture (the twin cannot see plant internals), controller direction,
 and EKF tracking performance on a short scenario.
 """
 import numpy as np
+import os
 import pytest
 
 from cstr_model import (
     Plant, TwinEKF, controller, k_of_T, plant_rhs, twin_rhs,
+    _plant_rhs_s, _twin_rhs_s, twin_jac,
     PLANT_P, TWIN_P, CTRL,
 )
 
@@ -70,7 +72,7 @@ def test_augmented_observability_full_rank():
 
 def test_honesty_twin_cannot_see_plant():
     """Static check: the twin's code must not reference plant internals."""
-    src = open("/home/hatch/workspace/twin-cstr/python/cstr_model.py").read()
+    src = open(os.path.join(os.path.dirname(__file__), "cstr_model.py")).read()
     twin_src = src[src.index("class TwinEKF"):]
     # twin_rhs is shared structure (allowed); these are plant-only:
     for token in ["PLANT_P", "ua_of_t", '["_true"]', '"_true"', "_true",
@@ -107,3 +109,31 @@ def test_plant_holds_setpoint_when_clean():
         s = plant.step(10.0)
         Ts.append(s["T"])
     assert abs(np.mean(Ts[-30:]) - CTRL["T_sp"]) < 1.0
+
+
+def test_scalar_rhs_parity():
+    """Scalar duplicates used by the fast solver match the numpy reference."""
+    rng = np.random.default_rng(11)
+    p, tp, c = PLANT_P, TWIN_P, CTRL
+    for _ in range(20):
+        x = np.array([rng.uniform(0.05, 2.0), rng.uniform(320, 460),
+                      rng.uniform(300, 360), rng.uniform(-200, 200)])
+        t = rng.uniform(0, 30000.0)
+        Tm = x[1] + rng.normal(0, 1.0)
+        a = np.asarray(_plant_rhs_s(t, x, p, c, Tm))
+        b = plant_rhs(t, x, p, c, Tm)[0]
+        assert np.max(np.abs(a - b)) < 1e-9 * np.max(np.abs(b)), (a, b)
+        xa = np.array([x[0], x[1], x[2], rng.uniform(2, 18)])
+        Fj = rng.uniform(0.0005, 0.008)
+        a = np.asarray(_twin_rhs_s(xa, Fj, p["F"], 300.0, tp))
+        b = twin_rhs(xa, Fj, p["F"], 300.0, tp)
+        assert np.max(np.abs(a - b)) < 1e-9 * np.max(np.abs(b)), (a, b)
+        # analytic Jacobian matches finite differences of the numpy rhs
+        h = 1e-7
+        Jn = np.zeros((4, 4))
+        f0 = twin_rhs(xa, Fj, p["F"], 300.0, tp)
+        for j in range(4):
+            dx = np.zeros(4)
+            dx[j] = h * max(abs(xa[j]), 1.0)
+            Jn[:, j] = (twin_rhs(xa + dx, Fj, p["F"], 300.0, tp) - f0) / dx[j]
+        assert np.max(np.abs(twin_jac(xa, Fj, p["F"], 300.0, tp) - Jn)) < 1e-6

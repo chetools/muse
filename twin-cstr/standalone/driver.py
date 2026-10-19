@@ -17,7 +17,6 @@ progress bar between chunks so the UI never freezes):
 import json
 
 import numpy as np
-from scipy.integrate import solve_ivp
 
 import cstr_model as M
 
@@ -58,11 +57,11 @@ def _advance(st):
                 or (Fj_m >= M.CTRL["Fj_max"] and e_m > 0)):
             st["I_m"] += e_m * dt
         x_m = st["x_m"]
-        sol = solve_ivp(
-            lambda tt, xa: M.twin_rhs(
-                np.array([xa[0], xa[1], xa[2], M.TWIN_P["UA_init"]]),
+        sol = M._solve_ivp(
+            lambda tt, xa: M._twin_rhs_s(
+                (xa[0], xa[1], xa[2], M.TWIN_P["UA_init"]),
                 Fj_m, pub["F"], pub["T0"], M.TWIN_P)[:3],
-            (0, dt), x_m[:3], method="Radau", rtol=1e-6, atol=1e-8)
+            (0, dt), x_m[:3], rtol=1e-6, atol=1e-8)
         x_m[:3] = sol.y[:, -1]
     tr = s["_true"]
     rec["t"].append(s["t"] / 3600.0)
@@ -220,9 +219,9 @@ def _forecast_ua(twin_hist, twin_x, twin_I, ctrl, horizon_s=24 * 3600.0):
         if not ((Fj <= ctrl["Fj_min"] and e < 0)
                 or (Fj >= ctrl["Fj_max"] and e > 0)):
             I += e * dts
-        sol = solve_ivp(lambda tt, xx: M.twin_rhs(xx, Fj, M.PLANT_P["F"],
+        sol = M._solve_ivp(lambda tt, xx: M._twin_rhs_s(xx, Fj, M.PLANT_P["F"],
                                                   M.PLANT_P["T0"], M.TWIN_P),
-                        (0, dts), xa, method="Radau", rtol=1e-6, atol=1e-8)
+                        (0, dts), xa, rtol=1e-6, atol=1e-8)
         xa = sol.y[:, -1]
         T_proj.append(xa[1])
         Fj_proj.append(Fj)
@@ -288,9 +287,9 @@ def what_if(params_json):
         if not ((Fj <= c["Fj_min"] and e < 0)
                 or (Fj >= c["Fj_max"] and e > 0)):
             I += e * dt
-        sol = solve_ivp(lambda tt, xx: M.twin_rhs(xx, Fj, F_new,
+        sol = M._solve_ivp(lambda tt, xx: M._twin_rhs_s(xx, Fj, F_new,
                                                   M.PLANT_P["T0"], M.TWIN_P),
-                        (0, dt), xa, method="Radau", rtol=1e-6, atol=1e-8)
+                        (0, dt), xa, rtol=1e-6, atol=1e-8)
         xa = sol.y[:, -1]
         t.append(i * dt / 3600.0)
         T_cl.append(xa[1])

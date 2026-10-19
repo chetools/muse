@@ -1,7 +1,7 @@
 """Render the twin-cstr walkthrough CELLS as static HTML for the page.
 
 Executes each cell of walkthrough.py in file order in a shared namespace
-(real numpy / scipy / plotly; cstr_model from the repo's python/ package,
+(real numpy / plotly; cstr_model from the repo's python/ package,
 so the walkthrough cannot drift from the app). Per cell this captures the
 prose (md), the code, printed output, and figures recorded via figure().
 

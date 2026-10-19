@@ -28,7 +28,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PYTHON_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "python"))
 OUT = os.path.join(HERE, "notebook", "walkthrough_molab.py")
 
-SETUP_PUBLIC = {"mo", "np", "go", "solve_ivp", "M", "MODEL_SRC", "figure"}
+SETUP_PUBLIC = {"mo", "np", "go", "M", "MODEL_SRC", "figure"}
 
 
 class _Rename(ast.NodeTransformer):
@@ -205,7 +205,7 @@ def main():
     parts = [
         '# /// script',
         '# requires-python = ">=3.10"',
-        '# dependencies = ["marimo", "numpy", "scipy", "plotly"]',
+        '# dependencies = ["marimo", "numpy", "plotly"]',
         '# ///',
         '"""Editable MoLab notebook generated from walkthrough.py CELLS.',
         '',
@@ -224,8 +224,7 @@ def main():
         "    import marimo as mo",
         "    import numpy as np, base64",
         "    import plotly.graph_objects as go",
-        "    from scipy.integrate import solve_ivp",
-        "    import sys as _sys, types as _types",
+            "    import sys as _sys, types as _types",
         f'    MODEL_SRC = base64.b64decode("{model_b64}").decode("utf-8")',
         "    _mod = _types.ModuleType('cstr_model')",
         '    exec(compile(MODEL_SRC, "cstr_model.py", "exec"), _mod.__dict__)',
@@ -233,7 +232,7 @@ def main():
         "    import cstr_model as M",
         "    def figure(data, layout=None, **kw):",
         "        return go.Figure(data=data, layout=layout or kw)",
-        "    return (mo, np, go, solve_ivp, M, MODEL_SRC, figure)",
+        "    return (mo, np, go, M, MODEL_SRC, figure)",
     ]
     parts.append(cell(setup_body, set()))
 

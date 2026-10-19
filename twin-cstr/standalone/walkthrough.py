@@ -132,7 +132,6 @@ x_m = np.array([1.0, 368.0, 335.0, M.TWIN_P["UA_init"]])
 I_m = 0.0
 n = int(H * 3600 / DT)
 t, ua_t, ua_e, ca_t, ca_e, ca_m, Tms, T_e = [], [], [], [], [], [], [], []
-from scipy.integrate import solve_ivp
 for _ in range(n):
     s = plant.step(DT)
     pub = {k: v for k, v in s.items() if not k.startswith("_")}
@@ -141,11 +140,11 @@ for _ in range(n):
     if not ((Fj_m <= M.CTRL["Fj_min"] and e_m < 0)
             or (Fj_m >= M.CTRL["Fj_max"] and e_m > 0)):
         I_m += e_m * DT
-    sol = solve_ivp(
-        lambda tt, xa: M.twin_rhs(
-            np.array([xa[0], xa[1], xa[2], 16.0]),
+    sol = M._solve_ivp(
+        lambda tt, xa: M._twin_rhs_s(
+            (xa[0], xa[1], xa[2], 16.0),
             Fj_m, pub["F"], pub["T0"], M.TWIN_P)[:3],
-        (0, DT), x_m[:3], method="Radau", rtol=1e-6, atol=1e-8)
+        (0, DT), x_m[:3], rtol=1e-6, atol=1e-8)
     x_m[:3] = sol.y[:, -1]
     tr = s["_true"]
     t.append(s["t"] / 3600.0)
@@ -233,7 +232,6 @@ page reports this as the latest recommended jacket-cleaning date.
 """,
         code=r"""
 # reuse the Scene-1 run would be ideal; here a compact 4 h run suffices
-from scipy.integrate import solve_ivp
 DT = 10.0
 plant = M.Plant(seed=11)
 twin = M.TwinEKF(dt=DT)
@@ -263,11 +261,10 @@ for tg, ua in zip(t_grid, ua_proj):
     if not ((Fj <= M.CTRL["Fj_min"] and e < 0)
             or (Fj >= M.CTRL["Fj_max"] and e > 0)):
         I += e * (t_grid[1] - t_grid[0])
-    sol = solve_ivp(
-        lambda tt, xx: M.twin_rhs(xx, Fj, M.PLANT_P["F"], M.PLANT_P["T0"],
-                                  M.TWIN_P),
-        (0, t_grid[1] - t_grid[0]), xa, method="Radau",
-        rtol=1e-6, atol=1e-8)
+    sol = M._solve_ivp(
+        lambda tt, xx: M._twin_rhs_s(xx, Fj, M.PLANT_P["F"], M.PLANT_P["T0"],
+                                     M.TWIN_P),
+        (0, t_grid[1] - t_grid[0]), xa, rtol=1e-6, atol=1e-8)
     xa = sol.y[:, -1]
 print(f"fitted fouling rate: {slope * 3600:.4f} h-1 "
       f"(true {-1 / (M.PLANT_P['tau_foul'] / 3600):.4f} h-1)")

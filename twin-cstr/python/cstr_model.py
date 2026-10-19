@@ -12,8 +12,9 @@ It knows the model structure, the nominal (wrong) parameters, and the
 published controller settings. It never sees the plant's true parameters.
 """
 
+import math
+
 import numpy as np
-from scipy.integrate import solve_ivp
 
 # ---------------------------------------------------------------------------
 # PLANT: hidden true parameters (never visible to the twin)
@@ -61,6 +62,71 @@ TWIN_P = dict(
 
 def k_of_T(T, k0, EaR):
     return k0 * np.exp(np.clip(-EaR / np.maximum(T, 1.0), -700.0, 0.0))
+
+
+def _solve_ivp(fun, t_span, y0, rtol=1e-6, atol=1e-9):
+    """Adaptive explicit Runge-Kutta ODE solver, solve_ivp-like interface.
+
+    fun(t, y) takes a sequence of floats and returns a sequence of
+    derivatives. Returns a namespace with .t and .y shaped (n, 2) (initial
+    and final states), so call sites keep reading sol.y[:, -1].
+    Internal use only.
+    """
+    from types import SimpleNamespace
+    t0, t1 = float(t_span[0]), float(t_span[1])
+    y = [float(v) for v in y0]
+    n = len(y)
+
+    def rms(s):
+        return math.sqrt(sum(v * v for v in s) / n)
+
+    f0 = fun(t0, y)
+    s0 = [atol + rtol * abs(v) for v in y]
+    d0 = rms([a / b for a, b in zip(y, s0)])
+    d1 = rms([a / b for a, b in zip(f0, s0)])
+    h = 1e-6 if max(d0, d1) < 1e-5 else 0.01 * d0 / d1
+    f1 = fun(t0 + h, [y[i] + h * f0[i] for i in range(n)])
+    d2 = rms([(a - b) / (h * c) for a, b, c in zip(f1, f0, s0)])
+    dm = max(d0, d1, d2)
+    h = min(100.0 * h, (0.01 / dm) ** 0.2 if dm >= 1e-15 else max(1e-6, h * 1e-3))
+    h = min(h, t1 - t0)
+
+    t, k1 = t0, [float(v) for v in f0]
+    for _ in range(100000):
+        if t >= t1:
+            break
+        h = min(h, t1 - t)
+        k2 = fun(t + h / 5,
+                 [y[i] + h * (k1[i] / 5) for i in range(n)])
+        k3 = fun(t + h * 3 / 10,
+                 [y[i] + h * (3 / 40 * k1[i] + 9 / 40 * k2[i]) for i in range(n)])
+        k4 = fun(t + h * 4 / 5,
+                 [y[i] + h * (44 / 45 * k1[i] - 56 / 15 * k2[i] + 32 / 9 * k3[i])
+                  for i in range(n)])
+        k5 = fun(t + h * 8 / 9,
+                 [y[i] + h * (19372 / 6561 * k1[i] - 25360 / 2187 * k2[i]
+                              + 64448 / 6561 * k3[i] - 212 / 729 * k4[i])
+                  for i in range(n)])
+        k6 = fun(t + h,
+                 [y[i] + h * (9017 / 3168 * k1[i] - 355 / 33 * k2[i]
+                              + 46732 / 5247 * k3[i] + 49 / 176 * k4[i]
+                              - 5103 / 18656 * k5[i]) for i in range(n)])
+        yn = [y[i] + h * (35 / 384 * k1[i] + 500 / 1113 * k3[i] + 125 / 192 * k4[i]
+                          - 2187 / 6784 * k5[i] + 11 / 84 * k6[i]) for i in range(n)]
+        k7 = fun(t + h, yn)
+        enorm = rms([h * (71 / 57600 * k1[i] - 71 / 16695 * k3[i]
+                          + 71 / 1920 * k4[i] - 17253 / 339200 * k5[i]
+                          + 22 / 525 * k6[i] - k7[i] / 40)
+                     / (atol + rtol * max(abs(y[i]), abs(yn[i])))
+                     for i in range(n)])
+        if enorm <= 1.0:
+            t, y, k1 = t + h, yn, [float(v) for v in k7]
+        fac = 0.9 * enorm ** (-0.2) if enorm > 0 else 5.0
+        h = h * min(5.0, max(0.2, fac)) if enorm <= 1.0 else h * max(0.1, fac)
+    if t < t1:
+        raise RuntimeError("_solve_ivp did not converge")
+    return SimpleNamespace(t=np.array([t0, t1]),
+                           y=np.column_stack([np.asarray(y0, dtype=float), y]))
 
 
 # ---------------------------------------------------------------------------
@@ -142,6 +208,31 @@ def plant_rhs(t, x, p, c, T_meas):
     return np.array([dC_A, dT, dT_j, dI]), Fj, UA
 
 
+def _plant_rhs_s(t, x, p, c, T_meas):
+    """Scalar-float duplicate of plant_rhs's state derivatives.
+
+    Same physics as plant_rhs (kept in sync by test_scalar_rhs_parity);
+    plain floats keep the hot integration loop fast.
+    """
+    C_A, T, T_j, I = x[0], x[1], x[2], x[3]
+    UA = p["UA0"] * math.exp(-t / p["tau_foul"])
+    e = T_meas - c["T_sp"]
+    u = c["Fj_bias"] + c["Kc"] * (e + I / c["tauI"])
+    Fj = u if c["Fj_min"] < u < c["Fj_max"] else (c["Fj_min"] if u <= c["Fj_min"] else c["Fj_max"])
+    dI = 0.0 if (Fj <= c["Fj_min"] and e < 0) or (Fj >= c["Fj_max"] and e > 0) else e
+    ex = -p["EaR"] / T if T > 1.0 else -p["EaR"]
+    if ex < -700.0:
+        ex = -700.0
+    k = p["k0"] * math.exp(ex)
+    FV = p["F"] / p["V"]
+    dC_A = FV * (p["C_A0"] - C_A) - k * C_A
+    dT = (FV * (p["T0"] - T) + (p["dHneg"] / p["rhoCp"]) * k * C_A
+          - (UA / (p["V"] * p["rhoCp"])) * (T - T_j))
+    dT_j = ((Fj / p["Vj"]) * (p["Tjin"] - T_j)
+            + (UA / (p["Vj"] * p["rhoCp_j"])) * (T - T_j))
+    return (dC_A, dT, dT_j, dI)
+
+
 class Plant:
     """The hidden process. Only `stream` data leaves this object."""
 
@@ -162,9 +253,8 @@ class Plant:
         self.feed_T_step = 0.0
         # settle near the ignited branch under control before t = 0
         x = np.array([0.772, 374.0, 335.0, 0.0])
-        sol = solve_ivp(lambda t, xx: plant_rhs(t, xx, self.p, self.c, xx[1])[0],
-                        (0, 3600.0), x, method="Radau",
-                        rtol=1e-8, atol=1e-10)
+        sol = _solve_ivp(lambda t, xx: _plant_rhs_s(t, xx, self.p, self.c, xx[1]),
+                         (0, 3600.0), x, rtol=1e-8, atol=1e-10)
         self.x = sol.y[:, -1]
         self.t = 0.0
         self._lab_queue = []  # (deliver_at, value) pending lab results
@@ -174,10 +264,9 @@ class Plant:
         """Advance dt seconds; return one published sample dict."""
         p, c = self.p, self.c
         T_pub = self.x[1] + self.rng.normal(0, self.sigma_T) + self.sensor_bias_T
-        sol = solve_ivp(
-            lambda tt, xx: plant_rhs(tt, xx, p, c, T_pub)[0],
-            (self.t, self.t + dt), self.x,
-            method="Radau", rtol=1e-8, atol=1e-10)
+        sol = _solve_ivp(
+            lambda tt, xx: _plant_rhs_s(tt, xx, p, c, T_pub),
+            (self.t, self.t + dt), self.x, rtol=1e-8, atol=1e-10)
         self.x = sol.y[:, -1]
         self.t += dt
         _, Fj, UA = plant_rhs(self.t, self.x, p, c, T_pub)
@@ -219,6 +308,48 @@ def twin_rhs(xa, Fj, F, T0, tp):
     return np.array([dC_A, dT, dT_j, 0.0])
 
 
+def _twin_rhs_s(xa, Fj, F, T0, tp):
+    """Scalar-float duplicate of twin_rhs.
+
+    Same physics as twin_rhs (kept in sync by test_scalar_rhs_parity);
+    plain floats keep the hot integration loop fast.
+    """
+    C_A, T, T_j, UA = xa[0], xa[1], xa[2], xa[3]
+    ex = -tp["EaR"] / T if T > 1.0 else -tp["EaR"]
+    if ex < -700.0:
+        ex = -700.0
+    k = tp["k0"] * math.exp(ex)
+    FV = F / tp["V"]
+    dC_A = FV * (tp["C_A0"] - C_A) - k * C_A
+    dT = (FV * (T0 - T) + (tp["dHneg"] / tp["rhoCp"]) * k * C_A
+          - (UA / (tp["V"] * tp["rhoCp"])) * (T - T_j))
+    dT_j = ((Fj / tp["Vj"]) * (tp["Tjin"] - T_j)
+            + (UA / (tp["Vj"] * tp["rhoCp_j"])) * (T - T_j))
+    return (dC_A, dT, dT_j, 0.0)
+
+
+def twin_jac(xa, Fj, F, T0, tp):
+    """Exact Jacobian of twin_rhs with respect to xa = [C_A, T, T_j, UA]."""
+    C_A, T, T_j, UA = xa
+    k = k_of_T(T, tp["k0"], tp["EaR"])
+    dk_dT = k * tp["EaR"] / (T * T)
+    F_V = F / tp["V"]
+    a = tp["dHneg"] / tp["rhoCp"]
+    b = UA / (tp["V"] * tp["rhoCp"])
+    cc = UA / (tp["Vj"] * tp["rhoCp_j"])
+    J = np.zeros((4, 4))
+    J[0, 0] = -F_V - k
+    J[0, 1] = -C_A * dk_dT
+    J[1, 0] = a * k
+    J[1, 1] = -F_V + a * C_A * dk_dT - b
+    J[1, 2] = b
+    J[1, 3] = -(T - T_j) / (tp["V"] * tp["rhoCp"])
+    J[2, 1] = cc
+    J[2, 2] = -Fj / tp["Vj"] - cc
+    J[2, 3] = (T - T_j) / (tp["Vj"] * tp["rhoCp_j"])
+    return J
+
+
 class TwinEKF:
     """The digital twin: EKF on [C_A, T, T_j, UA] fed only by the data stream."""
 
@@ -242,22 +373,11 @@ class TwinEKF:
         self.resid_Tj = []
         self.lab_innov = []  # (t_deliver, innovation, std) per lab sample
 
-    def _jacobian(self, xa, Fj, F, T0, h=1e-6):
-        n = 4
-        J = np.zeros((n, n))
-        f0 = twin_rhs(xa, Fj, F, T0, self.tp)
-        for j in range(n):
-            dx = np.zeros(n)
-            dx[j] = h * max(abs(xa[j]), 1.0)
-            J[:, j] = (twin_rhs(xa + dx, Fj, F, T0, self.tp) - f0) / dx[j]
-        return J
-
     def _predict(self, x, Pm, Fj, F, T0):
-        sol = solve_ivp(lambda t, xa: twin_rhs(xa, Fj, F, T0, self.tp),
-                        (0, self.dt), x, method="Radau",
-                        rtol=1e-6, atol=1e-8)
+        sol = _solve_ivp(lambda t, xa: _twin_rhs_s(xa, Fj, F, T0, self.tp),
+                         (0, self.dt), x, rtol=1e-6, atol=1e-8)
         xp = sol.y[:, -1]
-        J = self._jacobian(xp, Fj, F, T0)   # linearize at the prediction
+        J = twin_jac(xp, Fj, F, T0, self.tp)   # linearize at the prediction
         # discrete transition: Euler is accurate here (|J|*dt ~ 1e-2) and
         # far cheaper than expm; verified against expm in analysis/bench.py
         Phi = np.eye(4) + J * self.dt
