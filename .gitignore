@@ -8,3 +8,6 @@ data/raw/
 # Built WASM pages are published to muse-html/ on the gh-pages branch,
 # never committed here. (Does not affect already-tracked .html files.)
 *.html
+
+# Rust build artifacts
+twin-cstr/solver/target/
