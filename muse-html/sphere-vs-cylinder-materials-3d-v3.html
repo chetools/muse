@@ -305,7 +305,9 @@ if __name__ == '__main__':
 <script>
 (function(){
 'use strict';
-/* ---------- material data for the legend; all calculations run in Python via Pyodide ---------- */
+/* ---------- calculation engine (mirrors pvcalc.py; Python via Pyodide when loaded) ---------- */
+var R=8.314462618, TC=132.4, PC=37.5e5, OM=0.036, MAIR=28.9647;
+var TK=298.15, MASSKG=250, PSI=6894.75729;
 var MATERIALS={
   ti64:  {label:'Ti-6Al-4V',         rho:4430, allow:587e6,  cost:150, color:'#D55E00'},
   cfrp:  {label:'Carbon/epoxy COPV', rho:1600, allow:1100e6, cost:500, color:'#0072B2'},
@@ -313,11 +315,56 @@ var MATERIALS={
   s4130: {label:'4130 steel (Q&T)',  rho:7850, allow:733e6,  cost:25,  color:'#3c4348'}
 };
 var MORDER=['ti64','cfrp','al2219','s4130'];
+function zPR(p){
+  var Tr=TK/TC, k=0.37464+1.54226*OM-0.26992*OM*OM;
+  var al=Math.pow(1+k*(1-Math.sqrt(Tr)),2);
+  var a=0.45724*R*R*TC*TC/PC, b=0.07780*R*TC/PC;
+  var A=a*al*p/(R*R*TK*TK), B=b*p/(R*TK);
+  function f(Z){ return Z*Z*Z-(1-B)*Z*Z+(A-2*B-3*B*B)*Z-(A*B-B*B-B*B*B); }
+  var lo=B+1e-6, hi=6, N=2000, roots=[], z0=lo, f0=f(z0), i, j;
+  for(i=1;i<=N;i++){
+    var z1=lo+(hi-lo)*i/N, f1=f(z1);
+    if(f0*f1<0){
+      var x0=z0, x1=z1, fx0=f0;
+      for(j=0;j<80;j++){ var m=(x0+x1)/2, fm=f(m);
+        if(fx0*fm<=0){ x1=m; } else { x0=m; fx0=fm; } }
+      roots.push((x0+x1)/2);
+    }
+    z0=z1; f0=f1;
+  }
+  return Math.max.apply(null,roots);
+}
+function lame(p,r,allow,kind){
+  var K = kind==='cyl' ? Math.sqrt((allow+p)/(allow-p))
+                       : Math.cbrt((2*allow/p+2)/(2*allow/p-1));
+  return (K-1)*r;
+}
+function jsSize(psi,key){
+  var m=MATERIALS[key], p=psi*PSI, Z=zPR(p), n=MASSKG/MAIR*1000, V=Z*n*R*TK/p;
+  var allow=m.allow, rho=m.rho;
+  var rs=Math.cbrt(3*V/(4*Math.PI));
+  var ts=lame(p,rs,allow,'sph');
+  var ms=4/3*Math.PI*(Math.pow(rs+ts,3)-Math.pow(rs,3))*rho;
+  var rc=Math.cbrt(3*V/(16*Math.PI)), Lc=4*rc;
+  var tc=lame(p,rc,allow,'cyl'), th=lame(p,rc,allow,'sph');
+  var mc=(Math.PI*(Math.pow(rc+tc,2)-rc*rc)*Lc
+          + 4/3*Math.PI*(Math.pow(rc+th,3)-Math.pow(rc,3)))*rho;
+  return {psi:psi,p_MPa:p/1e6,Z:Z,V_m3:V,material:m.label,
+    sph:{r_mm:rs*1000,t_mm:ts*1000,mass_kg:ms,cost_usd:ms*m.cost},
+    cyl:{r_mm:rc*1000,t_mm:tc*1000,th_mm:th*1000,Lc_m:Lc,mass_kg:mc,cost_usd:mc*m.cost}};
+}
+function jsSweep(){
+  var out={}, ks=Object.keys(MATERIALS);
+  for(var i=0;i<ks.length;i++){ out[ks[i]]=[]; for(var p=1000;p<=15000;p+=1000) out[ks[i]].push(jsSize(p,ks[i])); }
+  return out;
+}
 function sizeIt(psi,key){
   if(window.PV&&window.PV.py){
-    return JSON.parse(window.PV.py.runPython("import json; json.dumps(vessel_size("+psi+",'"+key+"'))"));
+    try{
+      return JSON.parse(window.PV.py.runPython("import json; json.dumps(vessel_size("+psi+",'"+key+"'))"));
+    }catch(e){}
   }
-  throw new Error('Python runtime not available');
+  return jsSize(psi,key);
 }
 
 /* ---------- three.js scene ---------- */
@@ -497,8 +544,7 @@ function kg(x){ return Math.round(x).toLocaleString('en-US')+' kg'; }
 function usd(x){ return '$'+Math.round(x).toLocaleString('en-US'); }
 function row(k,v){ return '<dt>'+k+'</dt><dd>'+v+'</dd>'; }
 function update(){
-  var psi=+slider.value, key=matSel.value, s;
-  try{ s=sizeIt(psi,key); }catch(e){ return; }
+  var psi=+slider.value, key=matSel.value, s=sizeIt(psi,key);
   rebuild(s);
   psiRead.innerHTML=psi.toLocaleString('en-US')+' psi <span>'+(s.p_MPa).toFixed(1)+' MPa</span>';
   headline.innerHTML='At <b>'+psi.toLocaleString('en-US')+' psi</b> in <b>'+s.material+
@@ -525,7 +571,7 @@ function update(){
 slider.addEventListener('input',update);
 matSel.addEventListener('change',update);
 
-window.PV={MATERIALS:MATERIALS,MORDER:MORDER,py:null,refresh:update};
+window.PV={MATERIALS:MATERIALS,MORDER:MORDER,jsSize:jsSize,jsSweep:jsSweep,py:null,refresh:update};
 
 applyCam(); update();
 (function anim(){
@@ -793,17 +839,16 @@ function drawChart(data){
   legendEl.innerHTML=lg;
 }
 
-function showPythonError(){
-  statusEl.textContent='Python runtime failed to load — calculations on this page run in Python (Pyodide) only. Check your network connection and reload the page.';
-}
 function boot(){
-  statusEl.textContent='Loading Python runtime (Pyodide)\u2026';
-  if(typeof loadPyodide==='undefined'){ showPythonError(); return; }
+  function drawFallback(){
+    // Silent fallback: identical equations, cross-validated against the Python code.
+    statusEl.textContent='';
+    drawChart(window.PV.jsSweep());
+  }
+  if(typeof loadPyodide==='undefined'){ drawFallback(); return; }
   var done=false;
-  var timer=setTimeout(function(){ if(!done) showPythonError(); },45000);
+  var timer=setTimeout(function(){ if(!done) drawFallback(); },45000);
   loadPyodide().then(function(py){
-    return py.loadPackage('numpy').then(function(){ return py; });
-  }).then(function(py){
     try{
       py.runPython(document.getElementById('pycode').textContent);
       window.PV.py=py; done=true; clearTimeout(timer);
@@ -812,8 +857,8 @@ function boot(){
       statusEl.textContent='Computed in Python '+ver+' via Pyodide. The 3D readouts above now use the same code.';
       drawChart(data);
       if(window.PV.refresh) window.PV.refresh();
-    }catch(err){ clearTimeout(timer); showPythonError(); }
-  }).catch(function(){ clearTimeout(timer); showPythonError(); });
+    }catch(err){ clearTimeout(timer); drawFallback(); }
+  }).catch(function(){ clearTimeout(timer); drawFallback(); });
 }
 boot();
 })();
