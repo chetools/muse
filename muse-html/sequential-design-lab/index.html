@@ -1883,8 +1883,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -&gt; dist/sequential-design-lab-v1.html
-  python3 build_page.py --stub   -&gt; dist/sequential-design-lab-v1-stub.html
+  python3 build_page.py          -&gt; dist/sequential-design-lab-v2.html
+  python3 build_page.py --stub   -&gt; dist/sequential-design-lab-v2-stub.html
         (layout-verification build only; never published)
 &quot;&quot;&quot;
 import base64
@@ -1905,13 +1905,56 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = (&quot;https://molab.marimo.io/github/chetools/muse/blob/gh-pages/&quot;
              &quot;sequential-design-lab/walkthrough_molab.py&quot;)
-OUT_NAME = &quot;sequential-design-lab-v1.html&quot;
-STUB_NAME = &quot;sequential-design-lab-v1-stub.html&quot;
+OUT_NAME = &quot;sequential-design-lab-v2.html&quot;
+STUB_NAME = &quot;sequential-design-lab-v2-stub.html&quot;
 PYODIDE_MODULES = [&quot;engine.py&quot;]  # registered in the worker boot (build_page)
 
 
 def log(msg):
     print(f&quot;[build_page] {msg}&quot;, flush=True)
+
+
+_JS_ESCAPES = {&quot;n&quot;: &quot;\n&quot;, &quot;r&quot;: &quot;\r&quot;, &quot;t&quot;: &quot;\t&quot;, &quot;b&quot;: &quot;\b&quot;, &quot;f&quot;: &quot;\f&quot;,
+               &quot;v&quot;: &quot;\v&quot;, &quot;0&quot;: &quot;\0&quot;, &quot;\\&quot;: &quot;\\&quot;, &quot;`&quot;: &quot;`&quot;, &quot;$&quot;: &quot;$&quot;}
+
+
+def _js_template_unescape(s):
+    &quot;&quot;&quot;One layer of JavaScript template-literal escape processing.&quot;&quot;&quot;
+    out, i = [], 0
+    while i &lt; len(s):
+        if s[i] == &quot;\\&quot; and i + 1 &lt; len(s):
+            out.append(_JS_ESCAPES.get(s[i + 1], s[i + 1]))
+            i += 2
+        else:
+            out.append(s[i])
+            i += 1
+    return &quot;&quot;.join(out)
+
+
+def check_boot_compiles(page):
+    &quot;&quot;&quot;Fail the build if the worker BOOT Python cannot compile.
+
+    The BOOT code reaches Pyodide through two nested JavaScript template
+    literals (the worker source, then the BOOT string inside it), and each
+    layer consumes one level of backslash escaping. The v1 page shipped a
+    newline escape that collapsed to a literal newline inside a Python
+    string and broke boot with a SyntaxError in the user&#x27;s browser — a
+    defect no CPython-side test could see. This guard simulates both
+    layers and compiles the exact string Pyodide will receive.
+    &quot;&quot;&quot;
+    import ast
+    marker = &quot;const BOOT = \\`&quot;
+    start = page.index(marker) + len(marker)
+    end = page.index(&quot;\\`;&quot;, start)
+    boot = _js_template_unescape(_js_template_unescape(page[start:end]))
+    try:
+        ast.parse(boot)
+    except SyntaxError as exc:
+        raise SystemExit(f&quot;BOOT Python fails to compile after JavaScript &quot;
+                         f&quot;template-literal processing: {exc}&quot;)
+    assert &quot;\\n&quot; not in boot.replace(chr(10), &quot;&quot;), \
+        &quot;BOOT contains a backslash escape after template processing&quot;
+    log(&quot;BOOT compile guard passed (both JavaScript layers simulated)&quot;)
 
 
 def katex_render(items):
@@ -2052,6 +2095,7 @@ def build(stub=False):
     # the placeholders, which would trip the guard above.
     tpl = tpl.replace(&quot;@@LISTINGS_HTML@@&quot;, listings_html)
     assert &quot;/engine.py&quot; in tpl and &quot;engine.py&quot; in PYODIDE_MODULES
+    check_boot_compiles(tpl)
 
     out = os.path.join(ROOT, &quot;dist&quot;, STUB_NAME if stub else OUT_NAME)
     os.makedirs(os.path.dirname(out), exist_ok=True)
@@ -2303,7 +2347,7 @@ def handle(msg_json):
             lines = ["Sequential Design for Global Models: session summary", "seed: " + str(cfg["seed"]), "d: " + str(cfg["d"]) + ", m: " + str(cfg["m"]) + ", n: " + str(st["n_done"]) + " of " + str(cfg["n_total"]), "weights (percent): " + str(cfg["weights"]), "strategy rounds and estimated errors:"]
             for h in st["history"]:
                 lines.append("round " + str(h["round"]) + ": n=" + str(h["n"]) + ", LOO=" + str([round(v, 4) for v in h["loo"]]) + ", true score=" + (str(round(h["score"], 4)) if st["finished"] else "hidden"))
-            return json.dumps({"text": "\\n".join(lines) + "\\n"})
+            return json.dumps({"text": chr(10).join(lines) + chr(10)})
         if t == "tour_start":
             TOUR["jobs"] = [(rep, s) for rep in range(int(m["reps"])) for s in E.STRATEGIES]
             TOUR["cfg"] = _cfg(m["cfg"]); TOUR["curves"] = {s: [] for s in E.STRATEGIES}; TOUR["i"] = 0
@@ -2332,7 +2376,7 @@ def handle(msg_json):
         return json.dumps({"error": "unknown message type"})
     except Exception as e:
         import traceback
-        return json.dumps({"error": str(e) + "\\n" + traceback.format_exc(limit=3)})
+        return json.dumps({"error": str(e) + chr(10) + traceback.format_exc(limit=3)})
 \`;
 `;
   worker = new Worker(URL.createObjectURL(new Blob([workerSrc], {type:"text/javascript"})));
