@@ -138,6 +138,58 @@ def test_tournament_determinism():
         assert np.allclose(a[k], b[k])
 
 
+def test_truth_latex():
+    cfg = small_cfg()
+    rng = np.random.default_rng(3)
+    truth = engine.make_truth(cfg, rng)
+    tex = engine.truth_latex(truth, cfg)
+    assert len(tex) == cfg["m"]
+    for j, s in enumerate(tex):
+        # Standardised wrapper: f_j(x) = (1/s_j)( ... - f-bar_j )
+        assert s.startswith(f"f_{{{j + 1}}}")
+        assert rf"\frac{{1}}{{s_{{{j + 1}}}}}" in s
+        assert rf"\bar{{f}}_{{{j + 1}}}" in s
+        # No plain-text operator tokens from truth_description may leak in.
+        for bad in ("sinprod(", "triple(", "logi(", "quad(", "exp(x"):
+            assert bad not in s
+        # Coefficients of numeric terms appear with two decimals.
+        for t in truth["specs"][j]:
+            if t[0] == "main":
+                assert f"{abs(t[3]):.2f}" in s
+            elif t[0] in ("pair", "triple"):
+                assert f"{abs(t[4]):.2f}" in s
+        # Every numeric term references its variables with subscripts.
+        assert "x_{" in s
+
+
+def test_truth_latex_categorical():
+    cfg = small_cfg(n_cat=1, cat_levels=3)
+    rng = np.random.default_rng(4)
+    truth = engine.make_truth(cfg, rng)
+    tex = engine.truth_latex(truth, cfg)
+    joined = " ".join(tex)
+    if any(t[0] == "catmain" for terms in truth["specs"] for t in terms):
+        assert r"\mathrm{off}" in joined and r"\nu_{1}" in joined
+
+
+def test_citation_check():
+    import importlib.util
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    spec = importlib.util.spec_from_file_location(
+        "build_page", os.path.join(root, "standalone", "build_page.py"))
+    bp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bp)
+    theory = open(os.path.join(root, "standalone", "theory.md")).read()
+    body = theory.partition("[[BIBLIOGRAPHY]]")[0]
+    _out, counts = bp.check_citations(body)
+    assert all(c >= 1 for c in counts.values())
+    with pytest.raises(SystemExit):
+        bp.check_citations("text {{cite:no-such-key}}")
+    orphan_src = "no citations at all"
+    with pytest.raises(SystemExit):
+        bp.check_citations(orphan_src)
+
+
 def test_kernel_categorical_modes():
     cfg = small_cfg(n_cat=1, cat_levels=2)
     st = engine.new_session(cfg, pool_n=200, ref_n=200)
@@ -147,3 +199,23 @@ def test_kernel_categorical_modes():
                             rng=np.random.default_rng(0))
         mean, var = engine.predict(mdl, st["X"][:3])
         assert np.all(np.isfinite(mean)) and np.all(var >= 0)
+
+
+def test_integrated_std_is_root_of_weighted_mean_variance():
+    cfg = dict(engine.default_cfg(), d=4, m=1, n_total=24, batch=4, seed=3)
+    st = engine.new_session(cfg)
+    fig = engine.learning_fig(st, True)
+    iv_trace = fig["data"][1]["y"]
+    last_V = st["history"][-1]["iv"][0]
+    assert abs(iv_trace[-1] - float(np.sqrt(last_V))) < 1e-9
+
+
+def test_sandbox_mode_reveals_truth():
+    cfg = dict(engine.default_cfg(), d=4, m=1, n_total=24, batch=4, seed=3,
+               mode="sandbox")
+    st = engine.new_session(cfg)
+    summ = engine.summary(st)
+    assert summ.get("truth_latex")
+    cfg2 = dict(cfg, mode="guided")
+    st2 = engine.new_session(cfg2)
+    assert "truth_latex" not in engine.summary(st2)

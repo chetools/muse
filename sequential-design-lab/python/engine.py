@@ -35,7 +35,7 @@ def default_cfg():
                 weights=[60.0, 40.0], active_count=None, n_cat=0,
                 cat_levels=3, noise_type="gauss", snr=4.0, snr_per=None,
                 missing_p=0.0, constraint="none", model="ard",
-                cat_mode="correct", reveal=False)
+                cat_mode="correct", reveal=False, mode="guided")
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +197,67 @@ def truth_description(truth, cfg):
                              f"by categorical x{t[1] + 1}")
         lines.append(f"Response {j + 1}: " + "; ".join(parts))
     return lines
+
+
+_BASIS_LATEX = {
+    "sin": lambda i: rf"\sin(2\pi x_{{{i}}})",
+    "quad": lambda i: (rf"\left(4(x_{{{i}}}-\tfrac{{1}}{{2}})^{{2}}"
+                       rf"-\tfrac{{1}}{{3}}\right)"),
+    "exp": lambda i: rf"\exp\!\left(1.5(x_{{{i}}}-\tfrac{{1}}{{2}})\right)",
+    "logi": lambda i: (rf"\left(1+\exp(-8(x_{{{i}}}-\tfrac{{1}}{{2}}))"
+                       rf"\right)^{{-1}}"),
+    "tent": lambda i: (rf"\left(1-2\left|x_{{{i}}}-\tfrac{{1}}{{2}}"
+                       rf"\right|\right)"),
+}
+
+
+def _centred(i):
+    return rf"(x_{{{i}}}-\tfrac{{1}}{{2}})"
+
+
+def truth_latex(truth, cfg):
+    """LaTeX representation of each response's standardised true function.
+
+    Returns one string per response of the form
+    f_j(x) = (T_j(x) - f-bar_j) / s_j, where T_j is the drawn sum of
+    main-effect, pair, triple, and categorical terms (the same terms, in
+    the same order, as truth_description), f-bar_j is the mean of the
+    unstandardised response over the reference grid, and s_j is its
+    standard deviation over the same grid.  Basis functions are written
+    out in full (the sine basis is sin(2 pi u), the product pair basis is
+    4 (u-1/2)(v-1/2), and so on), matching _BASIS and _eval_spec exactly.
+    """
+    out = []
+    for j, terms in enumerate(truth["specs"]):
+        parts = []
+        for t in terms:
+            if t[0] == "main":
+                parts.append(f"{t[3]:+.2f}" + _BASIS_LATEX[t[2]](t[1] + 1))
+            elif t[0] == "pair":
+                a, b = t[1] + 1, t[2] + 1
+                body = (rf"\left(4{_centred(a)}{_centred(b)}\right)"
+                        if t[3] == "prod" else
+                        rf"\left(\sin(2\pi x_{{{a}}})\sin(2\pi x_{{{b}}})"
+                        rf"\right)")
+                parts.append(f"{t[4]:+.2f}" + body)
+            elif t[0] == "triple":
+                body = (rf"\left(8{_centred(t[1] + 1)}{_centred(t[2] + 1)}"
+                        rf"{_centred(t[3] + 1)}\right)")
+                parts.append(f"{t[4]:+.2f}" + body)
+            elif t[0] == "catmain":
+                parts.append(rf"\mathrm{{off}}_{{{j + 1},{t[1] + 1}}}"
+                             rf"(\nu_{{{t[1] + 1}}})")
+            elif t[0] == "catpair":
+                parts.append(rf"2\,\mathrm{{slope}}_{{{j + 1},{t[1] + 1}}}"
+                             rf"(\nu_{{{t[1] + 1}}})"
+                             rf"{_centred(t[2] + 1)}")
+        expr = " ".join(parts) if parts else "0"
+        if expr.startswith("+"):
+            expr = expr[1:]
+        out.append(rf"f_{{{j + 1}}}(\mathbf{{x}}) = \frac{{1}}{{s_{{{j + 1}}}}}"
+                   rf"\left(" + expr +
+                   rf" - \bar{{f}}_{{{j + 1}}}\right)")
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -898,7 +959,7 @@ def learning_fig(state, reveal):
     xs = [h["n"] for h in hist]
     w = np.array(state["cfg"]["weights"], float) / 100.0
     loo = [float(np.sqrt(np.sum(w * np.array(h["loo"]) ** 2))) for h in hist]
-    iv = [float(np.sqrt(np.sum(w * np.array(h["iv"]) ** 2))) for h in hist]
+    iv = [float(np.sqrt(np.sum(w * np.array(h["iv"])))) for h in hist]
     data = [dict(type="scatter", x=xs, y=loo, mode="lines+markers",
                  name="LOO error", line=dict(color=OI[0]),
                  marker=dict(symbol="circle")),
@@ -910,8 +971,8 @@ def learning_fig(state, reveal):
                          y=[h["score"] for h in hist], mode="lines+markers",
                          name="True score", line=dict(color=OI[2]),
                          marker=dict(symbol="triangle-up")))
-    return _fig(data, "Experiments completed, n (count)",
-                "Error (response units)")
+    return _fig(data, "Experiments completed (count)",
+                "Error (standardised response units)")
 
 
 def slice_figs(state, reveal, resp=0, va=0, vb=1, hold=None, grid_n=26):
@@ -1000,7 +1061,7 @@ def session_csv(state):
 def summary(state, reveal=False):
     """JSON-ready summary of the session for the page."""
     cfg = state["cfg"]
-    reveal = bool(reveal or cfg.get("reveal") or state["finished"])
+    reveal = bool(reveal or cfg.get("reveal") or state["finished"] or cfg.get("mode") == "sandbox")
     last = state["history"][-1]
     out = dict(n_done=state["n_done"], n_total=cfg["n_total"],
                round=state["round"], finished=bool(state["finished"]),
@@ -1025,6 +1086,7 @@ def summary(state, reveal=False):
         out["calibration"] = last["calibration"]
         out["score"] = last["score"]
         out["truth_text"] = truth_description(state["truth"], cfg)
+        out["truth_latex"] = truth_latex(state["truth"], cfg)
         ta = cfg.get("target_acc")
         if ta:
             out["target_acc"] = [float(v) for v in ta]
@@ -1083,8 +1145,9 @@ def tournament_fig(curves, n_total, batch):
     data = []
     for i, (s, ys) in enumerate(curves.items()):
         x = [min(n_total, batch * k + 27) for k in range(len(ys))]
+        disp = {"random": "Random", "lhs": "One-shot MaxPro LHS", "maxvar": "Maximum variance", "ivr": "Integrated variance reduction", "ei": "Expected improvement"}
         data.append(dict(type="scatter", x=list(range(len(ys))), y=ys,
-                         mode="lines+markers", name=s,
+                         mode="lines+markers", name=disp.get(s, s),
                          line=dict(color=OI[i % len(OI)],
                                    dash="solid" if i % 2 == 0 else "dash"),
                          marker=dict(symbol=["circle", "square", "diamond",

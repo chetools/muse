@@ -12,8 +12,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/sequential-design-lab-v2.html
-  python3 build_page.py --stub   -> dist/sequential-design-lab-v2-stub.html
+  python3 build_page.py          -> dist/sequential-design-lab-v3.html
+  python3 build_page.py --stub   -> dist/sequential-design-lab-v3-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -34,8 +34,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "sequential-design-lab/walkthrough_molab.py")
-OUT_NAME = "sequential-design-lab-v2.html"
-STUB_NAME = "sequential-design-lab-v2-stub.html"
+OUT_NAME = "sequential-design-lab-v3.html"
+STUB_NAME = "sequential-design-lab-v3-stub.html"
 PYODIDE_MODULES = ["engine.py"]  # registered in the worker boot (build_page)
 
 
@@ -84,6 +84,153 @@ def check_boot_compiles(page):
     assert "\\n" not in boot.replace(chr(10), ""), \
         "BOOT contains a backslash escape after template processing"
     log("BOOT compile guard passed (both JavaScript layers simulated)")
+
+
+# Bibliography rendered into the Theory References section.  Source of
+# record: references-verified.md (verified against Crossref / publisher
+# records in a dedicated pass).  In-text citations in theory.md are
+# written as {{cite:key}} tokens; check_citations() below enforces that
+# every token resolves to exactly one entry here and that every entry is
+# cited at least once.  An unresolved or orphan entry fails the build.
+BIBLIOGRAPHY = [
+    ("rasmussen-williams-2006", "Rasmussen & Williams, 2006",
+     "Rasmussen, C. E. & Williams, C. K. I. (2006). Gaussian Processes "
+     "for Machine Learning. Cambridge, MA: The MIT Press. "
+     "ISBN 978-0-262-18253-9. DOI: 10.7551/mitpress/3206.001.0001."),
+    ("matern-1960", "Matérn, 1960",
+     "Matérn, B. (1960). Spatial Variation. Meddelanden från Statens "
+     "Skogsforskningsinstitut, 49(5). Stockholm: Statens "
+     "Skogsforskningsinstitut. Reprinted as 2nd edition (1986), Lecture "
+     "Notes in Statistics, Vol. 36. New York: Springer."),
+    ("stein-1999", "Stein, 1999",
+     "Stein, M. L. (1999). Interpolation of Spatial Data: Some Theory "
+     "for Kriging. Springer Series in Statistics. New York: Springer. "
+     "DOI: 10.1007/978-1-4612-1494-6."),
+    ("sacks-etal-1989", "Sacks et al., 1989",
+     "Sacks, J., Welch, W. J., Mitchell, T. J. & Wynn, H. P. (1989). "
+     "Design and analysis of computer experiments. Statistical Science, "
+     "4(4), 409–423. DOI: 10.1214/ss/1177012413."),
+    ("santner-etal-2018", "Santner et al., 2018",
+     "Santner, T. J., Williams, B. J. & Notz, W. I. (2018). The Design "
+     "and Analysis of Computer Experiments (2nd ed.). Springer Series "
+     "in Statistics. New York: Springer. "
+     "DOI: 10.1007/978-1-4939-8847-1."),
+    ("cohn-etal-1996", "Cohn et al., 1996",
+     "Cohn, D. A., Ghahramani, Z. & Jordan, M. I. (1996). Active "
+     "learning with statistical models. Journal of Artificial "
+     "Intelligence Research, 4, 129–145. DOI: 10.1613/jair.295."),
+    ("ginsbourger-etal-2010", "Ginsbourger et al., 2010",
+     "Ginsbourger, D., Le Riche, R. & Carraro, L. (2010). Kriging is "
+     "well-suited to parallelize optimization. In Tenne, Y. & Goh, "
+     "C.-K. (Eds.), Computational Intelligence in Expensive "
+     "Optimization Problems (pp. 131–162). Adaptation, Learning, and "
+     "Optimization. Berlin: Springer. "
+     "DOI: 10.1007/978-3-642-10701-6_6."),
+    ("jones-etal-1998", "Jones et al., 1998",
+     "Jones, D. R., Schonlau, M. & Welch, W. J. (1998). Efficient "
+     "global optimization of expensive black-box functions. Journal of "
+     "Global Optimization, 13(4), 455–492. "
+     "DOI: 10.1023/A:1008306431147."),
+    ("mckay-etal-1979", "McKay et al., 1979",
+     "McKay, M. D., Beckman, R. J. & Conover, W. J. (1979). A "
+     "comparison of three methods for selecting values of input "
+     "variables in the analysis of output from a computer code. "
+     "Technometrics, 21(2), 239–245. "
+     "DOI: 10.1080/00401706.1979.10489755."),
+    ("joseph-etal-2015", "Joseph et al., 2015",
+     "Joseph, V. R., Gul, E. & Ba, S. (2015). Maximum projection "
+     "designs for computer experiments. Biometrika, 102(2), 371–380. "
+     "DOI: 10.1093/biomet/asv002."),
+    ("johnson-etal-1990", "Johnson et al., 1990",
+     "Johnson, M. E., Moore, L. M. & Ylvisaker, D. (1990). Minimax and "
+     "maximin distance designs. Journal of Statistical Planning and "
+     "Inference, 26(2), 131–148. DOI: 10.1016/0378-3758(90)90122-B."),
+    ("sobol-1967", "Sobol', 1967",
+     "Sobol', I. M. (1967). On the distribution of points in a cube and "
+     "the approximate evaluation of integrals. USSR Computational "
+     "Mathematics and Mathematical Physics, 7(4), 86–112. "
+     "DOI: 10.1016/0041-5553(67)90144-9."),
+    ("chaloner-verdinelli-1995", "Chaloner & Verdinelli, 1995",
+     "Chaloner, K. & Verdinelli, I. (1995). Bayesian experimental "
+     "design: a review. Statistical Science, 10(3), 273–304."),
+    ("kennedy-ohagan-2001", "Kennedy & O'Hagan, 2001",
+     "Kennedy, M. C. & O'Hagan, A. (2001). Bayesian calibration of "
+     "computer models. Journal of the Royal Statistical Society: "
+     "Series B (Statistical Methodology), 63(3), 425–464. "
+     "DOI: 10.1111/1467-9868.00294."),
+]
+
+_CITE_RE = re.compile(r"\{\{cite:([a-z0-9\-]+)\}\}")
+
+
+def check_citations(theory_text):
+    """Resolve every {{cite:key}} token in the theory source.
+
+    Returns (processed_text, counts).  Raises SystemExit when a token
+    names no bibliography entry, when an entry is never cited (orphan),
+    or when the bibliography itself contains a duplicate key.
+    """
+    keys = [k for k, _, _ in BIBLIOGRAPHY]
+    if len(set(keys)) != len(keys):
+        raise SystemExit("citation check failed: duplicate key in "
+                         "BIBLIOGRAPHY")
+    counts = {k: 0 for k in keys}
+
+    def repl(mo):
+        key = mo.group(1)
+        if key not in counts:
+            raise SystemExit(f"citation check failed: in-text citation "
+                             f"key {key!r} has no bibliography entry")
+        counts[key] += 1
+        label = dict((k, lab) for k, lab, _ in BIBLIOGRAPHY)[key]
+        return f"[{label}](#ref-{key})"
+
+    out = _CITE_RE.sub(repl, theory_text)
+    orphans = [k for k, c in counts.items() if c == 0]
+    if orphans:
+        raise SystemExit(f"citation check failed: bibliography entries "
+                         f"never cited: {orphans}")
+    log(f"citation check passed: {len(keys)} entries, "
+        f"{sum(counts.values())} in-text citations, no orphans")
+    return out, counts
+
+
+def bibliography_html():
+    items = []
+    for key, label, text in BIBLIOGRAPHY:
+        items.append(
+            f'<li id="ref-{key}">{html_mod.escape(text)} '
+            f'<a class="self-link" href="#ref-{key}" '
+            f'aria-label="Link to this reference">#</a></li>')
+    return '<ol class="refs">' + "".join(items) + "</ol>"
+
+
+def _slugify(text, seen):
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-") or "section"
+    base, i = slug, 2
+    while slug in seen:
+        slug = f"{base}-{i}"
+        i += 1
+    seen.add(slug)
+    return slug
+
+
+def add_heading_ids(html_text):
+    """Give every h2/h3 a fragment id and a visible self-link anchor."""
+    seen = set()
+    ids = []
+
+    def repl(mo):
+        tag, inner = mo.group(1), mo.group(2)
+        plain = re.sub(r"<[^>]+>", "", inner)
+        slug = _slugify(plain, seen)
+        ids.append(slug)
+        return (f'<{tag} id="{slug}">{inner}'
+                f'<a class="self-link" href="#{slug}" '
+                f'aria-label="Link to this section">#</a></{tag}>')
+
+    out = re.sub(r"<(h[23])>(.*?)</\1>", repl, html_text, flags=re.S)
+    return out, ids
 
 
 def katex_render(items):
@@ -166,11 +313,22 @@ def build(stub=False):
     prestart = E.plain(E.finish(state))
     log(f"prestart: final score {prestart['score']:.3f}")
 
-    theory_html = md_to_html(open(os.path.join(HERE, "theory.md")).read())
+    theory_raw = open(os.path.join(HERE, "theory.md")).read()
+    theory_body, sep, _tail = theory_raw.partition("[[BIBLIOGRAPHY]]")
+    assert sep, "theory.md is missing the [[BIBLIOGRAPHY]] marker"
+    theory_body, _cite_counts = check_citations(theory_body)
+    theory_html = md_to_html(theory_body)
+    theory_html, theory_ids = add_heading_ids(theory_html)
+    theory_html += bibliography_html()
+    log(f"theory section fragment ids: {theory_ids}")
 
     walk_html, walk_figs = [], {}
     for i, (c, r) in enumerate(zip(CELLS, results)):
-        walk_html.append(f"<h3>Step {i + 1}: {html_mod.escape(c['title'])}</h3>")
+        wid = "walkthrough-" + _slugify(c["title"], set())
+        walk_html.append(
+            f'<h3 id="{wid}">Step {i + 1}: {html_mod.escape(c["title"])}'
+            f'<a class="self-link" href="#{wid}" '
+            f'aria-label="Link to this section">#</a></h3>')
         walk_html.append(md_to_html(c["md"]))
         walk_html.append(
             "<pre><code>" + html_mod.escape(c["code"].strip()) + "</code></pre>")
@@ -198,11 +356,16 @@ def build(stub=False):
     molab_b64 = base64.b64encode(open(molab_path, "rb").read()).decode("ascii")
     plotly_js = open(os.path.join(
         TOOLS, "node_modules", "plotly.js-dist-min", "plotly.min.js")).read()
+    katex_js = open(os.path.join(
+        TOOLS, "node_modules", "katex", "dist", "katex.min.js")).read()
+    assert "</script>" not in katex_js, "KaTeX JS contains a script close tag"
+    assert "</script>" not in plotly_js, "Plotly JS contains a script close tag"
 
     tpl = open(os.path.join(HERE, "template.html")).read()
     reps = {
         "@@KATEX_CSS@@": katex_css(),
         "@@PLOTLY_JS@@": plotly_js,
+        "@@KATEX_JS@@": katex_js,
         "@@THEORY_HTML@@": theory_html,
         "@@LISTINGS_HTML@@": "\n".join(listings),
         "@@WALKTHROUGH_HTML@@": "\n".join(walk_html),
