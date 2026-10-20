@@ -12,8 +12,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/sequential-design-lab-v5.html
-  python3 build_page.py --stub   -> dist/sequential-design-lab-v5-stub.html
+  python3 build_page.py          -> dist/sequential-design-lab-v6.html
+  python3 build_page.py --stub   -> dist/sequential-design-lab-v6-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -34,8 +34,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "sequential-design-lab/walkthrough_molab.py")
-OUT_NAME = "sequential-design-lab-v5.html"
-STUB_NAME = "sequential-design-lab-v5-stub.html"
+OUT_NAME = "sequential-design-lab-v6.html"
+STUB_NAME = "sequential-design-lab-v6-stub.html"
 PYODIDE_MODULES = ["engine.py"]  # registered in the worker boot (build_page)
 
 

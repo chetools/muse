@@ -39,6 +39,170 @@ def default_cfg():
 
 
 # ---------------------------------------------------------------------------
+# Configuration validation.  Every public entry point that consumes a
+# scenario configuration (new_session, run_tournament) validates it first
+# through validate_cfg, which raises ValueError with a plain-language
+# message naming the offending field.  No field is silently clamped,
+# broadcast, or defaulted past this point: validate_cfg also normalises
+# the accepted shorthand forms in place (an integral float seed becomes
+# an int; a scalar cat_levels or target_acc becomes a list of length
+# n_cat or m respectively; weights become floats).
+# ---------------------------------------------------------------------------
+
+NOISE_TYPES = ("gauss", "hetero", "mult", "outlier")
+CONSTRAINTS = ("none", "linear", "circle")
+MODEL_KINDS = ("ard", "iso", "additive", "poly")
+CAT_MODES = ("correct", "naive")
+
+
+def _is_number(v):
+    return not isinstance(v, bool) and isinstance(
+        v, (int, float, np.integer, np.floating))
+
+
+def _int_value(value, name, lo, hi):
+    """Coerce value to an integer in [lo, hi] or raise ValueError."""
+    if not _is_number(value):
+        raise ValueError(
+            f"{name} must be an integer between {lo} and {hi}; "
+            f"got {value!r}")
+    f = float(value)
+    if not np.isfinite(f) or f != int(f) or f < lo or f > hi:
+        raise ValueError(
+            f"{name} must be an integer between {lo} and {hi}; "
+            f"got {value!r}")
+    return int(f)
+
+
+def _pos_value(value, name):
+    """Coerce value to a positive finite float or raise ValueError."""
+    if not _is_number(value) or not np.isfinite(float(value)) \
+            or float(value) <= 0:
+        raise ValueError(
+            f"{name} must be a positive finite number; got {value!r}")
+    return float(value)
+
+
+def validate_cfg(cfg):
+    """Validate a scenario configuration, normalising it in place.
+
+    Raises ValueError naming the field for every invalid value.  Rules:
+    d an integer in [2, 20]; m an integer in [1, 4]; n_total an integer
+    in [20, 120]; batch an integer in [1, 16] and less than n_total;
+    seed an integer >= 0; active_count absent/None (drawn by the seed)
+    or an integer in [1, d]; n_cat an integer in [0, d]; cat_levels a
+    scalar level count or a list of exactly n_cat counts, each an
+    integer in [2, 4]; weights a list of exactly m finite numbers, each
+    >= 0, summing to 100 within 0.6; snr a positive finite number;
+    snr_per absent/None or a list of exactly m positive finite numbers;
+    missing_p a finite number with 0 <= missing_p < 1; target_acc
+    absent/None, a single positive finite number, or a list of exactly
+    m positive finite numbers; noise_type, constraint, model, and
+    cat_mode each one of their implemented values.  Returns cfg.
+    """
+    d = _int_value(cfg.get("d"), "d", 2, 20)
+    cfg["d"] = d
+    m = _int_value(cfg.get("m"), "m", 1, 4)
+    cfg["m"] = m
+    n_total = _int_value(cfg.get("n_total"), "n_total", 20, 120)
+    cfg["n_total"] = n_total
+    batch = _int_value(cfg.get("batch"), "batch", 1, 16)
+    if batch >= n_total:
+        raise ValueError(
+            f"batch must be less than n_total ({n_total}); "
+            f"got batch = {batch}")
+    cfg["batch"] = batch
+    seed = cfg.get("seed", 7)
+    if not _is_number(seed) or not np.isfinite(float(seed)) \
+            or float(seed) != int(float(seed)) or int(float(seed)) < 0:
+        raise ValueError(
+            f"seed must be an integer greater than or equal to 0; "
+            f"got {seed!r}")
+    cfg["seed"] = int(float(seed))
+    ac = cfg.get("active_count")
+    if ac is not None:
+        cfg["active_count"] = _int_value(ac, "active_count", 1, d)
+    n_cat = _int_value(cfg.get("n_cat", 0), "n_cat", 0, d)
+    cfg["n_cat"] = n_cat
+    raw_lv = cfg.get("cat_levels", 3)
+    if isinstance(raw_lv, (list, tuple)):
+        if len(raw_lv) != n_cat:
+            raise ValueError(
+                f"cat_levels must contain exactly one level count per "
+                f"categorical variable (n_cat = {n_cat}); "
+                f"got {len(raw_lv)} value(s)")
+        cfg["cat_levels"] = [
+            _int_value(v, "each cat_levels entry", 2, 4) for v in raw_lv]
+    else:
+        lv = _int_value(raw_lv, "cat_levels", 2, 4)
+        cfg["cat_levels"] = [lv] * n_cat
+    raw_w = cfg.get("weights")
+    if not isinstance(raw_w, (list, tuple)):
+        raise ValueError(
+            f"weights must be a list of {m} percentages, one per "
+            f"response; got {raw_w!r}")
+    if len(raw_w) != m:
+        raise ValueError(
+            f"weights must contain exactly one percentage per response "
+            f"(m = {m}); got {len(raw_w)} value(s)")
+    weights = []
+    for j, wv in enumerate(raw_w):
+        if not _is_number(wv) or not np.isfinite(float(wv)):
+            raise ValueError(
+                f"weights entry {j + 1} must be a finite number "
+                f"greater than or equal to 0; got {wv!r}")
+        if float(wv) < 0:
+            raise ValueError(
+                f"weights entry {j + 1} must be greater than or equal "
+                f"to 0; got {wv!r}")
+        weights.append(float(wv))
+    if abs(sum(weights) - 100.0) > 0.6:
+        raise ValueError(
+            f"weights must sum to 100 percent (within 0.6); "
+            f"they sum to {sum(weights)}")
+    cfg["weights"] = weights
+    cfg["snr"] = _pos_value(cfg.get("snr", 4.0), "snr")
+    raw_sp = cfg.get("snr_per")
+    if raw_sp is not None:
+        if not isinstance(raw_sp, (list, tuple)) or len(raw_sp) != m:
+            raise ValueError(
+                f"snr_per must contain exactly one signal-to-noise "
+                f"ratio per response (m = {m}); got {raw_sp!r}")
+        cfg["snr_per"] = [_pos_value(v, f"snr_per entry {j + 1}")
+                           for j, v in enumerate(raw_sp)]
+    mp = cfg.get("missing_p", 0.0)
+    if not _is_number(mp) or not np.isfinite(float(mp)) \
+            or not 0.0 <= float(mp) < 1.0:
+        raise ValueError(
+            f"missing_p must be a number at least 0 and less than 1; "
+            f"got {mp!r}")
+    cfg["missing_p"] = float(mp)
+    raw_ta = cfg.get("target_acc")
+    if raw_ta is None:
+        cfg["target_acc"] = None
+    elif isinstance(raw_ta, (list, tuple)):
+        if len(raw_ta) != m:
+            raise ValueError(
+                f"target_acc must be a single positive number or a "
+                f"list of exactly one value per response (m = {m}); "
+                f"got {len(raw_ta)} value(s)")
+        cfg["target_acc"] = [_pos_value(v, f"target_acc entry {j + 1}")
+                             for j, v in enumerate(raw_ta)]
+    else:
+        cfg["target_acc"] = [_pos_value(raw_ta, "target_acc")] * m
+    for key, allowed in (("noise_type", NOISE_TYPES),
+                         ("constraint", CONSTRAINTS),
+                         ("model", MODEL_KINDS),
+                         ("cat_mode", CAT_MODES)):
+        v = cfg.get(key)
+        if v not in allowed:
+            raise ValueError(
+                f"{key} must be one of "
+                f"{', '.join(repr(a) for a in allowed)}; got {v!r}")
+    return cfg
+
+
+# ---------------------------------------------------------------------------
 # True model generation
 # ---------------------------------------------------------------------------
 
@@ -329,6 +493,10 @@ def constraint_violation(cfg, x):
 def validate_points(cfg, X):
     """Raise ValueError naming the constraint for any infeasible point."""
     X = np.atleast_2d(np.asarray(X, float))
+    if not np.all(np.isfinite(X)):
+        raise ValueError(
+            "point coordinates must be finite numbers; a coordinate "
+            "is missing, infinite, or not a number")
     if np.any(X < -1e-9) or np.any(X > 1 + 1e-9):
         raise ValueError("point outside variable bounds [0, 1]")
     for x in X:
@@ -420,16 +588,18 @@ def initial_size(cfg):
 
 
 def initial_design(rng, cfg):
-    """Initial design: MaxPro LHS plus the centre point run three times in
-    total (two extra runs beyond the distinct settings), supplying an
+    """Initial design: initial_size(cfg) runs in total, namely a MaxPro
+    LHS of max(s - 3, 0) points plus the centre point run three times
+    in total (three centre runs whenever s permits), supplying an
     initial estimate of measurement noise."""
     s = initial_size(cfg)
-    X = lhs_design(rng, s - 2, cfg)
+    n_lhs = max(s - 3, 0)
+    X = lhs_design(rng, n_lhs, cfg) if n_lhs else np.zeros((0, cfg["d"]))
     centre = np.full((1, cfg["d"]), 0.5)
     centre = _quantize_cat(cfg, centre)
-    if constraint_violation(cfg, centre[0]):
+    if len(X) and constraint_violation(cfg, centre[0]):
         centre = X[:1].copy()
-    return np.vstack([X, centre, centre, centre])
+    return np.vstack([X] + [centre] * (s - n_lhs))
 
 
 # ---------------------------------------------------------------------------
@@ -781,6 +951,10 @@ def select_batch(state, strategy, pool=None, ref_sub=None, fast=False):
     strategy reserves the final quarter of the batch for the worst-served
     response (largest current integrated variance relative to its
     initial value)."""
+    if strategy not in STRATEGIES:
+        raise ValueError(
+            f"unknown strategy {strategy!r}; valid strategies are: "
+            f"{', '.join(STRATEGIES)}")
     cfg = state["cfg"]
     rng = np.random.default_rng(state["seed"] + 7919 * state["round"])
     b = min(cfg["batch"], cfg["n_total"] - state["n_done"])
@@ -793,23 +967,50 @@ def select_batch(state, strategy, pool=None, ref_sub=None, fast=False):
         return lhs_design(rng, b, cfg, maxpro_steps=150)
     models = [dict(mdl) if mdl is not None else None
               for mdl in state["models"]]
+    if all(mdl is None for mdl in models):
+        raise ValueError(
+            "no response has a fitted model yet (a fitted model needs "
+            "at least four observed, non-missing runs of its response); "
+            "execute additional runs, or reduce the missing-response "
+            "probability, before using a prediction-based strategy")
     weights = np.array(cfg["weights"], float) / 100.0
-    pool = state["pool"] if pool is None else pool
+    pool = state["pool"] if pool is None else np.asarray(pool, float)
+    cand = np.array([c for c in pool
+                     if constraint_violation(cfg, c) is None],
+                    float).reshape(-1, cfg["d"])
+    if not len(cand):
+        raise ValueError(
+            "no feasible candidate points are available under the "
+            "selected constraint; no batch can be proposed")
+    b = min(b, len(cand))
     ref_sub = state["ref"][::5][:ACQ_REF] if ref_sub is None else ref_sub
     iv0 = state["iv0"]
+    eff_iv0 = []
+    for j, mdl in enumerate(models):
+        v = iv0[j] if iv0 else None
+        if v is None or not np.isfinite(v):
+            v = integrated_variance(mdl, state["ref"]) \
+                if mdl is not None else 1.0
+            if not np.isfinite(v) or v <= 0:
+                v = 1.0
+        eff_iv0.append(max(float(v), 1e-12))
     best_obs = [float(np.nanmax(state["Y"][:, j]))
+                if np.any(np.isfinite(state["Y"][:, j])) else 0.0
                 for j in range(state["Y"].shape[1])]
     chosen = []
     n_worst = int(np.ceil(b / 4)) if strategy == "ivr" else 0
-    worst_j = int(np.argmax([integrated_variance(models[j], state["ref"])
-                             / max(iv0[j], 1e-12)
-                             for j in range(len(models))]))
-    cand = pool
+    worst_j = None
+    if strategy == "ivr":
+        worst_j = max(
+            (j for j in range(len(models)) if models[j] is not None),
+            key=lambda j: integrated_variance(models[j], state["ref"])
+            / eff_iv0[j])
     for step in range(b):
+        if not len(cand):
+            break
         mode = strategy
         if strategy == "ivr" and step >= b - n_worst:
             mode = ("worst", worst_j)
-        _, var_all = predict(models[0], cand) if models[0] else (None, None)
         tot_var = np.zeros(len(cand))
         for j, mdl in enumerate(models):
             if mdl is not None:
@@ -817,16 +1018,15 @@ def select_batch(state, strategy, pool=None, ref_sub=None, fast=False):
                 tot_var = tot_var + weights[j] * v
         keep = np.argsort(tot_var)[-min(SCREEN, len(cand)):]
         sub = cand[keep]
-        scores = _candidate_scores(models, weights, sub, ref_sub, iv0,
-                                    mode, best_obs)
+        scores = _candidate_scores(models, weights, sub, ref_sub,
+                                    eff_iv0, mode, best_obs)
         pick = sub[int(np.argmax(scores))]
         chosen.append(pick)
-        cand = np.array([c for c in cand
-                         if not np.allclose(c, pick, atol=1e-9)])
+        cand = cand[~np.all(np.isclose(cand, pick, atol=1e-9), axis=1)]
         for j in range(len(models)):
             if models[j] is not None:
                 models[j] = _fantasy(models[j], pick)
-    return np.array(chosen)
+    return np.array(chosen).reshape(-1, cfg["d"])
 
 
 # ---------------------------------------------------------------------------
@@ -837,10 +1037,7 @@ def new_session(cfg, pool_n=20000, ref_n=5000):
     """Start a session: draw the truth, generate the candidate pool and
     the reference set, execute the initial design, fit the models, and
     record the first history entry."""
-    cfg = dict(cfg)
-    cfg["weights"] = [float(w) for w in cfg["weights"]]
-    assert abs(sum(cfg["weights"]) - 100.0) < 1e-6, \
-        "weights must sum to 100 percent"
+    cfg = validate_cfg(dict(cfg))
     rng = np.random.default_rng(cfg["seed"])
     truth = make_truth(cfg, rng)
     state = dict(cfg=cfg, truth=truth, seed=cfg["seed"], round=0,
@@ -857,8 +1054,17 @@ def new_session(cfg, pool_n=20000, ref_n=5000):
 
 def _execute(state, X, rng):
     cfg = state["cfg"]
-    validate_points(cfg, X)
     X = np.atleast_2d(np.asarray(X, float))
+    if X.size == 0:
+        raise ValueError(
+            "cannot execute an empty batch: the batch contains "
+            "no points")
+    if X.shape[1] != cfg["d"]:
+        raise ValueError(
+            f"each point must have exactly {cfg['d']} coordinates "
+            f"(one per variable); got {X.shape[1]}")
+    X = _quantize_cat(cfg, X)
+    validate_points(cfg, X)
     order = rng.permutation(len(X))
     X = X[order]
     Y = add_noise(rng, cfg, X, eval_truth(state["truth"], X, cfg))
@@ -880,7 +1086,12 @@ def _record(state):
     weights = np.array(cfg["weights"], float) / 100.0
     ivs = [integrated_variance(mdl, state["ref"]) for mdl in state["models"]]
     if state["iv0"] is None:
-        state["iv0"] = [max(v, 1e-9) for v in ivs]
+        state["iv0"] = [float(max(v, 1e-9)) if np.isfinite(v) else None
+                        for v in ivs]
+    else:
+        for j, v in enumerate(ivs):
+            if state["iv0"][j] is None and np.isfinite(v):
+                state["iv0"][j] = float(max(v, 1e-9))
     loos = [loo_rmse(mdl) for mdl in state["models"]]
     entry = dict(n=state["n_done"], round=state["round"],
                  iv=[float(v) for v in ivs],
@@ -894,33 +1105,98 @@ def score_session(state):
     """True scores against the noiseless truth on the full reference set:
     per-response RMSE, the weighted normalised score, and a calibration
     ratio (root mean squared error divided by root mean predictive
-    variance, per response).  Values are computed always; the page hides
-    them until reveal."""
+    variance, per response).  The combined score is computed over the
+    modelled responses only (responses with a fitted model), with the
+    weights renormalised to sum to 1 over those responses (equal
+    weights when their weights sum to zero); with every response
+    modelled this is the weighted sum over all responses.  Values are
+    computed always; the page hides them until reveal."""
     weights = np.array(state["cfg"]["weights"], float) / 100.0
-    per, cal = [], []
+    per, cal, iv_now = [], [], []
     for j, mdl in enumerate(state["models"]):
         if mdl is None:
-            per.append(float("nan")); cal.append(float("nan")); continue
+            per.append(float("nan")); cal.append(float("nan"))
+            iv_now.append(float("nan")); continue
         mean, var = predict(mdl, state["ref"])
         err = mean - state["ref_truth"][:, j]
         per.append(float(np.sqrt(np.mean(err ** 2))))
         cal.append(float(np.sqrt(np.mean(err ** 2) /
                                  max(np.mean(var), 1e-12))))
-    iv0 = state["iv0"] or [1.0] * len(per)
-    score = float(np.sqrt(np.sum(weights * np.array(per) ** 2 /
-                                 np.maximum(iv0, 1e-9))))
+        iv_now.append(float(np.mean(var)))
+    modelled = [j for j in range(len(per)) if np.isfinite(per[j])]
+    if modelled:
+        w = np.array([weights[j] for j in modelled])
+        if w.sum() <= 0:
+            w = np.ones(len(modelled))
+        w = w / w.sum()
+        terms = []
+        for k, j in enumerate(modelled):
+            denom = state["iv0"][j] if state["iv0"] else None
+            if not denom:
+                denom = iv_now[j]
+            terms.append(w[k] * per[j] ** 2 / max(denom, 1e-9))
+        score = float(np.sqrt(np.sum(terms)))
+    else:
+        score = float("nan")
     return dict(true_rmse=per, calibration=cal, score=score)
 
 
 def propose_batch(state, strategy):
-    """Propose the next batch (list of points) without executing it."""
+    """Propose the next batch (list of points) without executing it.
+
+    Raises ValueError when the session is finished or the budget is
+    exhausted; select_batch validates the strategy name."""
+    cfg = state["cfg"]
+    if state["finished"]:
+        raise ValueError(
+            "the session is finished; no further batches can be "
+            "proposed. Start a new session to run more experiments")
+    if state["n_done"] >= cfg["n_total"]:
+        raise ValueError(
+            f"the budget of {cfg['n_total']} runs is exhausted; "
+            f"no runs remain for another batch")
     return select_batch(state, strategy)
 
 
 def execute_batch(state, X):
-    """Validate and execute a (possibly edited) batch; returns summary."""
+    """Validate and execute a (possibly edited) batch; returns summary.
+
+    Every rejection (finished session, empty batch, wrong point width,
+    non-finite coordinate, batch larger than the remaining budget, and
+    the bounds and constraint checks of validate_points) raises
+    ValueError before any state is modified."""
+    cfg = state["cfg"]
+    if state["finished"]:
+        raise ValueError(
+            "the session is finished; no further batches can be "
+            "executed. Start a new session to run more experiments")
+    try:
+        raw = np.asarray(X, float)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"each point must be a list of exactly {cfg['d']} numbers "
+            f"(one per variable)") from None
+    if raw.size == 0:
+        raise ValueError(
+            "the batch contains no points; propose a batch or add "
+            "points before executing")
+    pts = np.atleast_2d(raw)
+    if pts.shape[1] != cfg["d"]:
+        raise ValueError(
+            f"each point must have exactly {cfg['d']} coordinates "
+            f"(one per variable); got {pts.shape[1]}")
+    if not np.all(np.isfinite(pts)):
+        raise ValueError(
+            "point coordinates must be finite numbers; check the "
+            "batch for blank or non-numeric entries")
+    remaining = cfg["n_total"] - state["n_done"]
+    if len(pts) > remaining:
+        raise ValueError(
+            f"the batch contains {len(pts)} points but only "
+            f"{remaining} runs remain in the budget of "
+            f"{cfg['n_total']}; remove points before executing")
     rng = np.random.default_rng(state["seed"] + 104729 * state["round"])
-    _execute(state, X, rng)
+    _execute(state, pts, rng)
     if state["n_done"] >= state["cfg"]["n_total"]:
         state["finished"] = True
     return summary(state)
@@ -954,12 +1230,46 @@ def _fig(data, x_title="", y_title="", **kw):
     return dict(data=data, layout=lay)
 
 
+def _combined_rms(vals, weights):
+    """Weighted root mean square over the finite entries of vals, with
+    the weights renormalised to sum to 1 over those entries (equal
+    weights when their weights sum to zero); NaN when no entry is
+    finite.  With every entry finite and weights summing to 1 this is
+    the plain weighted root mean square."""
+    v = np.asarray(vals, float)
+    w = np.asarray(weights, float)
+    ok = np.isfinite(v)
+    if not ok.any():
+        return float("nan")
+    wv = w[ok]
+    if wv.sum() <= 0:
+        wv = np.ones(int(ok.sum()))
+    wv = wv / wv.sum()
+    return float(np.sqrt(np.sum(wv * v[ok] ** 2)))
+
+
+def _combined_iv(vals, weights):
+    """Square root of the weighted mean of the finite entries of vals
+    (integrated variances), weights renormalised as in _combined_rms;
+    NaN when no entry is finite."""
+    v = np.asarray(vals, float)
+    w = np.asarray(weights, float)
+    ok = np.isfinite(v)
+    if not ok.any():
+        return float("nan")
+    wv = w[ok]
+    if wv.sum() <= 0:
+        wv = np.ones(int(ok.sum()))
+    wv = wv / wv.sum()
+    return float(np.sqrt(np.sum(wv * v[ok])))
+
+
 def learning_fig(state, reveal):
     hist = state["history"]
     xs = [h["n"] for h in hist]
     w = np.array(state["cfg"]["weights"], float) / 100.0
-    loo = [float(np.sqrt(np.sum(w * np.array(h["loo"]) ** 2))) for h in hist]
-    iv = [float(np.sqrt(np.sum(w * np.array(h["iv"])))) for h in hist]
+    loo = [_combined_rms(h["loo"], w) for h in hist]
+    iv = [_combined_iv(h["iv"], w) for h in hist]
     data = [dict(type="scatter", x=xs, y=loo, mode="lines+markers",
                  name="LOO error", line=dict(color=OI[0]),
                  marker=dict(symbol="circle")),
@@ -979,32 +1289,80 @@ def slice_figs(state, reveal, resp=0, va=0, vb=1, hold=None, grid_n=26):
     """Contour slices over variables va and vb for one response: predicted
     mean, predictive standard deviation, and (only when revealed) the
     noiseless truth.  Remaining variables are held at the values in hold
-    (default the centre 0.5, categorical variables at their modal level)."""
+    (default the centre 0.5, categorical variables at their modal level).
+    A categorical slice variable is evaluated at its level centres, so
+    its axis carries one band per level; a continuous slice variable is
+    evaluated on a grid of grid_n points over [0.02, 0.98].
+
+    Indices are validated: resp in [0, m), va and vb in [0, d), and
+    va != vb; a response with no fitted model raises ValueError naming
+    the cause.  All violations raise ValueError."""
     cfg = state["cfg"]
+    d, m = cfg["d"], cfg["m"]
+    for name, idx in (("resp", resp), ("va", va), ("vb", vb)):
+        if not _is_number(idx) or float(idx) != int(float(idx)):
+            raise ValueError(
+                f"slice index {name} must be an integer; got {idx!r}")
+    resp, va, vb = int(resp), int(va), int(vb)
+    if not 0 <= resp < m:
+        raise ValueError(
+            f"response index resp = {resp} is out of range for a "
+            f"session with {m} response(s); valid indices are "
+            f"0 to {m - 1}")
+    for name, idx in (("va", va), ("vb", vb)):
+        if not 0 <= idx < d:
+            raise ValueError(
+                f"variable index {name} = {idx} is out of range for "
+                f"a session with {d} variable(s); valid indices are "
+                f"0 to {d - 1}")
+    if va == vb:
+        raise ValueError(
+            f"the two slice variables must be different; "
+            f"both are variable {va + 1}")
     mdl = state["models"][resp]
-    hold = np.full(cfg["d"], 0.5) if hold is None else np.array(hold, float)
+    if mdl is None:
+        raise ValueError(
+            f"response {resp + 1} has no fitted model: fewer than "
+            f"four observed (non-missing) runs are available for it. "
+            f"Execute additional runs, or reduce the missing-response "
+            f"probability, before requesting its slice")
+    levels = _cat_levels_of(cfg)
+
+    def axis_grid(k):
+        if k < len(levels):
+            L = levels[k]
+            return np.array([(l + 0.5) / L for l in range(L)])
+        return np.linspace(0.02, 0.98, grid_n)
+
+    gx, gy = axis_grid(va), axis_grid(vb)
+    if hold is not None and len(np.atleast_1d(hold)) != d:
+        raise ValueError(
+            f"hold must contain exactly {d} values (one per "
+            f"variable); got {len(np.atleast_1d(hold))}")
+    hold = np.full(d, 0.5) if hold is None else np.array(hold, float)
     hold = _quantize_cat(cfg, hold[None, :])[0]
-    g = np.linspace(0.02, 0.98, grid_n)
-    A, B = np.meshgrid(g, g)
-    pts = np.tile(hold, (grid_n * grid_n, 1))
+    A, B = np.meshgrid(gx, gy)
+    pts = np.tile(hold, (len(gx) * len(gy), 1))
     pts[:, va] = A.ravel()
     pts[:, vb] = B.ravel()
     pts = _quantize_cat(cfg, pts)
     mean, var = predict(mdl, pts)
+    shp = (len(gy), len(gx))
     figs = {}
-    figs["pred"] = _fig([dict(type="heatmap", x=g, y=g,
-                              z=mean.reshape(grid_n, grid_n),
+    figs["pred"] = _fig([dict(type="heatmap", x=gx.tolist(), y=gy.tolist(),
+                              z=mean.reshape(shp),
                               colorscale="Viridis", colorbar=dict(title="y"))],
                         f"x{va + 1} (dimensionless)", f"x{vb + 1} (dimensionless)")
-    figs["unc"] = _fig([dict(type="heatmap", x=g, y=g,
-                             z=np.sqrt(var).reshape(grid_n, grid_n),
+    figs["unc"] = _fig([dict(type="heatmap", x=gx.tolist(), y=gy.tolist(),
+                             z=np.sqrt(var).reshape(shp),
                              colorscale="Cividis",
                              colorbar=dict(title="std"))],
                        f"x{va + 1} (dimensionless)", f"x{vb + 1} (dimensionless)")
     if reveal:
         tv = eval_truth(state["truth"], pts, cfg)[:, resp]
-        figs["truth"] = _fig([dict(type="heatmap", x=g, y=g,
-                                   z=tv.reshape(grid_n, grid_n),
+        figs["truth"] = _fig([dict(type="heatmap", x=gx.tolist(),
+                                   y=gy.tolist(),
+                                   z=tv.reshape(shp),
                                    colorscale="Viridis",
                                    colorbar=dict(title="y"))],
                              f"x{va + 1} (dimensionless)",
@@ -1017,6 +1375,9 @@ def importance_fig(state):
     true variable importance, per response (first response in the main
     panel bars; all responses in the returned table of the summary)."""
     mdl = state["models"][0]
+    if mdl is None:
+        lay = dict(_LAYOUT); lay["barmode"] = "group"
+        return _fig([], "Variable", "Normalised share", **lay)
     rel = 1.0 / mdl["ls"]
     rel = rel / rel.sum()
     tru = state["truth"]["importance"][0]
@@ -1059,7 +1420,12 @@ def session_csv(state):
 
 
 def summary(state, reveal=False):
-    """JSON-ready summary of the session for the page."""
+    """Summary of the session for the page, as plain Python structures
+    only (NumPy values converted, non-finite values as None), so
+    json.dumps applies to the return value directly.  Responses with
+    no fitted model are listed in unmodelled_responses (1-based
+    response numbers); slice figures are included only when at least
+    one response is modelled, for the first modelled response."""
     cfg = state["cfg"]
     reveal = bool(reveal or cfg.get("reveal") or state["finished"] or cfg.get("mode") == "sandbox")
     last = state["history"][-1]
@@ -1071,6 +1437,9 @@ def summary(state, reveal=False):
                    np.isfinite(state["Y"]), state["Y"], None).tolist(),
                lengthscales=[None if mdl is None else mdl["ls"].tolist()
                              for mdl in state["models"]],
+               unmodelled_responses=[j + 1 for j, mdl
+                                     in enumerate(state["models"])
+                                     if mdl is None],
                importance=state["truth"]["importance"].tolist(),
                figs=dict(learning=learning_fig(state, reveal),
                          importance=importance_fig(state),
@@ -1078,9 +1447,14 @@ def summary(state, reveal=False):
     cont = [i for i in range(cfg["d"])
             if i >= len(_cat_levels_of(cfg))]
     va, vb = (cont + [0, 1])[:2]
-    sl = slice_figs(state, reveal, resp=0, va=va, vb=vb)
-    out["figs"].update({f"slice_{k}": v for k, v in sl.items()})
     out["slice_vars"] = [va, vb]
+    modelled = [j for j, mdl in enumerate(state["models"])
+                if mdl is not None]
+    if modelled:
+        resp0 = 0 if state["models"][0] is not None else modelled[0]
+        sl = slice_figs(state, reveal, resp=resp0, va=va, vb=vb)
+        out["figs"].update({f"slice_{k}": v for k, v in sl.items()})
+        out["slice_resp"] = resp0
     if reveal:
         out["true_rmse"] = last["true_rmse"]
         out["calibration"] = last["calibration"]
@@ -1091,9 +1465,9 @@ def summary(state, reveal=False):
         if ta:
             out["target_acc"] = [float(v) for v in ta]
             out["target_met"] = [bool(per_j <= float(ta[j]))
-                                  for j, per_j in enumerate(last["true_rmse"])
-                                  if j < len(ta)]
-    return out
+                                  for j, per_j
+                                  in enumerate(last["true_rmse"])]
+    return plain(out)
 
 
 # ---------------------------------------------------------------------------
@@ -1107,7 +1481,22 @@ STRATEGIES = ["random", "lhs", "maxvar", "ivr", "ei"]
 
 
 def run_tournament(cfg, reps=5, strategies=None, progress=None):
+    validate_cfg(dict(cfg))
+    try:
+        reps_i = int(reps)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"reps must be a positive integer; got {reps!r}") from None
+    if isinstance(reps, bool) or reps_i != reps or reps_i < 1:
+        raise ValueError(
+            f"reps must be a positive integer; got {reps!r}")
+    reps = reps_i
     strategies = strategies or STRATEGIES
+    for s in strategies:
+        if s not in STRATEGIES:
+            raise ValueError(
+                f"unknown strategy {s!r}; valid strategies are: "
+                f"{', '.join(STRATEGIES)}")
     curves = {s: [] for s in strategies}
     total = reps * len(strategies)
     done = 0
