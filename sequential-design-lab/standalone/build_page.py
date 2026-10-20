@@ -12,8 +12,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/sequential-design-lab-v3.html
-  python3 build_page.py --stub   -> dist/sequential-design-lab-v3-stub.html
+  python3 build_page.py          -> dist/sequential-design-lab-v4.html
+  python3 build_page.py --stub   -> dist/sequential-design-lab-v4-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -34,8 +34,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "sequential-design-lab/walkthrough_molab.py")
-OUT_NAME = "sequential-design-lab-v3.html"
-STUB_NAME = "sequential-design-lab-v3-stub.html"
+OUT_NAME = "sequential-design-lab-v4.html"
+STUB_NAME = "sequential-design-lab-v4-stub.html"
 PYODIDE_MODULES = ["engine.py"]  # registered in the worker boot (build_page)
 
 
@@ -153,6 +153,23 @@ BIBLIOGRAPHY = [
     ("chaloner-verdinelli-1995", "Chaloner & Verdinelli, 1995",
      "Chaloner, K. & Verdinelli, I. (1995). Bayesian experimental "
      "design: a review. Statistical Science, 10(3), 273–304."),
+    ("lindley-1956", "Lindley, 1956",
+     "Lindley, D. V. (1956). On a measure of the information provided "
+     "by an experiment. Annals of Mathematical Statistics, 27(4), "
+     "986–1005. DOI: 10.1214/aoms/1177728069."),
+    ("derringer-suich-1980", "Derringer & Suich, 1980",
+     "Derringer, G. & Suich, R. (1980). Simultaneous optimization of "
+     "several response variables. Journal of Quality Technology, "
+     "12(4), 214–219. DOI: 10.1080/00224065.1980.11980968."),
+    ("neal-1996", "Neal, 1996",
+     "Neal, R. M. (1996). Bayesian Learning for Neural Networks. "
+     "Lecture Notes in Statistics, Vol. 118. New York: Springer. "
+     "ISBN 978-0-387-94724-2. DOI: 10.1007/978-1-4612-0745-0."),
+    ("jones-nachtsheim-2011", "Jones & Nachtsheim, 2011",
+     "Jones, B. & Nachtsheim, C. J. (2011). A class of three-level "
+     "designs for definitive screening in the presence of second-order "
+     "effects. Journal of Quality Technology, 43(1), 1–15. "
+     "DOI: 10.1080/00224065.2011.11917841."),
     ("kennedy-ohagan-2001", "Kennedy & O'Hagan, 2001",
      "Kennedy, M. C. & O'Hagan, A. (2001). Bayesian calibration of "
      "computer models. Journal of the Royal Statistical Society: "
