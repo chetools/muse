@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Sequential Design for Global Models</title>
+<style>
+@@KATEX_CSS@@
+</style>
+<style>
+:root{--ink:#1b1b1b;--ink-2:#5a5a5a;--rule:#d6d6d6;--paper:#ffffff;--tint:#f4f6f8;--accent:#0072B2;--accent2:#D55E00}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 Georgia,"Source Serif 4",serif;margin:0}
+header{border-bottom:1px solid var(--rule);padding:20px 24px 8px}
+h1{font-size:26px;font-weight:600;line-height:1.2;margin:0 0 4px}
+.sub{color:var(--ink-2);font:14px/1.45 system-ui,sans-serif;max-width:75ch}
+nav.tabs{display:flex;gap:4px;padding:10px 24px 0;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+nav.tabs button{font:600 15px system-ui,sans-serif;background:none;border:none;border-bottom:3px solid transparent;padding:8px 14px;cursor:pointer;color:var(--ink-2)}
+nav.tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:16px 24px 40px}
+.panel{display:none}.panel.active{display:block}
+.appgrid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:24px;align-items:start}
+.appgrid>*{min-width:0}
+@media(max-width:820px){.appgrid{grid-template-columns:1fr}}
+aside{font:14px/1.4 system-ui,sans-serif;border:1px solid var(--rule);padding:14px;background:var(--tint)}
+aside h2{font-size:15px;margin:0 0 8px}
+aside label{display:block;margin:8px 0 2px;color:var(--ink-2)}
+aside input,aside select{width:100%;min-width:0;padding:5px 6px;font:14px system-ui,sans-serif;border:1px solid var(--rule);background:#fff}
+aside .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.act{font:600 14px system-ui,sans-serif;background:var(--accent);color:#fff;border:none;padding:8px 12px;cursor:pointer;margin:4px 4px 4px 0;border-radius:4px}
+button.act.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+button.act:disabled{background:#b9c9d4;cursor:wait}
+.status{font:13px system-ui,sans-serif;color:var(--ink-2);margin:6px 0}
+progress{width:100%;height:10px}
+.metrics{display:flex;gap:24px;flex-wrap:wrap;font:14px system-ui,sans-serif;margin:6px 0 12px}
+.metrics div b{display:block;font-size:20px}
+.figgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:1100px){.figgrid{grid-template-columns:1fr}}
+figure{margin:0 0 10px}
+figcaption{font:13.5px/1.4 system-ui,sans-serif;color:var(--ink-2);margin:2px 0 10px}
+.figbox{width:100%;height:340px}
+.wide .figbox{height:380px}
+table{border-collapse:collapse;font:13px system-ui,sans-serif;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--rule);padding:3px 6px;text-align:right}
+th{background:var(--tint)}
+.scroll{overflow-x:auto;max-height:330px;overflow-y:auto}
+td input{width:64px;font:12px system-ui,sans-serif;border:none;text-align:right}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow-x:auto;font:12.5px/1.45 ui-monospace,Menlo,monospace}
+.prose{max-width:72ch}
+.prose h1{font-size:22px}.prose h2{font-size:18px;margin-top:26px}
+.subtabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.subtabs button{font:600 14px system-ui,sans-serif;background:none;border:1px solid var(--rule);padding:6px 12px;cursor:pointer}
+.subtabs button.active{background:var(--tint)}
+.err{color:#a33;font:14px system-ui,sans-serif;white-space:pre-wrap}
+details{margin-bottom:10px}summary{font:600 14px system-ui,sans-serif;cursor:pointer}
+.katex{font-size:1.02em}
+</style>
+<script>@@PLOTLY_JS@@</script>
+</head>
+<body>
+<header>
+<h1>Sequential Design for Global Models</h1>
+<p class="sub">Comparison of experiment-selection strategies for a global predictive model under a small budget. A seeded true model generates data with noise; a Gaussian process is fitted after each batch; sequential batches are selected by the chosen strategy. All calculations are performed in Python (Pyodide). If the Python runtime cannot load, an explicit error is shown and no calculation is performed.</p>
+<p class="status" id="boot-status">Python runtime: loading&hellip;</p>
+<progress id="boot-progress" max="100" value="15"></progress>
+<p class="err" id="boot-error"></p>
+</header>
+<nav class="tabs">
+<button data-tab="app" class="active">App</button>
+<button data-tab="theory">Theory</button>
+<button data-tab="code">Code</button>
+</nav>
+<main>
+<section class="panel active" id="panel-app">
+<div class="appgrid">
+<aside>
+<h2>Scenario</h2>
+<label for="in-seed">Seed (integer)</label><input id="in-seed" type="number" value="7">
+<div class="row"><div><label for="in-d">Variables, d (count, 2&ndash;20)</label><input id="in-d" type="number" min="2" max="20" value="10"></div>
+<div><label for="in-m">Responses, m (count, 1&ndash;4)</label><input id="in-m" type="number" min="1" max="4" value="2"></div></div>
+<div class="row"><div><label for="in-n">Budget, n (runs, 20&ndash;120)</label><input id="in-n" type="number" min="20" max="120" value="48"></div>
+<div><label for="in-batch">Batch size (runs, 4&ndash;16)</label><input id="in-batch" type="number" min="4" max="16" value="8"></div></div>
+<label>Importance weights (percent, sum 100)</label><div id="weights"></div>
+<label for="in-mode">Mode</label><select id="in-mode"><option value="guided">Guided game</option><option value="sandbox">Sandbox</option></select>
+<label for="in-strategy">Batch selection strategy</label><select id="in-strategy">
+<option value="ivr">Integrated variance reduction</option>
+<option value="maxvar">Maximum predictive variance</option>
+<option value="ei">Expected improvement (optimisation criterion)</option>
+<option value="lhs">One-shot MaxPro Latin hypercube</option>
+<option value="random">Random</option></select>
+<label for="in-model">Fitted model (advanced)</label><select id="in-model">
+<option value="ard">Gaussian process, Matern 5/2, separate length scales</option>
+<option value="iso">Gaussian process, single length scale</option>
+<option value="additive">Gaussian process, additive kernel</option>
+<option value="poly">Quadratic polynomial</option></select>
+<label for="in-noise">Noise type</label><select id="in-noise">
+<option value="gauss">Gaussian, constant variance</option>
+<option value="hetero">Gaussian, input-dependent variance</option>
+<option value="mult">Multiplicative</option>
+<option value="outlier">Gaussian with outliers (5 percent)</option></select>
+<label for="in-snr">Signal-to-noise ratio (variance ratio)</label><input id="in-snr" type="number" min="0.25" max="100" step="0.25" value="4">
+<label for="in-targetacc">Target accuracy per response (optional, comma-separated, response units; used for termination reporting)</label><input id="in-targetacc" type="text" value="">
+<label for="in-snrper">Per-response signal-to-noise ratios (advanced, comma-separated, blank = single value)</label><input id="in-snrper" type="text" value="">
+<label for="in-active">Active variables (count; blank = drawn by seed, instructor control)</label><input id="in-active" type="number" min="1" max="20" placeholder="auto">
+<div class="row"><div><label for="in-ncat">Categorical variables (count)</label><input id="in-ncat" type="number" min="0" max="10" value="0"></div>
+<div><label for="in-catlevels">Levels per categorical variable</label><input id="in-catlevels" type="number" min="2" max="4" value="3"></div></div>
+<label for="in-catmode">Categorical treatment in the fitted model</label><select id="in-catmode"><option value="correct">Correct categorical covariance</option><option value="naive">Naive numeric coding (misspecification)</option></select>
+<label for="in-constraint">Coupled constraint</label><select id="in-constraint">
+<option value="none">None (bounds only)</option>
+<option value="linear">Linear sum constraint</option>
+<option value="circle">Circular forbidden region</option></select>
+<label for="in-missing">Missing response probability (advanced)</label><input id="in-missing" type="number" min="0" max="0.5" step="0.01" value="0">
+<label><input id="in-reveal" type="checkbox" style="width:auto"> Instructor toggle: show true score during play</label>
+<button class="act" id="btn-new" disabled>New session</button>
+<p class="status" id="stale-note" style="display:none">Scenario inputs differ from the displayed session. Start a new session to apply them.</p>
+<h2 style="margin-top:16px">Rounds</h2>
+<button class="act" id="btn-propose" disabled>Propose batch</button>
+<button class="act" id="btn-execute" disabled>Execute batch</button>
+<button class="act secondary" id="btn-finish" disabled>Finish and reveal score</button>
+<p class="status" id="action-status"></p>
+<progress id="action-progress" max="100" value="0" style="display:none"></progress>
+<h2 style="margin-top:16px">Slice view</h2>
+<div class="row"><div><label for="in-sresp">Response (index)</label><input id="in-sresp" type="number" min="0" max="3" value="0"></div>
+<div><label for="in-sva">First variable (index)</label><input id="in-sva" type="number" min="0" max="19" value="0"></div></div>
+<label for="in-svb">Second variable (index)</label><input id="in-svb" type="number" min="0" max="19" value="1">
+<button class="act secondary" id="btn-slice" disabled>Update slices</button>
+<h2 style="margin-top:16px">Downloads</h2>
+<button class="act secondary" id="btn-csv" disabled>Design and responses (CSV)</button>
+<button class="act secondary" id="btn-summary" disabled>Session summary (text)</button>
+<h2 style="margin-top:16px">Strategy tournament (instructor)</h2>
+<label for="in-reps">Repetitions (1&ndash;5)</label><input id="in-reps" type="number" min="1" max="5" value="5">
+<button class="act secondary" id="btn-tournament" disabled>Run tournament</button>
+<p class="status" id="tour-status"></p>
+<progress id="tour-progress" max="100" value="0" style="display:none"></progress>
+</aside>
+<div>
+<p class="status" id="session-note">Displaying the precomputed default session, computed when this page was built. Start a new session for live calculation in the browser.</p>
+<div class="metrics" id="metrics"></div>
+<figure class="wide"><div class="figbox" id="fig-learning"></div><figcaption>Fig. 1 | Error per round as experiments accumulate; the true score appears on completion or under the instructor toggle. Leave-one-out error and integrated predictive standard deviation per round, with the true score when revealed. Error in response units; n is the number of completed experiments.</figcaption></figure>
+<figure><div class="figbox" id="fig-importance"></div><figcaption>Fig. 2 | Fitted relevance concentrates on the truly important variables. Normalised inverse length scale of the first response against true variable importance, dimensionless shares.</figcaption></figure>
+<div class="figgrid">
+<figure><div class="figbox" id="fig-slice-pred"></div><figcaption>Fig. 3 | Predicted mean of the selected response over two variables, remaining variables held at the centre (categorical variables at their central level). Scaled inputs are dimensionless.</figcaption></figure>
+<figure><div class="figbox" id="fig-slice-unc"></div><figcaption>Fig. 4 | Predictive standard deviation on the same slice, in response units. Sequential selection targets regions of high uncertainty weighted by their effect on the whole region.</figcaption></figure>
+</div>
+<figure id="fig-slice-truth-wrap" style="display:none"><div class="figbox" id="fig-slice-truth"></div><figcaption>Fig. 5 | Noiseless true response on the same slice, shown only after reveal. Comparison with Fig. 3 exposes model error directly.</figcaption></figure>
+<figure class="wide"><div class="figbox" id="fig-parcoords"></div><figcaption>Fig. 6 | Every executed experiment occupies the full variable space, not a two-variable projection. One polyline per experiment across one axis per variable, coloured by round.</figcaption></figure>
+<figure id="fig-tour-wrap" style="display:none"><div class="figbox" id="fig-tour"></div><figcaption>Fig. 7 | Tournament: median true score per round for each strategy on identical seeds. The optimisation criterion (expected improvement) is expected to trail the global-model criteria.</figcaption></figure>
+<h2 style="font-size:18px">Proposed batch (editable)</h2>
+<p class="status">Points proposed by the selected strategy. Values are scaled inputs in [0, 1] and may be edited before execution; constraint violations are rejected before execution with the constraint named. Additional rows may be added manually in guided mode up to the remaining budget.</p>
+<div class="scroll" id="batch-table"></div>
+<button class="act secondary" id="btn-addrow" disabled>Add manual point</button>
+<h2 style="font-size:18px">Executed runs</h2>
+<div class="scroll" id="run-table"></div>
+<div id="reveal-box"></div>
+</div>
+</div>
+</section>
+<section class="panel prose" id="panel-theory">@@THEORY_HTML@@</section>
+<section class="panel" id="panel-code">
+<div class="subtabs">
+<button data-sub="listings" class="active">Listings</button>
+<button data-sub="walkthrough">Walkthrough</button>
+</div>
+<div id="sub-listings">@@LISTINGS_HTML@@</div>
+<div id="sub-walkthrough" style="display:none">
+<p class="status">The walkthrough results below were computed when this page was built. The editable notebook executes the same cells on MoLab.</p>
+<h3>Editable notebook</h3>
+<p>The MoLab notebook is editable; run all cells once after opening.
+<a href="@@MOLAB_URL@@" target="_blank" rel="noopener">Open the editable notebook on MoLab</a> &middot;
+<a href="#" id="dl-notebook">Download the notebook (.py)</a></p>
+<p>The pre-run read-only WASM page of the same notebook is published next to this page in the walkthrough folder.</p>
+@@WALKTHROUGH_HTML@@
+</div>
+</section>
+</main>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="engine-b64" type="text/plain">@@ENGINE_B64@@</script>
+<script id="molab-b64" type="text/plain">@@MOLAB_B64@@</script>
+<script id="walk-figs" type="application/json">@@WALK_FIGS_JSON@@</script>
+<script>
+"use strict";
+const STUB = @@STUB@@;
+let booted = false, worker = null, callId = 0; const pending = {};
+let summary = null, proposed = [], displayedCfg = null, tourState = null;
+const $ = id => document.getElementById(id);
+function plot(id, fig){ const el = $(id); if(!el || !fig) return; Plotly.react(el, fig.data, fig.layout, {responsive:true, displaylogo:false}); }
+function setBusy(b, msg){ ["btn-new","btn-propose","btn-execute","btn-finish","btn-slice","btn-csv","btn-summary","btn-tournament","btn-addrow"].forEach(i=>{ if($(i)) $(i).disabled = b || !booted; }); $("action-progress").style.display = b ? "block" : "none"; if(msg) $("action-status").textContent = msg; if(b){ let v = 5; $("action-progress").value = v; } }
+function call(type, payload){ return new Promise((res, rej)=>{ const id = ++callId; pending[id] = {res, rej}; worker.postMessage(Object.assign({type, id}, payload||{})); }); }
+function weightsUI(){ const m = Math.min(4, Math.max(1, parseInt($("in-m").value||"2"))); const box = $("weights"); const cur = Array.from(box.querySelectorAll("input")).map(i=>parseFloat(i.value)); box.innerHTML = ""; const defaults = {1:[100],2:[60,40],3:[50,30,20],4:[40,30,20,10]}[m]; for(let j=0;j<m;j++){ const inp = document.createElement("input"); inp.type="number"; inp.min="0"; inp.max="100"; inp.id="w"+j; inp.value = cur[j] !== undefined ? cur[j] : defaults[j]; inp.setAttribute("aria-label","Weight percent for response "+(j+1)); box.appendChild(inp);} markStale(); }
+function markStale(){ if(displayedCfg && JSON.stringify(cfgFromUI()) !== JSON.stringify(displayedCfg)) $("stale-note").style.display="block"; else $("stale-note").style.display="none"; }
+function cfgFromUI(){ const m = parseInt($("in-m").value); const weights = []; for(let j=0;j<m;j++) weights.push(parseFloat(($("w"+j)||{}).value||"0")); const snrper = $("in-snrper").value.trim(); const act = $("in-active").value.trim(); return {seed: parseInt($("in-seed").value||"7"), d: parseInt($("in-d").value), m: m, n_total: parseInt($("in-n").value), batch: parseInt($("in-batch").value), weights: weights, active_count: act===""?null:parseInt(act), n_cat: parseInt($("in-ncat").value||"0"), cat_levels: parseInt($("in-catlevels").value||"3"), noise_type: $("in-noise").value, snr: parseFloat($("in-snr").value||"4"), snr_per: snrper===""?null:snrper.split(",").map(Number), missing_p: parseFloat($("in-missing").value||"0"), constraint: $("in-constraint").value, model: $("in-model").value, cat_mode: $("in-catmode").value, reveal: $("in-reveal").checked, target_acc: (()=>{ const t = $("in-targetacc").value.trim(); return t===""?null:t.split(",").map(Number); })()}; }
+function renderSummary(s){ summary = s; const mt = $("metrics"); const last = s.history[s.history.length-1]; let h = "<div>Experiments<b>"+s.n_done+" / "+s.n_total+"</b></div><div>Round<b>"+s.round+"</b></div>"; h += "<div>Leave-one-out error<b>"+last.loo.map(v=>v==null?"--":v.toFixed(3)).join(", ")+"</b></div>"; if(s.score !== undefined && s.score !== null) h += "<div>True score<b>"+s.score.toFixed(3)+"</b></div>"; mt.innerHTML = h; plot("fig-learning", s.figs.learning); plot("fig-importance", s.figs.importance); plot("fig-slice-pred", s.figs.slice_pred); plot("fig-slice-unc", s.figs.slice_unc); if(s.figs.slice_truth){ $("fig-slice-truth-wrap").style.display="block"; plot("fig-slice-truth", s.figs.slice_truth); } else { $("fig-slice-truth-wrap").style.display="none"; } plot("fig-parcoords", s.figs.parcoords); renderRunTable(s); const rb = $("reveal-box"); if(s.truth_text){ rb.innerHTML = "<h2 style='font-size:18px'>Revealed true model</h2>" + s.truth_text.map(t=>"<p class='status' style='color:var(--ink)'>"+t+"</p>").join("") + (s.target_met ? "<p class='status'>Target accuracy met per response: " + s.target_met.map(v=>v?"yes":"no").join(", ") + " (targets: " + s.target_acc.join(", ") + ")</p>" : "") + "<p class='status'>Per-response true error: "+s.true_rmse.map(v=>v.toFixed(3)).join(", ")+" &middot; Calibration ratio: "+s.calibration.map(v=>v.toFixed(2)).join(", ")+"</p>"; } else rb.innerHTML = ""; }
+function renderRunTable(s){ const d = s.X[0].length, m = s.Y[0].length; let h = "<table><tr><th>Run</th>" + Array.from({length:d},(_,i)=>"<th>x"+(i+1)+"</th>").join("") + Array.from({length:m},(_,j)=>"<th>y"+(j+1)+"</th>").join("") + "</tr>"; s.X.forEach((x,i)=>{ h += "<tr><td>"+(i+1)+"</td>" + x.map(v=>"<td>"+v.toFixed(3)+"</td>").join("") + s.Y[i].map(v=>"<td>"+(v===null?"--":v.toFixed(3))+"</td>").join("") + "</tr>"; }); $("run-table").innerHTML = h + "</table>"; }
+function renderBatch(){ if(!proposed.length){ $("batch-table").innerHTML = "<p class='status'>No batch proposed.</p>"; return; } const d = proposed[0].length; let h = "<table><tr><th>Point</th>" + Array.from({length:d},(_,i)=>"<th>x"+(i+1)+"</th>").join("") + "</tr>"; proposed.forEach((x,i)=>{ h += "<tr><td>"+(i+1)+"</td>" + x.map((v,k)=>"<td><input data-r='"+i+"' data-c='"+k+"' type='number' step='0.01' min='0' max='1' value='"+v.toFixed(4)+"'></td>").join("") + "</tr>"; }); $("batch-table").innerHTML = h + "</table>"; $("batch-table").querySelectorAll("input").forEach(inp=>inp.addEventListener("change", e=>{ proposed[parseInt(e.target.dataset.r)][parseInt(e.target.dataset.c)] = parseFloat(e.target.value); })); }
+async function guard(fn){ setBusy(true); try{ await fn(); }catch(e){ $("action-status").textContent = "Error: " + (e.message || e); } setBusy(false); }
+$("btn-new").addEventListener("click", ()=>guard(async ()=>{ const cfg = cfgFromUI(); if(Math.abs(cfg.weights.reduce((a,b)=>a+b,0)-100) > 1e-6){ throw new Error("Importance weights must sum to 100 percent."); } $("action-status").textContent = "Generating the true model and the initial design in Python..."; const s = await call("new", {cfg}); displayedCfg = cfg; proposed = []; renderBatch(); renderSummary(s); $("session-note").textContent = "Live session computed in the browser by Python (Pyodide)."; markStale(); $("action-status").textContent = "Session started. Initial design executed."; }));
+$("btn-propose").addEventListener("click", ()=>guard(async ()=>{ if(!summary) throw new Error("Start a session first."); $("action-status").textContent = "Scoring candidates in Python (chunked, with progress)..."; $("action-progress").value = 40; proposed = (await call("propose", {strategy: $("in-strategy").value})).batch; renderBatch(); $("action-status").textContent = "Batch proposed: " + proposed.length + " points. Edit values if required, then execute."; }));
+$("btn-execute").addEventListener("click", ()=>guard(async ()=>{ if(!proposed.length) throw new Error("Propose a batch first."); const s = await call("execute", {points: proposed}); proposed = []; renderBatch(); renderSummary(s); $("action-status").textContent = s.finished ? "Budget exhausted. Session finished; true score revealed." : "Batch executed and model refitted."; }));
+$("btn-finish").addEventListener("click", ()=>guard(async ()=>{ const s = await call("finish", {}); renderSummary(s); $("action-status").textContent = "Session finished. True model and score revealed."; }));
+$("btn-slice").addEventListener("click", ()=>guard(async ()=>{ const r = await call("slice", {resp: parseInt($("in-sresp").value||"0"), va: parseInt($("in-sva").value||"0"), vb: parseInt($("in-svb").value||"1")}); plot("fig-slice-pred", r.pred); plot("fig-slice-unc", r.unc); if(r.truth){ $("fig-slice-truth-wrap").style.display="block"; plot("fig-slice-truth", r.truth); } }));
+$("btn-addrow").addEventListener("click", ()=>{ if(!summary) return; const d = summary.X[0].length; proposed.push(new Array(d).fill(0.5)); renderBatch(); });
+function download(name, text){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], {type:"text/plain"})); a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000); }
+$("btn-csv").addEventListener("click", ()=>guard(async ()=>{ const r = await call("csv", {}); download("design-and-responses.csv", r.text); }));
+$("btn-summary").addEventListener("click", ()=>guard(async ()=>{ const r = await call("summary_text", {}); download("session-summary.txt", r.text); }));
+$("btn-tournament").addEventListener("click", ()=>guard(async ()=>{ const reps = Math.min(5, Math.max(1, parseInt($("in-reps").value||"5"))); $("tour-progress").style.display="block"; $("tour-progress").value=2; $("tour-status").textContent = "Tournament running in Python; one repetition-strategy job per step."; await call("tour_start", {cfg: cfgFromUI(), reps}); let done = false; while(!done){ const r = await call("tour_next", {}); $("tour-progress").value = Math.round(100*r.done/r.total); $("tour-status").textContent = "Tournament: " + r.done + " of " + r.total + " jobs completed."; if(r.fig){ $("fig-tour-wrap").style.display="block"; plot("fig-tour", r.fig); done = true; } } $("tour-status").textContent += " Median curves use tournament sessions with a reduced candidate pool and the fast fit, as stated in the Theory panel."; }));
+$("dl-notebook").addEventListener("click", e=>{ e.preventDefault(); const b64 = $("molab-b64").textContent.trim(); const bin = atob(b64); const bytes = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([bytes], {type:"text/x-python"})); a.download = "walkthrough_molab.py"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000); });
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>{ document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.remove("active")); b.classList.add("active"); document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active")); $("panel-"+b.dataset.tab).classList.add("active"); if(b.dataset.tab === "code") renderWalkFigs(); window.dispatchEvent(new Event("resize")); }));
+document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click", ()=>{ document.querySelectorAll(".subtabs button").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("sub-listings").style.display = b.dataset.sub === "listings" ? "block" : "none"; $("sub-walkthrough").style.display = b.dataset.sub === "walkthrough" ? "block" : "none"; if(b.dataset.sub === "walkthrough") renderWalkFigs(); }));
+let walkRendered = false;
+function renderWalkFigs(){ if(walkRendered) return; walkRendered = true; const figs = JSON.parse($("walk-figs").textContent); Object.keys(figs).forEach(k=>{ const el = $(k); if(el) Plotly.newPlot(el, figs[k].data, figs[k].layout, {responsive:true, displaylogo:false}); }); }
+["in-seed","in-d","in-m","in-n","in-batch","in-noise","in-snr","in-snrper","in-active","in-ncat","in-catlevels","in-constraint","in-missing"].forEach(id=>{ const el = $(id); if(el) el.addEventListener("change", ()=>{ if(id==="in-m") weightsUI(); else markStale(); }); });
+$("in-model").addEventListener("change", markStale); $("in-catmode").addEventListener("change", markStale); $("in-reveal").addEventListener("change", markStale);
+weightsUI();
+try{ const pre = JSON.parse($("prestart-data").textContent); renderSummary(pre); renderBatch(); }catch(e){ $("session-note").textContent = "Precomputed session unavailable: " + e.message; }
+if(STUB){ booted = true; $("boot-status").textContent = "Python runtime: stub build for layout verification only (not published)."; $("boot-progress").value = 100; setBusy(false); }
+else {
+  const workerSrc = `
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js");
+let py = null;
+onmessage = async (ev) => { const m = ev.data;
+  if(m.type === "init"){ try{ py = await loadPyodide(); await py.loadPackage(["numpy", "scipy"]); py.globals.set("ENGINE_B64", m.engineB64); await py.runPythonAsync(BOOT); postMessage({type:"ready"}); }catch(e){ postMessage({type:"boot_error", message: String((e && e.message) || e)}); } return; }
+  try{ py.globals.set("MSG_JSON", JSON.stringify(m)); const out = await py.runPythonAsync("handle(MSG_JSON)"); const r = JSON.parse(out); if(r.error) postMessage({id: m.id, error: r.error}); else postMessage({id: m.id, result: r}); }catch(e){ postMessage({id: m.id, error: String((e && e.message) || e)}); }
+};
+const BOOT = \`
+import base64, json, sys
+sys.path.insert(0, "/")
+with open("/engine.py", "wb") as _f:
+    _f.write(base64.b64decode(ENGINE_B64))
+import numpy as np
+import engine as E
+S = {"state": None}
+TOUR = {}
+def _cfg(c):
+    c = dict(c)
+    c["weights"] = [float(w) for w in c["weights"]]
+    return c
+def handle(msg_json):
+    try:
+        m = json.loads(msg_json); t = m["type"]
+        if t == "new":
+            S["state"] = E.new_session(_cfg(m["cfg"]))
+            return json.dumps(E.plain(E.summary(S["state"])))
+        if t == "propose":
+            b = E.propose_batch(S["state"], m["strategy"])
+            return json.dumps({"batch": E.plain(b)})
+        if t == "execute":
+            return json.dumps(E.plain(E.execute_batch(S["state"], np.array(m["points"], float))))
+        if t == "finish":
+            return json.dumps(E.plain(E.finish(S["state"])))
+        if t == "slice":
+            st = S["state"]; rev = bool(st["finished"] or st["cfg"].get("reveal"))
+            figs = E.slice_figs(st, rev, resp=int(m["resp"]), va=int(m["va"]), vb=int(m["vb"]))
+            return json.dumps(E.plain(figs))
+        if t == "csv":
+            return json.dumps({"text": E.session_csv(S["state"])})
+        if t == "summary_text":
+            st = S["state"]; cfg = st["cfg"]
+            lines = ["Sequential Design for Global Models: session summary", "seed: " + str(cfg["seed"]), "d: " + str(cfg["d"]) + ", m: " + str(cfg["m"]) + ", n: " + str(st["n_done"]) + " of " + str(cfg["n_total"]), "weights (percent): " + str(cfg["weights"]), "strategy rounds and estimated errors:"]
+            for h in st["history"]:
+                lines.append("round " + str(h["round"]) + ": n=" + str(h["n"]) + ", LOO=" + str([round(v, 4) for v in h["loo"]]) + ", true score=" + (str(round(h["score"], 4)) if st["finished"] else "hidden"))
+            return json.dumps({"text": "\\n".join(lines) + "\\n"})
+        if t == "tour_start":
+            TOUR["jobs"] = [(rep, s) for rep in range(int(m["reps"])) for s in E.STRATEGIES]
+            TOUR["cfg"] = _cfg(m["cfg"]); TOUR["curves"] = {s: [] for s in E.STRATEGIES}; TOUR["i"] = 0
+            return json.dumps({"ok": True})
+        if t == "tour_next":
+            rep, s = TOUR["jobs"][TOUR["i"]]
+            c2 = dict(TOUR["cfg"]); c2["seed"] = TOUR["cfg"]["seed"] + 1000 * rep; c2["fast_fit"] = True
+            st = E.new_session(c2, pool_n=2000, ref_n=2000)
+            scores = [st["history"][-1]["score"]]
+            rng = np.random.default_rng(c2["seed"] + 5); guard = 0
+            while st["n_done"] < c2["n_total"] and guard < 40:
+                guard += 1
+                pts = E.select_batch(st, s)
+                E._execute(st, pts, rng)
+                scores.append(st["history"][-1]["score"])
+            TOUR["curves"][s].append(scores); TOUR["i"] += 1
+            out = {"done": TOUR["i"], "total": len(TOUR["jobs"])}
+            if TOUR["i"] >= len(TOUR["jobs"]):
+                med = {}
+                for s2, cs in TOUR["curves"].items():
+                    L = max(len(c) for c in cs)
+                    arr = np.array([c + [c[-1]] * (L - len(c)) for c in cs])
+                    med[s2] = np.median(arr, axis=0).tolist()
+                out["fig"] = E.plain(E.tournament_fig(med, c2["n_total"], c2["batch"]))
+            return json.dumps(E.plain(out))
+        return json.dumps({"error": "unknown message type"})
+    except Exception as e:
+        import traceback
+        return json.dumps({"error": str(e) + "\\n" + traceback.format_exc(limit=3)})
+\`;
+`;
+  worker = new Worker(URL.createObjectURL(new Blob([workerSrc], {type:"text/javascript"})));
+  worker.onmessage = (ev)=>{ const m = ev.data; if(m.type === "ready"){ booted = true; $("boot-status").textContent = "Python runtime: ready (Pyodide, NumPy, SciPy)."; $("boot-progress").value = 100; setBusy(false); return; } if(m.type === "boot_error"){ $("boot-error").textContent = "Python runtime failed to load: " + m.message + " The precomputed session above remains visible; live calculation is unavailable and no calculation has been performed by JavaScript."; $("boot-status").textContent = "Python runtime: failed."; return; } const p = pending[m.id]; if(!p) return; delete pending[m.id]; if(m.error) p.rej(new Error(m.error)); else p.res(m.result); };
+  worker.onerror = (e)=>{ $("boot-error").textContent = "Python runtime worker error: " + (e.message || e); };
+  $("boot-progress").value = 45;
+  worker.postMessage({type:"init", engineB64: $("engine-b64").textContent.trim()});
+}
+</script>
+</body>
+</html>

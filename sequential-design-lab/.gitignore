@@ -1,0 +1,5 @@
+.buildtools/
+dist/
+__pycache__/
+notebook/walkthrough_wasm.py
+notebook/__marimo__/
