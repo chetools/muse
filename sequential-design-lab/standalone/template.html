@@ -259,7 +259,7 @@ def handle(msg_json):
             lines = ["Sequential Design for Global Models: session summary", "seed: " + str(cfg["seed"]), "d: " + str(cfg["d"]) + ", m: " + str(cfg["m"]) + ", n: " + str(st["n_done"]) + " of " + str(cfg["n_total"]), "weights (percent): " + str(cfg["weights"]), "strategy rounds and estimated errors:"]
             for h in st["history"]:
                 lines.append("round " + str(h["round"]) + ": n=" + str(h["n"]) + ", LOO=" + str([round(v, 4) for v in h["loo"]]) + ", true score=" + (str(round(h["score"], 4)) if st["finished"] else "hidden"))
-            return json.dumps({"text": "\\n".join(lines) + "\\n"})
+            return json.dumps({"text": chr(10).join(lines) + chr(10)})
         if t == "tour_start":
             TOUR["jobs"] = [(rep, s) for rep in range(int(m["reps"])) for s in E.STRATEGIES]
             TOUR["cfg"] = _cfg(m["cfg"]); TOUR["curves"] = {s: [] for s in E.STRATEGIES}; TOUR["i"] = 0
@@ -288,7 +288,7 @@ def handle(msg_json):
         return json.dumps({"error": "unknown message type"})
     except Exception as e:
         import traceback
-        return json.dumps({"error": str(e) + "\\n" + traceback.format_exc(limit=3)})
+        return json.dumps({"error": str(e) + chr(10) + traceback.format_exc(limit=3)})
 \`;
 `;
   worker = new Worker(URL.createObjectURL(new Blob([workerSrc], {type:"text/javascript"})));

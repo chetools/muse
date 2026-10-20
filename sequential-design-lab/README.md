@@ -23,7 +23,7 @@ Layout:
 - `python/test_engine.py` — pytest suite for the engine.
 - `standalone/theory.md` — the Theory panel source.
 - `standalone/template.html` — page template.
-- `standalone/build_page.py` — builds `dist/sequential-design-lab-v1.html`
+- `standalone/build_page.py` — builds `dist/sequential-design-lab-v2.html`
   (self-contained; Pyodide performs all calculations in the browser).
 - `notebook/walkthrough_molab.py` — generated, editable MoLab variant
   (committed). The run-mode WASM variant is a build artefact.

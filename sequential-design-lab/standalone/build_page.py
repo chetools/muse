@@ -12,8 +12,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/sequential-design-lab-v1.html
-  python3 build_page.py --stub   -> dist/sequential-design-lab-v1-stub.html
+  python3 build_page.py          -> dist/sequential-design-lab-v2.html
+  python3 build_page.py --stub   -> dist/sequential-design-lab-v2-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -34,13 +34,56 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "sequential-design-lab/walkthrough_molab.py")
-OUT_NAME = "sequential-design-lab-v1.html"
-STUB_NAME = "sequential-design-lab-v1-stub.html"
+OUT_NAME = "sequential-design-lab-v2.html"
+STUB_NAME = "sequential-design-lab-v2-stub.html"
 PYODIDE_MODULES = ["engine.py"]  # registered in the worker boot (build_page)
 
 
 def log(msg):
     print(f"[build_page] {msg}", flush=True)
+
+
+_JS_ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "b": "\b", "f": "\f",
+               "v": "\v", "0": "\0", "\\": "\\", "`": "`", "$": "$"}
+
+
+def _js_template_unescape(s):
+    """One layer of JavaScript template-literal escape processing."""
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s):
+            out.append(_JS_ESCAPES.get(s[i + 1], s[i + 1]))
+            i += 2
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+
+def check_boot_compiles(page):
+    """Fail the build if the worker BOOT Python cannot compile.
+
+    The BOOT code reaches Pyodide through two nested JavaScript template
+    literals (the worker source, then the BOOT string inside it), and each
+    layer consumes one level of backslash escaping. The v1 page shipped a
+    newline escape that collapsed to a literal newline inside a Python
+    string and broke boot with a SyntaxError in the user's browser — a
+    defect no CPython-side test could see. This guard simulates both
+    layers and compiles the exact string Pyodide will receive.
+    """
+    import ast
+    marker = "const BOOT = \\`"
+    start = page.index(marker) + len(marker)
+    end = page.index("\\`;", start)
+    boot = _js_template_unescape(_js_template_unescape(page[start:end]))
+    try:
+        ast.parse(boot)
+    except SyntaxError as exc:
+        raise SystemExit(f"BOOT Python fails to compile after JavaScript "
+                         f"template-literal processing: {exc}")
+    assert "\\n" not in boot.replace(chr(10), ""), \
+        "BOOT contains a backslash escape after template processing"
+    log("BOOT compile guard passed (both JavaScript layers simulated)")
 
 
 def katex_render(items):
@@ -181,6 +224,7 @@ def build(stub=False):
     # the placeholders, which would trip the guard above.
     tpl = tpl.replace("@@LISTINGS_HTML@@", listings_html)
     assert "/engine.py" in tpl and "engine.py" in PYODIDE_MODULES
+    check_boot_compiles(tpl)
 
     out = os.path.join(ROOT, "dist", STUB_NAME if stub else OUT_NAME)
     os.makedirs(os.path.dirname(out), exist_ok=True)
