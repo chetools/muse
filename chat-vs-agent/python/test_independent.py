@@ -1,5 +1,6 @@
 """Cross-check against the independent implementations in verify/,
-written without access to chatagent.py and by different methods
+written by agentic Claude Opus 5.5 subagents without access to
+chatagent.py, and by different methods
 (ODE integration with sensitivity equations; Lambert-W Colebrook;
 nodal-head Newton network solution).  Tolerances: 1e-4 relative for
 standard errors, 1e-6 relative otherwise."""

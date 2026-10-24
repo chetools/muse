@@ -297,12 +297,12 @@
     },
     {
       "id": "TqIu",
-      "code_hash": "1686d59df1f6ba6a770d7c22217af63a",
+      "code_hash": "a3f47747d26f049c60cba9c1ebcb3bb9",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"step-9-anchor-values-and-verification\">Step 9: Anchor values and verification</h2>\n<span class=\"paragraph\">The executed values are asserted against the independently verified record of the screening (each agent-mode result was verified by a second solver, an analytic identity, or a residual evaluation before the record was fixed). A failed assertion in this cell indicates drift between this walkthrough and the record. The four chat-mode failures share one structure: each failed quantity is an accumulation over all terms of a sum, a difference of near-equal quantities, or a remainder of near-cancelling quantities \u2014 and a stated uncertainty, which is an accumulation by definition. Quantities reached by iteration were accurate in chat mode throughout the screening; precision was lost at the points where exact accumulation or exact subtraction was the whole of the calculation. Chat mode solved 22 of the 26 problems correctly, but a reply does not mark which of its numbers are wrong, and checking them requires execution: for numerical work, chat mode is still not as good as agent mode.</span></span>"
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"step-9-anchor-values-and-verification\">Step 9: Anchor values and verification</h2>\n<span class=\"paragraph\">The executed values are asserted against the independently verified record of the screening (each agent-mode result was verified by a second solver, an analytic identity, or a residual evaluation before the record was fixed). A failed assertion in this cell indicates drift between this walkthrough and the record. The four chat-mode failures share one structure: each failed quantity is an accumulation over all terms of a sum, a difference of near-equal quantities, or a remainder of near-cancelling quantities \u2014 and a stated uncertainty, which is an accumulation by definition. Quantities reached by iteration were accurate in chat mode throughout the screening; precision was lost at the points where exact accumulation or exact subtraction was the whole of the calculation. Chat mode gave a materially wrong number in 4 of the 26 problems, which is extremely bad for numerical results, and its replies did not say which numbers were wrong: chat mode should not be used for numerical work. The agent-mode values were also recomputed independently by agentic Claude Opus 5.5 with different methods (verify/ scripts; App panel, Independent verification), and all agree.</span></span>"
           }
         }
       ],

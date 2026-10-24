@@ -405,7 +405,9 @@ def verification_rows(ex1, ex2, ex3, ex4):
         rows.append((ex, q, page, ind, rel))
     if bad:
         raise SystemExit("independent verification failed:\n" + "\n".join(bad))
-    log(f"independent verification passed: {len(rows)} quantities")
+    worst = max(r[4] for r in rows)
+    log(f"independent verification passed: {len(rows)} quantities, "
+        f"largest relative difference {worst:.1e}")
     methods = [kin["method"], pipe["method"], net["method"]]
     return rows, methods
 
