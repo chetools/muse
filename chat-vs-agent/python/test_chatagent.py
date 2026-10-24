@@ -121,6 +121,10 @@ def test_example4_chat_flows_and_their_loop_residuals():
     e1, e2 = r["chat_loop_residuals"]
     assert e1 == pytest.approx(-0.0036, abs=1e-4)
     assert e2 == pytest.approx(0.081, abs=1e-3)
+    # Rounding the executed flows to three decimals alone leaves
+    # -0.048 m in loop 2, so at that precision the residual check
+    # cannot separate the chat-mode error from rounding.
+    assert r["rounded_loop_residuals"][1] == pytest.approx(-0.048, abs=1e-3)
     assert max(abs(v) for v in r["loop_residuals"]) < 1e-10
 
 

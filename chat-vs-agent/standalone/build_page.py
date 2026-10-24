@@ -320,7 +320,7 @@ def app_tables(M, ex1, ex2, ex3, ex4, round100):
         f'<td id="c3-sens-{i}">{_money(r["saving"])}</td></tr>'
         for i, r in enumerate(ex3["sensitivity"]))
     t3s = f"""<div class="scrollx"><table>
-<tr><th class="l">One input changed</th><th>Annual saving of D = 0.28 m (dollars/yr)</th></tr>
+<tr><th class="l">One input changed</th><th>Annual saving of D = 0.28 m (dollars/yr; negative: D = 0.30 m is cheaper)</th></tr>
 <tr><td class="l">None (stated inputs)</td><td>{_money(ex3['saving'])}</td></tr>
 {sens_rows}
 </table></div>"""
@@ -336,14 +336,89 @@ def app_tables(M, ex1, ex2, ex3, ex4, round100):
             f'<td id="c4-{nm}">{ex4["flows"][nm]:+.5f}</td></tr>')
     res = ", ".join(f"{v:.1e}" for v in ex4["loop_residuals"])
     chat_res = ", ".join(f"{v:+.4f}" for v in ex4["chat_loop_residuals"])
+    rnd_res = ", ".join(f"{v:+.4f}" for v in ex4["rounded_loop_residuals"])
     t4 = f"""<div class="scrollx"><table>
 <tr><th class="l">Quantity</th><th>Chat mode</th><th>Computed</th></tr>
 {''.join(rows)}
 <tr><td class="l">Total head at node D (m)</td><td>{c4['head_d']}</td><td id="c4-hd">{ex4['heads']['D']:.3f}</td></tr>
 <tr><td class="l">Total head at node F (m)</td><td>{c4['head_f']}</td><td id="c4-hf">{ex4['heads']['F']:.3f}</td></tr>
 <tr class="hl"><td class="l">Loop residuals of these flows (m)</td><td id="c4-chatres">{chat_res}</td><td id="c4-res">{res}</td></tr>
+<tr><td class="l">Loop residuals, computed flows rounded to 3 decimals (m)</td><td></td><td id="c4-rndres">{rnd_res}</td></tr>
 </table></div>"""
     return t1, t2, t3, t3s, rounding, t4
+
+
+VERIFY_DIR = os.path.join(ROOT, "verify")
+
+
+def _run_independent(name):
+    """Run one independent verification script (written separately,
+    without access to chatagent.py) and return its JSON output."""
+    proc = subprocess.run([sys.executable, os.path.join(VERIFY_DIR, name)],
+                          capture_output=True, text=True, timeout=300)
+    if proc.returncode != 0:
+        raise SystemExit(f"verification script {name} failed: "
+                         f"{proc.stderr[-500:]}")
+    return json.loads(proc.stdout)
+
+
+def verification_rows(ex1, ex2, ex3, ex4):
+    """Compare every agent-mode value that deviates from the chat-mode
+    answer with an independent implementation.  Returns table rows
+    (example, quantity, page value, independent value, relative
+    difference) and fails the build when a difference exceeds its
+    tolerance."""
+    kin = _run_independent("kinetics_independent.py")
+    pipe = _run_independent("pipecost_independent.py")
+    net = _run_independent("network_independent.py")
+    sens = {r["label"]: r["saving"] for r in ex3["sensitivity"]}
+    cases = [
+        # (example, quantity, page value, independent value, rel. tol)
+        ("1", "Standard error of k", ex1["se_k"], kin["ex1"]["se_k"], 1e-4),
+        ("1", "Standard error of n", ex1["se_n"], kin["ex1"]["se_n"], 1e-4),
+        ("1", "Root-mean-square error (mol/L)", ex1["rmse"], kin["ex1"]["rmse"], 1e-6),
+        ("1", "C<sub>A</sub> at t = 240 min (mol/L)", ex1["c_240"], kin["ex1"]["c_240"], 1e-6),
+        ("2", "Root-mean-square error (mol/L)", ex2["rmse"], kin["ex2"]["rmse"], 1e-6),
+        ("2", "C<sub>A</sub> at t = 150 min (mol/L)", ex2["c_150"], kin["ex2"]["c_150"], 1e-6),
+        ("3", "Annual saving (dollars/yr)", ex3["saving"], pipe["saving"], 1e-6),
+        ("3", "Saving, efficiency 0.70 (dollars/yr)",
+         sens["Combined efficiency 0.74 -> 0.70"], pipe["sensitivity"]["eta_0.70"], 1e-6),
+        ("3", "Saving, price 0.15 dollars per kWh (dollars/yr)",
+         sens["Electricity price 0.14 -> 0.15 dollars per kWh"], pipe["sensitivity"]["price_0.15"], 1e-6),
+        ("3", "Saving, roughness 0.015 mm (dollars/yr)",
+         sens["Roughness 0.045 -> 0.015 mm"], pipe["sensitivity"]["eps_0.015mm"], 1e-6),
+        ("3", "Saving, roughness 0.090 mm (dollars/yr)",
+         sens["Roughness 0.045 -> 0.090 mm"], pipe["sensitivity"]["eps_0.090mm"], 1e-6),
+        ("4", "Flow in pipe CE (m<sup>3</sup>/s)", ex4["flows"]["CE"], net["flows"]["CE"], 1e-6),
+        ("4", "Flow in pipe EF (m<sup>3</sup>/s)", ex4["flows"]["EF"], net["flows"]["EF"], 1e-6),
+        ("4", "Total head at node D (m)", ex4["heads"]["D"], net["heads"]["D"], 1e-6),
+        ("4", "Total head at node F (m)", ex4["heads"]["F"], net["heads"]["F"], 1e-6),
+        ("4", "Loop 2 residual of the chat-mode flows (m)",
+         ex4["chat_loop_residuals"][1], net["given_flows_loop_residuals"][1], 1e-6),
+    ]
+    rows, bad = [], []
+    for ex, q, page, ind, tol in cases:
+        rel = abs(page - ind) / abs(ind)
+        if not rel <= tol:
+            bad.append(f"Example {ex}, {q}: page {page!r}, independent "
+                       f"{ind!r}, relative difference {rel:.2e} > {tol}")
+        rows.append((ex, q, page, ind, rel))
+    if bad:
+        raise SystemExit("independent verification failed:\n" + "\n".join(bad))
+    log(f"independent verification passed: {len(rows)} quantities")
+    methods = [kin["method"], pipe["method"], net["method"]]
+    return rows, methods
+
+
+def verification_html(rows):
+    body = "".join(
+        f'<tr><td class="l">{ex}</td><td class="l">{q}</td>'
+        f'<td>{page:.6g}</td><td>{ind:.6g}</td><td>{rel:.1e}</td></tr>'
+        for ex, q, page, ind, rel in rows)
+    return ('<div class="scrollx"><table><tr><th class="l">Example</th>'
+            '<th class="l">Quantity</th><th>This page</th>'
+            '<th>Independent implementation</th>'
+            '<th>Relative difference</th></tr>' + body + '</table></div>')
 
 
 def build(stub=False):
@@ -366,6 +441,8 @@ def build(stub=False):
                         "round100": round100})
     t1, t2, t3, t3s, rounding_html, t4 = app_tables(M, ex1, ex2, ex3, ex4,
                                                round100)
+    log("running the independent verification scripts")
+    vrows, _vmethods = verification_rows(ex1, ex2, ex3, ex4)
 
     theory_raw = open(os.path.join(HERE, "theory.md")).read()
     theory_body, sep, _tail = theory_raw.partition("[[BIBLIOGRAPHY]]")
@@ -397,7 +474,8 @@ def build(stub=False):
     assert walk_pairs, "walkthrough has no steps for its contents"
 
     listing_names = ["chatagent.py", "walkthrough.py", "runner.py",
-                     "make_molab.py", "test_chatagent.py"]
+                     "make_molab.py", "test_chatagent.py",
+                     "test_independent.py"]
     listings, listing_pairs = [], []
     for name in listing_names:
         src = open(os.path.join(PYDIR, name)).read()
@@ -405,6 +483,16 @@ def build(stub=False):
         listing_pairs.append((lid, name))
         listings.append(
             f'<h3 id="{lid}">{name}'
+            f'<a class="self-link" href="#{lid}" '
+            f'aria-label="Link to this section">#</a></h3>'
+            "<pre><code>" + html_mod.escape(src) + "</code></pre>")
+    for name in ("kinetics_independent.py", "pipecost_independent.py",
+                 "network_independent.py"):
+        src = open(os.path.join(VERIFY_DIR, name)).read()
+        lid = "listing-" + _slugify(name, set())
+        listing_pairs.append((lid, "verify/" + name))
+        listings.append(
+            f'<h3 id="{lid}">verify/{name}'
             f'<a class="self-link" href="#{lid}" '
             f'aria-label="Link to this section">#</a></h3>'
             "<pre><code>" + html_mod.escape(src) + "</code></pre>")
@@ -446,6 +534,7 @@ def build(stub=False):
         "@@TABLE_EX3_SENS@@": t3s,
         "@@ROUNDING_HTML@@": rounding_html,
         "@@TABLE_EX4@@": t4,
+        "@@TABLE_VERIFY@@": verification_html(vrows),
         "@@PRESTART_JSON@@": json.dumps(prestart),
         "@@MODULE_B64@@": module_b64,
         "@@MOLAB_B64@@": molab_b64,

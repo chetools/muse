@@ -7,7 +7,7 @@
   "cells": [
     {
       "id": "Hbol",
-      "code_hash": "336d46c716a2cbcf7226ba4abf808b4b",
+      "code_hash": "742af783df39bf4cf58d37c2bf938db9",
       "outputs": [
         {
           "type": "data",
@@ -231,12 +231,12 @@
     },
     {
       "id": "iLit",
-      "code_hash": "bbc64ff9226df95e9353bffbf6957d62",
+      "code_hash": "11b566fa7b2a0b316d1153f5fcac40e4",
       "outputs": [
         {
           "type": "data",
           "data": {
-            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"step-7-example-4-solution-of-the-looped-network\">Step 7: Example 4: solution of the looped network</h2>\n<span class=\"paragraph\">Water (properties as in Example 3) enters a looped pipe network at node A at 0.300 m<marimo-tex class=\"arithmatex\">||(^3||)</marimo-tex>/s. Demands (outflows) in m<marimo-tex class=\"arithmatex\">||(^3||)</marimo-tex>/s are: B 0.050, C 0.080, D 0.070, E 0.050, F 0.050. The pipes, with the flow direction taken as positive in each case, are A<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>B (length 240 m, diameter 0.30 m), B<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>C (180 m, 0.25 m), C<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>D (220 m, 0.28 m), D<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>A (260 m, 0.30 m), C<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>E (150 m, 0.20 m), E<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>F (170 m, 0.20 m), F<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>D (190 m, 0.22 m), all with absolute roughness <marimo-tex class=\"arithmatex\">||(\\varepsilon = 0.045||)</marimo-tex> mm. The head loss in a pipe is <marimo-tex class=\"arithmatex\">||(h = f (L/D)\\, v^2 / (2g)||)</marimo-tex>, with <marimo-tex class=\"arithmatex\">||(g = 9.81||)</marimo-tex> m/s<marimo-tex class=\"arithmatex\">||(^2||)</marimo-tex> and <marimo-tex class=\"arithmatex\">||(f||)</marimo-tex> from the Colebrook equation. Continuity at the nodes reduces the seven unknown flows to two loop corrections; the two loop equations (the signed head losses around each loop sum to zero) are solved by a Newton-type method. The loop residuals, printed below, are the verification. The same equations evaluated at the chat-mode flows leave a residual of about 0.08 m in the loop through CE, EF and FD: checking a chat answer this way is cheaper than solving the network, but it is still a calculation that has to be executed.</span></span>"
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"step-7-example-4-solution-of-the-looped-network\">Step 7: Example 4: solution of the looped network</h2>\n<span class=\"paragraph\">Water (properties as in Example 3) enters a looped pipe network at node A at 0.300 m<marimo-tex class=\"arithmatex\">||(^3||)</marimo-tex>/s. Demands (outflows) in m<marimo-tex class=\"arithmatex\">||(^3||)</marimo-tex>/s are: B 0.050, C 0.080, D 0.070, E 0.050, F 0.050. The pipes, with the flow direction taken as positive in each case, are A<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>B (length 240 m, diameter 0.30 m), B<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>C (180 m, 0.25 m), C<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>D (220 m, 0.28 m), D<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>A (260 m, 0.30 m), C<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>E (150 m, 0.20 m), E<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>F (170 m, 0.20 m), F<marimo-tex class=\"arithmatex\">||(\\rightarrow||)</marimo-tex>D (190 m, 0.22 m), all with absolute roughness <marimo-tex class=\"arithmatex\">||(\\varepsilon = 0.045||)</marimo-tex> mm. The head loss in a pipe is <marimo-tex class=\"arithmatex\">||(h = f (L/D)\\, v^2 / (2g)||)</marimo-tex>, with <marimo-tex class=\"arithmatex\">||(g = 9.81||)</marimo-tex> m/s<marimo-tex class=\"arithmatex\">||(^2||)</marimo-tex> and <marimo-tex class=\"arithmatex\">||(f||)</marimo-tex> from the Colebrook equation. Continuity at the nodes reduces the seven unknown flows to two loop corrections; the two loop equations (the signed head losses around each loop sum to zero) are solved by a Newton-type method. The loop residuals, printed below, are the verification. The same equations evaluated at the chat-mode flows leave about 0.08 m in the loop through CE, EF and FD, but the executed flows rounded to the same three decimals already leave about <marimo-tex class=\"arithmatex\">||(-0.05||)</marimo-tex> m: at the quoted precision the residual check cannot separate the chat-mode error from rounding, and confirming the answer needs an independent solution of the network.</span></span>"
           }
         }
       ],
@@ -244,7 +244,7 @@
     },
     {
       "id": "ZHCJ",
-      "code_hash": "f89ee4baed19cd61c1acfb8e6c0a3d80",
+      "code_hash": "6d3bc9c75b271e8b1f82772e9eef24f4",
       "outputs": [
         {
           "type": "data",
@@ -257,7 +257,7 @@
         {
           "type": "stream",
           "name": "stdout",
-          "text": "pipe AB : computed flow +0.13396 m^3/s; chat mode +0.134 m^3/s\npipe BC : computed flow +0.08396 m^3/s; chat mode +0.084 m^3/s\npipe CD : computed flow -0.04041 m^3/s; chat mode -0.041 m^3/s\npipe DA : computed flow -0.16604 m^3/s; chat mode -0.166 m^3/s\npipe CE : computed flow +0.04437 m^3/s; chat mode +0.045 m^3/s\npipe EF : computed flow -0.00563 m^3/s; chat mode -0.005 m^3/s\npipe FD : computed flow -0.05563 m^3/s; chat mode -0.055 m^3/s\ntotal head at D = 38.468 m; at F = 36.943 m\nloop residuals (m): ['0.0e+00', '5.6e-17']\nloop residuals of the chat-mode flows (m): ['-0.0036', '+0.0811']\n",
+          "text": "pipe AB : computed flow +0.13396 m^3/s; chat mode +0.134 m^3/s\npipe BC : computed flow +0.08396 m^3/s; chat mode +0.084 m^3/s\npipe CD : computed flow -0.04041 m^3/s; chat mode -0.041 m^3/s\npipe DA : computed flow -0.16604 m^3/s; chat mode -0.166 m^3/s\npipe CE : computed flow +0.04437 m^3/s; chat mode +0.045 m^3/s\npipe EF : computed flow -0.00563 m^3/s; chat mode -0.005 m^3/s\npipe FD : computed flow -0.05563 m^3/s; chat mode -0.055 m^3/s\ntotal head at D = 38.468 m; at F = 36.943 m\nloop residuals (m): ['0.0e+00', '5.6e-17']\nloop residuals of the chat-mode flows (m): ['-0.0036', '+0.0811']\nloop residuals of the computed flows rounded to 3 decimals (m): ['+0.0099', '-0.0480']\n",
           "mimetype": "text/plain"
         }
       ]

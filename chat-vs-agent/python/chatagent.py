@@ -353,6 +353,10 @@ def example4():
     # equations: the check a reader can apply to a chat answer, which
     # is itself a calculation to be executed.
     r["chat_loop_residuals"] = loop_residuals(CHAT_4)
+    # Control: the executed flows rounded to the three decimals the
+    # reply quoted.  Rounding alone leaves residuals of similar size.
+    r["rounded_loop_residuals"] = loop_residuals(
+        {k: round(v, 3) for k, v in r["flows"].items()})
     names = ["AB", "BC", "CD", "DA", "CE", "EF", "FD"]
     fig = {
         "data": [

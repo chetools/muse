@@ -121,7 +121,7 @@ figure(sweep["fig"]["data"], **sweep["fig"]["layout"])
     ),
     dict(
         title="Example 4: solution of the looped network",
-        md=r"""Water (properties as in Example 3) enters a looped pipe network at node A at 0.300 m$^3$/s. Demands (outflows) in m$^3$/s are: B 0.050, C 0.080, D 0.070, E 0.050, F 0.050. The pipes, with the flow direction taken as positive in each case, are A$\rightarrow$B (length 240 m, diameter 0.30 m), B$\rightarrow$C (180 m, 0.25 m), C$\rightarrow$D (220 m, 0.28 m), D$\rightarrow$A (260 m, 0.30 m), C$\rightarrow$E (150 m, 0.20 m), E$\rightarrow$F (170 m, 0.20 m), F$\rightarrow$D (190 m, 0.22 m), all with absolute roughness $\varepsilon = 0.045$ mm. The head loss in a pipe is $h = f (L/D)\, v^2 / (2g)$, with $g = 9.81$ m/s$^2$ and $f$ from the Colebrook equation. Continuity at the nodes reduces the seven unknown flows to two loop corrections; the two loop equations (the signed head losses around each loop sum to zero) are solved by a Newton-type method. The loop residuals, printed below, are the verification. The same equations evaluated at the chat-mode flows leave a residual of about 0.08 m in the loop through CE, EF and FD: checking a chat answer this way is cheaper than solving the network, but it is still a calculation that has to be executed.""",
+        md=r"""Water (properties as in Example 3) enters a looped pipe network at node A at 0.300 m$^3$/s. Demands (outflows) in m$^3$/s are: B 0.050, C 0.080, D 0.070, E 0.050, F 0.050. The pipes, with the flow direction taken as positive in each case, are A$\rightarrow$B (length 240 m, diameter 0.30 m), B$\rightarrow$C (180 m, 0.25 m), C$\rightarrow$D (220 m, 0.28 m), D$\rightarrow$A (260 m, 0.30 m), C$\rightarrow$E (150 m, 0.20 m), E$\rightarrow$F (170 m, 0.20 m), F$\rightarrow$D (190 m, 0.22 m), all with absolute roughness $\varepsilon = 0.045$ mm. The head loss in a pipe is $h = f (L/D)\, v^2 / (2g)$, with $g = 9.81$ m/s$^2$ and $f$ from the Colebrook equation. Continuity at the nodes reduces the seven unknown flows to two loop corrections; the two loop equations (the signed head losses around each loop sum to zero) are solved by a Newton-type method. The loop residuals, printed below, are the verification. The same equations evaluated at the chat-mode flows leave about 0.08 m in the loop through CE, EF and FD, but the executed flows rounded to the same three decimals already leave about $-0.05$ m: at the quoted precision the residual check cannot separate the chat-mode error from rounding, and confirming the answer needs an independent solution of the network.""",
         code=r"""
 import chatagent as M
 
@@ -135,6 +135,8 @@ print("loop residuals (m):", [format(v, ".1e") for v in
       ex4["loop_residuals"]])
 print("loop residuals of the chat-mode flows (m):",
       [format(v, "+.4f") for v in ex4["chat_loop_residuals"]])
+print("loop residuals of the computed flows rounded to 3 decimals (m):",
+      [format(v, "+.4f") for v in ex4["rounded_loop_residuals"]])
 figure(ex4["fig"]["data"], **ex4["fig"]["layout"])
 """,
     ),
