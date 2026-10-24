@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """PFD-102: Linde nitrogen-oxygen air separation unit with crude argon
-recovery. Layout per PFD-SPEC-001: traced ChemCAD symbol library v1
+recovery. Layout per PFD-SPEC-001: traced symbol library
 where a library glyph exists; multi-stream exchangers, condenser/
 reboiler and air filter drawn per ISO 10628-2 under requirement S5.
 Stream data are illustrative sample values on a 1000 kmol/h air basis;
@@ -9,8 +9,8 @@ rounding (verified in check section). Units are stated in every table
 heading, so no symbol is used before it is defined in words.
 """
 import html, sys
-sys.path.insert(0, "/home/hatch/workspace/chemcad-symbol-library/library")
-import chemcad_symbols as CS
+sys.path.insert(0, "/home/hatch/workspace/custom-skills/local-process-flow-diagram-drawing/symbols")
+import pfd_symbols as CS
 
 W, H = 1680, 1190
 INK = "#111111"

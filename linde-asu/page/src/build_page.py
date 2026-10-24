@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v3"
+VERSION = "v4"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -206,7 +206,7 @@ pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v1.svg").read_text()
 inner = pfd_svg_text[pfd_svg_text.index(">") + 1: pfd_svg_text.rindex("</svg>")]
 pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">{inner}</svg>'
 pfd_record = """<h3 id="process-record">Compliance record for PFD-102</h3>
-<p>Symbol route: Route B (external vector rendering). Equipment glyphs are placements of the traced ChemCAD symbol library v1 (compressor Compressor_1.sid, expander Expander_1.sid, heat exchangers Heat_Exchanger_1.sid, adsorber Vessel 1.sid, columns SCDS_1.sid, valves Valve 1.sid, terminals Feed_1.sid and product_1.sid); the air filter, the multi-stream main heat exchanger and the integrated condenser/reboiler are drawn per ISO 10628-2 under requirement S5 of specification PFD-SPEC-001 and are recorded for addition to Annex A. The glyphs are library placements whose port coordinates are asserted in the builder; they are not re-verified by a fresh overlay campaign for this drawing.</p>
+<p>Symbol record: equipment glyphs are placements of the traced symbol library of specification PFD-SPEC-001, Annex A (compressor compressor_1, expander expander_1, heat exchangers heat_exchanger_1, adsorber vessel_1, columns scds_1, valves valve_1, terminals feed_1 and product_1); the air filter, the multi-stream main heat exchanger and the integrated condenser/reboiler are drawn per ISO 10628-2 under requirement S5 of specification PFD-SPEC-001 and are recorded for addition to Annex A. The glyphs are library placements whose port coordinates are asserted in the builder; they are not re-verified by a fresh overlay campaign for this drawing.</p>
 <p>Measured quality scores: number of crossings Nc = 6; total bends Nb = 14; maximum bends on one stream bmax = 2; total routed length Lt = 1590 mm at final scale; minimum parallel spacing smin = 12.5 mm. Hard-failure checks: topology graph comparison (30 streams, 16 equipment items), stream identity cross-count, and balance closure from displayed values all pass in the builder.</p>
 <p>Crossing justifications (requirement P6). Streams 11 and 15, 11 and 29, 11 and 30: the liquid nitrogen distribution lane rises east of the low-pressure column and crosses the three east-face streams (reflux entry, argon side draw, argon bottom return), whose destinations are ordered along the column height; the west-side distribution alternative was examined during design and gave nine crossings. Streams 6 and 18: the throttled rich liquid rises west of the columns to its low-pressure column entry and crosses the cold air spine; an east-face entry was examined and transits the crude argon column. Streams 7 and 19 and streams 18 and 19: the cold oxygen stream leaves the condenser/reboiler sump westward and crosses the pressure column feed lane and the rich liquid lane once each; routing the oxygen stream below both lanes was examined and adds a further crossing with the rich liquid bottom lane.</p>"""
 
