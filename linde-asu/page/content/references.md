@@ -47,3 +47,9 @@
 [23] Air separation of cryogenic gases (process step summary after Linde Engineering: compression, cooling and purification, heat exchange, cold production, rectification), EPCM Holdings. https://epcmholdings.com/air-separation-of-cryogenic-gases/
 
 [24] Cryogenic air separation process: a brief introduction (Linde double column description), WhatIsPiping. https://whatispiping.com/cryogenic-air-separation-process/
+
+[25] European Patent EP 3352884 B1 (front-end purification: layered activated alumina and molecular sieve 13X bed; temperature swing regeneration; on-line period 4 to 10 hours). https://patentimages.storage.googleapis.com/07/9e/bc/6cbf898b7d5cf0/EP3352884B1.pdf
+
+[26] Kooijman, H. Air Separation Unit with Pure Argon Recovery (Simplified), ChemSep casebook, 2006 (double-column pressures; condenser/reboiler temperature difference; argon condenser heat integration). http://chemsep.org/downloads/data/CScasebook_ASU.pdf
+
+[27] European Patent EP 1195563 A2 (crude argon composition 95 to 98 percent; 40 to 50 equilibrium stages for crude argon; catalytic hydrogenation refining of argon). https://data.epo.org/publication-server/rest/v1.2/patents/EP1195563NWA2/document.xml
