@@ -100,7 +100,9 @@ figure(ex3["fig"]["data"], **ex3["fig"]["layout"])
     ),
     dict(
         title="Example 3: rounding before differencing",
-        md=r"""The saving is the difference of two totals of about 473,000 dollars/yr and is itself 0.034 percent of either total. A difference of near-equal quantities inherits the absolute error of its terms, not their relative error: rounding each total to the nearest $u$ dollars/yr admits an absolute error of up to $u$ in the difference, which is a relative error of up to $u / 161.08$ in the saving. The sweep below rounds the two executed totals at units from 0.01 to 1000 dollars/yr and differences the rounded values. At the chat-mode rounding unit of 100 dollars/yr, the difference of the rounded executed totals is 200 dollars/yr, an error of 24 percent; the chat-mode reply stated approximately 140 dollars/yr, which matches neither the exact saving nor the difference of its own stated totals (473,300 $-$ 473,200 $=$ 100 dollars/yr).""",
+        md=r"""The saving is the difference of two totals of about 473,000 dollars/yr and is itself 0.034 percent of either total. A difference of near-equal quantities inherits the absolute error of its terms, not their relative error: rounding each total to the nearest $u$ dollars/yr admits an absolute error of up to $u$ in the difference, which is a relative error of up to $u / 161.08$ in the saving. The sweep below rounds the two executed totals at units from 0.01 to 1000 dollars/yr and differences the rounded values. At the chat-mode rounding unit of 100 dollars/yr, the difference of the rounded executed totals is 200 dollars/yr, an error of 24 percent; the chat-mode reply stated approximately 140 dollars/yr, which matches neither the exact saving nor the difference of its own stated totals (473,300 $-$ 473,200 $=$ 100 dollars/yr).
+
+The same amplification applies to the inputs. The last lines below change one input at a time by a modest amount and recompute the saving: it changes by thousands of dollars per year, and in three of the four cases $D = 0.30$ m becomes the cheaper diameter. The saving at the stated inputs is a test of arithmetic; for the design decision, the two diameters cost the same within the accuracy of the inputs.""",
         code=r"""
 import chatagent as M
 
@@ -111,12 +113,15 @@ for _r in sweep["rows"]:
           format(_r["total_030"], ",.0f"), "; difference",
           format(_r["difference"], ",.0f"), "dollars/yr; error",
           format(100 * _r["rel_error"], "+.1f"), "percent")
+for _r in M.saving_sensitivity():
+    print(_r["label"], ": saving of D = 0.28 m =",
+          format(_r["saving"], ",.2f"), "dollars/yr")
 figure(sweep["fig"]["data"], **sweep["fig"]["layout"])
 """,
     ),
     dict(
         title="Example 4: solution of the looped network",
-        md=r"""Water (properties as in Example 3) enters a looped pipe network at node A at 0.300 m$^3$/s. Demands (outflows) in m$^3$/s are: B 0.050, C 0.080, D 0.070, E 0.050, F 0.050. The pipes, with the flow direction taken as positive in each case, are A$\rightarrow$B (length 240 m, diameter 0.30 m), B$\rightarrow$C (180 m, 0.25 m), C$\rightarrow$D (220 m, 0.28 m), D$\rightarrow$A (260 m, 0.30 m), C$\rightarrow$E (150 m, 0.20 m), E$\rightarrow$F (170 m, 0.20 m), F$\rightarrow$D (190 m, 0.22 m), all with absolute roughness $\varepsilon = 0.045$ mm. The head loss in a pipe is $h = f (L/D)\, v^2 / (2g)$, with $g = 9.81$ m/s$^2$ and $f$ from the Colebrook equation. Continuity at the nodes reduces the seven unknown flows to two loop corrections; the two loop equations (the signed head losses around each loop sum to zero) are solved by a Newton-type method. The loop residuals, printed below, are the verification: a chat-mode reply contains no equivalent quantity.""",
+        md=r"""Water (properties as in Example 3) enters a looped pipe network at node A at 0.300 m$^3$/s. Demands (outflows) in m$^3$/s are: B 0.050, C 0.080, D 0.070, E 0.050, F 0.050. The pipes, with the flow direction taken as positive in each case, are A$\rightarrow$B (length 240 m, diameter 0.30 m), B$\rightarrow$C (180 m, 0.25 m), C$\rightarrow$D (220 m, 0.28 m), D$\rightarrow$A (260 m, 0.30 m), C$\rightarrow$E (150 m, 0.20 m), E$\rightarrow$F (170 m, 0.20 m), F$\rightarrow$D (190 m, 0.22 m), all with absolute roughness $\varepsilon = 0.045$ mm. The head loss in a pipe is $h = f (L/D)\, v^2 / (2g)$, with $g = 9.81$ m/s$^2$ and $f$ from the Colebrook equation. Continuity at the nodes reduces the seven unknown flows to two loop corrections; the two loop equations (the signed head losses around each loop sum to zero) are solved by a Newton-type method. The loop residuals, printed below, are the verification. The same equations evaluated at the chat-mode flows leave a residual of about 0.08 m in the loop through CE, EF and FD: checking a chat answer this way is cheaper than solving the network, but it is still a calculation that has to be executed.""",
         code=r"""
 import chatagent as M
 
@@ -128,12 +133,14 @@ print("total head at D =", round(ex4["heads"]["D"], 3), "m; at F =",
       round(ex4["heads"]["F"], 3), "m")
 print("loop residuals (m):", [format(v, ".1e") for v in
       ex4["loop_residuals"]])
+print("loop residuals of the chat-mode flows (m):",
+      [format(v, "+.4f") for v in ex4["chat_loop_residuals"]])
 figure(ex4["fig"]["data"], **ex4["fig"]["layout"])
 """,
     ),
     dict(
         title="Example 4: the remainder at node E",
-        md=r"""Node E receives flow only from pipe CE and discharges its demand of 0.050 m$^3$/s and the flow in pipe EF. Continuity at node E therefore fixes the EF flow as a difference: $Q_{EF} = Q_{CE} - 0.050$ m$^3$/s. With $Q_{CE} = 0.04437$ m$^3$/s, the EF flow is $-0.00563$ m$^3$/s, the negative sign denoting flow from F toward E. The chat-mode Hardy–Cross iteration was accurate in absolute terms everywhere: its largest absolute flow error, 0.00063 m$^3$/s, is negligible in every other pipe (at most 1.5 percent) but is 11 percent of the EF remainder. A quantity defined as the difference of two near-equal quantities inherits the absolute error of its parents, not their relative error — the same structure as the annual saving of Example 3, at the scale of a single node.""",
+        md=r"""Node E receives flow only from pipe CE and discharges its demand of 0.050 m$^3$/s and the flow in pipe EF. Continuity at node E therefore fixes the EF flow as a difference: $Q_{EF} = Q_{CE} - 0.050$ m$^3$/s. With $Q_{CE} = 0.04437$ m$^3$/s, the EF flow is $-0.00563$ m$^3$/s, the negative sign denoting flow from F toward E. The chat-mode Hardy–Cross iteration was accurate in absolute terms everywhere, and its node balance at E is exact ($-0.005 = 0.045 - 0.050$). Its error is in the CE flow, 0.045 against 0.04437 m$^3$/s (1.4 percent, within the 2 percent criterion); the same absolute error of 0.00063 m$^3$/s is 11 percent of the EF remainder. A quantity defined as the difference of two near-equal quantities inherits the absolute error of its parents, not their relative error — the same structure as the annual saving of Example 3, at the scale of a single node.""",
         code=r"""
 import chatagent as M
 
@@ -149,7 +156,7 @@ print("chat mode reported", M.CHAT_4["EF"], "m^3/s: absolute error",
     ),
     dict(
         title="Anchor values and verification",
-        md=r"""The executed values are asserted against the independently verified record of the screening (each agent-mode result was verified by a second solver, an analytic identity, or a residual evaluation before the record was fixed). A failed assertion in this cell indicates drift between this walkthrough and the record. The four chat-mode failures share one structure: each failed quantity is an accumulation over all terms of a sum, a difference of near-equal quantities, or a remainder of near-cancelling quantities — and a stated uncertainty, which is an accumulation by definition. Quantities reached by iteration were accurate in chat mode throughout the screening; precision was lost at the points where exact accumulation or exact subtraction was the whole of the calculation.""",
+        md=r"""The executed values are asserted against the independently verified record of the screening (each agent-mode result was verified by a second solver, an analytic identity, or a residual evaluation before the record was fixed). A failed assertion in this cell indicates drift between this walkthrough and the record. The four chat-mode failures share one structure: each failed quantity is an accumulation over all terms of a sum, a difference of near-equal quantities, or a remainder of near-cancelling quantities — and a stated uncertainty, which is an accumulation by definition. Quantities reached by iteration were accurate in chat mode throughout the screening; precision was lost at the points where exact accumulation or exact subtraction was the whole of the calculation. Chat mode solved 22 of the 26 problems correctly, but a reply does not mark which of its numbers are wrong, and checking them requires execution: for numerical work, chat mode is still not as good as agent mode.""",
         code=r"""
 import chatagent as M
 
@@ -158,7 +165,7 @@ assert abs(ex1["se_k"] - 0.000217) < 3e-6
 assert abs(ex2["rmse"] - 0.009345) < 2e-5
 assert abs(ex3["saving"] - 161.08) < 0.05
 assert abs(ex4["flows"]["EF"] - (-0.00563)) < 3e-5
-assert max(abs(v) for v in ex4["loop_residuals"]) < 5e-4
+assert max(abs(v) for v in ex4["loop_residuals"]) < 1e-10
 print("all anchor values reproduced: standard errors, root-mean-square",
       "error, annual saving, EF flow, loop residuals")
 """,

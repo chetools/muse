@@ -163,18 +163,20 @@ def colebrook_f(reynolds, eps, diameter):
     return float(f)
 
 
-def pipe_cost(diameter):
-    """Annualised cost breakdown for one inside diameter (m).
+def pipe_cost(diameter, eta=ETA, price=PRICE, eps=EPS):
+    """Annualised cost breakdown for one inside diameter (m), with the
+    combined efficiency eta, the electricity price (dollars per kWh)
+    and the absolute roughness eps (m) defaulting to the stated inputs.
     Returns the Darcy friction factor f, the pressure drop in kPa,
     the pumping power in kW, and the annual electricity cost, the
     annualised capital cost and their total, in dollars/yr."""
     area = np.pi * diameter ** 2 / 4.0            # m^2
     v = Q_FLOW / area                             # m/s, mean velocity
     reynolds = RHO * v * diameter / MU            # dimensionless
-    f = colebrook_f(reynolds, EPS, diameter)
+    f = colebrook_f(reynolds, eps, diameter)
     dp = f * (L_LINE / diameter) * RHO * v ** 2 / 2.0   # Pa
-    power = Q_FLOW * dp / ETA / 1000.0                  # kW
-    energy = power * HOURS * PRICE                      # dollars/yr
+    power = Q_FLOW * dp / eta / 1000.0                  # kW
+    energy = power * HOURS * price                      # dollars/yr
     capital = 2275.0 * diameter ** 1.55 * L_LINE * CRF  # dollars/yr
     return {"f": f, "dp_kpa": dp / 1000.0, "power_kw": power,
             "energy": energy, "capital": capital,
@@ -203,7 +205,30 @@ def example3():
             "legend": {"x": 1.02, "y": 1.0, "xanchor": "left",
                        "yanchor": "top"}}}
     return {"costs": {str(d): costs[d] for d in costs},
-            "saving": saving, "fig": fig}
+            "saving": saving, "sensitivity": saving_sensitivity(),
+            "fig": fig}
+
+
+# One input changed at a time by a modest amount:
+# (label, keyword of pipe_cost, changed value).
+SENSITIVITY_CASES = [
+    ("Combined efficiency 0.74 -> 0.70", "eta", 0.70),
+    ("Electricity price 0.14 -> 0.15 dollars per kWh", "price", 0.15),
+    ("Roughness 0.045 -> 0.015 mm", "eps", 0.015e-3),
+    ("Roughness 0.045 -> 0.090 mm", "eps", 0.090e-3),
+]
+
+
+def saving_sensitivity():
+    """Annual saving of D = 0.28 m over D = 0.30 m (dollars/yr) when
+    one input is changed at a time (SENSITIVITY_CASES); a negative
+    saving means D = 0.30 m is the cheaper diameter."""
+    rows = []
+    for label, key, value in SENSITIVITY_CASES:
+        kw = {key: value}
+        saving = pipe_cost(0.30, **kw)["total"] - pipe_cost(0.28, **kw)["total"]
+        rows.append({"label": label, "saving": float(saving)})
+    return rows
 
 
 def rounded_difference(unit):
@@ -273,6 +298,19 @@ def _head_loss(q, name):
     return f * (length / diameter) * v * abs(v) / (2.0 * G)
 
 
+LOOP1 = ["AB", "BC", "CD", "DA"]
+LOOP2 = ["CE", "EF", "FD"]  # closed through CD, traversed backwards
+
+
+def loop_residuals(q):
+    """Head-loss sums (m) around the two loops for signed pipe flows q
+    (m^3/s); both are zero for a solution of the network."""
+    e1 = sum(_head_loss(q[name], name) for name in LOOP1)
+    e2 = (sum(_head_loss(q[name], name) for name in LOOP2)
+          - _head_loss(q["CD"], "CD"))
+    return [float(e1), float(e2)]
+
+
 def solve_network():
     """Solve the two loop equations of the network by a Newton-type
     method (scipy.optimize.fsolve) on two loop-flow corrections.
@@ -282,27 +320,18 @@ def solve_network():
     which is the EF flow."""
     base = {"AB": 0.28, "BC": 0.23, "CD": 0.05, "DA": -0.02,
             "CE": 0.10, "EF": 0.05, "FD": 0.0}  # m^3/s, satisfies continuity
-    loop1 = ["AB", "BC", "CD", "DA"]
-    loop2 = ["CE", "EF", "FD"]
-
     def flows(xy):
         x, y = xy
         q = dict(base)
-        for name in loop1:
+        for name in LOOP1:
             q[name] += x
         q["CD"] -= y
-        for name in loop2:
+        for name in LOOP2:
             q[name] += y
         return q
 
-    def equations(xy):
-        q = flows(xy)
-        e1 = sum(_head_loss(q[name], name) for name in loop1)
-        e2 = (sum(_head_loss(q[name], name) for name in loop2)
-              - _head_loss(q["CD"], "CD"))
-        return [e1, e2]
-
-    q = flows(fsolve(equations, [0.0, 0.0], xtol=1e-13))
+    q = flows(fsolve(lambda xy: loop_residuals(flows(xy)), [0.0, 0.0],
+                     xtol=1e-13))
     heads = {"A": HEAD_A}
     heads["B"] = HEAD_A - _head_loss(q["AB"], "AB")
     heads["C"] = heads["B"] - _head_loss(q["BC"], "BC")
@@ -311,8 +340,7 @@ def solve_network():
     heads["F"] = heads["E"] - _head_loss(q["EF"], "EF")
     return {"flows": {k: float(v) for k, v in q.items()},
             "heads": {k: float(v) for k, v in heads.items()},
-            "loop_residuals": [float(v) for v in equations(
-                fsolve(equations, [0.0, 0.0], xtol=1e-13))],
+            "loop_residuals": loop_residuals(q),
             "node_e": {"ce_inflow": float(q["CE"]), "demand": 0.050,
                        "ef_flow": float(q["EF"])}}
 
@@ -321,6 +349,10 @@ def example4():
     """Example 4: network solution and the flows figure (computed
     flows beside the recorded chat-mode flows) as a Plotly dict."""
     r = solve_network()
+    # The recorded chat-mode flows substituted into the same loop
+    # equations: the check a reader can apply to a chat answer, which
+    # is itself a calculation to be executed.
+    r["chat_loop_residuals"] = loop_residuals(CHAT_4)
     names = ["AB", "BC", "CD", "DA", "CE", "EF", "FD"]
     fig = {
         "data": [

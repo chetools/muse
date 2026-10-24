@@ -14,8 +14,8 @@ load, the page shows an explicit error; no calculation is
 reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/chat-vs-agent-v3.html
-  python3 build_page.py --stub   -> dist/chat-vs-agent-v3-stub.html
+  python3 build_page.py          -> dist/chat-vs-agent-v4.html
+  python3 build_page.py --stub   -> dist/chat-vs-agent-v4-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -36,8 +36,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "chat-vs-agent/walkthrough_molab.py")
-OUT_NAME = "chat-vs-agent-v3.html"
-STUB_NAME = "chat-vs-agent-v3-stub.html"
+OUT_NAME = "chat-vs-agent-v4.html"
+STUB_NAME = "chat-vs-agent-v4-stub.html"
 PYODIDE_MODULES = ["chatagent.py"]  # registered in the worker boot
 
 
@@ -315,6 +315,15 @@ def app_tables(M, ex1, ex2, ex3, ex4, round100):
 <tr><td class="l">Total annualised cost (dollars/yr)</td><td>{ca['total']:,.0f}</td><td id="c3-tot28">{_money(a['total'])}</td><td>{cb['total']:,.0f}</td><td id="c3-tot30">{_money(b['total'])}</td></tr>
 <tr class="hl"><td class="l">Annual saving of D = 0.28 m (dollars/yr)</td><td>approx. {c3['saving']:.0f}</td><td id="c3-saving">{_money(ex3['saving'])}</td><td class="l" colspan="2">{_pct(c3['saving'], ex3['saving'])}</td></tr>
 </table></div>"""
+    sens_rows = "".join(
+        f'<tr><td class="l">{html_mod.escape(r["label"])}</td>'
+        f'<td id="c3-sens-{i}">{_money(r["saving"])}</td></tr>'
+        for i, r in enumerate(ex3["sensitivity"]))
+    t3s = f"""<div class="scrollx"><table>
+<tr><th class="l">One input changed</th><th>Annual saving of D = 0.28 m (dollars/yr)</th></tr>
+<tr><td class="l">None (stated inputs)</td><td>{_money(ex3['saving'])}</td></tr>
+{sens_rows}
+</table></div>"""
     rounding = f"""<div class="scrollx"><table>
 <tr><th class="l">At the selected rounding unit</th><th>Rounded total, D = 0.28 m</th><th>Rounded total, D = 0.30 m</th><th>Difference (dollars/yr)</th><th>Exact saving (dollars/yr)</th><th>Error</th></tr>
 <tr><td class="l">Totals rounded before differencing</td><td id="r-tot28">{round100['total_028']:,.0f}</td><td id="r-tot30">{round100['total_030']:,.0f}</td><td id="r-diff">{round100['difference']:,.0f}</td><td id="r-exact">{_money(round100['exact'])}</td><td id="r-err">{100 * round100['rel_error']:.1f} percent</td></tr>
@@ -326,14 +335,15 @@ def app_tables(M, ex1, ex2, ex3, ex4, round100):
             f'<tr{hl}><td class="l">Pipe {nm}</td><td>{c4[nm]:+.3f}</td>'
             f'<td id="c4-{nm}">{ex4["flows"][nm]:+.5f}</td></tr>')
     res = ", ".join(f"{v:.1e}" for v in ex4["loop_residuals"])
+    chat_res = ", ".join(f"{v:+.4f}" for v in ex4["chat_loop_residuals"])
     t4 = f"""<div class="scrollx"><table>
 <tr><th class="l">Quantity</th><th>Chat mode</th><th>Computed</th></tr>
 {''.join(rows)}
 <tr><td class="l">Total head at node D (m)</td><td>{c4['head_d']}</td><td id="c4-hd">{ex4['heads']['D']:.3f}</td></tr>
 <tr><td class="l">Total head at node F (m)</td><td>{c4['head_f']}</td><td id="c4-hf">{ex4['heads']['F']:.3f}</td></tr>
-<tr><td class="l">Loop residuals (m)</td><td class="l">not available</td><td id="c4-res">{res}</td></tr>
+<tr class="hl"><td class="l">Loop residuals of these flows (m)</td><td id="c4-chatres">{chat_res}</td><td id="c4-res">{res}</td></tr>
 </table></div>"""
-    return t1, t2, t3, rounding, t4
+    return t1, t2, t3, t3s, rounding, t4
 
 
 def build(stub=False):
@@ -354,7 +364,7 @@ def build(stub=False):
     prestart = M.plain({"ex1": ex1, "ex2": ex2, "ex3": ex3,
                         "sweep": sweep, "ex4": ex4,
                         "round100": round100})
-    t1, t2, t3, rounding_html, t4 = app_tables(M, ex1, ex2, ex3, ex4,
+    t1, t2, t3, t3s, rounding_html, t4 = app_tables(M, ex1, ex2, ex3, ex4,
                                                round100)
 
     theory_raw = open(os.path.join(HERE, "theory.md")).read()
@@ -433,6 +443,7 @@ def build(stub=False):
         "@@TABLE_EX1@@": t1,
         "@@TABLE_EX2@@": t2,
         "@@TABLE_EX3@@": t3,
+        "@@TABLE_EX3_SENS@@": t3s,
         "@@ROUNDING_HTML@@": rounding_html,
         "@@TABLE_EX4@@": t4,
         "@@PRESTART_JSON@@": json.dumps(prestart),

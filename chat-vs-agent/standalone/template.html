@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Chat or Agentic AI: Which Should Chemical Engineers Use?</title>
+<style>
+@@KATEX_CSS@@
+</style>
+<style>
+:root{--ink:#1b1b1b;--ink-2:#5a5a5a;--rule:#d6d6d6;--paper:#ffffff;--tint:#f4f6f8;--accent:#0072B2;--accent2:#D55E00}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 Georgia,"Source Serif 4",serif;margin:0}
+header{border-bottom:1px solid var(--rule);padding:20px 24px 8px}
+h1{font-size:25px;font-weight:600;line-height:1.25;margin:0 0 4px;max-width:80ch}
+.sub{color:var(--ink-2);font:14px/1.45 system-ui,sans-serif;max-width:78ch}
+nav.tabs{display:flex;gap:4px;padding:10px 24px 0;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+nav.tabs button{font:600 15px system-ui,sans-serif;background:none;border:none;border-bottom:3px solid transparent;padding:8px 14px;cursor:pointer;color:var(--ink-2)}
+nav.tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:16px 24px 40px}
+.panel{display:none}.panel.active{display:block}
+button.act{font:600 14px system-ui,sans-serif;background:var(--accent);color:#fff;border:none;padding:8px 12px;cursor:pointer;margin:4px 4px 4px 0;border-radius:4px}
+button.act:disabled{background:#b9c9d4;cursor:wait}
+.status{font:13px system-ui,sans-serif;color:var(--ink-2);margin:6px 0}
+progress{width:100%;height:10px}
+.metrics{display:flex;gap:24px;flex-wrap:wrap;font:14px system-ui,sans-serif;margin:6px 0 12px}
+.metrics div b{display:block;font-size:20px}
+figure{margin:0 0 10px}
+figcaption{font:13.5px/1.4 system-ui,sans-serif;color:var(--ink-2);margin:2px 0 10px;max-width:78ch}
+.figbox{width:100%;height:340px}
+table{border-collapse:collapse;font:13.5px system-ui,sans-serif;font-variant-numeric:tabular-nums;margin:8px 0}
+th,td{border:1px solid var(--rule);padding:4px 8px;text-align:right}
+th{background:var(--tint)}
+td.l,th.l{text-align:left}
+tr.hl td{background:#fdf0e6}
+.scrollx{overflow-x:auto}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow-x:auto;font:12.5px/1.45 ui-monospace,Menlo,monospace}
+.prose{max-width:72ch}
+.prose h2{font-size:19px;margin-top:26px}
+.prose h3{font-size:16px}
+.appsec{max-width:78ch}
+.appsec h2{font-size:19px;margin-top:30px}
+.subtabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.subtabs button{font:600 14px system-ui,sans-serif;background:none;border:1px solid var(--rule);padding:6px 12px;cursor:pointer}
+.subtabs button.active{background:var(--tint)}
+.err{color:#a33;font:14px system-ui,sans-serif;white-space:pre-wrap}
+.katex{font-size:1.02em}
+#panel-theory .katex-display,#sub-walkthrough .katex-display{display:flex;overflow-x:auto;overflow-y:hidden;max-width:100%;padding:.15em 0}
+#panel-theory .katex-display>.katex,#sub-walkthrough .katex-display>.katex{flex:none;margin:auto}
+[id]{scroll-margin-top:12px}
+a.self-link{color:var(--ink-2);text-decoration:none;font-size:.72em;margin-left:.45em;opacity:.5}
+a.self-link:hover{opacity:1}
+ol.refs li{margin-bottom:7px}
+.withtoc{display:grid;grid-template-columns:230px minmax(0,1fr);gap:28px;align-items:start}
+.withtoc>*{min-width:0}
+aside.toc{position:sticky;top:12px;font:13.5px/1.35 system-ui,sans-serif;border:1px solid var(--rule);background:var(--tint);padding:12px 14px;max-height:calc(100vh - 24px);overflow-y:auto}
+aside.toc h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px;color:var(--ink-2)}
+aside.toc ul{list-style:none;margin:0;padding:0}
+aside.toc li{margin:5px 0}
+aside.toc a{color:var(--ink);text-decoration:none}
+aside.toc a.cur{color:var(--accent);font-weight:600}
+@media(max-width:900px){.withtoc{grid-template-columns:1fr}aside.toc{position:static;max-height:none}}
+select{font:14px system-ui,sans-serif;padding:4px 6px;border:1px solid var(--rule);background:#fff}
+label{font:14px system-ui,sans-serif;color:var(--ink-2)}
+</style>
+<script>@@PLOTLY_JS@@</script>
+<script>@@KATEX_JS@@</script>
+</head>
+<body>
+<header>
+<h1>Chat or Agentic AI: Which Should Chemical Engineers Use?</h1>
+<p class="sub">A frontier model (Muse Spark 1.3), tested on 24 October 2026, solved 22 of 26 undergraduate chemical-engineering problems correctly in chat mode, without running any program. Chat-mode calculation is now usually right, but four of its answers still contained a materially wrong number, and nothing in the replies marked which ones. This page recomputes those four by program execution (agent mode), places each chat answer beside the computed value, and shows why the errors arose. The conclusion: for numerical work, chat mode is still not as good as agent mode. Every calculation on this page runs in Python (Pyodide); if the runtime cannot load, an error is shown and nothing is computed.</p>
+<p class="status" id="boot-status">Python runtime: loading&hellip;</p>
+<progress id="boot-progress" max="100" value="15"></progress>
+<p class="err" id="boot-error"></p>
+</header>
+<nav class="tabs">
+<button data-tab="app" class="active">App</button>
+<button data-tab="theory">Theory</button>
+<button data-tab="code">Code</button>
+</nav>
+<main>
+<section class="panel active" id="panel-app">
+<div class="appsec">
+<h2 id="screening">The screening in brief</h2>
+<p>Twenty-six problems spanning fluid mechanics, phase equilibrium, applied thermodynamics, reaction engineering, separations, heat transfer, material balances, process dynamics and control, design economics, and data analysis were each solved twice by the same model: once as a single chat message with an instruction to use no external program (chat mode), and once by execution of a Python program verified by an independent route (agent mode). A requested quantity was classed as materially in error when its relative error exceeded 2 percent, when an integer result was wrong, when a stated uncertainty quantity was in error by more than 50 percent, or when a finite answer was returned for an infeasible specification; the criterion was fixed before the test. Twenty-two problems were solved correctly in full in chat mode. The four failures are the subject of this page.</p>
+<div class="metrics">
+<div>Problems screened<b>26</b></div>
+<div>Correct in chat mode<b>22</b></div>
+<div>Materially wrong<b>4</b></div>
+<div>Failure mechanisms<b>2</b></div>
+</div>
+<div class="scrollx"><table>
+<tr><th class="l">Example</th><th class="l">Quantity in error</th><th>Chat mode</th><th>Agent mode (verified)</th><th class="l">Mechanism</th></tr>
+<tr><td class="l">1. Kinetic fit, 41 points</td><td class="l">Standard errors of n and k</td><td>0.03; 0.002</td><td>0.0104; 0.000217</td><td class="l">Accumulation over all terms</td></tr>
+<tr><td class="l">2. Kinetic fit, 25 points</td><td class="l">Root-mean-square error</td><td>0.013 mol/L</td><td>0.00934 mol/L</td><td class="l">Accumulation over all terms</td></tr>
+<tr><td class="l">3. Pipe diameter selection</td><td class="l">Annual saving</td><td>approx. 140 dollars/yr</td><td>161.08 dollars/yr</td><td class="l">Difference of near-equal totals</td></tr>
+<tr><td class="l">4. Looped pipe network</td><td class="l">Flow in pipe EF</td><td>&minus;0.005 m&sup3;/s</td><td>&minus;0.00563 m&sup3;/s</td><td class="l">Difference of near-equal flows</td></tr>
+</table></div>
+<p>In the table, n denotes the reaction order (dimensionless), k the rate constant (in (mol/L)<sup>1&minus;n</sup> min<sup>&minus;1</sup>), and standard error the standard error of a fitted parameter as defined in the Theory panel. The values displayed when this page opens were computed when the page was built; each example carries a control that recomputes it live in the browser.</p>
+
+<h2 id="example-1">Example 1: standard errors that were never computed (kinetic fit, 41 points)</h2>
+<p>A batch reactor experiment for the reaction A &rarr; products records the concentration of A, C<sub>A</sub> in mol/L, at time t in min at 41 times from 0 to 200 min. The rate law is &minus;dC<sub>A</sub>/dt = k C<sub>A</sub><sup>n</sup>. Nonlinear least-squares fitting of all 41 points gives the parameters k and n, their standard errors, the root-mean-square error of the fit, and the predicted concentration at t = 240 min. The chat-mode reply reported acceptable point estimates (n = 1.80, k = 0.038) and standard errors of 0.03 for n and 0.002 for k, stating that the scatter of the residuals was propagated by judgement; no covariance computation was performed. A standard error is a function of the residual sum of squares and of the inverse of the normal-equation matrix accumulated over all 41 points; the executed fit below produces it as a by-product.</p>
+<figure><div class="figbox" id="fig-ex1"></div><figcaption>Fig. 1 | The executed fit reproduces the data; the failure of Example 1 is not in the curve but in the stated precision of its parameters. Measured concentrations of A (markers) and the fitted curve (line), C<sub>A</sub> in mol/L against t in min, for the 41-point experiment.</figcaption></figure>
+@@TABLE_EX1@@
+<button class="act" id="btn-ex1" disabled>Recompute Example 1 in Python</button>
+<p class="status" id="status-ex1"></p>
+<p>The standard error of n was overstated by a factor of 2.9 and that of k by a factor of 9.2. The error is on the cautious side, but a stated precision that is wrong by a factor of 9 cannot be used for a decision in either direction: a design or grading decision based on it would treat both parameters as far less certain than the data support. The full derivation is given in the Theory panel (Aggregation over all terms).</p>
+
+<h2 id="example-2">Example 2: a root-mean-square error estimated instead of accumulated (kinetic fit, 25 points)</h2>
+<p>The same experiment at pilot scale gives 25 points over 120 min, fitted by the same rate law. The chat-mode reply reported n = 1.8 and k = 0.039 (errors of 1.3 and 1.9 percent) and a root-mean-square error of 0.013 mol/L. The root-mean-square error is the square root of the sum of squared residuals over all 25 points, divided by 25. The reply stated a value without accumulating the squares; the executed accumulation gives 0.00934 mol/L, so the stated root-mean-square error was 39 percent too large. The difference is not a matter of definition: with the divisor N &minus; 2 = 23 in place of 25, the accumulated value is 0.00974 mol/L, and the reply is still 33 percent above it.</p>
+<figure><div class="figbox" id="fig-ex2"></div><figcaption>Fig. 2 | The executed fit of the 25-point pilot experiment. Measured concentrations of A (markers) and the fitted curve (line), C<sub>A</sub> in mol/L against t in min.</figcaption></figure>
+@@TABLE_EX2@@
+<button class="act" id="btn-ex2" disabled>Recompute Example 2 in Python</button>
+<p class="status" id="status-ex2"></p>
+
+<h2 id="example-3">Example 3: a saving smaller than the rounding of the totals (pipe diameter selection)</h2>
+<p>Water at 20 &deg;C (density 998 kg/m<sup>3</sup>, dynamic viscosity 1.002&times;10<sup>&minus;3</sup> Pa&middot;s) is pumped at 0.110 m<sup>3</sup>/s through a horizontal line of length 9000 m with absolute roughness 0.045 mm. Two inside diameters, D = 0.28 m and D = 0.30 m, are compared on total annualised cost (pressure drop by the Colebrook equation; pumping power at combined efficiency 0.74; electricity at 0.14 dollars per kWh over 8200 h per year; installed cost 2275 D<sup>1.55</sup> dollars per metre annualised at a capital recovery factor of 0.12 per year). The chat-mode reply computed every component to within 0.1 percent and selected the correct diameter, then stated the annual saving as approximately 140 dollars/yr. The reply's own totals, rounded to 100 dollars/yr, differ by 100 dollars/yr, so its 140 cannot be traced to them; totals carried at that resolution cannot resolve the saving at all. The saving is 0.034 percent of either total; the executed difference, at full precision, is 161.08 dollars/yr.</p>
+<figure><div class="figbox" id="fig-ex3"></div><figcaption>Fig. 3 | The two totals are indistinguishable at the scale of the components; the requested quantity is their difference. Stacked annual electricity cost and annualised capital cost, in dollars/yr, for D = 0.28 m (total 473,205.19 dollars/yr) and D = 0.30 m (total 473,366.27 dollars/yr), where D denotes the inside diameter.</figcaption></figure>
+@@TABLE_EX3@@
+<button class="act" id="btn-ex3" disabled>Recompute Example 3 in Python</button>
+<p class="status" id="status-ex3"></p>
+<p><label for="round-unit">Rounding unit applied to each total before differencing (dollars/yr): </label>
+<select id="round-unit">
+<option value="1">1</option>
+<option value="10">10</option>
+<option value="50">50</option>
+<option value="100" selected>100</option>
+<option value="200">200</option>
+<option value="500">500</option>
+<option value="1000">1000</option>
+</select></p>
+@@ROUNDING_HTML@@
+<p class="status" id="status-round"></p>
+<figure><div class="figbox" id="fig-sweep"></div><figcaption>Fig. 4 | The error in the difference grows with the rounding unit while the totals remain accurate. Magnitude of the relative error of the rounded difference, in percent, against the rounding unit in dollars/yr (both axes logarithmic), for the totals of Example 3. At the chat-mode unit of 100 dollars/yr the difference of the rounded executed totals is 200 dollars/yr, an error of 24 percent.</figcaption></figure>
+<p>The test asked for the saving at the stated inputs, and at those inputs the executed value is 161.08 dollars/yr. For the design decision the saving is too small to matter. Changing one input at a time by a modest amount (the efficiency by 0.04, the price by 0.01 dollars per kWh, the roughness by a factor of 2 to 3) changes the saving by thousands of dollars per year and, in three of the four cases below, makes D = 0.30 m the cheaper diameter. The two diameters cost the same within the accuracy of the inputs. An executed calculation shows this in a few more lines of code, and the table below is recomputed with the example.</p>
+@@TABLE_EX3_SENS@@
+
+<h2 id="example-4">Example 4: a remainder flow in a looped network (pipe network)</h2>
+<p>Water enters a looped network at node A at 0.300 m<sup>3</sup>/s; demands in m<sup>3</sup>/s are B 0.050, C 0.080, D 0.070, E 0.050, F 0.050; seven pipes join the nodes, and the head loss in each follows the Colebrook friction factor. The chat-mode reply solved the network by Hardy&ndash;Cross iteration: six of seven flows within 1.5 percent of the verified values and both requested heads (at nodes D and F) within 0.2 percent. The exception is pipe EF. Node E receives only the CE flow and discharges its demand and the EF flow, so the EF flow is the difference of the CE flow and 0.050 m<sup>3</sup>/s. The reply's node balance is exact (&minus;0.005 = 0.045 &minus; 0.050); its error is in the CE flow, 0.045 against 0.04437 m<sup>3</sup>/s, which is 1.4 percent and within the 2 percent criterion. The same absolute error of 0.00063 m<sup>3</sup>/s is 11 percent of the small EF flow, which is what the criterion flags.</p>
+<figure><div class="figbox" id="fig-ex4"></div><figcaption>Fig. 5 | Six flows agree; the remainder flow does not. Signed flow in m<sup>3</sup>/s by pipe, chat mode (grey) against computed (blue); the sign denotes direction relative to the stated positive direction of each pipe. Only pipe EF differs materially, and it is the smallest flow in the network.</figcaption></figure>
+@@TABLE_EX4@@
+<button class="act" id="btn-ex4" disabled>Recompute Example 4 in Python</button>
+<p class="status" id="status-ex4"></p>
+<p>The last row of the table substitutes each set of flows into the two loop equations (the head losses around each loop must sum to zero). The executed flows satisfy them to rounding error. The chat-mode flows leave 0.081 m in the loop through CE, EF and FD, which exposes the error. That check is cheap, but it is itself a calculation (seven Colebrook friction factors and head losses) that has to be executed: checking a chat answer requires the execution that agent mode provides.</p>
+
+<h2 id="conclusion-app">Conclusion for practice</h2>
+<p>Chat-mode calculation is now usually right: 22 of 26 problems were solved correctly in full, including long iterative calculations. For numerical work it is still not as good as agent mode. The four failures fall where chat mode is structurally weak: quantities defined by an accumulation over all data (standard errors, a root-mean-square error) and small differences of large quantities (a saving, a remainder flow). Nothing in a chat reply marks which of its numbers are wrong, so every number that will be relied on has to be checked, and the check (a covariance matrix, substitution into the loop equations, a sensitivity run) is itself an executed calculation. Agent mode produces the answer and its checks in the same run. For a number that will be relied on, there is therefore no reason to prefer chat mode. Its place is in work without such a number: prose, posing a problem, instruction and assessment, rough independent cross-checks, and settings where code execution is not available or not permitted, as set out in the Theory panel (<a href="#conditions-under-which-chat-mode-is-preferred">Conditions under which chat mode is preferred</a>). The evidence is limited: one model, one attempt per problem, and 26 well-posed undergraduate problems; the agent-mode answers were verified by an independent route, so the error rate of agent mode itself is not measured here.</p>
+</div>
+</section>
+<section class="panel" id="panel-theory">
+<div class="withtoc">
+<aside class="toc" id="toc-theory"><h2>Contents</h2>@@TOC_THEORY@@</aside>
+<div class="prose">@@THEORY_HTML@@</div>
+</div>
+</section>
+<section class="panel" id="panel-code">
+<div class="subtabs">
+<button data-sub="listings" class="active">Listings</button>
+<button data-sub="walkthrough">Walkthrough</button>
+</div>
+<div id="sub-listings">
+<div class="withtoc">
+<aside class="toc" id="toc-listings"><h2>Contents</h2>@@TOC_LISTINGS@@</aside>
+<div>@@LISTINGS_HTML@@</div>
+</div>
+</div>
+<div id="sub-walkthrough" style="display:none">
+<div class="withtoc">
+<aside class="toc" id="toc-walkthrough"><h2>Contents</h2>@@TOC_WALK@@</aside>
+<div>
+<p class="status">The walkthrough results below were computed when this page was built. The editable notebook executes the same cells on MoLab.</p>
+<h3 id="editable-notebook">Editable notebook</h3>
+<p>The MoLab notebook is editable; run all cells once after opening.
+<a href="@@MOLAB_URL@@" target="_blank" rel="noopener">Open the editable notebook on MoLab</a> &middot;
+<a href="#" id="dl-notebook">Download the notebook (.py)</a> &middot;
+<a href="walkthrough/index.html" target="_blank" rel="noopener">Open the pre-run read-only WASM page of the same notebook</a></p>
+@@WALKTHROUGH_HTML@@
+</div>
+</div>
+</div>
+</section>
+</main>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="module-b64" type="text/plain">@@MODULE_B64@@</script>
+<script id="molab-b64" type="text/plain">@@MOLAB_B64@@</script>
+<script id="walk-figs" type="application/json">@@WALK_FIGS_JSON@@</script>
+<script>
+"use strict";
+const STUB = @@STUB@@;
+let booted = false, worker = null, callId = 0; const pending = {};
+const $ = id => document.getElementById(id);
+const BTNS = ["btn-ex1","btn-ex2","btn-ex3","btn-ex4"];
+function plot(id, fig){ const el = $(id); if(!el || !fig) return; Plotly.react(el, fig.data, fig.layout, {responsive:true, displaylogo:false}); }
+function refreshControls(){ BTNS.forEach(i=>{ if($(i)) $(i).disabled = !booted; }); const ru = $("round-unit"); if(ru) ru.disabled = !booted; }
+function rejectPending(msg){ Object.keys(pending).forEach(id=>{ const p = pending[id]; delete pending[id]; p.rej(new Error(msg)); }); }
+function bootFailed(text){ $("boot-error").textContent = text; $("boot-status").textContent = "Python runtime: failed."; const bp = $("boot-progress"); bp.value = 100; bp.style.accentColor = "#a33"; }
+function call(type, payload){ return new Promise((res, rej)=>{ if(!worker){ rej(new Error(STUB ? "This stub build has no Python runtime; no calculation is available." : "The Python runtime is not available; live calculation cannot be performed.")); return; } const id = ++callId; const timer = setTimeout(()=>{ if(pending[id]){ delete pending[id]; rej(new Error("The Python runtime did not respond within 120 seconds. Reload the page to restart the runtime; no result was returned for this action.")); } }, 120000); pending[id] = {res: v=>{ clearTimeout(timer); res(v); }, rej: e=>{ clearTimeout(timer); rej(e); }}; worker.postMessage(Object.assign({type, id}, payload||{})); }); }
+function setText(id, text){ const el = $(id); if(el) el.textContent = text; }
+function money(v){ return v.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function renderEx1(r){ setText("c1-k", r.k.toFixed(6)); setText("c1-n", r.n.toFixed(5)); setText("c1-sek", r.se_k.toFixed(6)); setText("c1-sen", r.se_n.toFixed(5)); setText("c1-rmse", r.rmse.toFixed(5)); setText("c1-c240", r.c_240.toFixed(5)); plot("fig-ex1", r.fig); }
+function renderEx2(r){ setText("c2-k", r.k.toFixed(6)); setText("c2-n", r.n.toFixed(5)); setText("c2-rmse", r.rmse.toFixed(5)); setText("c2-c150", r.c_150.toFixed(5)); plot("fig-ex2", r.fig); }
+function renderEx3(r){ const a = r.costs["0.28"], b = r.costs["0.3"]; setText("c3-dp28", a.dp_kpa.toFixed(2)); setText("c3-pow28", a.power_kw.toFixed(3)); setText("c3-en28", money(a.energy)); setText("c3-cap28", money(a.capital)); setText("c3-tot28", money(a.total)); setText("c3-dp30", b.dp_kpa.toFixed(2)); setText("c3-pow30", b.power_kw.toFixed(3)); setText("c3-en30", money(b.energy)); setText("c3-cap30", money(b.capital)); setText("c3-tot30", money(b.total)); setText("c3-saving", money(r.saving)); plot("fig-ex3", r.fig); }
+function renderSens(r){ (r.sensitivity || []).forEach((row, i)=> setText("c3-sens-"+i, money(row.saving))); }
+function renderRounding(r){ setText("r-tot28", r.total_028.toLocaleString("en-US")); setText("r-tot30", r.total_030.toLocaleString("en-US")); setText("r-diff", r.difference.toLocaleString("en-US")); setText("r-err", (100*r.rel_error).toFixed(1) + " percent"); setText("r-exact", money(r.exact)); }
+function renderEx4(r){ ["AB","BC","CD","DA","CE","EF","FD"].forEach(nm=> setText("c4-"+nm, (r.flows[nm] >= 0 ? "+" : "") + r.flows[nm].toFixed(5))); setText("c4-hd", r.heads.D.toFixed(3)); setText("c4-hf", r.heads.F.toFixed(3)); setText("c4-res", r.loop_residuals.map(v=>v.toExponential(1)).join(", ")); setText("c4-chatres", r.chat_loop_residuals.map(v=>(v >= 0 ? "+" : "") + v.toFixed(4)).join(", ")); plot("fig-ex4", r.fig); }
+async function guard(btn, statusId, fn){ const b = $(btn); b.disabled = true; try{ await fn(); $(statusId).textContent = "Recomputed live in Python (Pyodide) in this browser."; }catch(e){ $(statusId).textContent = "Error: " + (e.message || e); } b.disabled = !booted; }
+$("btn-ex1").addEventListener("click", ()=>guard("btn-ex1", "status-ex1", async ()=>{ renderEx1(await call("example1", {})); }));
+$("btn-ex2").addEventListener("click", ()=>guard("btn-ex2", "status-ex2", async ()=>{ renderEx2(await call("example2", {})); }));
+$("btn-ex3").addEventListener("click", ()=>guard("btn-ex3", "status-ex3", async ()=>{ const r3 = await call("example3", {}); renderEx3(r3); renderSens(r3); }));
+$("btn-ex4").addEventListener("click", ()=>guard("btn-ex4", "status-ex4", async ()=>{ renderEx4(await call("example4", {})); }));
+$("round-unit").addEventListener("change", async ()=>{ try{ renderRounding(await call("rounding", {unit: parseFloat($("round-unit").value)})); $("status-round").textContent = "Recomputed live in Python (Pyodide) in this browser."; }catch(e){ $("status-round").textContent = "Error: " + (e.message || e); } });
+$("dl-notebook").addEventListener("click", e=>{ e.preventDefault(); try{ const b64 = $("molab-b64").textContent.trim(); const bin = atob(b64); const bytes = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([bytes], {type:"text/x-python"})); a.download = "walkthrough_molab.py"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000); }catch(err){ $("boot-error").textContent = "Notebook download failed: the embedded notebook could not be decoded in this browser."; } });
+function activateTab(name){ document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.toggle("active", x.dataset.tab === name)); document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active")); $("panel-"+name).classList.add("active"); if(name === "code") renderWalkFigs(); window.dispatchEvent(new Event("resize")); }
+function activateSub(sub){ document.querySelectorAll(".subtabs button").forEach(x=>x.classList.toggle("active", x.dataset.sub === sub)); $("sub-listings").style.display = sub === "listings" ? "block" : "none"; $("sub-walkthrough").style.display = sub === "walkthrough" ? "block" : "none"; if(sub === "walkthrough") renderWalkFigs(); }
+function panelOf(el){ let e = el; while(e && !(e.classList && e.classList.contains("panel"))) e = e.parentElement; return e; }
+function applyHash(){ const h = (location.hash || "").slice(1); if(!h) return; if(h === "app" || h === "theory" || h === "code"){ activateTab(h); return; } if(h === "code-listings" || h === "code-walkthrough"){ activateTab("code"); activateSub(h === "code-listings" ? "listings" : "walkthrough"); return; } const el = document.getElementById(h); if(!el) return; const p = panelOf(el); if(p){ activateTab(p.id.replace("panel-", "")); if(p.id === "panel-code"){ let s = el; let inWalk = false, inList = false; while(s){ if(s.id === "sub-walkthrough") inWalk = true; if(s.id === "sub-listings") inList = true; s = s.parentElement; } if(inWalk) activateSub("walkthrough"); else if(inList) activateSub("listings"); } } requestAnimationFrame(()=>{ try{ el.scrollIntoView(); }catch(e){} }); }
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>{ activateTab(b.dataset.tab); history.pushState(null, "", "#"+b.dataset.tab); }));
+document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click", ()=>{ activateSub(b.dataset.sub); history.pushState(null, "", "#code-"+b.dataset.sub); }));
+window.addEventListener("hashchange", applyHash);
+let walkRendered = false;
+function renderWalkFigs(){ if(walkRendered) return; walkRendered = true; const figs = JSON.parse($("walk-figs").textContent); Object.keys(figs).forEach(k=>{ const el = $(k); if(el) Plotly.newPlot(el, figs[k].data, figs[k].layout, {responsive:true, displaylogo:false}); }); }
+function initSpy(){ const links = {}; document.querySelectorAll("aside.toc a").forEach(a=>{ const id = a.getAttribute("href").slice(1); links[id] = a; }); const heads = Object.keys(links).map(id=>document.getElementById(id)).filter(Boolean); if(!("IntersectionObserver" in window) || !heads.length) return; const obs = new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting){ Object.values(links).forEach(a=>a.classList.remove("cur")); const a = links[en.target.id]; if(a) a.classList.add("cur"); } }); }, {rootMargin: "-10% 0px -70% 0px"}); heads.forEach(h=>obs.observe(h)); }
+try{ const pre = JSON.parse($("prestart-data").textContent); renderEx1(pre.ex1); renderEx2(pre.ex2); renderEx3(pre.ex3); renderSens(pre.ex3); renderRounding(pre.round100); renderEx4(pre.ex4); plot("fig-sweep", pre.sweep.fig); }catch(e){ $("boot-error").textContent = "Precomputed results unavailable: " + (e.message || e); }
+applyHash(); initSpy();
+if(STUB){ booted = false; $("boot-status").textContent = "Python runtime: stub build for layout verification only (not published). Live recomputation is disabled in this build."; $("boot-progress").value = 100; }
+else {
+  const workerSrc = `
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js");
+let py = null;
+onmessage = async (ev) => { const m = ev.data;
+  if(m.type === "init"){ try{ py = await loadPyodide(); await py.loadPackage(["numpy", "scipy"]); py.globals.set("MODULE_B64", m.moduleB64); await py.runPythonAsync(BOOT); postMessage({type:"ready"}); }catch(e){ postMessage({type:"boot_error", message: String((e && e.message) || e)}); } return; }
+  try{ py.globals.set("MSG_JSON", JSON.stringify(m)); const out = await py.runPythonAsync("handle(MSG_JSON)"); const r = JSON.parse(out); if(r.error) postMessage({id: m.id, error: r.error}); else postMessage({id: m.id, result: r}); }catch(e){ postMessage({id: m.id, error: String((e && e.message) || e)}); }
+};
+const BOOT = \`
+import base64, json, sys
+sys.path.insert(0, "/")
+with open("/chatagent.py", "wb") as _f:
+    _f.write(base64.b64decode(MODULE_B64))
+import chatagent as M
+def handle(msg_json):
+    try:
+        m = json.loads(msg_json); t = m["type"]
+        if t == "example1":
+            return json.dumps(M.plain(M.example1()))
+        if t == "example2":
+            return json.dumps(M.plain(M.example2()))
+        if t == "example3":
+            return json.dumps(M.plain(M.example3()))
+        if t == "example4":
+            return json.dumps(M.plain(M.example4()))
+        if t == "rounding":
+            unit = float(m["unit"])
+            if unit <= 0:
+                return json.dumps({"error": "The rounding unit must be greater than zero."})
+            return json.dumps(M.plain(M.rounded_difference(unit)))
+        return json.dumps({"error": "unknown message type"})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        msg = str(e) or e.__class__.__name__
+        return json.dumps({"error": msg})
+\`;
+`;
+  worker = new Worker(URL.createObjectURL(new Blob([workerSrc], {type:"text/javascript"})));
+  worker.onmessage = (ev)=>{ const m = ev.data; if(m.type === "ready"){ booted = true; $("boot-status").textContent = "Python runtime: ready (Pyodide, NumPy, SciPy)."; $("boot-progress").value = 100; refreshControls(); return; } if(m.type === "boot_error"){ bootFailed("Python runtime failed to load: " + m.message + " The precomputed results above remain visible; live recomputation is unavailable and no calculation has been performed by JavaScript."); rejectPending("The Python runtime failed to load; live recomputation is unavailable."); return; } const p = pending[m.id]; if(!p) return; delete pending[m.id]; if(m.error) p.rej(new Error(m.error)); else p.res(m.result); };
+  worker.onerror = (e)=>{ bootFailed("Python runtime worker error: " + (e.message || e) + " Live recomputation is unavailable; reload the page to retry."); rejectPending("The Python runtime failed; live recomputation is unavailable. Reload the page to retry."); };
+  $("boot-progress").value = 45;
+  worker.postMessage({type:"init", moduleB64: $("module-b64").textContent.trim()});
+}
+</script>
+</body>
+</html>
