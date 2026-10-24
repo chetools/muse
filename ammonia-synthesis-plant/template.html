@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ammonia Synthesis Plant (PFD-102)</title>
+<style>
+:root{--ink:#1b1b1b;--ink2:#5a5a5a;--rule:#d6d6d6;--paper:#fff;--tint:#f4f6f8;--accent:#0072B2;--err:#a4262c}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16.5px/1.5 Georgia,"Times New Roman",serif;margin:0}
+h1,h2,h3,.sans{font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+.hwrap{max-width:1100px;margin:0 auto;padding:0 16px}
+header{padding:28px 0 8px}
+h1{font-size:1.65rem;line-height:1.2;margin:0 0 8px}
+.subtitle{color:var(--ink2);margin:0 0 12px}
+#bootbar{height:8px;background:#e6e8ec;border-radius:4px;overflow:hidden;margin:8px 0}
+#bootbar>div{height:100%;width:0%;background:var(--accent)}
+#bootstatus{font-size:.92rem;color:var(--ink2)}
+nav.tabs{display:flex;gap:4px;border-bottom:2px solid var(--ink);margin:18px 0 0;flex-wrap:wrap}
+nav.tabs button{font-family:Arial,Helvetica,sans-serif;font-size:1rem;background:none;border:1px solid var(--rule);border-bottom:none;padding:8px 18px;cursor:pointer;border-radius:4px 4px 0 0}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+.panel{display:none;padding:18px 0 40px}
+.panel.active{display:block}
+.diagram{border:1px solid var(--rule);padding:8px;overflow-x:auto}
+.diagram svg{width:100%;height:auto;display:block}
+figcaption{font:14px/1.4 Arial,Helvetica,sans-serif;color:var(--ink2);margin:8px 0 20px}
+table{border-collapse:collapse;margin:12px 0;font-size:.95rem}
+th,td{border:1px solid var(--rule);padding:5px 9px;text-align:left;font-variant-numeric:tabular-nums}
+th{font-family:Arial,Helvetica,sans-serif;font-size:.88rem;background:var(--tint)}
+.grid{display:grid;grid-template-columns:300px 1fr;gap:28px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+label{display:block;font-family:Arial,Helvetica,sans-serif;font-size:.88rem;margin:10px 0 3px}
+input{width:100%;padding:6px 8px;font-size:1rem;border:1px solid var(--ink2);border-radius:4px}
+#btn-run{background:var(--accent);color:#fff;border:none;border-radius:4px;padding:10px 16px;font-size:1rem;cursor:pointer;width:100%;margin-top:14px;font-family:Arial,Helvetica,sans-serif}
+#btn-run:disabled{opacity:.5;cursor:wait}
+#runbar{height:8px;background:#e6e8ec;border-radius:4px;overflow:hidden;margin:10px 0;display:none}
+#runbar>div{height:100%;width:40%;background:var(--accent)}
+#stale-note{color:#a05a00;display:none;margin-top:6px;font-size:.92rem}
+#run-error{color:var(--err);display:none;margin-top:8px}
+#boot-error{color:var(--err);display:none;margin-top:8px}
+.toc{font-family:Arial,Helvetica,sans-serif;font-size:.9rem}
+@media(min-width:801px){.toc{position:sticky;top:12px;max-height:90vh;overflow:auto}}
+.toc a{display:block;color:var(--ink);text-decoration:none;padding:3px 8px;border-left:3px solid transparent}
+.toc a.current{border-left-color:var(--accent);background:var(--tint)}
+.toc .toc-title{font-weight:bold;padding:3px 8px}
+.with-toc{display:grid;grid-template-columns:250px 1fr;gap:28px}
+.with-toc>*{min-width:0}
+.grid>*{min-width:0}
+@media(max-width:800px){.with-toc{grid-template-columns:1fr}.toc{border:1px solid var(--rule);padding:8px}}
+section{scroll-margin-top:16px}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow-x:auto;font-size:.82rem;line-height:1.45}
+code{font-family:Consolas,"DejaVu Sans Mono",monospace}
+.subtabs{display:flex;gap:4px;margin-bottom:14px}
+.subtabs button{font-family:Arial,Helvetica,sans-serif;padding:7px 14px;border:1px solid var(--rule);background:none;cursor:pointer;border-radius:4px}
+.subtabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+.wt-output{background:#fff;border:1px solid var(--rule);padding:8px 12px;white-space:pre-wrap;font-family:Consolas,monospace;font-size:.85rem}
+.katex{font-size:1.04em}
+a{color:var(--accent)}
+.metric{font-size:1.15rem}
+footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);font-size:.9rem}
+</style>
+@@KATEX_CSS@@
+</head>
+<body>
+<div class="hwrap"><header>
+<h1>Ammonia synthesis plant</h1>
+<p class="subtitle">Process flow diagram PFD-102 with a live overall and synthesis loop balance model. Hydrogen from steam reforming of natural gas and nitrogen from process air are reacted over an iron-based catalyst in a high-pressure synthesis loop.</p>
+<div id="bootbar"><div></div></div>
+<p id="bootstatus">Python runtime: loading.</p>
+<p id="boot-error"></p>
+</header></div>
+<div class="wrap">
+<nav class="tabs" role="tablist">
+<button role="tab" id="tabbtn-app" aria-selected="true" data-panel="app">App</button>
+<button role="tab" id="tabbtn-theory" aria-selected="false" data-panel="theory">Theory</button>
+<button role="tab" id="tabbtn-code" aria-selected="false" data-panel="code">Code</button>
+</nav>
+
+<div class="panel active" id="panel-app">
+<h2 id="app-diagram">Process flow diagram</h2>
+<figure>
+<div class="diagram">@@PFD_SVG@@</div>
+<figcaption>Fig. 1 | Process flow diagram PFD-102, Revision 1: feed preparation and reforming, shift conversion and condensate separation, carbon dioxide removal with solvent regeneration, methanation and synthesis gas compression, and the ammonia synthesis loop with recycle and purge. Stream values on the diagram are sample design values.</figcaption>
+</figure>
+<h2 id="app-equipment-index">Equipment index</h2>
+@@EQUIPMENT_INDEX@@
+<h2 id="app-model">Overall and synthesis loop balance model</h2>
+<p>The model is computed in Python. The precomputed default run is displayed on load; a live run replaces the displayed values. All rates are mass flow rates in kilogram per hour (kg/h, where kg denotes kilogram and h denotes hour). Part 1, the overall plant balance, takes the natural gas, process steam and process air feed rates and the process condensate, carbon dioxide product and purge gas rates, and returns the liquid ammonia product rate as the closing stream of the balance. Part 2, the synthesis loop balance, takes the fresh synthesis gas rate, the liquid ammonia product rate and the recycle gas rate, and returns the loop purge rate (fresh rate minus product rate), the converter feed rate (fresh rate plus recycle rate), the separator vapour rate (converter feed rate minus product rate), the recycle ratio (recycle rate divided by fresh rate, dimensionless) and the ammonia formation per pass (product rate divided by converter feed rate, in mass per cent).</p>
+<div class="grid">
+<div>
+<p class="sans" style="font-weight:bold;margin:4px 0 0">Part 1: overall plant balance</p>
+<label for="in-ng">Natural gas feed rate (kg/h)</label><input id="in-ng" type="number" step="any" value="28000">
+<label for="in-steam">Process steam feed rate (kg/h)</label><input id="in-steam" type="number" step="any" value="42000">
+<label for="in-air">Process air feed rate (kg/h)</label><input id="in-air" type="number" step="any" value="52000">
+<label for="in-cond">Process condensate rate (kg/h)</label><input id="in-cond" type="number" step="any" value="18000">
+<label for="in-co2">Carbon dioxide product rate (kg/h)</label><input id="in-co2" type="number" step="any" value="22000">
+<label for="in-purge">Purge gas rate, Part 1 (kg/h)</label><input id="in-purge" type="number" step="any" value="6000">
+<p class="sans" style="font-weight:bold;margin:14px 0 0">Part 2: synthesis loop balance</p>
+<label for="in-fresh">Fresh synthesis gas rate (kg/h)</label><input id="in-fresh" type="number" step="any" value="82000">
+<label for="in-product">Liquid ammonia product rate, Part 2 (kg/h)</label><input id="in-product" type="number" step="any" value="76000">
+<label for="in-recycle">Recycle gas rate (kg/h)</label><input id="in-recycle" type="number" step="any" value="210000">
+<button id="btn-run" disabled>Run model</button>
+<div id="runbar"><div></div></div>
+<p id="stale-note">Inputs differ from the displayed run. Press Run model to recompute.</p>
+<p id="run-error"></p>
+</div>
+<div>
+<p class="metric" id="out-summary">@@PRESTART_SUMMARY@@</p>
+<div id="out-table">@@PRESTART_TABLE@@</div>
+<p id="out-note">Displayed results: precomputed default run, computed when this page was built.</p>
+<div id="chart" style="width:100%;height:430px"></div>
+<p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 2 | Synthesis loop flows of the displayed run. Flow denotes mass flow rate (in kg/h) of the converter feed, recycle gas, liquid ammonia product and purge gas streams of Part 2.</p>
+</div>
+</div>
+</div>
+
+<div class="panel" id="panel-theory">
+<div class="with-toc">
+<nav class="toc" id="theory-toc"><div class="toc-title">Contents</div>@@THEORY_TOC@@</nav>
+<div class="theory">@@THEORY_HTML@@</div>
+</div>
+</div>
+
+<div class="panel" id="panel-code">
+<div class="subtabs">
+<button id="subtab-listings" aria-selected="true">Listings</button>
+<button id="subtab-walkthrough" aria-selected="false">Walkthrough</button>
+</div>
+<div id="code-listings">
+<div class="with-toc">
+<nav class="toc" id="code-toc"><div class="toc-title">Contents</div>@@CODE_TOC@@</nav>
+<div>
+@@LISTINGS_HTML@@
+<h2 id="code-notebooks">Notebooks</h2>
+<p>Pre-run read-only WASM walkthrough page (instant results, read-only code): <a href="@@WASM_LINK@@">@@WASM_LINK@@</a></p>
+<p>Editable notebook (MoLab): the MoLab notebook is editable; run all cells once after opening.</p>
+<p>MoLab link: <a href="@@MOLAB_LINK@@">@@MOLAB_LINK@@</a></p>
+<p>Notebook file download: <a href="@@NOTEBOOK_FILE@@">@@NOTEBOOK_FILE@@</a></p>
+</div>
+</div>
+</div>
+<div id="code-walkthrough" style="display:none">
+<h2 id="code-walkthrough-sec">Walkthrough</h2>
+<p>The walkthrough results were computed when this page was built.</p>
+@@WALKTHROUGH_HTML@@
+</div>
+</div>
+
+<footer>
+<p>Standalone page. Calculations are performed in Python (Pyodide) only; no JavaScript calculation is used. Diagram: PFD-102 Revision 1 (sample design values). Sources are cited in the Theory panel.</p>
+</footer>
+</div>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="model-b64" type="application/json">@@MODEL_B64@@</script>
+@@PLOTLY_JS@@
+<script>
+var displayedParams = null;
+function fmt(x){return x.toLocaleString("en-US",{maximumFractionDigits:1});}
+function renderResult(r, note){
+  document.getElementById("out-summary").textContent = "Liquid ammonia product (Part 1, closing stream): " + fmt(r.ammonia_rate_kg_h) + " kg/h. Overall balance closure: inputs " + fmt(r.overall_in_kg_h) + " kg/h, outputs " + fmt(r.overall_out_kg_h) + " kg/h, closure error " + fmt(r.overall_out_kg_h - r.overall_in_kg_h) + " kg/h.";
+  var rows = [["Converter feed rate", fmt(r.converter_feed_rate_kg_h) + " kg/h"], ["Separator vapour rate", fmt(r.separator_vapour_rate_kg_h) + " kg/h"], ["Recycle gas rate", fmt(r.chart_rows[1].flow_kg_h) + " kg/h"], ["Liquid ammonia product rate (Part 2)", fmt(r.chart_rows[2].flow_kg_h) + " kg/h"], ["Loop purge rate", fmt(r.loop_purge_rate_kg_h) + " kg/h"], ["Recycle ratio (dimensionless)", r.recycle_ratio.toFixed(3)], ["Circulation ratio (dimensionless)", r.circulation_ratio.toFixed(3)], ["Ammonia formation per pass", r.formation_pct.toFixed(2) + " mass per cent"]];
+  var h = "<table><tr><th>Quantity (Part 2 unless stated)</th><th>Value</th></tr>";
+  rows.forEach(function(row){ h += "<tr><td>" + row[0] + "</td><td>" + row[1] + "</td></tr>"; });
+  h += "</table>";
+  document.getElementById("out-table").innerHTML = h;
+  document.getElementById("out-note").textContent = note;
+  var traces = r.chart_rows.map(function(row,i){ return {type:"bar", x:["Synthesis loop"], y:[row.flow_kg_h], name:row.name}; });
+  Plotly.react("chart", traces, {yaxis:{title:"Flow (kg/h)"}, legend:{x:1.02, y:1.0, xanchor:"left", yanchor:"top"}, margin:{r:230}}, {responsive:true});
+  displayedParams = currentInputs();
+}
+function currentInputs(){
+  return ["in-ng","in-steam","in-air","in-cond","in-co2","in-purge","in-fresh","in-product","in-recycle"].map(function(id){ return document.getElementById(id).value; }).join("|");
+}
+function checkStale(){
+  if(!displayedParams) return;
+  document.getElementById("stale-note").style.display = (currentInputs() !== displayedParams) ? "block" : "none";
+}
+["in-ng","in-steam","in-air","in-cond","in-co2","in-purge","in-fresh","in-product","in-recycle"].forEach(function(id){ document.getElementById(id).addEventListener("input", checkStale); });
+function showPanel(name, push){
+  ["app","theory","code"].forEach(function(p){
+    document.getElementById("panel-" + p).classList.toggle("active", p === name);
+    document.getElementById("tabbtn-" + p).setAttribute("aria-selected", p === name ? "true" : "false");
+  });
+  if(push){ history.replaceState(null, "", "#" + name); }
+}
+["app","theory","code"].forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
+function showSub(name){
+  document.getElementById("code-listings").style.display = name === "listings" ? "block" : "none";
+  document.getElementById("code-walkthrough").style.display = name === "walkthrough" ? "block" : "none";
+  document.getElementById("subtab-listings").setAttribute("aria-selected", name === "listings" ? "true" : "false");
+  document.getElementById("subtab-walkthrough").setAttribute("aria-selected", name === "walkthrough" ? "true" : "false");
+  if(name === "walkthrough"){ renderWalkthroughCharts(); }
+}
+document.getElementById("subtab-listings").addEventListener("click", function(){ showSub("listings"); history.replaceState(null, "", "#code-listings"); });
+document.getElementById("subtab-walkthrough").addEventListener("click", function(){ showSub("walkthrough"); history.replaceState(null, "", "#code-walkthrough"); });
+var wtRendered = false;
+function renderWalkthroughCharts(){
+  if(wtRendered) return; wtRendered = true;
+  var data = JSON.parse(document.getElementById("walkthrough-data").textContent);
+  Object.keys(data).forEach(function(k){ Plotly.newPlot(k, data[k].data, data[k].layout, {responsive:true}); });
+}
+document.querySelectorAll(".toc a").forEach(function(a){
+  a.addEventListener("click", function(){
+    var id = a.getAttribute("href").slice(1);
+    if(id.indexOf("theory-") === 0){ showPanel("theory", false); }
+    if(id.indexOf("code-") === 0){ showPanel("code", false); showSub(walkthroughId(id) ? "walkthrough" : "listings"); }
+  });
+});
+function walkthroughId(id){ return id === "code-walkthrough-sec" || id.indexOf("code-walkthrough-step") === 0; }
+var spy = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){
+      document.querySelectorAll(".toc a").forEach(function(a){ a.classList.toggle("current", a.getAttribute("href") === "#" + e.target.id); });
+    }
+  });
+}, {rootMargin:"-10% 0px -80% 0px"});
+document.querySelectorAll("section[id], h2[id]").forEach(function(el){ spy.observe(el); });
+function route(){
+  var h = location.hash.slice(1);
+  if(!h) return;
+  if(h === "app" || h === "theory" || h === "code"){ showPanel(h, false); return; }
+  if(h.indexOf("theory-") === 0){ showPanel("theory", false); }
+  else if(h.indexOf("code-") === 0){ showPanel("code", false); showSub(walkthroughId(h) ? "walkthrough" : "listings"); }
+  else if(h.indexOf("app-") === 0){ showPanel("app", false); }
+  var el = document.getElementById(h);
+  if(el){ el.scrollIntoView(); }
+}
+window.addEventListener("hashchange", route);
+var prestart = JSON.parse(document.getElementById("prestart-data").textContent);
+renderResult(prestart.result, "Displayed results: precomputed default run, computed when this page was built.");
+route();
+</script>
+<script type="text/worker" id="worker-src">
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js");
+var initPromise = new Promise(function(res){ self.addEventListener("message", function h(e){ if(e.data.type === "init"){ self.removeEventListener("message", h); res(e.data.b64); } }); });
+var ready = (async function(){
+  self.pyodide = await loadPyodide();
+  var b64 = await initPromise;
+  var src = atob(b64);
+  self.pyodide.FS.writeFile("balance.py", src);
+  var lines = [
+    "import balance, json",
+    "def run(ng, steam, air, cond, co2, purge, fresh, product, recycle):",
+    "    try:",
+    "        r = balance.run_model(float(ng), float(steam), float(air), float(cond), float(co2), float(purge), float(fresh), float(product), float(recycle))",
+    "        return json.dumps({'ok': True, 'result': r})",
+    "    except ValueError as e:",
+    "        return json.dumps({'ok': False, 'error': str(e)})",
+    "    except Exception as e:",
+    "        import traceback",
+    "        return json.dumps({'ok': False, 'error': 'The model could not be run with the supplied inputs.', 'detail': traceback.format_exc()})"
+  ];
+  self.pyodide.runPython(lines.join(String.fromCharCode(10)));
+  self.postMessage({ready: true});
+  return true;
+})();
+self.addEventListener("message", async function(e){
+  if(e.data.type !== "run") return;
+  try{
+    await ready;
+    self.pyodide.globals.set("ng_in", e.data.ng);
+    self.pyodide.globals.set("steam_in", e.data.steam);
+    self.pyodide.globals.set("air_in", e.data.air);
+    self.pyodide.globals.set("cond_in", e.data.cond);
+    self.pyodide.globals.set("co2_in", e.data.co2);
+    self.pyodide.globals.set("purge_in", e.data.purge);
+    self.pyodide.globals.set("fresh_in", e.data.fresh);
+    self.pyodide.globals.set("product_in", e.data.product);
+    self.pyodide.globals.set("recycle_in", e.data.recycle);
+    var out = self.pyodide.runPython("run(ng_in, steam_in, air_in, cond_in, co2_in, purge_in, fresh_in, product_in, recycle_in)");
+    self.postMessage(JSON.parse(out));
+  }catch(err){
+    self.postMessage({ok:false, error:"The Python runtime could not complete the run.", detail:String(err)});
+  }
+});
+</script>
+<script>
+var worker = null;
+var bootBar = document.querySelector("#bootbar>div");
+var bootStatus = document.getElementById("bootstatus");
+function bootFail(msg){
+  bootStatus.textContent = "Python runtime: failed to load.";
+  var el = document.getElementById("boot-error");
+  el.style.display = "block";
+  el.textContent = msg + " The precomputed default run remains displayed.";
+}
+try{
+  var wsrc = document.getElementById("worker-src").textContent;
+  worker = new Worker(URL.createObjectURL(new Blob([wsrc], {type:"text/javascript"})));
+  bootBar.style.width = "35%";
+  var initMsg = {type:"init", b64: JSON.parse(document.getElementById("model-b64").textContent)};
+  var readyTimer = setTimeout(function(){ bootFail("The Python runtime did not become ready."); }, 120000);
+  var initSent = false;
+  worker.addEventListener("message", function(e){
+    if(e.data && e.data.ready){
+      clearTimeout(readyTimer);
+      bootBar.style.width = "100%";
+      bootStatus.textContent = "Python runtime: ready.";
+      document.getElementById("btn-run").disabled = false;
+      return;
+    }
+    if(e.data && typeof e.data.ok === "boolean"){
+      document.getElementById("runbar").style.display = "none";
+      document.getElementById("btn-run").disabled = false;
+      if(e.data.ok){ renderResult(e.data.result, "Displayed results: live Python run."); document.getElementById("run-error").style.display = "none"; }
+      else{
+        if(e.data.detail){ console.error(e.data.detail); }
+        var er = document.getElementById("run-error");
+        er.style.display = "block";
+        er.textContent = e.data.error;
+      }
+    }
+  });
+  worker.addEventListener("error", function(e){ bootFail("The Python runtime failed to load."); });
+  var poll = setInterval(function(){
+    if(!initSent){ worker.postMessage(initMsg); initSent = true; bootBar.style.width = "60%"; clearInterval(poll); }
+  }, 300);
+  setTimeout(function(){ if(worker){ worker.postMessage({type:"ping"}); } }, 4000);
+}catch(err){
+  bootFail("The Python runtime failed to load.");
+}
+document.getElementById("btn-run").addEventListener("click", function(){
+  if(!worker) return;
+  document.getElementById("runbar").style.display = "block";
+  document.getElementById("btn-run").disabled = true;
+  worker.postMessage({type:"run", ng: parseFloat(document.getElementById("in-ng").value), steam: parseFloat(document.getElementById("in-steam").value), air: parseFloat(document.getElementById("in-air").value), cond: parseFloat(document.getElementById("in-cond").value), co2: parseFloat(document.getElementById("in-co2").value), purge: parseFloat(document.getElementById("in-purge").value), fresh: parseFloat(document.getElementById("in-fresh").value), product: parseFloat(document.getElementById("in-product").value), recycle: parseFloat(document.getElementById("in-recycle").value)});
+});
+</script>
+</body>
+</html>
