@@ -35,7 +35,7 @@ OUT = os.path.join(HERE, "dist", "ammonia-synthesis-plant-v1.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "muse-html/ammonia-synthesis-plant/walkthrough_molab.py")
 WASM_LINK = "ammonia-synthesis-plant-walkthrough-v1.html"
-NOTEBOOK_FILE = "ammonia-synthesis-plant/walkthrough_molab.py"
+NOTEBOOK_FILE = "walkthrough_molab.py"
 
 EQUIPMENT = [
     ("C-201", "Natural gas compressor"), ("E-201", "Feed preheater"),
