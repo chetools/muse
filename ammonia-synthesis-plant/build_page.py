@@ -27,11 +27,11 @@ import balance  # noqa: E402
 import runner  # noqa: E402
 import walkthrough  # noqa: E402
 
-PFD_SVG = "/home/hatch/workspace/your_files/chemcad-pfd-examples/ammonia-pfd102-v2.svg"
+PFD_SVG = "/home/hatch/workspace/your_files/chemcad-pfd-examples/ammonia-pfd102-v3.svg"
 DESIGN_MD = "/home/hatch/workspace/chemcad-pfd-examples/DESIGN.md"
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-OUT = os.path.join(HERE, "dist", "ammonia-synthesis-plant-v1.html")
+OUT = os.path.join(HERE, "dist", "ammonia-synthesis-plant-v2.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "muse-html/ammonia-synthesis-plant/walkthrough_molab.py")
 WASM_LINK = "ammonia-synthesis-plant-walkthrough-v1.html"
