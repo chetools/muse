@@ -154,4 +154,4 @@ Opportunity crudes are discounted crudes whose processing difficulty is the reas
 
 [24] Wikipedia contributors, "Naphthenic acid". https://en.wikipedia.org/wiki/Naphthenic_acid
 
-[25] Project design basis document, "DESIGN.md", section PFD-103 (equipment list, stream table for streams 1–43, and balance checks closing at 904,000 kg/h on each side).
+[25] Project design basis document, "DESIGN.md", section PFD-103 (equipment list, stream table for streams 1–43, and balance checks closing at 904,000 kg/h on each side). Project file: chemcad-pfd-examples/DESIGN.md
