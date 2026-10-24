@@ -14,7 +14,7 @@ import os
 import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PAGE = os.path.join(HERE, os.pardir, "dist", "chat-vs-agent-v2.html")
+PAGE = os.path.join(HERE, os.pardir, "dist", "chat-vs-agent-v3.html")
 
 _JS_ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "b": "\b", "f": "\f",
                "v": "\v", "0": "\0", "\\": "\\", "`": "`", "$": "$"}

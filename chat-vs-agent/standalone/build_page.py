@@ -14,8 +14,8 @@ load, the page shows an explicit error; no calculation is
 reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/chat-vs-agent-v2.html
-  python3 build_page.py --stub   -> dist/chat-vs-agent-v2-stub.html
+  python3 build_page.py          -> dist/chat-vs-agent-v3.html
+  python3 build_page.py --stub   -> dist/chat-vs-agent-v3-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -36,8 +36,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "chat-vs-agent/walkthrough_molab.py")
-OUT_NAME = "chat-vs-agent-v2.html"
-STUB_NAME = "chat-vs-agent-v2-stub.html"
+OUT_NAME = "chat-vs-agent-v3.html"
+STUB_NAME = "chat-vs-agent-v3-stub.html"
 PYODIDE_MODULES = ["chatagent.py"]  # registered in the worker boot
 
 
@@ -127,6 +127,13 @@ BIBLIOGRAPHY = [
      "Higham, N. J. (2002). Accuracy and Stability of Numerical "
      "Algorithms (2nd ed.). Philadelphia, PA: Society for Industrial "
      "and Applied Mathematics. DOI: 10.1137/1.9780898718027."),
+    ("anthropic-2026", "Anthropic, 2026",
+     "Anthropic (2026). Claude Cowork and chat come together for "
+     "Enterprise. claude.com. Published 23 October 2026. "
+     "https://claude.com/resources/articles/unified-claude-enterprise"),
+    ("openai-2026", "OpenAI, 2026",
+     "OpenAI (2026). What is ChatGPT Go? OpenAI Help Center. "
+     "https://help.openai.com/en/articles/11989085-what-is-chatgpt-go"),
 ]
 
 _CITE_RE = re.compile(r"\{\{cite:([a-z0-9\-]+)\}\}")

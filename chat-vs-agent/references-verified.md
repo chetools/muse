@@ -38,3 +38,26 @@ journal/conference record, per the standing citation rule.
   Numerical Algorithms (2nd ed.). Philadelphia, PA: Society for
   Industrial and Applied Mathematics. DOI: 10.1137/1.9780898718027.
   Verified: Crossref record.
+- anthropic-2026 — Anthropic (2026). Claude Cowork and chat come
+  together for Enterprise. claude.com. Published 23 October 2026.
+  https://claude.com/resources/articles/unified-claude-enterprise
+  Verified by opening the publisher page (24 October 2026): the
+  article states that chat and Cowork came together for Pro and Max
+  plans in September, that the unified experience is generally
+  available for Enterprise, and, in the passage the citation supports,
+  "Conversations begin as a chat, and a simple question still gets a
+  quick answer. When a task needs to run code or work with files,
+  Claude continues in the cloud and returns the finished document,
+  analysis, or deck."
+- openai-2026 — OpenAI (2026). What is ChatGPT Go? OpenAI Help Center.
+  https://help.openai.com/en/articles/11989085-what-is-chatgpt-go
+  Verified by opening the publisher page (24 October 2026): the article
+  lists "advanced data analysis" — the use of tools such as Python for
+  data exploration and problem-solving — as a ChatGPT feature whose
+  usage limits vary by plan, and states that the Free plan includes
+  data analysis with tighter limits. The citation supports the
+  presence of Python execution within ordinary ChatGPT conversations
+  and its plan dependence; the discretionary character of the
+  invocation in ChatGPT is stated in the Theory text as a property of
+  both products' invocation design, documented directly for Claude in
+  anthropic-2026.
