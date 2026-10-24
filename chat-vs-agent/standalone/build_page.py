@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Build the standalone page "Why Chemical Engineers Should Use
-Agentic AI Rather Than Chat AI for Numerical Calculation".
+"""Build the standalone page "Chat or Agentic AI: Which Should
+Chemical Engineers Use".
 
 Reads python/{chatagent.py, walkthrough.py, runner.py, make_molab.py,
 test_chatagent.py}, standalone/{theory.md, template.html};
@@ -14,8 +14,8 @@ load, the page shows an explicit error; no calculation is
 reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/chat-vs-agent-v1.html
-  python3 build_page.py --stub   -> dist/chat-vs-agent-v1-stub.html
+  python3 build_page.py          -> dist/chat-vs-agent-v2.html
+  python3 build_page.py --stub   -> dist/chat-vs-agent-v2-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -36,8 +36,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "chat-vs-agent/walkthrough_molab.py")
-OUT_NAME = "chat-vs-agent-v1.html"
-STUB_NAME = "chat-vs-agent-v1-stub.html"
+OUT_NAME = "chat-vs-agent-v2.html"
+STUB_NAME = "chat-vs-agent-v2-stub.html"
 PYODIDE_MODULES = ["chatagent.py"]  # registered in the worker boot
 
 
