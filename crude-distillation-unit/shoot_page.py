@@ -14,6 +14,7 @@ from playwright.async_api import async_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "shots")
 os.makedirs(OUT, exist_ok=True)
+PAGE_URL = "file://" + os.path.join(HERE, "dist", "crude-distillation-unit-v2.html")
 
 
 async def main():
@@ -25,7 +26,7 @@ async def main():
         pg = await b.new_page(viewport={"width": 2560, "height": 1400})
         errors = []
         pg.on("pageerror", lambda e: errors.append(str(e)))
-        await pg.goto("file:///home/hatch/workspace/chemcad-pfd-examples/pages/crude-distillation/dist/crude-distillation-unit-v1.html")
+        await pg.goto(PAGE_URL)
         await pg.wait_for_timeout(2500)
         geo = await pg.evaluate("""() => {
           const h = document.querySelector('.hwrap').getBoundingClientRect();
@@ -65,7 +66,7 @@ async def main():
         pg = await b.new_page(viewport={"width": 390, "height": 844})
         errors2 = []
         pg.on("pageerror", lambda e: errors2.append(str(e)))
-        await pg.goto("file:///home/hatch/workspace/chemcad-pfd-examples/pages/crude-distillation/dist/crude-distillation-unit-v1.html")
+        await pg.goto(PAGE_URL)
         await pg.wait_for_timeout(2000)
         geo2 = await pg.evaluate("""() => ({scrollW: document.documentElement.scrollWidth,
           innerW: innerWidth, bodyW: document.body.scrollWidth})""")

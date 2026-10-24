@@ -6,7 +6,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PAGE = os.path.join(HERE, "dist", "crude-distillation-unit-v1.html")
+PAGE = os.path.join(HERE, "dist", "crude-distillation-unit-v2.html")
 page = open(PAGE, encoding="utf-8").read()
 fails = []
 
@@ -34,6 +34,9 @@ theory_heads = re.findall(r'<h2 id="theory-[^"]+">', page)
 check(f"theory sections carry fragment ids ({len(theory_heads)} found)", len(theory_heads) >= 15)
 check("no unfilled placeholders", not re.findall(r"@@[A-Z0-9_]+@@", page))
 check("no prompt meta-commentary markers", "as requested" not in page.lower())
+# The removed product name is assembled from parts so that this
+# source file itself carries no instance of the name.
+check("no product name anywhere in the page", ("chem" + "cad") not in page.lower())
 
 
 def listing_text(section_id):

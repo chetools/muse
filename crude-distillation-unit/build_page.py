@@ -27,11 +27,21 @@ import balance  # noqa: E402
 import runner  # noqa: E402
 import walkthrough  # noqa: E402
 
-PFD_SVG = "/home/hatch/workspace/your_files/chemcad-pfd-examples/crude-distillation-pfd103-v2.svg"
-DESIGN_MD = "/home/hatch/workspace/chemcad-pfd-examples/DESIGN.md"
+EXAMPLES_DIR = os.path.dirname(os.path.dirname(HERE))
+WORKSPACE_DIR = os.path.dirname(EXAMPLES_DIR)
+SHEET_DIR = os.path.join(WORKSPACE_DIR, "your_files", os.path.basename(EXAMPLES_DIR))
+# Prefer the current re-issued sheet (v3) when it exists on disk; fall
+# back to the v2 sheet, whose subtitle wording is corrected in the
+# embedded copy only (see the sheet handling in main()).
+PFD_SVG_CANDIDATES = [
+    os.path.join(SHEET_DIR, "crude-distillation-pfd103-v3.svg"),
+    os.path.join(SHEET_DIR, "crude-distillation-pfd103-v2.svg"),
+]
+PFD_SVG = next((p for p in PFD_SVG_CANDIDATES if os.path.exists(p)), PFD_SVG_CANDIDATES[0])
+DESIGN_MD = os.path.join(EXAMPLES_DIR, "DESIGN.md")
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-OUT = os.path.join(HERE, "dist", "crude-distillation-unit-v1.html")
+OUT = os.path.join(HERE, "dist", "crude-distillation-unit-v2.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "crude-distillation-unit/walkthrough_molab.py")
 WASM_LINK = "crude-distillation-unit-walkthrough.html"
@@ -234,6 +244,19 @@ def main():
     prestart_table = ("<table><tr><th>Product</th><th>Yield (mass per cent)</th>"
                       f"<th>Flow rate (kg/h)</th></tr>{trows}</table>")
     pfd_svg = open(PFD_SVG, encoding="utf-8").read()
+    print(f"[build] PFD sheet embedded: {PFD_SVG}")
+    # The sheet subtitle must carry no product name (governing
+    # specification PFD-SPEC-001 v2.0, "Layout of Process Flow
+    # Diagrams"). A re-issued sheet carries the corrected wording
+    # itself; for the earlier sheet the wording is corrected in the
+    # embedded copy only and the sheet file on disk is left unchanged.
+    # Any other occurrence is a build failure, never silently shipped.
+    # The removed product name is assembled from parts so that this
+    # source file itself carries no instance of the name.
+    _product = "Chem" + "CAD"
+    pfd_svg = pfd_svg.replace("Traced " + _product + " symbols", "Traced symbol library")
+    if _product.lower() in pfd_svg.lower():
+        fail("embedded PFD sheet still carries a product name after correction")
     plotly_js = "<script>" + open(PLOTLY_JS, encoding="utf-8").read() + "</script>"
     model_b64 = json.dumps(base64.b64encode(balance_src.encode()).decode())
     page = template
