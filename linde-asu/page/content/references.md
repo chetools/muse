@@ -53,3 +53,21 @@
 [26] Kooijman, H. Air Separation Unit with Pure Argon Recovery (Simplified), ChemSep casebook, 2006 (double-column pressures; condenser/reboiler temperature difference; argon condenser heat integration). http://chemsep.org/downloads/data/CScasebook_ASU.pdf
 
 [27] European Patent EP 1195563 A2 (crude argon composition 95 to 98 percent; 40 to 50 equilibrium stages for crude argon; catalytic hydrogenation refining of argon). https://data.epo.org/publication-server/rest/v1.2/patents/EP1195563NWA2/document.xml
+
+[28] European Industrial Gases Association (EIGA). Doc 65/20, Safe Operation of Reboilers/Condensers in Air Separation Units (concentration factors; purge rates; maximum allowable concentrations table, via the Gas Association of India hosting of the EIGA/AIGA document family); and Asia Industrial Gases Association (AIGA) 056, Safe Practices Guide for Cryogenic Air Separation Plants (acetylene precipitation at 4 to 6 parts per million in liquid oxygen; dry boiling). https://www.eiga.eu/uploads/documents/DOC065.pdf ; table: https://www.gasassociation.in/gia-docs/2013pub/Safe_operation_of_reboilers_condensers_in_ASUs__final.pdf
+
+[29] French Technological Accidents Database (ARIA). Accident No. 11603, Explosion in a petrochemical plant (Fushun, 16 May 1997). https://www.aria.developpement-durable.gouv.fr/accident/11603_en/?lang=en
+
+[30] van Hardeveld, R. M. et al. Investigation of an air separation unit explosion (Bintulu, 25 December 1997). Journal of Loss Prevention in the Process Industries, 2001. https://www.sciencedirect.com/science/article/abs/pii/S0950423000000450
+
+[31] European Industrial Gases Association (EIGA). Doc 04, Fire Hazards of Oxygen and Oxygen Enriched Atmospheres. https://www.eiga.eu/uploads/documents/DOC004.pdf
+
+[32] European Industrial Gases Association (EIGA). Doc 154/16, Safe Location of Oxygen, Nitrogen and Argon Vents (confined-space entry window 19.5 to 23.5 percent oxygen by volume). https://www.eiga.eu/uploads/documents/DOC154.pdf
+
+[33] European Industrial Gases Association (EIGA). Doc 44/18, Hazards of Oxygen-Deficient Atmospheres. https://www.eiga.eu/uploads/documents/DOC044.pdf
+
+[34] Gas plant explosion in China kills 15 (Yima, 19 July 2019). The Chemical Engineer, Institution of Chemical Engineers, 2019. https://www.thechemicalengineer.com/news/gas-plant-explosion-in-china-kills-15/
+
+[35] Wayne State University. Cryogenic Liquid Safety (liquid-to-gas expansion ratios: nitrogen 696, argon 847, oxygen 862). https://research.wayne.edu/oehs/lab-safety/cryogenic-liquid
+
+[36] European Industrial Gases Association (EIGA). Doc 147/22, Safe Practices Guide for Cryogenic Air Separation Plants (adsorbent particle size and dusting; water carryover). https://www.eiga.eu/uploads/documents/DOC147.pdf

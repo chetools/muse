@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v2"
+VERSION = "v3"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -128,7 +128,7 @@ content = {name: (SRC.parent / "content" / f"{name}.md").read_text()
            for name in ("process", "theory", "economics", "safety", "references")}
 # mechanical citation check: cited set == bibliography set, no orphans
 cited = set()
-for name in ("process", "theory", "economics"):
+for name in ("process", "theory", "economics", "safety"):
     cited |= {int(x) for x in re.findall(r"\[(\d{1,2})\]", content[name])}
 bib = {int(x) for x in re.findall(r"^\[(\d{1,2})\]", content["references"], flags=re.M)}
 assert cited == bib, f"citation mismatch: cited-only {cited - bib}, bib-only {bib - cited}"
