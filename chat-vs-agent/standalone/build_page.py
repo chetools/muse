@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Build the standalone page "Chat or Agentic AI: Which Should
-Chemical Engineers Use".
+"""Build the standalone page "Numbers Without Calculation: Why Chemical
+Engineers Should Not Trust Chat AI for Numerical Work".
 
 Reads python/{chatagent.py, walkthrough.py, runner.py, make_molab.py,
 test_chatagent.py}, standalone/{theory.md, template.html};

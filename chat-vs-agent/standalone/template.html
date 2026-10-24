@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Chat or Agentic AI: Which Should Chemical Engineers Use?</title>
+<title>Numbers Without Calculation: Why Chemical Engineers Should Not Trust Chat AI for Numerical Work</title>
 <style>
 @@KATEX_CSS@@
 </style>
@@ -69,8 +69,8 @@ label{font:14px system-ui,sans-serif;color:var(--ink-2)}
 </head>
 <body>
 <header>
-<h1>Chat or Agentic AI: Which Should Chemical Engineers Use?</h1>
-<p class="sub">A frontier model (Muse Spark 1.3), tested on 24 October 2026 in chat mode, without running any program, gave a materially wrong number in 4 of 26 undergraduate chemical-engineering problems. People expect numerical results from a computer to be correct. Wrong numbers in 4 of 26 problems is extremely bad, and the replies did not say which numbers were wrong. This page recomputes those four by program execution (agent mode), places each chat answer beside the computed value, and shows why the errors arose. Every agent-mode value that differs from a chat answer was also recomputed independently by agentic Claude Opus 5.5, and all agree. The conclusion: do not use chat mode for numerical work; use agent mode. Every calculation on this page runs in Python (Pyodide); if the runtime cannot load, an error is shown and nothing is computed.</p>
+<h1>Numbers Without Calculation: Why Chemical Engineers Should Not Trust Chat AI for Numerical Work</h1>
+<p class="sub">A frontier model (Muse Spark 1.3), tested on 24 October 2026 in chat mode, without running any program, gave a materially wrong number in 4 of 26 undergraduate chemical-engineering problems. In chat mode a number is written as text, not computed: in three of the four failures the requested quantity (two standard errors, a root-mean-square error, a cost difference) was stated without the calculation that defines it, and in the fourth a network iteration stopped short. People expect numerical results from a computer to be correct. Wrong numbers in 4 of 26 problems is extremely bad, and the replies did not say which numbers were wrong. This page recomputes those four by program execution (agent mode), places each chat answer beside the computed value, and shows why the errors arose. Every agent-mode value that differs from a chat answer was also recomputed independently by agentic Claude Opus 5.5, and all agree. The conclusion: do not use chat mode for numerical work; use agent mode. Every calculation on this page runs in Python (Pyodide); if the runtime cannot load, an error is shown and nothing is computed.</p>
 <p class="status" id="boot-status">Python runtime: loading&hellip;</p>
 <progress id="boot-progress" max="100" value="15"></progress>
 <p class="err" id="boot-error"></p>
