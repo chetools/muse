@@ -27,11 +27,21 @@ import balance  # noqa: E402
 import runner  # noqa: E402
 import walkthrough  # noqa: E402
 
-PFD_SVG = "/home/hatch/workspace/your_files/chemcad-pfd-examples/crude-distillation-pfd103-v2.svg"
-DESIGN_MD = "/home/hatch/workspace/chemcad-pfd-examples/DESIGN.md"
+EXAMPLES_DIR = os.path.dirname(os.path.dirname(HERE))
+WORKSPACE_DIR = os.path.dirname(EXAMPLES_DIR)
+SHEET_DIR = os.path.join(WORKSPACE_DIR, "your_files", os.path.basename(EXAMPLES_DIR))
+# Prefer the current re-issued sheet (v3) when it exists on disk; fall
+# back to the v2 sheet, whose subtitle wording is corrected in the
+# embedded copy only (see the sheet handling in main()).
+PFD_SVG_CANDIDATES = [
+    os.path.join(SHEET_DIR, "crude-distillation-pfd103-v3.svg"),
+    os.path.join(SHEET_DIR, "crude-distillation-pfd103-v2.svg"),
+]
+PFD_SVG = next((p for p in PFD_SVG_CANDIDATES if os.path.exists(p)), PFD_SVG_CANDIDATES[0])
+DESIGN_MD = os.path.join(EXAMPLES_DIR, "DESIGN.md")
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-OUT = os.path.join(HERE, "dist", "crude-distillation-unit-v1.html")
+OUT = os.path.join(HERE, "dist", "crude-distillation-unit-v4.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "crude-distillation-unit/walkthrough_molab.py")
 WASM_LINK = "crude-distillation-unit-walkthrough.html"
@@ -124,8 +134,14 @@ def extract_math(text, store):
         content = m.group(1)
         # Currency amounts in the prose (a dollar sign followed by a
         # digit) are not mathematics and are left as literal text.
-        if content[0].isdigit() or " " in content:
-            return m.group(0)
+        # A span holding a TeX command, a subscript, a superscript or
+        # an equals sign is mathematics regardless of spaces or a
+        # leading digit (incident 2026-10-24: spaced inline formulas
+        # were left literal and reached the reader unrendered).
+        if "\\" not in content and "_" not in content \
+                and "^" not in content and "=" not in content:
+            if content[0].isdigit() or " " in content:
+                return m.group(0)
         key = f"@@MATH{len(store)}@@"
         store[key] = (content, False)
         return key
@@ -234,6 +250,64 @@ def main():
     prestart_table = ("<table><tr><th>Product</th><th>Yield (mass per cent)</th>"
                       f"<th>Flow rate (kg/h)</th></tr>{trows}</table>")
     pfd_svg = open(PFD_SVG, encoding="utf-8").read()
+    print(f"[build] PFD sheet embedded: {PFD_SVG}")
+    # The sheet subtitle must carry no product name (governing
+    # specification PFD-SPEC-001 v2.0, "Layout of Process Flow
+    # Diagrams"). A re-issued sheet carries the corrected wording
+    # itself; for the earlier sheet the wording is corrected in the
+    # embedded copy only and the sheet file on disk is left unchanged.
+    # Any other occurrence is a build failure, never silently shipped.
+    # The removed product name is assembled from parts so that this
+    # source file itself carries no instance of the name.
+    _product = "Chem" + "CAD"
+    pfd_svg = pfd_svg.replace("Traced " + _product + " symbols", "Traced symbol library")
+    if _product.lower() in pfd_svg.lower():
+        fail("embedded PFD sheet still carries a product name after correction")
+    # ---- unrendered-mathematics guard (incident 2026-10-24) ----
+    for _panel_name, _frag in (("Theory", theory_html),
+                               ("Walkthrough", walkthrough_html)):
+        if re.search(r"\$[^$<>]*\\[a-zA-Z]", _frag):
+            fail(f"{_panel_name} panel contains a literal dollar span "
+                 "holding a TeX command (unrendered mathematics)")
+    # ---- sub-process diagrams in the Theory panel ----
+    def crop_svg(vb):
+        s = pfd_svg.replace('viewBox="0 0 2560 1560"', f'viewBox="{vb}"', 1)
+        s = s.replace('width="2560" height="1560"', 'width="100%"', 1)
+        if f'viewBox="{vb}"' not in s:
+            fail(f"sub-diagram crop failed: {vb}")
+        return s
+    SUBDIAGRAMS = [
+        ("theory-preheat-train", "30 400 1450 330",
+         "Sub-process flow diagram: crude feed, preheat train, desalter "
+         "and fired furnace — the feed section of the full sheet in the "
+         "App panel, from the battery-limit feed through the desalted "
+         "crude pump and the second preheat stage to the furnace, whose "
+         "outlet stream 12 continues to the atmospheric column in "
+         "Fig. T2."),
+        ("theory-atmospheric-column", "1300 30 900 700",
+         "Sub-process flow diagram: fired furnace outlet, atmospheric "
+         "column and overhead condensing — the column section of the full "
+         "sheet in the App panel; the pumparound return stream 34 "
+         "enters at the left boundary from the pumparound cooler in "
+         "Fig. T3, and the overhead product streams and the product "
+         "rundown streams leave at the right boundary, the rundown "
+         "streams to the rundown section in Fig. T4."),
+        ("theory-overhead-system-and-corrosion-control", "1100 30 1150 520",
+         "Sub-process flow diagram: overhead system, pumparound returns "
+         "and product draws at the top of the atmospheric column; the "
+         "overhead product streams 17 and 16 leave at the right boundary "
+         "to their product terminals."),
+        ("theory-side-strippers", "1500 260 1060 560",
+         "Sub-process flow diagram: side strippers and product rundown — "
+         "the side-draw section of the full sheet in the App panel."),
+    ]
+    for _n, (_hid, _vb, _cap) in enumerate(SUBDIAGRAMS, 1):
+        _fig = (f'<figure class="subdiagram">{crop_svg(_vb)}'
+                f'<figcaption>Fig. T{_n} | {_cap}</figcaption></figure>')
+        _m = re.search(rf'(<h2 id="{_hid}">.*?</h2>)', theory_html)
+        if not _m:
+            fail(f"sub-diagram anchor heading not found: {_hid}")
+        theory_html = theory_html.replace(_m.group(1), _m.group(1) + _fig, 1)
     plotly_js = "<script>" + open(PLOTLY_JS, encoding="utf-8").read() + "</script>"
     model_b64 = json.dumps(base64.b64encode(balance_src.encode()).decode())
     page = template

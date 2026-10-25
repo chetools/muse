@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v4"
+VERSION = "v5"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -205,6 +205,37 @@ input_fields = "\n".join(
 pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v1.svg").read_text()
 inner = pfd_svg_text[pfd_svg_text.index(">") + 1: pfd_svg_text.rindex("</svg>")]
 pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">{inner}</svg>'
+
+# ---- sub-process diagrams in the Process panel ----
+def _crop_svg(vb):
+    s = pfd_svg.replace('viewBox="0 0 1680 1190"', f'viewBox="{vb}"', 1)
+    assert f'viewBox="{vb}"' in s, f"sub-diagram crop failed: {vb}"
+    return s
+_SUBDIAGRAMS = [
+    ("process-main-air-compression-c-101", "20 190 710 262",
+     "Sub-process flow diagram: air compression and purification — the "
+     "air filter, the main air compressor, the aftercooler and the "
+     "molecular sieve adsorber, from the air feed terminal to the "
+     "purified air outlet stream 5 at the right boundary; the waste "
+     "nitrogen and gaseous oxygen return lanes of the main heat "
+     "exchanger cross the window at its top and bottom boundaries."),
+    ("process-main-heat-exchanger-e-102", "680 60 470 760",
+     "Sub-process flow diagram: main heat exchanger and expansion — the "
+     "main heat exchanger, the expansion turbine, the throttling valve, "
+     "the pressure column feed lane, the condenser/reboiler and the "
+     "rich liquid subcooler."),
+    ("process-pressure-column-t-101", "820 60 830 760",
+     "Sub-process flow diagram: distillation — the pressure column, the "
+     "main condenser/reboiler, the low-pressure column, the subcoolers "
+     "and the crude argon column with its condenser."),
+]
+for _n, (_hid, _vb, _cap) in enumerate(_SUBDIAGRAMS, 1):
+    _fig = (f'<figure class="subdiagram">{_crop_svg(_vb)}'
+            f'<figcaption>Fig. P{_n} | {_cap}</figcaption></figure>')
+    _m = re.search(rf'(<h2 id="{_hid}">.*?</h2>)', rendered["process"])
+    assert _m, f"sub-diagram anchor heading not found: {_hid}"
+    rendered["process"] = rendered["process"].replace(
+        _m.group(1), _m.group(1) + _fig, 1)
 pfd_record = """<h3 id="process-record">Compliance record for PFD-102</h3>
 <p>Symbol record: equipment glyphs are placements of the traced symbol library of specification PFD-SPEC-001, Annex A (compressor compressor_1, expander expander_1, heat exchangers heat_exchanger_1, adsorber vessel_1, columns scds_1, valves valve_1, terminals feed_1 and product_1); the air filter, the multi-stream main heat exchanger and the integrated condenser/reboiler are drawn per ISO 10628-2 under requirement S5 of specification PFD-SPEC-001 and are recorded for addition to Annex A. The glyphs are library placements whose port coordinates are asserted in the builder; they are not re-verified by a fresh overlay campaign for this drawing.</p>
 <p>Measured quality scores: number of crossings Nc = 6; total bends Nb = 14; maximum bends on one stream bmax = 2; total routed length Lt = 1590 mm at final scale; minimum parallel spacing smin = 12.5 mm. Hard-failure checks: topology graph comparison (30 streams, 16 equipment items), stream identity cross-count, and balance closure from displayed values all pass in the builder.</p>
