@@ -9,8 +9,14 @@ the project instructions govern that project.
 ## Repository layout and publishing
 
 - One top-level folder per project on the `main` branch. Built deliverables
-  publish to the `gh-pages` branch under `muse-html/`; deliverables are
-  never committed on `main`.
+  publish to the `gh-pages` branch at the root, in a folder with the same
+  name as the project folder on `main`; the `gh-pages` root `index.html`
+  links to every published page, and a new page is added to that index
+  when it is published. Deliverables are never committed on `main`.
+- The repository has exactly two branches, `main` and `gh-pages`. Work
+  is committed directly to `main`, one project folder at a time; no
+  development branch is created for any task, and `gh-pages` is touched
+  only for publication.
 - Never stage a whole-repository addition. Stage explicit paths, one
   project directory at a time.
 - Pull before pushing, review the compare view against the intended change
