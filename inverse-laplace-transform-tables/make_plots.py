@@ -84,6 +84,15 @@ def ode_check():
                         [0, 15], [0.0, 0.0], t_eval=np.linspace(0, 15, 301), rtol=1e-9, atol=1e-11)
         err = np.max(np.abs(sol.y[0] - step_y(np.linspace(0, 15, 301), zeta)))
         worst = max(worst, err)
+    # resonance figure cases (Fig. 5): q = 1, zeta down to 0.1, t/tau to 40
+    th40 = np.linspace(0, 40, 801)
+    for zeta in (0.1, 0.25, 0.5, 1.0):
+        for kind in ("cos", "sin"):
+            u = (lambda tt: np.cos(tt)) if kind == "cos" else (lambda tt: np.sin(tt))
+            rhs = lambda tt, yy: [yy[1], u(tt) - 2 * zeta * yy[1] - yy[0]]
+            sol = solve_ivp(rhs, [0, 40], [0.0, 0.0], t_eval=th40, rtol=1e-9, atol=1e-11)
+            err = np.max(np.abs(sol.y[0] - sine_response(th40, zeta, 1.0, kind)))
+            worst = max(worst, float(err))
     # step case at zeta = 0.25 (plotted in Fig. 1, outside the loop above)
     zeta = 0.25
     th15 = np.linspace(0, 15, 301)
@@ -175,12 +184,38 @@ def fig_freq():
     save_svg(fig, "fig-freq.svg")
 
 
+def fig_resonance():
+    zetas = (0.1, 0.25, 0.5, 1.0)
+    colors = {0.1: "#CC79A7", 0.25: "#0072B2", 0.5: "#D55E00", 1.0: "#009E73"}
+    styles = {0.1: "-", 0.25: "-", 0.5: "--", 1.0: "-."}
+    th = np.linspace(0, 40, 3200)
+    fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.9), sharex=True, sharey=True)
+    for ax, kind in zip(axes, ("cos", "sin")):
+        u = np.cos(th) if kind == "cos" else np.sin(th)
+        ax.plot(th, u, color="#888888", linewidth=0.9, linestyle=(0, (5, 4)), label="$u/M$")
+        for zeta in zetas:
+            ax.plot(th, sine_response(th, zeta, 1.0, kind), color=colors[zeta],
+                    linestyle=styles[zeta], label=f"$\\zeta$ = {zeta:g}")
+        ax.set_title("Cosine input" if kind == "cos" else "Sine input", fontsize=10)
+        ax.set_xlim(0, 40)
+        ax.set_ylim(-5.5, 5.5)
+        ax.set_yticks([-5, -2.5, 0, 2.5, 5])
+        ax.set_xlabel("$t/\\tau$")
+    axes[0].set_ylabel("$y/(KM)$")
+    handles, labels = axes[0].get_legend_handles_labels()
+    order = [1, 2, 3, 4, 0]
+    fig.legend([handles[k] for k in order], [labels[k] for k in order],
+               loc="upper center", ncol=5, bbox_to_anchor=(0.5, 1.06))
+    save_svg(fig, "fig-resonance.svg")
+
+
 if __name__ == "__main__":
     ode_check()
     fig_step()
     fig_sine("cos")
     fig_sine("sin")
     fig_freq()
+    fig_resonance()
     # data ranges for the record
     th = np.linspace(0, 20, 2001)
     for kind in ("cos", "sin"):

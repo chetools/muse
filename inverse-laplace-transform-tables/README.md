@@ -19,7 +19,7 @@ tabulated formulas.
 - `build.js` — build script: renders KaTeX server-side, inlines the
   KaTeX fonts and the figure SVGs, and fails on any unrendered
   equation, missing figure, or unreplaced placeholder.
-- `make_plots.py` — generates `fig-step.svg`, `fig-cos.svg`,
+- `make_plots.py` — generates `fig-step.svg`, `fig-cos.svg`, `fig-resonance.svg`,
   `fig-sin.svg`, and `fig-freq.svg` (matplotlib); asserts agreement
   with an independent ODE integration before writing each figure.
 - `verify_sine.py` — verifies the sinusoidal tables against symbolic
