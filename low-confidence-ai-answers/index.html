@@ -26,6 +26,7 @@ nav.toc{background:#f7f6f2;border:1px solid #bbb;padding:14px 20px;margin:20px 0
 nav.toc p{margin:3px 0;font-size:15.5px}
 .note{background:#f7f6f2;border-left:4px solid #888;padding:10px 14px;margin:14px 0}
 a{color:#17457a}
+.indent{margin-left:22px;border-left:2px solid #ccc;padding-left:16px}
 details{margin:8px 0}
 summary{cursor:pointer;font-weight:bold;font-size:15.5px}
 .resp{border:1px solid #ccc;padding:2px 16px;margin:6px 0 16px}
@@ -42,6 +43,7 @@ h6{font-size:14.5px;margin:14px 0 3px}
 <nav class="toc" id="contents">
 <p><strong>Contents</strong></p>
 <p><a href="#introduction">1. Introduction: Recursive Self-Improvement</a> · <a href="#results">2. Results: Before and After Defensive Prompting</a> · <a href="#discussion">3. Analysis</a></p>
+<p>Steps: <a href="#step1">1. Self-Reflection on Weaknesses</a> · <a href="#step2">2. Experiment</a> · <a href="#step3">3. Defensive Prompts Devised</a> · <a href="#step4">4. Try Again</a></p>
 <p><a href="#appendix-a">Appendix A. The List of 32 Problem Types</a>: <a href="#reading">How to Read the List</a> · <a href="#notation">Signs Used</a></p>
 <p><a href="#part-a">Part A. Physical properties and phase equilibrium</a>: <a href="#a1">A1 Henry's Law Conventions</a> · <a href="#a2">A2 Non-Ideal Vapour–Liquid Equilibrium</a> · <a href="#a3">A3 Reactive Absorption Capacity</a> · <a href="#a4">A4 Estimated Properties and Compressibility</a> · <a href="#a5">A5 Crystallisation Yield</a> · <a href="#a6">A6 Polymer Viscosity</a></p>
 <p><a href="#part-b">Part B. Kinetics and reactors</a>: <a href="#b1">B1 Arrhenius Extrapolation</a> · <a href="#b2">B2 Catalyst Deactivation</a> · <a href="#b3">B3 Reactor Heat Removal</a> · <a href="#b4">B4 Mixing Scale-Up</a> · <a href="#b5">B5 Non-Ideal Flow</a></p>
@@ -57,7 +59,9 @@ h6{font-size:14.5px;margin:14px 0 3px}
 
 <h2 id="introduction">1. Introduction: Recursive Self-Improvement</h2>
 <p>This study reports an AI agent (Muse Spark 1.3) improving its own answers on chemical-engineering problems, by a loop of four steps. The loop is called recursive self-improvement: recursive means that the output of one round feeds back as input to the next.</p>
-<p><span class="lab">Step 1. Self-reflection on weaknesses.</span> The agent worked answers to 32 chemical-engineering problems, then pulled each answer apart to find where its confidence was low and why. The result is a list of 32 problem types, each with a confidence rating, the best answer that could be given, the reason confidence is low, the check an experienced engineer would run, and the range an answer should fall in. The list is Appendix A.</p>
+<h3 id="step1">Step 1. Self-Reflection on Weaknesses</h3>
+<p>The agent worked answers to 32 chemical-engineering problems, then pulled each answer apart to find where its confidence was low and why. The result is a list of 32 problem types, each with a confidence rating, the best answer that could be given, the reason confidence is low, the check an experienced engineer would run, and the range an answer should fall in. The list is Appendix A.</p>
+<div class="indent">
 <p id="mechanisms">Why the weaknesses arise: eight recurring causes were found, all in the public record the agent learns from.</p>
 <p><span class="lab">Absence of industrial data.</span> Data from running plants, makers' ratings, and inspection and repair records are private, and very little of them reaches the text that AI learns from. What experienced engineers know from practice — which services foul (build up deposits), foam, plug, or corrode (eat away metal); what cannot be started up as drawn; what operators will bypass — is written down rarely, and never in an orderly way.</p>
 <p><span class="lab">Restricted codes and databanks.</span> Design codes, recommended practices, and commercial property databanks cannot be read freely. Books and papers that sum them up often give their values without the conditions, the exceptions, and the edition date that say when a value may be used. The learning text keeps the value and loses the conditions.</p>
@@ -68,10 +72,14 @@ h6{font-size:14.5px;margin:14px 0 3px}
 <p><span class="lab">Loss of graphical information.</span> Capacity charts, compressor maps, phase diagrams, and packed-column charts hold their values in plotted curves. When text is pulled out of these documents, the captions and the prose are kept and the plotted values are lost. The model keeps the shape of a relationship and a rough size, not the numbers.</p>
 <p><span class="lab">Undated and superseded material.</span> Cost data, emission factors, materials practice, and correlations that have since been replaced stay in the record with no mark on them. Material from different decades reads the same.</p>
 <p><span class="lab">Consequence for cross-checking.</span> Models that learn from the same public record share the same gaps, copied errors, and clashing definitions. Checking one model against another removes plain errors in arithmetic and in algebra. It does not remove a gap or a copied value that both models share.</p>
+</div>
 
-<p><span class="lab">Step 2. Experiment.</span> Fresh agents, with no sight of the list, answered the same 32 problems. This first blind test set the starting point: how the agent performs on its own weak problem types when it does not know they are weak. The test ran with tool use (a program for running calculations, and web search) and with defensive standing rules in force, both at once.</p>
-<p><span class="lab">Step 3. Defensive prompts devised.</span> For each weakness on the list, a prompt was written that names the weakness and states the guard against it: give a range instead of one number, name the missing facts instead of filling them in silently, label which inputs are given and which are guessed, and check the answer by a second route. The prompts stand at the end of each list entry; the shared prompts and the standing rules made from them are Appendix B. How the prompts were made is Appendix C.</p>
-<p><span class="lab">Step 4. Try again.</span> The 32 problems were answered again by 64 fresh agents, two per problem, with the defensive prompt as the only difference between the two answers to each problem. Tool use was open to both halves, and no rule or note from the earlier rounds was in force for either half. This second test separates the prompt's effect from the effect of tools.</p>
+<h3 id="step2">Step 2. Experiment</h3>
+<p>Fresh agents, with no sight of the list, answered the same 32 problems. This first blind test set the starting point: how the agent performs on its own weak problem types when it does not know they are weak. The test ran with tool use (a program for running calculations, and web search) and with defensive standing rules in force, both at once.</p>
+<h3 id="step3">Step 3. Defensive Prompts Devised</h3>
+<p>For each weakness on the list, a prompt was written that names the weakness and states the guard against it: give a range instead of one number, name the missing facts instead of filling them in silently, label which inputs are given and which are guessed, and check the answer by a second route. The prompts stand at the end of each list entry; the shared prompts and the standing rules made from them are Appendix B. How the prompts were made is Appendix C.</p>
+<h3 id="step4">Step 4. Try Again</h3>
+<p>The 32 problems were answered again by 64 fresh agents, two per problem, with the defensive prompt as the only difference between the two answers to each problem. Tool use was open to both halves, and no rule or note from the earlier rounds was in force for either half. This second test separates the prompt's effect from the effect of tools.</p>
 <p>The headline result of the second test: answers warning about doubt rose from 21 of 32 to 32 of 32; answers with the main number inside the list's range rose from 21 of 32 to 24 of 32; weak shortcuts in method fell from 2 to none. Section 2 gives the full tables, before and after defensive prompting. Section 3 gives the analysis. The appendices give the details: the list of 32 problem types (Appendix A), the prompts and rules (Appendix B), the method of the study (Appendix C), and the full test responses (Appendix D).</p>
 
 <h2 id="results">2. Results: Before and After Defensive Prompting</h2>
