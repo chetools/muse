@@ -43,6 +43,30 @@ the project instructions govern that project.
   to exactly one bibliography entry, and authors, year, title, journal,
   volume, pages, or DOI are checked against the publisher record or
   Crossref.
+- Plain, specific prose (applies to pages, notebooks, docs, commit
+  messages and replies). Avoid the patterns listed in Wikipedia's
+  [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), and reread every text once for
+  them before delivering it.
+  - **State the fact, not its importance.** No "plays a crucial/pivotal role", "stands as a testament", "underscores
+    the significance", "reflects broader trends", "marks a shift", "evolving landscape", "deeply rooted".
+  - **No trailing commentary clauses** ("…, highlighting/ensuring/reflecting/contributing to/fostering …"). If the point
+    matters, give it its own sentence with the evidence.
+  - **Plain verbs.** Write "is", "are", "has" rather than "serves as", "stands as", "functions as", "represents",
+    "boasts", "features", "offers".
+  - **Avoid the flagged vocabulary:** delve, crucial, pivotal, key (meaning important), vibrant, rich, robust,
+    seamless, intricate, tapestry, landscape, testament, underscore, showcase, highlight (as a verb), enhance, foster,
+    leverage, align with, multifaceted, garner, meticulous, quietly, sentence-initial "Additionally".
+  - **No formula structures:** no "not just X, but Y", "not X, but Y" or "Y rather than X" unless a real misconception
+    is being corrected; no reflexive lists of three (give as many items as there are); no closing "challenges and
+    future outlook" paragraph; no summary that repeats the section.
+  - **No vague attributions** ("experts argue", "studies show", "researchers have noted"). Name the source or drop the
+    claim, and do not write "such as" before a complete list.
+  - **Neutral tone.** No promotional or brochure wording (groundbreaking, renowned, powerful, comprehensive, nestled).
+  - **Formatting:** sentence-case headings; bold only for defined terms and UI labels; connected points as prose rather
+    than bullet lists with bold inline headers; no emoji; straight quotes; em dashes rarely (use commas, colons or
+    parentheses).
+  - **Replies:** start with the answer. No "Certainly!", "Great question", "You're absolutely right", "I hope this
+    helps", "Let me know if you'd like…".
 
 ## Pages and user interface
 
