@@ -4,7 +4,8 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 
 ## Before drafting
 
-- [ ] Document type named, and the business section activated or not activated by that choice (Business, Activation).
+- [ ] Reference files loaded by condition, and no others: business, only under the activation condition in that file; equations, where the document carries displayed equations (jointly with textbook where a passage also falls under the textbook gate); textbook, where the text is instructional or carries step-by-step detail sentences; ai-check, at the revision pass (SKILL.md, Use).
+- [ ] Document type named, and the business reference activated or not activated by that choice (business reference, Activation).
 - [ ] Source material fixed. No fact, consequence, or causal link enters the draft that the source material does not state; a derived figure is marked as derived, with its derivation (Register constraints).
 
 ## Sentences and paragraphs
@@ -29,6 +30,14 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 - [ ] A choice or threshold is stated condition-first (rule 20).
 - [ ] An analogy or simplification is followed within one sentence by the point where it stops holding (rule 22).
 
+## Detail and validity statements
+
+- [ ] A validity statement names the law, equation, relation, model, or criterion as its subject ("applies to", "is valid for", "holds for", "is limited to"), with the condition in the same sentence; the case outside is stated as what changes. A result or figure is not the subject of "holds" (rule 23).
+- [ ] An omission statement names the omitted term or effect, with the reason in the same sentence or the next; an omission is never stated with "carry" (rule 24).
+- [ ] A closing restatement of a limit restates the conditions themselves, or names the limited thing as subject of "is limited to"; "scope" is not the subject or the frame of a limit statement (rule 25).
+- [ ] "Carry" states physical transport, or "carry out" a procedure, and nothing else (rule 26).
+- [ ] Step-by-step passages pass the textbook reference completion check: the object is named first in each detail sentence, each derivation step is marked at the step, assumptions stand before the first equation that uses them, and no frame sentence carries an imperative, a step connective, or a where roster (textbook reference).
+
 ## STEM structure
 
 - [ ] Opening order: setting, established knowledge, gap, aim, method preview (rule 6).
@@ -42,7 +51,7 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 - [ ] Each worked example has inputs, result, and what the result shows or how it is checked (rule 12).
 - [ ] Checkpoints, expected outputs, and warnings stand at the point of risk; each code block has a purpose sentence before it and an output statement after it (rule 14).
 
-## Business documents, where the business section governs
+## Business documents, where the business reference governs
 
 - [ ] Bottom line stands before the evidence (rule B1).
 - [ ] Opening frame performed, in order, and not labelled: situation, complication, question, or a named alternative frame (rule B2).
@@ -58,9 +67,11 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 - [ ] The sentence after a display is the definition sentence; interpretation follows the roster (rule E3).
 - [ ] A boundary that is a case on the equation's own variable stands in the sentence immediately after the display (rule E4).
 - [ ] The validity of a law or an analysis is stated with the law named as subject and the conditions in the same sentence ("holds for", "applies when", "is valid for"); the case outside is stated as what changes (rule E4).
+- [ ] Validity, omission, and closing limits follow rules 23–26: the law, equation, or model is the subject of its validity statement; an omitted term or effect is named with "neglect", "omit", or "is not included in"; a closing limit restates the conditions or names the limited thing as subject of "is limited to"; no limit statement is built on "scope", "basis", or "extent" as its subject or frame, and "carry" states only physical transport or "carry out" (rules 23–26; What not to do 13–15).
 
 ## Final scan
 
 - [ ] No inferential connectives ("therefore", "thus", a causal "so") in STEM or instructional text; no meta-signposts announcing the text's own moves; no restatement that adds no scope, condition, or limit (What not to do 3, 4, 5).
+- [ ] No frame sentence — a closing or finding sentence resting on grounds stated before it — marks its inference with "thus", "therefore", "hence", "accordingly", or a causal "so" (core, frame-sentence clause).
 - [ ] AI-writing patterns scanned as clusters, not single items: inflated importance claims, trailing participle clauses, promotional wording, vague attribution, the overused word set, stock negative parallelisms, filler phrases, mechanical boldface, and placeholder text (AI-writing patterns 1–5).
 - [ ] Headings are nominal and impersonal; titles are short; no hype phrases (Register constraints).
