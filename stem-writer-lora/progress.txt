@@ -91,3 +91,15 @@ Evaluation (notebook section 4) had not been run at the time of
 the screenshot; the user was reminded to run it in the same
 session, since a fresh session cannot load the adapter from the
 Hub with the current notebook code.
+2026-11-01: User could not find the Run evaluation button.
+Root cause: the button cell only assigned the button and returned
+it, with no trailing expression; marimo displays a cell's last
+expression, so the cell rendered nothing (every other control
+cell in the notebook ends in a mo.vstack expression, which is
+why only this button was invisible). Fix: the button is now the
+cell's last expression as well as its return. Same fix round:
+section 4 gained a Hub fallback — in a fresh session with no
+in-memory model and no local adapter directory, it downloads
+carlosco/stem-writer-lora (public) next to the notebook and
+loads that, so the gate no longer depends on the training
+session staying alive.

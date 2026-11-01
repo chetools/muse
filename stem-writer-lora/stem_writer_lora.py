@@ -674,6 +674,10 @@ def _(nbdir, os):
 @app.cell
 def _(mo):
     eval_btn = mo.ui.run_button(label="Run evaluation (24 outlines × 2 systems)")
+    # Bare expression last: marimo displays a cell's last expression, so
+    # the button must appear here as well as in the return — a cell that
+    # only assigns and returns displays nothing.
+    eval_btn
     return (eval_btn,)
 
 
@@ -707,7 +711,7 @@ def _(
             "machine on MoLab and re-run."
         )
     elif not eval_btn.value:
-        _eval_out = mo.md("_Idle — click **Run evaluation** when §3 has produced an adapter._")
+        _eval_out = mo.md("_Idle — click **Run evaluation** above. It uses the §3 model from this session, the adapter next to the notebook, or the Hub copy, in that order._")
     else:
         import torch as _torch_e
         from unsloth import FastLanguageModel as _FLM_e
@@ -717,17 +721,31 @@ def _(
             _source = "model trained in §3 of this session"
         else:
             _adapter_dir = os.path.join(nbdir, ADAPTER_REL)
+            _source = f"adapter loaded from `{ADAPTER_REL}/`"
+            if not os.path.isdir(_adapter_dir):
+                # Fresh session: the adapter survives on the Hub (the
+                # repository named in section 5; it is public, so no
+                # token is needed). Download it next to the notebook.
+                try:
+                    from huggingface_hub import snapshot_download as _snap
+
+                    _snap(repo_id="carlosco/stem-writer-lora",
+                          local_dir=_adapter_dir)
+                    _source = ("adapter downloaded from the Hub "
+                               "(`carlosco/stem-writer-lora`)")
+                except Exception:
+                    pass
             mo.stop(
                 not os.path.isdir(_adapter_dir),
-                mo.md(f"⚠️ No trained model in this session and `{ADAPTER_REL}/` "
-                      "not found — run §3 first."),
+                mo.md(f"⚠️ No trained model in this session, `{ADAPTER_REL}/` "
+                      "not found, and the Hub download failed — run §3 "
+                      "first, or check the session's internet access."),
             )
             _model, _tok = _FLM_e.from_pretrained(
                 model_name=_adapter_dir,
                 max_seq_length=4096,
                 load_in_4bit=False,
             )
-            _source = f"adapter loaded from `{ADAPTER_REL}/`"
         _FLM_e.for_inference(_model)
         _system_a = style_text + "\n\n" + SYSTEM_TRAIN
 
