@@ -3,7 +3,7 @@
 ## Contents
 
 - `SKILL.md` — the core rules: register constraints, shared sentence and claim patterns, STEM structure and instructional rules, detail and validity rules, and the list of forms to avoid. This file governs all writing under the package.
-- `references/` — reference files that load only on a stated condition: `business.md` (business documents, under the activation condition in that file), `equations.md` (a document with displayed equations), `textbook.md` (instructional or detailed step-by-step text), `ai-check.md` (a revision or check pass), and `evidence.md` (evidence, corpus sizes, and limits; not loaded for writing).
+- `references/` — reference files that load only on a stated condition: `business.md` (business documents, under the activation condition in that file), `equations.md` (a document with displayed equations), `textbook.md` (instructional or detailed step-by-step text), `ai-check.md` (a revision or check pass; the AI-writing pattern scan and the independent check list), and `evidence.md` (evidence, corpus sizes, and limits; not loaded for writing).
 - `CHECKLIST.md` — a completion check keyed to the rule numbers in the core and the reference files.
 - `APPENDIX.md` — patterns held out of the main rules because they rest on one corpus: two chief executive officer letter patterns, each labelled with its evidence and its conditions.
 
@@ -15,7 +15,7 @@ Examples live on a published page, not in this package. Paired samples, with and
 
 ## Use with an AI assistant
 
-Give the assistant `SKILL.md` as a standing instruction file (a skill file, a project instruction, or pasted context), and name the document type in each request: a paper, a report, a tutorial, an executive summary, a recommendation memo. Ask for a check against `CHECKLIST.md` before delivery. A revision request that names the file and the document type is sufficient: "Revise this draft under SKILL.md as a STEM report, and run the checklist."
+Give the assistant `SKILL.md` as a standing instruction file (a skill file, a project instruction, or pasted context), and name the document type in each request: a paper, a report, a tutorial, an executive summary, a recommendation memo. Ask for a check against `CHECKLIST.md` before delivery. A revision request that names the file and the document type is sufficient: "Revise this draft under SKILL.md as a STEM report, and run the checklist." For a document of consequence, ask a separate session — one that did not write the draft — to run the independent check pass in `SKILL.md` against the source material, and adjudicate its findings before delivery.
 
 ## Use without an assistant
 

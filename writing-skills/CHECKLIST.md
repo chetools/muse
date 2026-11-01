@@ -69,6 +69,17 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 - [ ] The validity of a law or an analysis is stated with the law named as subject and the conditions in the same sentence ("holds for", "applies when", "is valid for"); the case outside is stated as what changes (rule E4).
 - [ ] Validity, omission, and closing limits follow rules 23–26: the law, equation, or model is the subject of its validity statement; an omitted term or effect is named with "neglect", "omit", or "is not included in"; a closing limit restates the conditions or names the limited thing as subject of "is limited to"; no limit statement is built on "scope", "basis", or "extent" as its subject or frame, and "carry" states only physical transport or "carry out" (rules 23–26; What not to do 13–15).
 
+## Independent check pass
+
+- [ ] The checker did not write the draft. The checker's context holds the frozen source material, the draft, and the package, and no writer reasoning or earlier drafts (SKILL.md, Independent check pass).
+- [ ] Findings are stated as quoted sentence, check failed, evidence (source passage or recomputation), and proposed correction; the checker has not edited the draft (SKILL.md, Independent check pass).
+- [ ] Traceability, both directions: no fact, figure, or consequence in the draft that the source material does not state; no load-bearing source fact silently omitted (ai-check reference, Independent check 1).
+- [ ] Each derived figure, worked example, and unit conversion recomputed from the stated inputs (ai-check reference, Independent check 2).
+- [ ] Literal truth: each sentence read as a literal claim — a goal stated as a task, not as its answer; validity statements naming the law or equation as subject; definitions stating what the term denotes (ai-check reference, Independent check 3).
+- [ ] Cross-part agreement: text against tables, figures, captions, abstract, and conclusion; every claim about the document checked against the document (ai-check reference, Independent check 4).
+- [ ] Completeness against the brief and notation: every required element present, every promised item delivered; symbols defined before first use, one name per referent, abbreviations expanded, one unit form per quantity (ai-check reference, Independent check 5 and 6).
+- [ ] Each finding adjudicated against the primary source before correction, and corrected passages re-checked (regression) (ai-check reference, Independent check 7).
+
 ## Final scan
 
 - [ ] No inferential connectives ("therefore", "thus", a causal "so") in STEM or instructional text; no meta-signposts announcing the text's own moves; no restatement that adds no scope, condition, or limit (What not to do 3, 4, 5).
