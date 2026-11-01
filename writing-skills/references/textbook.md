@@ -8,7 +8,7 @@ Activation: this section is in force whenever a document is written under this s
 ## Step by step
 
 1. **Name the object first.** A detail sentence carries its object's full name — the law, equation, quantity, or step it is about — even mid-document.
-2. **Fix every name at first use.** Copula forms: "is defined as", "is called", "is known as"; a name the field already uses takes "is referred to as", with its source or reason in the same sentence where one is given. A symbol, as against a term, is fixed by "denotes" or "is denoted by". After a displayed equation, the "where" roster is the default definition site.
+2. **Fix every name at first use.** Copula forms: "is defined as", "is called", "is known as"; a name the field already uses takes "is referred to as", with its source or reason in the same sentence where one is given. A mathematical symbol, as against a term, is fixed by "denotes" or "is denoted by". Chemical species notation takes no such fixing for a chemical-engineering audience: an element symbol (N, H) and the formula of a common species are read directly, appear in no "denotes" clause, and take no entry in a where roster. After a displayed equation, the "where" roster is the default definition site for the equation's mathematical symbols.
 3. **Mark each derivation step at the step.** "Thus" where the premises stand in the immediately preceding sentences; "therefore" is a routine variant in two books; "hence" is a secondary tier. A because-clause attaches the ground to the step, result, or comparison it supports.
 4. **Open a step with its source** where the source is not the preceding line: "From (11-6), …"; "By an overall material balance, …". A criterion got by setting two relations side by side is stated by the comparison: "Comparison of Eqs. (x) and (y) shows that…".
 5. **Narrate a transformation with the equation as subject:** "becomes" (substitution, limiting case), "reduces to" (special case under a stated condition), "simplifies to", "can be written", "rearranges to", "can be replaced with".
@@ -30,6 +30,7 @@ Activation: this section is in force whenever a document is written under this s
 - Change verbs that invent a cause where no producer is named, and a covariation left without its closing trade-off where the pair sets one.
 - Field terms mistaken for grading words in a mechanical scan: "key component" and "pressure drop" are terminology, not evaluations.
 - "Scope" and "carry" in limit and inclusion statements: validity takes the law as subject ("applies only at low pressures"), omission names the item.
+- A "denotes" clause spent on chemical species notation ("where N denotes nitrogen"): element symbols and common species formulae are the chemical-engineering audience's working notation and take no definition.
 - Splits the corpus does not settle: "compared with" against "compared to" — one form per document, held; the reference-frame phrase ("with respect to" against "in terms of") splits the same way; solution tense is past for a simulator run narrated as an event, present elsewhere.
 
 

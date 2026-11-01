@@ -25,7 +25,7 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 - [ ] The limit, exception, or condition stands inside the claim sentence, before the number it qualifies (rule 15).
 - [ ] Each number is bundled in its sentence with its denominator or cohort, its interval, and its named baseline or contrast; in a worked example, a scored result carries its baseline in the same sentence (rule 16).
 - [ ] A null result is stated as a detection statement with its conditions, not as an absence (rule 17).
-- [ ] Every term, symbol, and abbreviation is defined in place at first use, symbol by symbol for a composite notation, units included where applicable (rule 18, Register constraints).
+- [ ] Every term, symbol, and abbreviation is defined in place at first use, symbol by symbol for a composite notation, units included where applicable (rule 18, Register constraints). Chemical species notation is excepted for a chemical-engineering audience: element symbols, common species formulae, and SI unit symbols stand without definition, and no "denotes" clause or roster entry is spent on them (rule 18, Register constraints).
 - [ ] Each caption fixes what the text leaves open: method, threshold, baseline, error-bar provenance, replication count, conditions (rule 19).
 - [ ] A choice or threshold is stated condition-first (rule 20).
 - [ ] An analogy or simplification is followed within one sentence by the point where it stops holding (rule 22).
@@ -63,7 +63,7 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 
 ## Equations
 
-- [ ] Symbol placement follows the preference order in rule E1: set-up sentence definitions in symbol order where the set-up is a complete sentence; a where-clause roster after the display where the set-up is a lead-in clause (rule E1).
+- [ ] Symbol placement follows the preference order in rule E1, for the display's mathematical symbols: set-up sentence definitions in symbol order where the set-up is a complete sentence; a where-clause roster after the display where the set-up is a lead-in clause. Chemical species notation in a display takes no definition in either site (rule E1).
 - [ ] The sentence after a display is the definition sentence; interpretation follows the roster (rule E3).
 - [ ] A boundary that is a case on the equation's own variable stands in the sentence immediately after the display (rule E4).
 - [ ] The validity of a law or an analysis is stated with the law named as subject and the conditions in the same sentence ("holds for", "applies when", "is valid for"); the case outside is stated as what changes (rule E4).
@@ -77,7 +77,7 @@ Rule numbers cite `SKILL.md`. A document is complete when each item that applies
 - [ ] Each derived figure, worked example, and unit conversion recomputed from the stated inputs (ai-check reference, Independent check 2).
 - [ ] Literal truth: each sentence read as a literal claim — a goal stated as a task, not as its answer; validity statements naming the law or equation as subject; definitions stating what the term denotes (ai-check reference, Independent check 3).
 - [ ] Cross-part agreement: text against tables, figures, captions, abstract, and conclusion; every claim about the document checked against the document (ai-check reference, Independent check 4).
-- [ ] Completeness against the brief and notation: every required element present, every promised item delivered; symbols defined before first use, one name per referent, abbreviations expanded, one unit form per quantity (ai-check reference, Independent check 5 and 6).
+- [ ] Completeness against the brief and notation: every required element present, every promised item delivered; mathematical symbols defined before first use, one name per referent, abbreviations expanded, one unit form per quantity — and no definition spent on chemical species notation (ai-check reference, Independent check 5 and 6).
 - [ ] Each finding adjudicated against the primary source before correction, and corrected passages re-checked (regression) (ai-check reference, Independent check 7).
 
 ## Final scan
