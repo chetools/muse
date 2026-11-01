@@ -59,3 +59,8 @@ committed (copy of the slim draft core; section 4 extracts from
 py_compile OK; marimo check 0 errors; script-mode run of the full
 notebook exit 0 (CPU/idle paths); eval metric functions validated
 on the reference prose (numbers_ok 24/24, inferential 0).
+2026-11-01: Pushed to chetools/muse main (042102d -> d16d1e8):
+22 files added, 0 deleted; compare view reviewed; byte-verified
+(stem_writer_lora.py, train.jsonl, eval.jsonl, style_core.md,
+SPEC.md). MoLab mirror link handed to the user with the six
+steps from SPEC.md. Awaiting the user's MoLab run (smoke first).
