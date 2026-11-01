@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing skill: paired samples</title>
+<style>
+  @page { size: Letter landscape; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { background:#ffffff; color:#141414; font-family: Georgia, "Times New Roman", serif; font-size:10.5pt; line-height:1.38; margin:0; }
+  .page { max-width:1180px; margin:0 auto; padding:18px 20px 26px; }
+  h1 { font-size:17pt; margin:0 0 4px; font-weight:normal; }
+  .standfirst { margin:0 0 6px; color:#333; }
+  .legend { border:1px solid #bbb; background:#fafafa; padding:7px 10px; margin:10px 0 4px; font-size:9.5pt; }
+  mark.bad { background:#f6d5d5; padding:0 1px; }
+  mark.good { background:#d8ead3; padding:0 1px; }
+  section.sample { border-top:2px solid #333; padding-top:9px; margin-top:16px; page-break-inside:avoid; }
+  h2 { font-size:12.5pt; margin:0 0 3px; font-weight:normal; }
+  .facts { font-size:9.5pt; color:#333; margin:0 0 8px; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .col { border:1px solid #bcbcbc; padding:9px 11px; }
+  .col h3 { font-size:9pt; letter-spacing:0.08em; text-transform:uppercase; margin:0 0 6px; font-weight:normal; color:#444; }
+  .col p { margin:0 0 7px; }
+  .col p:last-child { margin-bottom:0; }
+  .eq { text-align:center; font-size:11.5pt; margin:8px 0; }
+  .diff { background:#f5f5f5; border-left:3px solid #666; padding:7px 10px; margin-top:9px; font-size:9.8pt; }
+  .diff p { margin:0; }
+  @media (max-width:700px) {
+    body { font-size:8.6pt; }
+    .page { padding:10px 8px 16px; }
+    .pair { gap:7px; }
+    .col { padding:6px 7px; }
+    h1 { font-size:13pt; } h2 { font-size:10.5pt; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+<h1>Writing skill: paired samples</h1>
+<p class="standfirst">Five topics, each written twice from one shared fact base: once without the combined writing skill and once with it. The passages in a pair state the same facts; the handling differs.</p>
+<div class="legend">Highlighting: <mark class="bad">pale red</mark> marks a weak form in the without-skill passage. <mark class="good">Pale green</mark> marks the corresponding form in the with-skill passage. The line after each pair names the differences shown.</div>
+
+<section class="sample">
+<h2>Sample 1 (STEM) — Research abstract: structured catalyst for methanol synthesis</h2>
+<p class="facts">Shared fact base. Carbon dioxide (CO<sub>2</sub>) and hydrogen (H<sub>2</sub>) react over a copper–zinc oxide catalyst to give methanol. Space-time yield is the mass of methanol produced per unit catalyst volume per hour, in kilograms per litre per hour (kg L<sup>−1</sup> h<sup>−1</sup>). Test conditions: 250 °C, 50 bar, feed ratio H<sub>2</sub>/CO<sub>2</sub> = 3. Structured catalyst: space-time yield 0.84 kg L<sup>−1</sup> h<sup>−1</sup>, pressure drop 0.18 bar, activity loss 6% after 100 h. Pellet catalyst: 0.61 kg L<sup>−1</sup> h<sup>−1</sup>, 1.25 bar, 14% after 100 h. One feed composition was tested; no sulfur-bearing feed was tested. Yield and pressure drop are seldom reported for the same catalyst charge.</p>
+<div class="pair">
+<div class="col">
+<h3>Without the skill</h3>
+<p>Methanol synthesis from CO<sub>2</sub> is a <mark class="bad">game-changing route</mark> and the catalyst is the heart of the process. The material was tested at 250 °C and 50 bar with a feed ratio H<sub>2</sub>/CO<sub>2</sub> = 3. <mark class="bad">The yield was excellent.</mark> It reached 0.84. The pellets gave 0.61. Pressure drop was also much better for the new system, and activity loss after 100 h was lower. <mark class="bad">Therefore, the structured catalyst clearly outperforms the conventional catalyst on every axis.</mark> The reactor packing lost 6% activity, while the older bed lost 14%. Pressure drop values were 0.18 bar and 1.25 bar respectively. <mark class="bad">In summary, this breakthrough catalyst will transform methanol production</mark>, highlighting its robust and vibrant performance. One feed composition was used in the tests.</p>
+</div>
+<div class="col">
+<h3>With the skill</h3>
+<p>Methanol synthesis from CO<sub>2</sub> and H<sub>2</sub> over copper–zinc oxide catalysts is limited in fixed beds by pressure drop across the pellet bed. Yield and pressure drop are seldom reported for the same catalyst charge, and the charge form that holds yield at low pressure drop is the missing comparison. A structured catalyst and a pellet catalyst of the same composition were tested at 250 °C and 50 bar with a feed ratio H<sub>2</sub>/CO<sub>2</sub> = 3. <mark class="good">The structured catalyst gave a space-time yield of 0.84 kg L<sup>−1</sup> h<sup>−1</sup> at a pressure drop of 0.18 bar (pellet catalyst: 0.61 kg L<sup>−1</sup> h<sup>−1</sup> at 1.25 bar)</mark>, and activity loss after 100 h was 6% for the structured catalyst against 14% for the pellet catalyst. The structured charge held the higher yield at the lower pressure drop over the 100 h test. <mark class="good">At the tested feed composition, with no sulfur-bearing feed tested, the structured catalyst is the higher-yield, lower-pressure-drop form of the two charges.</mark></p>
+</div>
+</div>
+<div class="diff"><p>Differences: the with-skill abstract follows the setting, gap, method, result, closing order; values stand with their comparators and conditions in one sentence; one name is kept for each catalyst; no connective announces the conclusion; the closing claim stays at the tested scope and carries its limits. The without-skill version separates values from comparators, cycles names (catalyst, material, system, packing, bed), restates the activity result, and closes above the evidence.</p></div>
+</section>
+
+<section class="sample">
+<h2>Sample 2 (STEM) — Tutorial: heat-transfer coefficient from a cooling curve</h2>
+<p class="facts">Shared fact base. The overall heat-transfer coefficient, denoted U (watts per square metre per kelvin, W m<sup>−2</sup> K<sup>−1</sup>), is estimated by fitting a cooling model to measured liquid temperatures. A residual is a measured temperature minus the model temperature at the same time; the sum of squared residuals has units of kelvin squared (K<sup>2</sup>). The standard error of an estimate is the spread of estimates the same fit would give across repeated measurement sets with the same measurement noise. Worked example: 6 measurements over 30 min; starting guess U = 420 W m<sup>−2</sup> K<sup>−1</sup> gives a sum of squared residuals of 18.6 K<sup>2</sup>; the fit gives U = 512 W m<sup>−2</sup> K<sup>−1</sup> with a standard error of 24 W m<sup>−2</sup> K<sup>−1</sup> and a sum of squared residuals of 2.1 K<sup>2</sup>; iterations stop when the relative change in the sum of squared residuals falls below 0.1%. The model holds the room temperature constant and admits no evaporation.</p>
+<div class="pair">
+<div class="col">
+<h3>Without the skill</h3>
+<p><mark class="bad">This section will walk through the fitting procedure.</mark> A model is fitted to the temperatures. The fit adjusts the coefficient. It reports uncertainty. Six measurements were taken. They covered 30 minutes. The starting guess was 420. The residuals were 18.6. The fit then gave 512, and the uncertainty was 24. The residuals fell to 2.1. <mark class="bad">Therefore the fit is good.</mark> Iterations stop at a relative change below 0.1%. <mark class="bad">The fitted value of 512 shows that the procedure works well.</mark> Room temperature is held constant in the model, and evaporation is not included.</p>
+</div>
+<div class="col">
+<h3>With the skill</h3>
+<p>Your goal is an estimate of the overall heat-transfer coefficient U from a measured cooling curve: <mark class="good">at the end of the fit you hold U = 512 W m<sup>−2</sup> K<sup>−1</sup> in place of the starting guess of 420 W m<sup>−2</sup> K<sup>−1</sup></mark>. You record the liquid temperature at stated times and adjust U until the sum of squared residuals is smallest; a residual is a measured temperature minus the model temperature at the same time. The fit reports U with its standard error, the spread of estimates the same fit would give across repeated measurement sets with the same measurement noise. In the worked example, 6 measurements over 30 min give <mark class="good">U = 512 W m<sup>−2</sup> K<sup>−1</sup> with a standard error of 24 W m<sup>−2</sup> K<sup>−1</sup> and a sum of squared residuals of 2.1 K<sup>2</sup> (starting guess U = 420 W m<sup>−2</sup> K<sup>−1</sup>: 18.6 K<sup>2</sup>)</mark>. The fall from 18.6 K<sup>2</sup> to 2.1 K<sup>2</sup> is the check that the fitted curve tracks the measured curve; iterations stop when the relative change in the sum of squared residuals falls below 0.1%. The estimate rests on the model as stated: room temperature constant, and no evaporation.</p>
+</div>
+</div>
+<div class="diff"><p>Differences: the with-skill tutorial states the goal and the outcome in its opening sentences, addresses the reader, defines the standard error at first use, and carries the starting-guess baseline inside the sentence that reports the fitted result. The without-skill version announces the procedure instead of stating the goal, leaves uncertainty undefined, states the baseline and the fitted value in separate fragments, and closes with a restatement.</p></div>
+</section>
+
+<section class="sample">
+<h2>Sample 3 (STEM) — Equation passage: Reynolds number and flow regime in a pipe</h2>
+<p class="facts">Shared fact base and notation for this sample. The Reynolds number, denoted Re (dimensionless), is computed from the fluid density ρ (kilograms per cubic metre, kg m<sup>−3</sup>), the mean velocity v (metres per second, m s<sup>−1</sup>), the pipe diameter D (metres, m), and the dynamic viscosity μ (pascal seconds, Pa s). Flow is laminar below Re = 2,300 and turbulent above Re = 4,000; between the two values the regime is transitional and is not assigned by the number alone. Worked values: water in a pipe of diameter 0.05 m at a mean velocity of 1.2 m s<sup>−1</sup> gives Re = 60,000.</p>
+<div class="pair">
+<div class="col">
+<h3>Without the skill</h3>
+<p>The Reynolds number is given by</p>
+<p class="eq">Re = ρ v D / μ</p>
+<p>Re is the Reynolds number. ρ is density. v is velocity. D is diameter. μ is viscosity. <mark class="bad">Therefore, a big Re means turbulence.</mark> For water in a 0.05 m pipe at 1.2 m s<sup>−1</sup>, Re = 60,000, so the flow state is turbulent. The flow condition changes with the number: <mark class="bad">the regime is laminar under 2,300 and turbulent over 4,000, with a transition zone in between.</mark></p>
+</div>
+<div class="col">
+<h3>With the skill</h3>
+<p><mark class="good">The Reynolds number Re (dimensionless), the fluid density ρ (kg m<sup>−3</sup>), the mean velocity v (m s<sup>−1</sup>), the pipe diameter D (m), and the dynamic viscosity μ (Pa s) are related by</mark></p>
+<p class="eq">Re = ρ v D / μ</p>
+<p><mark class="good">The flow is laminar below Re = 2,300 and turbulent above Re = 4,000; between the two values the regime is transitional and is not assigned by the number alone.</mark> For water in a pipe of diameter 0.05 m at a mean velocity of 1.2 m s<sup>−1</sup>, Re = 60,000, and the flow is in the turbulent range as bounded in the preceding sentence.</p>
+</div>
+</div>
+<div class="diff"><p>Differences: the with-skill passage defines all symbols in the set-up sentence, in symbol order, before the display, and places the boundary values in the sentence immediately after the display. The without-skill passage defines one symbol per sentence after the display, cycles three names for the regime (flow state, flow condition, regime), and holds the boundary values to the final sentence.</p></div>
+</section>
+
+<section class="sample">
+<h2>Sample 4 (Business) — Recommendation memo: predictive maintenance sensors on pumps</h2>
+<p class="facts">Shared fact base. The plant runs 214 pumps. Maintenance records for 12 months show 1,180 h of unplanned downtime; bearing failures account for 46% of the downtime hours. A sensor set for all 214 pumps is quoted at $420k installed, plus $68k per year. In a vendor trial on a comparable unit, the sensors cut downtime by 22%; the figure is a vendor figure and was not measured at this plant. A pilot on 18 pumps costs $36k over three months. Spare-part lead times are unchanged by the sensors. The reliability engineering group would run the pilot and report before the March capital review.</p>
+<div class="pair">
+<div class="col">
+<h3>Without the skill</h3>
+<p><mark class="bad">Situation:</mark> the plant runs 214 pumps and downtime is a growing burden. <mark class="bad">Complication:</mark> bearing failures cause 46% of the downtime hours. <mark class="bad">Question:</mark> should sensors be installed? Records cover 12 months. Unplanned downtime reached 1,180 h. Installation is quoted at $420k. The yearly charge is $68k. A vendor trial reports 22%, <mark class="bad">which proves the technology works</mark>. A pilot would cost $36k. <mark class="bad">This game-changing programme is clearly the best available option, and leadership should seize it.</mark> The recommendation is to approve a three-month pilot on 18 pumps, run by the reliability engineering group, before the March capital review.</p>
+</div>
+<div class="col">
+<h3>With the skill</h3>
+<p>The plant runs 214 pumps on a maintenance regime that records failures after they occur, and bearing failures stop pumps without warning; the question for the capital review is whether detection before failure is worth a plant-wide sensor installation. <mark class="good">The reliability engineering group recommends a three-month pilot of the sensors on 18 pumps at a cost of $36k, with the decision on full installation held until pilot results are reported.</mark> The evidence base is the plant's maintenance records for 12 months: 1,180 h of unplanned downtime, of which bearing failures account for 46%. Full installation is quoted at $420k plus $68k per year; the pilot carries the trade-off in one comparison: <mark class="good">$36k buys three months of detection data on this plant's pumps, against $420k committed on a vendor figure of 22% downtime reduction measured at another plant.</mark> Spare-part lead times are unchanged by the sensors. The pilot recommendation stands as stated: detection performance at this plant is the untested quantity, and the March capital review decides full installation on the pilot report.</p>
+</div>
+</div>
+<div class="diff"><p>Differences: the with-skill memo performs the opening frame without labels, states the recommendation before the evidence with its owner class, names the evidence base with its count where the finding is stated, carries the trade-off in one sentence with both figures, and holds the closing at the opening strength. The without-skill memo labels the frame, separates the yearly charge from the installation figure, presents the vendor figure as proof, and places the recommendation in the final sentence after a stronger closing claim.</p></div>
+</section>
+
+<section class="sample">
+<h2>Sample 5 (STEM/business mix) — Carbon capture retrofit at a cement kiln: technical note and investment recommendation</h2>
+<p class="facts">Shared fact base. Carbon dioxide is denoted CO<sub>2</sub>. The kiln emits 780 kilotonnes (kt) of CO<sub>2</sub> per year. An amine absorption unit, tested at pilot scale at 12 tonnes (t) of CO<sub>2</sub> per day over 60 days, captured 86% of the CO<sub>2</sub> in the treated gas; steam demand was 3.4 gigajoules per tonne of CO<sub>2</sub> (GJ t<sup>−1</sup>) and solvent loss 1.8 kilograms per tonne (kg t<sup>−1</sup>). The effect of kiln dust on the solvent beyond 60 days is untested. Full-scale cost: capital $210 million, operating cost $38 million per year, capture cost $64 per tonne. At an assumed carbon price of $70 per tonne (a scenario value, not a forecast), the payback is 9.6 years. The process engineering group owns the design; the finance group owns the investment case.</p>
+<div class="pair">
+<div class="col">
+<h3>Without the skill</h3>
+<p>The amine unit is a <mark class="bad">breakthrough for decarbonisation</mark> and will capture the kiln's emissions. In the pilot it captured 86%, with steam at 3.4 and solvent loss at 1.8. Therefore the technology is proven at scale. The kiln emits 780 kt per year, so the retrofit transforms the plant's footprint. On the money side, the project costs $210 million. Operating costs are $38 million per year. The capture cost works out at $64 per tonne and payback is under a decade. Carbon is priced at $70. <mark class="bad">Experts agree this is the right moment to act.</mark> One point is that kiln dust effects past 60 days have not been tested. The recommendation, finally, is a staged design study, with process engineering and finance involved.</p>
+</div>
+<div class="col">
+<h3>With the skill</h3>
+<p>Technical note. The amine absorption unit captured 86% of the CO<sub>2</sub> in the treated gas at pilot scale (12 t per day over 60 days), at a steam demand of 3.4 GJ per tonne of CO<sub>2</sub> captured and a solvent loss of 1.8 kg per tonne. <mark class="good">The capture figure is a pilot figure over 60 days; the effect of kiln dust on the solvent beyond 60 days is untested, and no full-scale capture rate is stated.</mark> Investment recommendation. The kiln emits 780 kt of CO<sub>2</sub> per year against a capture cost of $64 per tonne at full scale, and the investment question is whether a design study is justified before any construction decision. <mark class="good">The finance group recommends a staged design study owned jointly with the process engineering group, with construction held until the solvent question is settled by a longer pilot.</mark> Capital cost is $210 million and operating cost $38 million per year; at the scenario carbon price of $70 per tonne, stated as an assumption, the payback is 9.6 years. The recommendation stands at that scope: a study and a longer pilot, decided on solvent behaviour beyond 60 days.</p>
+</div>
+</div>
+<div class="diff"><p>Differences: the with-skill version classifies by section. The technical note states the pilot result with its scale and duration in the claim sentence, names the untested item, and states no full-scale rate. The investment section states the recommendation before the cost evidence, names both owner classes, and carries the carbon price as a labelled scenario value in the payback sentence. The without-skill version uses promotional wording in the technical note, separates the carbon price from the payback, rests on a vague attribution, and defers the recommendation to the final sentence.</p></div>
+</section>
+</div>
+</body>
+</html>
