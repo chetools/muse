@@ -64,3 +64,15 @@ on the reference prose (numbers_ok 24/24, inferential 0).
 (stem_writer_lora.py, train.jsonl, eval.jsonl, style_core.md,
 SPEC.md). MoLab mirror link handed to the user with the six
 steps from SPEC.md. Awaiting the user's MoLab run (smoke first).
+2026-11-01: MoLab first run failed in section 1:
+FileNotFoundError /marimo/data/train.jsonl — the MoLab mirror
+delivers the notebook as a single file (notebook_dir /marimo),
+without the project directory (the finetune-qc assumption of
+sibling files does not hold on the mirror). Fix: the section 1
+load cell now downloads any missing project file (dataset,
+style_core.md, check_dataset.py) from the public repository raw
+URLs into the notebook directory before loading; section 2's
+check is ordered after the load. Verified locally by running
+the notebook alone in an empty directory: all four files
+downloaded byte-identical to the repository copies and the full
+script-mode run passed; marimo check 0 errors.

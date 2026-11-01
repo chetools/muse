@@ -131,7 +131,10 @@ def _(mo):
         (`check_dataset.py`, shared with the evaluation in §4) over both
         files: schema, topic-disjoint splits, every prose number present
         in the outline with the same count, no banned inferential
-        connectives.
+        connectives. On MoLab the mirror delivers this notebook as a
+        single file, so any project file missing next to the notebook
+        (dataset, style text, checker) is downloaded from the project
+        directory of the public repository before the load.
         """
     )
     return
@@ -140,11 +143,47 @@ def _(mo):
 @app.cell
 def _(mo, os):
     import json
+    import urllib.request
 
     try:
         nbdir = str(mo.notebook_dir())
     except Exception:
         nbdir = os.getcwd()
+
+    # The MoLab mirror delivers this notebook as a single file, without
+    # the project directory. Any missing project file is fetched from
+    # the public repository (same commit line the mirror serves) into
+    # the notebook directory, so local clones and MoLab sessions run
+    # the same code on the same bytes.
+    _RAW = ("https://raw.githubusercontent.com/chetools/muse/main/"
+            "stem-writer-lora/")
+
+    def _ensure(rel):
+        _path = os.path.join(nbdir, rel)
+        if os.path.exists(_path):
+            return True
+        try:
+            os.makedirs(os.path.dirname(_path), exist_ok=True)
+            with urllib.request.urlopen(_RAW + rel, timeout=60) as _r:
+                _data = _r.read()
+            with open(_path, "wb") as _f:
+                _f.write(_data)
+            return True
+        except Exception:
+            return False
+
+    _fetched = {
+        rel: _ensure(rel)
+        for rel in ["data/train.jsonl", "data/eval.jsonl",
+                    "style_core.md", "check_dataset.py"]
+    }
+    mo.stop(
+        not (_fetched["data/train.jsonl"] and _fetched["data/eval.jsonl"]),
+        mo.md("❌ Dataset files not found next to the notebook and the "
+              "download from the project repository failed. Check the "
+              "session's internet access, or open the notebook from a "
+              "full clone of `stem-writer-lora/`."),
+    )
 
     def render_outline(row):
         """Outline dict -> the labelled text the model receives."""
@@ -237,7 +276,7 @@ def _(mo):
 
 
 @app.cell
-def _(mo, nbdir, os):
+def _(mo, nbdir, os, train_rows):
     import importlib
     import importlib.metadata as _md
 
@@ -566,9 +605,9 @@ def _(mo):
 @app.cell
 def _(nbdir, os):
     import re
-    import sys as _sys
+    import sys as _sys_h
 
-    _sys.path.insert(0, nbdir)
+    _sys_h.path.insert(0, nbdir)
     from check_dataset import BANNED as _BANNED
     from check_dataset import numbers as _numbers
 
