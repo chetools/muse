@@ -76,3 +76,18 @@ check is ordered after the load. Verified locally by running
 the notebook alone in an empty directory: all four files
 downloaded byte-identical to the repository copies and the full
 script-mode run passed; marimo check 0 errors.
+2026-11-01: Training completed on MoLab and the adapter was
+uploaded to Hugging Face carlosco/stem-writer-lora (verified via
+the Hub API: adapter_model.safetensors, adapter_config.json with
+base unsloth/Qwen3-14B, lora_alpha 64, dropout 0). Deviation from
+SPEC: the repository is PUBLIC (API field private=false; the
+upload success line carried no "(private)" suffix and the
+Private checkbox shows unchecked in the user's screenshot,
+against the notebook default of checked). No private data is
+exposed — training data is synthetic and already public in this
+repository — but the SPEC intends a private repo; the user was
+asked to set visibility to private in the repo settings.
+Evaluation (notebook section 4) had not been run at the time of
+the screenshot; the user was reminded to run it in the same
+session, since a fresh session cannot load the adapter from the
+Hub with the current notebook code.
