@@ -358,7 +358,7 @@ def _(mo, pkgs, torch_ok):
 @app.cell
 def _(install_btn, mo, pkgs):
     import subprocess as _subprocess
-    import sys as _sys
+    import sys as _sys_i
 
     _PIP_SPECS = {
         "unsloth": "unsloth==2026.10.3",
@@ -378,7 +378,7 @@ def _(install_btn, mo, pkgs):
         _specs.append("tokenizers>=0.23.1,<0.24.0")
     print("Installing: " + " ".join(_specs) + "\n", flush=True)
     _rc = _subprocess.run(
-        [_sys.executable, "-m", "pip", "install", *_specs]
+        [_sys_i.executable, "-m", "pip", "install", *_specs]
     ).returncode
     if _rc != 0:
         mo.stop(
