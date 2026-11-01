@@ -222,15 +222,15 @@
 <div class="col">
 <h3>With the skill</h3>
 <p>Batch reactor: first-order reaction</p>
-<p><mark class="good">Your goal is the time to reach a conversion of A in a batch reactor (A → products).</mark> Concentration is denoted by C (mol L−1), time by t (min), and the rate of reaction by r (mol L−1 min−1), where r denotes the rate of disappearance of A. Assume constant volume, constant temperature, first-order kinetics, and no reverse reaction. Under first-order kinetics, the rate law is r = kC, where the rate constant is denoted by k (min−1).</p>
+<p><mark class="good">Your goal is to find the required batch time for a stated conversion of A (A → products).</mark> Concentration is denoted by C (mol L−1), time by t (min), and the rate of disappearance of A by r (mol L−1 min−1). Assume constant volume, constant temperature, first-order kinetics, and no reverse reaction. Under first-order kinetics, the rate law is r = kC, where the rate constant is denoted by k (min−1).</p>
 <p>For a batch reactor at constant volume, a material balance on A gives the design relation</p>
 <p class="eq">dC/dt = −kC</p>
-<p>where every symbol keeps the meaning fixed above. Note that the negative sign records disappearance: concentration decreases as time increases. Separation of variables, followed by integration from C0 at zero time to C at time t, gives the integrated form</p>
+<p>where every symbol keeps the meaning fixed above. Note that the negative sign records disappearance: concentration decreases as time increases. Separation of variables, followed by integration from the initial concentration C0 (mol L−1) at zero time to C at time t, gives the integrated form</p>
 <p class="eq">ln(C0/C) = kt</p>
-<p>where the initial concentration of A is denoted by C0 (mol L−1). Conversion is defined as X = 1 − C/C0 and fixes the fraction of A reacted at any stated concentration.</p>
+<p>In the integrated form, C0 is the concentration at zero time, and C at time t. Conversion is defined as X = 1 − C/C0, the fraction of A reacted at any stated concentration.</p>
 <p>Take k = 0.045 min−1 at 80 °C and C0 = 1.2 mol L−1. At X = 0.90, conversion fixes C at 0.12 mol L−1, and the integrated form gives t = 51.2 min (initial concentration C0 = 1.2 mol L−1). For X = 0.50, the integrated form gives t = 15.4 min.</p>
 <p>Check the half-conversion point by substitution: at t = 15.4 min, the integrated form returns C/C0 = 0.50 and X = 0.50, the value the example set out to reproduce. Agreement confirms the arithmetic.</p>
-<p>The integrated form ln(C0/C) = kt holds for first-order kinetics at constant volume and constant temperature. For a second-order reaction, the integrated relation changes to 1/C − 1/C0 = kt, and the first-order times do not apply.</p>
+<p>The integrated form ln(C0/C) = kt holds for first-order kinetics at constant volume and constant temperature. For a second-order reaction, the integrated form changes to 1/C − 1/C0 = kt, and the first-order times do not apply.</p>
 </div>
 </div>
 <div class="diff"><p>Differences: the with-skill passage states the goal in its first sentence and defines every symbol in the set-up sentences before the rate law; derivation steps are marked by their operations (separation of variables, integration), and the closing validity sentence names the integrated form as its subject and restates the conditions (first-order kinetics, constant volume, constant temperature). In the without-skill version, the opening sets the scene, the initial concentration is defined in a where-clause after the second display, the algebra is narrated step by step, and the closing validity sentence rests on “the assumptions” without restating them.</p></div>
