@@ -13,15 +13,15 @@ import fug as F
 def test_fenske_anchor():
     dist = F.fenske(F.default_inputs())
     assert dist["n_min"] == pytest.approx(7.8206, abs=0.005)
-    assert dist["d"].sum() == pytest.approx(468.95, abs=0.02)
-    assert dist["b"].sum() == pytest.approx(407.35, abs=0.02)
+    assert dist["d"].sum() == pytest.approx(212.712, abs=0.02)
+    assert dist["b"].sum() == pytest.approx(184.771, abs=0.02)
 
 
 def test_distribution_components():
     inp = F.default_inputs()
     dist = F.fenske(inp)
-    expected_d = [11.972, 442.0, 13.0, 1.973, 0.00807, 3.7e-05, 6.6e-07,
-                  2.1e-10]
+    expected_d = [5.430, 200.488, 5.897, 0.895, 0.00366, 1.68e-05,
+                  2.99e-07, 9.5e-11]
     assert dist["d"] == pytest.approx(expected_d, rel=0.01, abs=1e-6)
     assert np.all(dist["d"] >= 0) and np.all(dist["b"] >= 0)
 
@@ -30,7 +30,10 @@ def test_balance_closure_exact():
     inp = F.default_inputs()
     dist = F.fenske(inp)
     f = np.asarray(inp["feed"])
-    assert np.allclose(dist["d"] + dist["b"], f, rtol=0, atol=1e-9)
+    # Non-key balances close exactly by construction; the key splits
+    # are specified to 0.001 kmol/h, so their sums may differ from the
+    # feed flow by that rounding (at most 0.001 per key here).
+    assert np.allclose(dist["d"] + dist["b"], f, rtol=0, atol=2e-3)
 
 
 def test_underwood_roots_all_and_used():
@@ -44,8 +47,8 @@ def test_underwood_roots_all_and_used():
     und = F.underwood_class2(inp, F.fenske(inp))
     assert und["theta_used"] == pytest.approx([1.0443, 0.8587], abs=0.002)
     assert und["r_min"] == pytest.approx(0.521, abs=0.01)
-    assert und["D"] == pytest.approx(470.5, abs=0.5)
-    assert und["d_dist_nonkey"] == pytest.approx(3.5, abs=0.15)
+    assert und["D"] == pytest.approx(213.415, abs=0.25)
+    assert und["d_dist_nonkey"] == pytest.approx(1.588, abs=0.07)
 
 
 def test_gilliland_anchor():
@@ -86,7 +89,7 @@ def test_input_validation():
     with pytest.raises(ValueError):
         F.run_case(inp)
     inp = F.default_inputs()
-    inp["d_lk"] = 400.0                       # split no longer sums
+    inp["d_lk"] = 180.0                       # split no longer sums
     with pytest.raises(ValueError):
         F.run_case(inp)
     inp = F.default_inputs()

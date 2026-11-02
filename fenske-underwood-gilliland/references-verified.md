@@ -17,3 +17,8 @@
 
 6. Seader, J. D., Henley, E. J. & Roper, D. K. (2016). *Separation Process Principles with Applications Using Process Simulators* (4th ed.). Hoboken, NJ: John Wiley & Sons. ISBN 978-1-119-23959-8.
    - Verification note: Verified against the publisher/Library of Congress record data: fourth edition, 2016, ISBN as shown.
+
+Addendum (SI conversion, 2026-11-02): the page now states all
+flow rates in kmol/h and all pressures in kPa, converted from
+the source text's values at 1 lbmol = 0.45359237 kmol and
+1 psi = 6.89476 kPa. No reference entry changed.

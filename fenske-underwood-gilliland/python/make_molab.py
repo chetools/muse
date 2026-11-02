@@ -106,15 +106,15 @@ def generate(run_mode=False):
         "multicomponent distillation column, worked on the debutanizer "
         "of Seader, Henley & Roper, Separation Process Principles, "
         "4th ed. (2016), Chapter 9. Edit a value in a cell and re-run; "
-        "every downstream cell recomputes. Flow rates are in lbmol/h "
-        "(pound-moles per hour).")
+        "every downstream cell recomputes. Flow rates are in kmol/h "
+        "(kilomoles per hour).")
     intro_run = (
         "# Fenske-Underwood-Gilliland (FUG) Shortcut Distillation\n\n"
         "A read-only breakdown of the FUG shortcut design of a "
         "multicomponent distillation column. The notebook executes "
         "automatically on load. For an editable version, open the "
         "MoLab notebook linked from the host page and edit the values "
-        "there. Flow rates are in lbmol/h (pound-moles per hour).")
+        "there. Flow rates are in kmol/h (kilomoles per hour).")
     intro = intro_run if run_mode else intro_edit
     parts = ['''# /// script
 # requires-python = ">=3.12"

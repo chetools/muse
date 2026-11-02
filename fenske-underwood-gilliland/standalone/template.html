@@ -90,12 +90,12 @@ ol.refs li{margin-bottom:7px}
 <div class="appgrid">
 <aside>
 <h2 id="inputs">Feed, volatilities and splits</h2>
-<p class="help">Component order is decreasing volatility. LK denotes the light key (n-butane) and HK the heavy key (isopentane). Feed flow rates f are in lbmol/h (pound-moles per hour). Mean relative volatility, alpha, is dimensionless, relative to the heavy key, whose value is 1.</p>
+<p class="help">Component order is decreasing volatility. LK denotes the light key (n-butane) and HK the heavy key (isopentane). Feed flow rates f are in kmol/h (kilomoles per hour). Mean relative volatility, alpha, is dimensionless, relative to the heavy key, whose value is 1.</p>
 <div id="comp-table"></div>
-<div class="row"><div><label for="in-dlk">Light key in distillate (lbmol/h)</label><input id="in-dlk" type="number" step="any" value="442"></div>
-<div><label for="in-blk">Light key in bottoms (lbmol/h)</label><input id="in-blk" type="number" step="any" value="6"></div></div>
-<div class="row"><div><label for="in-dhk">Heavy key in distillate (lbmol/h)</label><input id="in-dhk" type="number" step="any" value="13"></div>
-<div><label for="in-bhk">Heavy key in bottoms (lbmol/h)</label><input id="in-bhk" type="number" step="any" value="23"></div></div>
+<div class="row"><div><label for="in-dlk">Light key in distillate (kmol/h)</label><input id="in-dlk" type="number" step="any" value="200.488"></div>
+<div><label for="in-blk">Light key in bottoms (kmol/h)</label><input id="in-blk" type="number" step="any" value="2.722"></div></div>
+<div class="row"><div><label for="in-dhk">Heavy key in distillate (kmol/h)</label><input id="in-dhk" type="number" step="any" value="5.897"></div>
+<div><label for="in-bhk">Heavy key in bottoms (kmol/h)</label><input id="in-bhk" type="number" step="any" value="10.433"></div></div>
 <label for="in-q">Feed quality q (liquid fraction of the feed entering the column, dimensionless; 1 = saturated liquid, 0 = saturated vapour)</label><input id="in-q" type="number" step="any" value="0.866">
 <label for="in-mult">Reflux multiplier (operating reflux ratio divided by the minimum reflux ratio, dimensionless)</label><input id="in-mult" type="number" step="any" value="1.3">
 <label for="in-eff">Overall tray efficiency (fraction; 1 = theoretical trays)</label><input id="in-eff" type="number" step="any" value="1">
@@ -109,9 +109,9 @@ ol.refs li{margin-bottom:7px}
 <div class="metrics" id="metrics"></div>
 <figure><div class="figbox" id="fig-gilliland"></div><figcaption>Fig. 1 | The operating point lies on the Gilliland curve. X is the dimensionless correlation variable (R − Rmin) / (R + 1), where R denotes the operating reflux ratio and Rmin the minimum reflux ratio. Y is the dimensionless correlation variable (N − Nmin) / (N + 1), where N denotes the number of equilibrium stages at R and Nmin the minimum number of equilibrium stages at total reflux. The curve is the Eduljee equation for the Gilliland correlation.</figcaption></figure>
 <figure><div class="figbox" id="fig-underwood"></div><figcaption>Fig. 2 | The Underwood feed function has one root, theta (the dimensionless Underwood parameter), in every interval between consecutive relative volatilities. Open markers show all roots; filled markers show the two roots used in the Class 2 solve: the root between the key volatilities and the root between the heavy key and n-pentane. The function is clipped to the range shown.</figcaption></figure>
-<figure><div class="figbox" id="fig-distribution"></div><figcaption>Fig. 3 | Component distribution at total reflux, from the Fenske equation. Flow rates are in lbmol/h on a logarithmic scale because they span twelve orders of magnitude. Colour and pattern both encode the product stream.</figcaption></figure>
+<figure><div class="figbox" id="fig-distribution"></div><figcaption>Fig. 3 | Component distribution at total reflux, from the Fenske equation. Flow rates are in kmol/h on a logarithmic scale because they span twelve orders of magnitude. Colour and pattern both encode the product stream.</figcaption></figure>
 <h2 id="flow-table-h" style="font-size:18px">Component flow rates</h2>
-<p class="help">Feed, distillate and bottoms flow rates in lbmol/h. The distillate and bottoms columns are the total-reflux (Fenske) distribution used by the method; each row and the totals close exactly. A dash denotes a flow below 10<sup>−9</sup> lbmol/h.</p>
+<p class="help">Feed, distillate and bottoms flow rates in kmol/h. The distillate and bottoms columns are the total-reflux (Fenske) distribution used by the method; each row and the totals close exactly. A dash denotes a flow below 10<sup>−9</sup> kmol/h.</p>
 <div class="scroll" id="flow-table"></div>
 </div>
 </div>
@@ -161,7 +161,7 @@ function refreshControls(){ $("btn-run").disabled = busy || !booted; }
 function rejectPending(msg){ Object.keys(pending).forEach(id=>{ const p = pending[id]; delete pending[id]; p.rej(new Error(msg)); }); }
 function bootFailed(text){ $("boot-error").textContent = text; $("boot-status").textContent = "Python runtime: failed."; const bp = $("boot-progress"); bp.value = 100; bp.style.accentColor = "#a33"; }
 function call(type, payload){ return new Promise((res, rej)=>{ if(!worker){ rej(new Error(STUB ? "This stub build has no Python runtime; no calculation is available." : "The Python runtime is not available; live calculation cannot be performed.")); return; } const id = ++callId; const timer = setTimeout(()=>{ if(pending[id]){ delete pending[id]; rej(new Error("The Python runtime did not respond within 180 seconds. Reload the page to restart the runtime; no result was returned for this action.")); } }, 180000); pending[id] = {res: v=>{ clearTimeout(timer); res(v); }, rej: e=>{ clearTimeout(timer); rej(e); }}; worker.postMessage(Object.assign({type, id}, payload||{})); }); }
-function compTableUI(){ const feed = [12,448,36,15,23,39.1,272.2,31], alpha = [2.329,1.864,1,0.845,0.389,0.1825,0.0852,0.0401]; let h = "<table><tr><th>Component</th><th>Feed f (lbmol/h)</th><th>alpha</th></tr>"; NAMES.forEach((n,i)=>{ h += "<tr><td style='text-align:left'>"+n+(i===1?" (LK)":i===2?" (HK)":"")+"</td><td><input id='f"+i+"' type='number' step='any' value='"+feed[i]+"' aria-label='Feed flow rate of "+n+"'></td><td><input id='a"+i+"' type='number' step='any' value='"+alpha[i]+"' aria-label='Mean relative volatility of "+n+"'></td></tr>"; }); $("comp-table").innerHTML = h + "</table>"; }
+function compTableUI(){ const feed = [5.443,203.209,16.329,6.804,10.433,17.735,123.468,14.061], alpha = [2.329,1.864,1,0.845,0.389,0.1825,0.0852,0.0401]; let h = "<table><tr><th>Component</th><th>Feed f (kmol/h)</th><th>alpha</th></tr>"; NAMES.forEach((n,i)=>{ h += "<tr><td style='text-align:left'>"+n+(i===1?" (LK)":i===2?" (HK)":"")+"</td><td><input id='f"+i+"' type='number' step='any' value='"+feed[i]+"' aria-label='Feed flow rate of "+n+"'></td><td><input id='a"+i+"' type='number' step='any' value='"+alpha[i]+"' aria-label='Mean relative volatility of "+n+"'></td></tr>"; }); $("comp-table").innerHTML = h + "</table>"; }
 function numVal(id, label){ const raw = ($(id).value || "").trim(); const v = Number(raw); if(raw === "" || !Number.isFinite(v)) throw new Error(label + " must be a number; check the entry and run again."); return v; }
 function inputsFromUI(){ const feed = [], alpha = []; for(let i=0;i<8;i++){ feed.push(numVal("f"+i, "Feed flow rate of " + NAMES[i])); alpha.push(numVal("a"+i, "Relative volatility of " + NAMES[i])); } return {feed: feed, alpha: alpha, d_lk: numVal("in-dlk", "Light key in distillate"), b_lk: numVal("in-blk", "Light key in bottoms"), d_hk: numVal("in-dhk", "Heavy key in distillate"), b_hk: numVal("in-bhk", "Heavy key in bottoms"), q: numVal("in-q", "Feed quality q"), mult: numVal("in-mult", "Reflux multiplier"), efficiency: numVal("in-eff", "Overall tray efficiency")}; }
 function markStale(){ if(!displayedInputs){ $("stale-note").style.display = "none"; return; } let cur; try{ cur = inputsFromUI(); }catch(e){ $("stale-note").style.display = "block"; return; } $("stale-note").style.display = JSON.stringify(cur) !== JSON.stringify(displayedInputs) ? "block" : "none"; }
@@ -196,7 +196,7 @@ let walkRendered = false;
 function renderWalkFigs(){ if(walkRendered) return; walkRendered = true; const figs = JSON.parse($("walk-figs").textContent); Object.keys(figs).forEach(k=>{ const el = $(k); if(el) Plotly.newPlot(el, figs[k].data, figs[k].layout, {responsive:true, displaylogo:false}); }); }
 compTableUI();
 document.querySelectorAll("aside input").forEach(el=>el.addEventListener("change", markStale));
-try{ const pre = JSON.parse($("prestart-data").textContent); renderResult(pre); displayedInputs = {feed: pre.feed, alpha: pre.alpha, d_lk: 442, b_lk: 6, d_hk: 13, b_hk: 23, q: 0.866, mult: 1.3, efficiency: 1}; }catch(e){ $("session-note").textContent = "Precomputed default case unavailable."; }
+try{ const pre = JSON.parse($("prestart-data").textContent); renderResult(pre); displayedInputs = {feed: pre.feed, alpha: pre.alpha, d_lk: 200.488, b_lk: 2.722, d_hk: 5.897, b_hk: 10.433, q: 0.866, mult: 1.3, efficiency: 1}; }catch(e){ $("session-note").textContent = "Precomputed default case unavailable."; }
 applyHash();
 </script>
 <script>

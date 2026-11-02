@@ -12,8 +12,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/fenske-underwood-gilliland-v1.html
-  python3 build_page.py --stub   -> dist/fenske-underwood-gilliland-v1-stub.html
+  python3 build_page.py          -> dist/fenske-underwood-gilliland-v2.html
+  python3 build_page.py --stub   -> dist/fenske-underwood-gilliland-v2-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -34,8 +34,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "fenske-underwood-gilliland/walkthrough_molab.py")
-OUT_NAME = "fenske-underwood-gilliland-v1.html"
-STUB_NAME = "fenske-underwood-gilliland-v1-stub.html"
+OUT_NAME = "fenske-underwood-gilliland-v2.html"
+STUB_NAME = "fenske-underwood-gilliland-v2-stub.html"
 PYODIDE_MODULES = ["fug.py"]  # registered in the worker boot (build_page)
 
 

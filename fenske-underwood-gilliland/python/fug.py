@@ -3,10 +3,10 @@ distillation column, following Seader, Henley & Roper, Separation Process
 Principles, 4th ed. (2016), Chapter 9, Examples 9.2-9.6 (debutanizer).
 
 Symbols, defined at first use in the walkthrough and Theory text:
-  f_i    molar flow rate of component i in the feed, in lbmol/h
-         (pound-moles per hour, the unit of the source example)
-  d_i    molar flow rate of component i in the distillate, in lbmol/h
-  b_i    molar flow rate of component i in the bottoms, in lbmol/h
+  f_i    molar flow rate of component i in the feed, in kmol/h
+         (kilomoles per hour)
+  d_i    molar flow rate of component i in the distillate, in kmol/h
+  b_i    molar flow rate of component i in the bottoms, in kmol/h
   alpha_i  mean relative volatility of component i with respect to the
          heavy key (HK), dimensionless; alpha of the HK is 1 by definition
   LK     light key; HK heavy key (adjacent in the volatility order)
@@ -36,11 +36,11 @@ def default_inputs():
     """The Seader debutanizer default case (Examples 9.1-9.6)."""
     return {
         "names": list(NAMES),
-        "feed": [12.0, 448.0, 36.0, 15.0, 23.0, 39.1, 272.2, 31.0],
+        "feed": [5.443, 203.209, 16.329, 6.804, 10.433, 17.735, 123.468, 14.061],
         "alpha": [2.329, 1.864, 1.000, 0.845, 0.389, 0.1825, 0.0852, 0.0401],
         "lk": LK, "hk": HK,
-        "d_lk": 442.0, "b_lk": 6.0,      # specified split of the light key
-        "d_hk": 13.0, "b_hk": 23.0,      # specified split of the heavy key
+        "d_lk": 200.488, "b_lk": 2.722,  # specified split of the light key
+        "d_hk": 5.897, "b_hk": 10.433,   # specified split of the heavy key
         "q": 0.866,                      # 13.4 % of the feed vaporised
         "mult": 1.3,                     # R = 1.3 * Rmin (Example 9.6)
         "efficiency": 1.0,               # overall tray efficiency, fraction
@@ -75,10 +75,10 @@ def validate(inp):
         if inp[dkey] < 0 or inp[bkey] < 0:
             raise ValueError(f"The specified split of the {key} must not "
                              "be negative.")
-        if abs(inp[dkey] + inp[bkey] - f[i]) > 1e-6 * max(1.0, f[i]):
+        if abs(inp[dkey] + inp[bkey] - f[i]) > max(1e-6 * f[i], 2e-3):
             raise ValueError(
                 f"The specified split of the {key} does not add up to "
-                f"its feed flow rate ({f[i]:g} lbmol/h).")
+                f"its feed flow rate ({f[i]:g} kmol/h).")
     if not (0.0 <= float(inp["q"]) <= 1.5):
         raise ValueError("The feed quality q must lie between 0 and 1.5 "
                          "on this page (0 saturated vapour, 1 saturated "
@@ -97,7 +97,7 @@ def fenske(inp):
     """Minimum stages and the product distribution at total reflux.
 
     Returns dict with Nmin and the distillate and bottoms flow arrays
-    d and b (lbmol/h), computed for the smaller stream of each non-key
+    d and b (kmol/h), computed for the smaller stream of each non-key
     component first, the other by difference (Seader's guidance).
     """
     validate(inp)
@@ -163,7 +163,7 @@ def underwood_class2(inp, dist):
     single non-key immediately heavier than the heavy key, whose
     distillate flow is an unknown.  All heavier components are taken to
     pass wholly into the bottoms.  Unknowns: the distillate rate D
-    (lbmol/h), the minimum internal reflux rate Lmin (lbmol/h), and the
+    (kmol/h), the minimum internal reflux rate Lmin (kmol/h), and the
     distillate flow of the distributing non-key; equations: the
     Underwood distillate equation at the two roots that bracket the
     heavy key, and the overall balance D = sum of distillate flows.
@@ -348,7 +348,7 @@ def run_case(inp):
                  marker=dict(color="#D55E00", pattern=dict(shape="/")))],
         "layout": dict(template="plotly_white", barmode="group",
                        xaxis=dict(title="Component"),
-                       yaxis=dict(title="Flow rate (lbmol/h)",
+                       yaxis=dict(title="Flow rate (kmol/h)",
                                   type="log"),
                        legend=dict(x=1.02, y=1.0, xanchor="left",
                                    yanchor="top"),
@@ -378,16 +378,16 @@ def run_case(inp):
 def class1_check():
     """Seader Example 9.4 (Class 1 estimate), from the quantities given
     in Examples 9.1 and 9.4 of the source text.  Feed liquid rate
-    759 lbmol/h of a feed rate of 876.3 lbmol/h; feed-liquid flows of
-    the light key 345.41 lbmol/h and of the heavy key 31.28 lbmol/h;
+    344.277 kmol/h of a feed rate of 397.483 kmol/h; feed-liquid flows
+    of the light key 156.675 kmol/h and of the heavy key 14.188 kmol/h;
     relative volatility of the keys at feed conditions 1.967;
-    distillate flows of the keys 442 and 13 lbmol/h.  Returns the
+    distillate flows of the keys 200.488 and 5.897 kmol/h.  Returns the
     minimum internal reflux per unit feed, its conversion per unit
-    distillate at the Fenske distillate rate 468.95 lbmol/h, and
+    distillate at the Fenske distillate rate 212.712 kmol/h, and
     Seader's printed per-distillate value, which does not follow from
     the printed per-feed value (see the Theory panel)."""
-    l_per_f = (759.0 / 876.3) * ((442.0 / 345.41)
-                                 - 1.967 * (13.0 / 31.28)) / (1.967 - 1.0)
-    per_d = l_per_f * 876.3 / 468.95
+    l_per_f = (344.277 / 397.483) * ((200.488 / 156.675)
+                                     - 1.967 * (5.897 / 14.188)) / (1.967 - 1.0)
+    per_d = l_per_f * 397.483 / 212.712
     return {"l_per_f": float(l_per_f), "per_d_recomputed": float(per_d),
             "per_d_printed": 0.864}

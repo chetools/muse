@@ -39,3 +39,19 @@ named n-decane in one extracted table but n-nonane (C9) in the
 feed and K-value tables — n-nonane is used. The 4th-edition print
 was not available in the sandbox; both items are stated on the
 page as they stand in the source copy on file.
+
+Addendum (SI conversion, 2026-11-02): at the user's direction
+("always use SI units"), the page was converted throughout from
+the source text's imperial units to SI and republished as the v2
+build at the same address. Every molar flow was multiplied by
+0.45359237 kmol per lbmol and is now stated in kmol/h; the
+pressures of Section 2 are now in kPa (70 psia = 482.6 kPa;
+105 psia = 723.9 kPa; 74 psia = 510.2 kPa). The original Seader
+values remain identifiable in this file above and in the git
+history (the v1 build): feed 876.3 lbmol/h with the component
+values of item 3, key splits 442/6 and 13/23 lbmol/h, totals
+468.95/407.35 lbmol/h. All dimensionless results are unchanged.
+Two converted values in Theory Section 7 are the page's own
+solutions at the new rounding (n-pentane in distillate
+1.554 kmol/h, D = 213.382 kmol/h); the direct conversions of the
+source text's rounded totals are 1.556 and 213.370 kmol/h.
