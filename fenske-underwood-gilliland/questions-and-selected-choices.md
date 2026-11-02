@@ -15,8 +15,11 @@ edition); all other recommendations were accepted by the user
 5. Volatilities — Seader's geometric-mean relative volatilities,
    one declared table used throughout, editable; Example 9.1
    (ChemCAD/SRK) summarised in Theory, not a live calculation.
-6. Underwood — Class 1 taught with its failed check, Class 2 as
-   the working result; the distributing non-key is n-pentane.
+6. Underwood — Class 1 only (user instruction, 2026-11-02,
+   superseding the earlier Class 1 + Class 2 choice recorded here
+   previously): the Class 1 calculation is the headline result,
+   with its validity check, which fails for this case, stated
+   plainly; no Class 2 calculation is presented.
 7. Gilliland — Eduljee equation (Seader Eq. 9-33), full curve
    plotted with the operating point.
 8. Operating reflux — multiplier on Rmin, default 1.3 (Seader
