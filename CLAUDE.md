@@ -31,24 +31,26 @@ the project instructions govern that project.
 
 ## Writing and notation
 
-- Journal-formal register in all user-facing writing: nominal, impersonal
-  headings; no hype, no conversational fragments, no second-person asides.
-- Define every symbol before its first use, with SI units where
-  applicable, in prose, equations, captions, tables, figures, and code
-  shown to the reader. A symbols table alone does not satisfy the rule
-  when a symbol first appears far from the table.
-- Every abbreviation, legend entry, and axis label used on a page appears
-  at least once on that page adjacent to its full form and meaning.
-- Verify every citation before delivery: each in-text citation resolves
-  to exactly one bibliography entry, and authors, year, title, journal,
-  volume, pages, or DOI are checked against the publisher record or
-  Crossref.
-- All user-facing writing (replies, documents, pages, notebooks,
-  captions, labels, commit messages) follows
-  `writing-style/writing-style.md`, imported below. Its references are
-  in `writing-style/references/`.
-
-@writing-style/writing-style.md
+- Before drafting or revising user-facing text (documents, pages, theory and caption text, notebook
+  prose, commit messages, long replies), load the `writing-skills` skill (`.claude/skills/writing-skills/`;
+  canonical source `chetools/muse:writing-skills/`), name the document type, and run its revision pass
+  before delivery. Before drawing or styling a figure, plot or page, load the `stem-visual-style` skill.
+- Always on: journal-formal, plain, brief English; no hype or filler; verified facts kept apart from
+  inference, with what was not checked named.
+- Chat replies: English; voice input is spell-checked against chemical-engineering, coding and AI/ML
+  vocabulary. No LaTeX: math-heavy content goes in a self-contained HTML file (KaTeX rendered at build
+  time) or a PDF, with every equation checked on a screenshot. Runtime and availability caveats go in the
+  reply, never in a document or page. A changed file is re-delivered under a fresh filename. A MoLab link,
+  and the link of a changed published page, each stand on their own labelled line.
+- Code shown to the user is minimal: existing libraries (Plotly, SciPy, existing routines) over
+  hand-written numerics, plain functions over classes. Calculations and plots are in Python, not
+  JavaScript, except a requested accelerator with a measured speed-up, the Python reference kept and
+  parity shown.
+- A request such as "70% technical style" or "STE100" sets the dial in `writing-skills/references/ste100.md`.
+- Class material: the word "formula" is not used; a student explains a solution, concept or procedure
+  without "that", "this", "thing" or "formula"; teaching time is split 30% exposition skills, 60% deep
+  conceptual understanding, 10% AI fluency.
+- When I give exact wording for a rule, it is recorded verbatim, with no added heading, date or context.
 
 ## Pages and user interface
 
@@ -64,12 +66,15 @@ the project instructions govern that project.
 - Every long tab, section, or panel carries a table of contents derived
   from its rendered headings, with URL fragment navigation so any view
   is shareable by copying the address. Every panel and every headed
-  section within a panel carries a fragment identifier.
+  section within a panel carries a fragment identifier. The main tab bar
+  is sticky with an opaque background, in-panel contents sit below it,
+  and fragment targets have a scroll margin. The theory panel is labelled
+  "Theory".
 - A long-running step displays a live progress indicator.
 - Plotly is the default plotting library. Legends sit outside the plot
   area; log axes carry pinned ranges. Colour is always double-encoded
-  and grayscale-readable; the canonical specification is the STEM visual
-  style specification held with the project sources.
+  and grayscale-readable; the canonical specification is the `stem-visual-style`
+  skill (`.claude/skills/stem-visual-style/`).
 - Visual scales follow the displayed data's statistics. Animation is
   defined in simulated time. Compared panels show equal density. Shown
   values and control steps are nice numbers. Presets carry display
