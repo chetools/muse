@@ -55,6 +55,11 @@
         <input type="range" id="P" min="0" max="1000" step="1" value="231">
         <p class="hint">Logarithmic scale, 0.5 to 10 atm.</p>
       </div>
+      <fieldset class="feedmode" id="ctl-specmode">
+        <legend>Specification mode</legend>
+        <label><input type="radio" name="specmode" value="compositions" checked> Product compositions</label>
+        <label><input type="radio" name="specmode" value="stages"> Number of stages</label>
+      </fieldset>
       <div class="ctl">
         <label for="zF">Feed mole fraction of light component, z<sub>F</sub> <span class="val" id="zF-val"></span></label>
         <input type="range" id="zF" min="0.05" max="0.9" step="0.01" value="0.4">
@@ -62,15 +67,44 @@
       <div class="ctl">
         <label for="xD">Distillate mole fraction, x<sub>D</sub> <span class="val" id="xD-val"></span></label>
         <input type="range" id="xD" min="0.1" max="0.99" step="0.005" value="0.95">
+        <p class="hint" id="xD-note" style="display:none">Calculated in stages mode — its value is shown in the results.</p>
       </div>
       <div class="ctl">
         <label for="xB">Bottoms mole fraction, x<sub>B</sub> <span class="val" id="xB-val"></span></label>
         <input type="range" id="xB" min="0.005" max="0.4" step="0.005" value="0.05">
+        <p class="hint" id="xB-note" style="display:none">Calculated in stages mode — its value is shown in the results.</p>
       </div>
-      <div class="ctl">
+      <div class="ctl" id="ctl-Rmult">
         <label for="Rmult">Reflux ratio as a multiple of the minimum <span class="val" id="Rmult-val"></span></label>
         <input type="range" id="Rmult" min="1.05" max="3" step="0.01" value="1.3">
+        <input type="number" id="RmultNum" step="0.01" value="1.3" style="margin-top:6px;width:100%">
+        <p class="hint">The slider covers 1.05 to 3.0; a typed value may lie beyond the slider range but must exceed 1.0.</p>
         <p class="hint">Absolute reflux ratio of the displayed run: <span id="Rabs">–</span></p>
+      </div>
+      <div class="ctl" id="ctl-N" style="display:none">
+        <label for="Nstages">Number of stages including the reboiler, N <span class="val" id="Nstages-val"></span></label>
+        <input type="range" id="Nstages" min="3" max="60" step="1" value="15">
+      </div>
+      <div class="ctl" id="ctl-RabsIn" style="display:none">
+        <label for="RabsIn">Reflux ratio, R <span class="val" id="RabsIn-val"></span></label>
+        <input type="range" id="RabsIn" min="0.2" max="20" step="0.05" value="2">
+      </div>
+      <fieldset class="feedmode" id="ctl-refluxbasis" style="display:none">
+        <legend>Reflux basis (stages mode)</legend>
+        <label><input type="radio" name="refluxbasis" value="abs" checked> Absolute ratio</label>
+        <label><input type="radio" name="refluxbasis" value="mult"> Multiple of the McCabe–Thiele minimum</label>
+      </fieldset>
+      <fieldset class="feedmode" id="ctl-prodbasis" style="display:none">
+        <legend>Product specification (stages mode)</legend>
+        <label><input type="radio" name="prodbasis" value="hold_xD" checked> Hold: distillate composition</label>
+        <label><input type="radio" name="prodbasis" value="hold_xB"> Hold: bottoms composition</label>
+        <label><input type="radio" name="prodbasis" value="D"> Distillate flow rate D</label>
+      </fieldset>
+      <div class="ctl" id="ctl-Drate" style="display:none">
+        <label for="Drate">Distillate flow rate, D (kmol/s) <span class="val" id="Drate-val"></span></label>
+        <input type="range" id="Drate" min="0.05" max="0.95" step="0.005" value="0.3889">
+        <input type="number" id="DrateNum" step="0.005" value="0.3889" style="margin-top:6px;width:100%">
+        <p class="hint">B = F − D follows from the overall balance; both product compositions are calculated.</p>
       </div>
       <fieldset class="feedmode">
         <legend>Feed condition (F = 1 kmol/s)</legend>

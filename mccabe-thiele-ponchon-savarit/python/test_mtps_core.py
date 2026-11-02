@@ -126,6 +126,207 @@ def test_feed_temperature_domain_limit():
         mc.feed_state_real(EW, 0.4, ATM, "TP", TF=Tc_min + 20.0, PF=ATM)
 
 
+# ------------------------------------------------------------ stages mode
+BT_SPEC = {"system": "benzene-toluene", "P_atm": 1.0, "zF": 0.4,
+           "feed_mode": "q", "q": 1.0}
+
+
+def _bt_eq_feed():
+    eq = mc.table_eq_curve(mc.equilibrium_table(BT, ATM))
+    feed = mc.feed_state_real(BT, 0.4, ATM, "q", q_in=1.0)
+    return eq, feed
+
+
+def _bt_Rop():
+    base = mc.solve_column({**BT_SPEC, "xD": 0.95, "xB": 0.05,
+                            "R_mult": 1.3})
+    return base["R"]
+
+
+def test_stages_hold_xD_round_trip():
+    R_op = _bt_Rop()
+    eq, feed = _bt_eq_feed()
+    r = mc.solve_column({**BT_SPEC, "spec_mode": "stages",
+                         "product_basis": "hold_xD",
+                         "reflux_basis": "abs", "xD": 0.95,
+                         "R_abs": R_op, "N_stages": 14})
+    assert r["mode"] == "stages" and r["hold"] == "xD"
+    restep = {
+        "mt": lambda xd, xb: mc.mccabe_thiele(
+            eq, 0.4, 1.0, xd, xb, R_abs=R_op)["N"],
+        "ps": lambda xd, xb: mc.ponchon_savarit(
+            eq, 0.4, feed["hF"], xd, xb, R_op)["N"],
+    }
+    for m in ("mt", "ps"):
+        mm = r[m]
+        assert mm["stages_solved"], m
+        assert abs(restep[m](mm["xD_out"], mm["xB_out"]) - 14) < 0.05, m
+    # More stages than the compositions-mode MT count (13.16) at the
+    # same reflux strips the bottoms further for McCabe-Thiele;
+    # Ponchon-Savarit, which needs more stages for this system,
+    # strips less far than McCabe-Thiele at the same count.
+    assert r["mt"]["xB_out"] < 0.05
+    assert r["ps"]["xB_out"] > r["mt"]["xB_out"]
+
+
+def test_stages_hold_xB_alpha_symmetric():
+    R_op = _alpha_run()["R"]
+    eq = mc.alpha_eq_curve(2.5, 1.0)
+    r = mc.solve_column({"system": "alpha", "alpha_value": 2.5,
+                         "latent_ratio": 1.0, "zF": 0.5,
+                         "feed_mode": "q", "q": 1.0, "P_atm": 1.0,
+                         "spec_mode": "stages",
+                         "product_basis": "hold_xB",
+                         "reflux_basis": "abs", "xB": 0.05,
+                         "R_abs": R_op, "N_stages": 14})
+    for m in ("mt", "ps"):
+        assert r[m]["stages_solved"], m
+        assert r[m]["xD_out"] > 0.95, m
+    n = mc.mccabe_thiele(eq, 0.5, 1.0, r["mt"]["xD_out"], 0.05,
+                         R_abs=R_op)["N"]
+    assert abs(n - 14) < 0.05
+
+
+def test_stages_count_monotone_in_unknown():
+    R_op = _bt_Rop()
+    eq, feed = _bt_eq_feed()
+    # Hold-xD basis: the count rises as the unknown xB falls.
+    us = [0.30, 0.20, 0.10, 0.05, 0.02]
+    mt_counts = [mc._mt_step(eq, 0.4, 1.0, 0.95, u, R_op)["N"]
+                 for u in us]
+    ps_counts = [mc.ponchon_savarit(eq, 0.4, feed["hF"], 0.95, u,
+                                    R_op)["N"] for u in us]
+    assert all(b > a for a, b in zip(mt_counts, mt_counts[1:]))
+    assert all(b > a for a, b in zip(ps_counts, ps_counts[1:]))
+    # Distillate-rate basis: the count rises as xD rises along the
+    # component-balance line at fixed D.
+    D = 0.388889
+    B = 1.0 - D
+    xds = [0.80, 0.90, 0.95, 0.98]
+    pairs = [(x, (0.4 - D * x) / B) for x in xds]
+    mt_line = [mc._mt_step(eq, 0.4, 1.0, xd, xb, R_op)["N"]
+               for xd, xb in pairs]
+    ps_line = [mc.ponchon_savarit(eq, 0.4, feed["hF"], xd, xb,
+                                  R_op)["N"] for xd, xb in pairs]
+    assert all(b > a for a, b in zip(mt_line, mt_line[1:]))
+    assert all(b > a for a, b in zip(ps_line, ps_line[1:]))
+
+
+def test_stages_infeasible_below_minimum_reflux():
+    r = mc.solve_column({"system": "alpha", "alpha_value": 2.5,
+                         "latent_ratio": 1.0, "zF": 0.5,
+                         "feed_mode": "q", "q": 1.0, "P_atm": 1.0,
+                         "spec_mode": "stages",
+                         "product_basis": "hold_xD",
+                         "reflux_basis": "abs", "xD": 0.95,
+                         "R_abs": 0.5, "N_stages": 10})
+    assert not r["mt"]["stages_solved"] and r["mt"]["limit"] == "pinch"
+    assert not r["ps"]["stages_solved"]
+
+
+def test_stages_balances_close():
+    R_op = _bt_Rop()
+    r = mc.solve_column({**BT_SPEC, "spec_mode": "stages",
+                         "product_basis": "hold_xD",
+                         "reflux_basis": "abs", "xD": 0.95,
+                         "R_abs": R_op, "N_stages": 15})
+    for m in ("mt", "ps"):
+        mm = r[m]
+        assert mm["stages_solved"], m
+        assert abs(mm["D_kmol_s"] + mm["B_kmol_s"] - 1.0) < 1e-12, m
+        assert abs(mm["D_kmol_s"] * mm["xD_out"]
+                   + mm["B_kmol_s"] * mm["xB_out"] - 0.4) < 1e-9, m
+
+
+def test_stages_D_basis_round_trip():
+    eq, feed = _bt_eq_feed()
+    r = mc.solve_column({**BT_SPEC, "spec_mode": "stages",
+                         "product_basis": "D", "reflux_basis": "mult",
+                         "R_mult": 1.3, "D_spec": 0.388889,
+                         "N_stages": 14})
+    restep = {
+        "mt": lambda mm: mc.mccabe_thiele(
+            eq, 0.4, 1.0, mm["xD_out"], mm["xB_out"],
+            R_abs=mm["R_out"])["N"],
+        "ps": lambda mm: mc.ponchon_savarit(
+            eq, 0.4, feed["hF"], mm["xD_out"], mm["xB_out"],
+            mm["R_out"])["N"],
+    }
+    for m in ("mt", "ps"):
+        mm = r[m]
+        assert mm["stages_solved"], m
+        assert abs(mm["R_out"] - 1.3 * mm["Rmin_out"]) < 0.01, m
+        assert abs(mm["D_kmol_s"] - 0.388889) < 1e-9, m
+        assert abs(mm["D_kmol_s"] * mm["xD_out"]
+                   + mm["B_kmol_s"] * mm["xB_out"] - 0.4) < 1e-9, m
+        assert abs(restep[m](mm) - 14) < 0.05, m
+
+
+def test_stages_D_basis_direction():
+    r = mc.solve_column({**BT_SPEC, "spec_mode": "stages",
+                         "product_basis": "D", "reflux_basis": "mult",
+                         "R_mult": 1.3, "D_spec": 0.388889,
+                         "N_stages": 15})
+    for m in ("mt", "ps"):
+        assert r[m]["stages_solved"], m
+        assert r[m]["xD_out"] > 0.95, m
+        assert r[m]["xB_out"] < 0.05, m
+
+
+def test_stages_D_basis_alpha():
+    eq = mc.alpha_eq_curve(2.5, 1.0)
+    r = mc.solve_column({"system": "alpha", "alpha_value": 2.5,
+                         "latent_ratio": 1.0, "zF": 0.5,
+                         "feed_mode": "q", "q": 1.0, "P_atm": 1.0,
+                         "spec_mode": "stages", "product_basis": "D",
+                         "reflux_basis": "mult", "R_mult": 1.3,
+                         "D_spec": 0.5, "N_stages": 14})
+    assert r["mt"]["stages_solved"] and r["ps"]["stages_solved"]
+    n = mc.mccabe_thiele(eq, 0.5, 1.0, r["mt"]["xD_out"],
+                         r["mt"]["xB_out"],
+                         R_abs=r["mt"]["R_out"])["N"]
+    assert abs(n - 14) < 0.05
+
+
+def test_stages_D_basis_infeasible():
+    r = mc.solve_column({**BT_SPEC, "spec_mode": "stages",
+                         "product_basis": "D", "reflux_basis": "mult",
+                         "R_mult": 1.01, "D_spec": 0.388889,
+                         "N_stages": 40})
+    assert not r["mt"]["stages_solved"]
+    assert not r["ps"]["stages_solved"]
+
+
+def test_stages_D_basis_rate_too_large_for_feed():
+    # At D_spec = 0.999 and zF = 0.40 the trial bracket inverts
+    # (zF/D_spec < zF + 1e-3); without a guard the solve returned a
+    # negative bottoms mole fraction (-0.5990 for Ponchon-Savarit).
+    with pytest.raises(ValueError, match="too large for the feed"):
+        mc.solve_column({**BT_SPEC, "spec_mode": "stages",
+                         "product_basis": "D", "reflux_basis": "abs",
+                         "R_abs": 2.0, "D_spec": 0.999,
+                         "N_stages": 15})
+
+
+def test_stages_D_basis_extreme_split_no_false_ps_pinch():
+    # Review case: D_spec = 0.99 leaves B = 0.01 kmol/s, the
+    # stripping pole enthalpy is extreme, and the ray from a stage
+    # liquid crosses the vapour enthalpy curve closer than 1e-6 to
+    # the liquid point. A search grid starting at x + 1e-6 missed
+    # that crossing and reported a pinch at (0.404015, 0.002530);
+    # direct stepping reaches the bottoms composition, so the
+    # correct class is the finite-count "short", as McCabe-Thiele
+    # reports.
+    r = mc.solve_column({**BT_SPEC, "spec_mode": "stages",
+                         "product_basis": "D", "reflux_basis": "abs",
+                         "R_abs": 2.0, "D_spec": 0.99, "N_stages": 15})
+    assert not r["ps"]["stages_solved"]
+    assert r["ps"]["limit"] == "short"
+    assert not r["ps"]["pinched"]
+    assert r["ps"]["xB_out"] >= 0.0
+    assert r["mt"]["limit"] == "short"
+
+
 def test_pressure_raises_condenser_temperature():
     base = {"system": "ethanol-water", "zF": 0.4, "xD": 0.8, "xB": 0.05,
             "R_mult": 1.3, "feed_mode": "q", "q": 1.0}

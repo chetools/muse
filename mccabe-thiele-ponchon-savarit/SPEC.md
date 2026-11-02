@@ -54,8 +54,11 @@ Source: public repository chetools/chetools, files frozen in `data/`.
 - Feed composition zF (mole fraction of light component), distillate
   composition xD, bottoms composition xB: sliders.
 - Reflux ratio R set as a multiple of the minimum reflux ratio
-  (slider 1.05–3.0) with the absolute value shown; an absolute-R mode
-  is not required.
+  (slider 1.05–3.0) with the absolute value shown. The multiple is
+  also enterable as a typed number, synced two-way with the slider
+  and allowed beyond the slider range; a typed multiple must exceed
+  1.0, and an invalid entry is rejected through the
+  specification-error path (no run is rendered from it).
 - Feed condition, two modes:
   (a) q entered directly, q (dimensionless) slider −1.0 to 2.0,
       default 1.0. q > 1 subcooled liquid, q = 1 saturated liquid,
@@ -74,6 +77,95 @@ Source: public repository chetools/chetools, files frozen in `data/`.
 - A distillate composition past the azeotrope is allowed: stepping
   pinches at the azeotrope, stage count reported as unbounded, banner
   states the azeotrope composition as the ceiling.
+
+## Stages mode (rating calculation; added 2026-11-02)
+
+An alternative specification mode, selected in the App by a
+"Product compositions" / "Number of stages" toggle
+(`spec_mode`: "compositions", the default, or "stages").
+
+- Additional spec fields: `N_stages` (integer total stages including
+  the reboiler; App slider 3–60, default 15); two independent
+  selectors — reflux basis `reflux_basis` ("abs": absolute reflux
+  ratio `R_abs`, App slider 0.2–20, step 0.05, default 2.0; or
+  "mult": the reflux multiple of compositions mode) and product
+  basis `product_basis` ("hold_xD", "hold_xB" or "D").
+- Degree of freedom: with the feed, the reflux ratio and the stage
+  count given, the overall balances plus the staircase leave one
+  degree of freedom, so one further product quantity must still be
+  specified. In the hold bases that quantity is one product
+  composition, which stays an input; the other composition is
+  calculated. In the distillate-rate basis it is the distillate
+  flow rate D, and both compositions are calculated. Each method
+  solves separately (same N, reflux basis and product basis; each
+  method's own stepping), so the two methods generally calculate
+  slightly different values.
+- Calculation: both modes share one stepping path at a given
+  reflux ratio R and given compositions. In stages mode, for each
+  method independently, one unknown composition u is bisected
+  until that method's stepped fractional stage count equals
+  N_stages (tolerance 0.01 stages; a pinched trial counts as an
+  infinite count; the stepped count is monotone in u,
+  spot-checked in the test battery). Hold bases: u = xB in
+  (0.0005, zF) when holding xD; u = xD in (zF, 0.999) when holding
+  xB. Distillate-rate basis: the unknown is xD, with
+  xB = (F zF − D xD)/B from the component balance (B = F − D), and
+  xD ranges over (zF, min(0.999, F zF/D)) so that 0 < xB < zF; the
+  count is monotone increasing in xD along that balance line.
+  Under the "mult" reflux basis each trial pair first gets its
+  McCabe–Thiele minimum reflux ratio from the existing stepping
+  bisection and R = multiple × R_min,MT for both methods (the
+  page's standing convention: the multiple is referenced to the
+  McCabe–Thiele minimum); under "abs", R = R_abs. D and B follow
+  from the overall balances at each trial (in the D basis they are
+  the specified split); the feed stage comes from the stepping at
+  the solution.
+- Distillate-rate inputs: D in kmol/s, App slider plus synced
+  numeric input, 0.05 to 0.95; default per preset = the
+  compositions-mode default D for that preset: fixed-volatility
+  0.5000, benzene–toluene 0.3889, methanol–water 0.3889,
+  ethanol–water 0.4667, isopropanol–water 0.6364 kmol/s. In this
+  basis both composition sliders are disabled, with a note that
+  both compositions are calculated.
+- Result schema: everything compositions mode returns, plus
+  "mode", "hold", "product_basis", "reflux_basis", and per method
+  "xD_out" and "xB_out" (the solved pair), "stages_solved" (bool),
+  "R_out" and "Rmin_out" (that method's reflux ratio and
+  McCabe–Thiele minimum reflux ratio at its own solution), a
+  "limit" kind and a note string, and per-method D, B and
+  condenser/reboiler temperatures. If the target count is
+  unreachable at the given reflux (pinch limit: the stepped count
+  exceeds N_stages at every trial, or the count at the extreme
+  trial still falls short, or N_stages is below the degenerate
+  minimum count of the D basis), the method returns
+  stages_solved = false with the limiting composition and the
+  note; the App displays that state plainly (calculated
+  composition at the pinch limit; stage count "not attainable at
+  this reflux ratio") and never a fabricated pair. If a method's
+  solved xD would exceed the azeotrope composition, the stepping
+  pinches at the azeotrope: stages_solved = false with the
+  azeotrope named as the limit, in the existing banner language.
+- After solving, the McCabe–Thiele minimum reflux ratio is also
+  computed for the solved specification (the existing bisection;
+  for the fixed-volatility preset both methods share it), and the
+  result reports the operating reflux ratio and the implied
+  multiple R / R_min.
+- Guards unchanged: the overall-balance feasibility check applies
+  to the held pair at the solution (the calculated composition
+  satisfies it automatically); if the held xD exceeds the
+  azeotrope, the existing infeasible_azeotrope handling applies.
+- The precomputed (prestart) run stays the compositions-mode
+  benzene–toluene default.
+- Verification anchors for stages mode: round trips in the test
+  battery (a stages-mode solution re-solved in compositions mode
+  at the same reflux returns the specified count), monotonicity
+  spot checks (hold basis and distillate-rate balance line), an
+  unreachable case below the minimum reflux, walkthrough Step 8
+  (benzene–toluene, hold xD, N_stages = 15: both calculated xB
+  values lie below the compositions-mode default 0.05) and Step 9
+  (distillate-rate basis, D at the benzene–toluene default,
+  multiple 1.3, N_stages = 15: both solved xD exceed 0.95 and both
+  solved xB lie below 0.05).
 
 ## Outputs (App tab)
 

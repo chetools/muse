@@ -227,6 +227,62 @@ For the real systems $R_{\min}$ and $N_{\min}$ are the stepped
 quantities themselves, not closed-form estimates, so a pinch at an
 azeotrope or a tangent pinch is reflected in them directly.
 
+## Rating: specifying the stage count
+
+The App tab also runs the inverse problem, called a rating
+calculation: $N$ is specified and a product composition is
+calculated. The degree-of-freedom count is set by the overall
+balances of the first section: with $F$ and $z_F$ fixed, the two
+balance equations link the four product quantities $D$, $B$, $x_D$
+and $x_B$, so a specification that fixes the feed condition, $R$
+and $N$ still leaves one product quantity to be chosen. The App
+offers three choices of that quantity: $x_D$ held ($x_B$
+calculated), $x_B$ held ($x_D$ calculated), or the distillate
+flow rate $D$ (both compositions calculated; see below).
+
+For a hold basis the calculation is a bisection on the unknown
+composition: trial values are stepped by the same constructions
+as above at the given $R$, and the interval is halved until the
+stepped fractional stage count equals the specified $N$ to within
+0.01 stages. The stepped count varies monotonically with the
+unknown composition (a harder separation — lower $x_B$ at held
+$x_D$, or higher $x_D$ at held $x_B$ — needs more stages), so the
+bisection has exactly one solution when one exists. Each method
+bisects with its own stepping, so the two calculated compositions
+generally differ slightly, as the stage counts of the design
+calculation do. At fixed $R$ there is a pinch limit: as the
+unknown composition approaches the value at which the staircase
+pinches, the count grows without bound, and past that composition
+no finite count exists. A specified $N$ can therefore be
+unattainable in two ways — the count at the least demanding trial
+composition already exceeds $N$, or the count at the most
+demanding trial composition still falls short of $N$ — and the
+page then reports the limiting composition and states that the
+stage count is not attainable at that reflux ratio, rather than a
+solved pair. The reflux may be given as an absolute ratio or as a
+multiple of $R_{\min}$; under the multiple the implied multiple
+reported with a solution is $R/R_{\min}$ with both quantities
+taken at the solved specification.
+
+For the distillate-rate basis the component balance ties the two
+compositions together along one line: with $D$ given and
+$B = F - D$ from the total balance,
+
+$$x_B = \frac{F z_F - D x_D}{B},$$
+
+so one unknown, $x_D$, remains, and the bisection runs along that
+line. Under the multiple basis the solve is nested: every trial
+pair first gets its McCabe–Thiele minimum reflux ratio from the
+bisection of the minimum-reflux section, the operating reflux
+ratio follows as the multiple times that minimum (for both
+methods, by the page convention that the multiple is referenced
+to the McCabe–Thiele minimum), and only then is the trial count
+stepped. Each method therefore reports its own solved pair and,
+under the multiple basis, its own $R$ and $R_{\min}$ at its
+solution. If a solution would require $x_D$ past an azeotrope,
+the stepping pinches at the azeotrope composition and the page
+names the azeotrope as the limit.
+
 ## Enthalpy model
 
 Ponchon–Savarit works on the enthalpy–composition diagram, so the

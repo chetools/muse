@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).parent
 QA = ROOT / "dist" / "qa"
 QA.mkdir(parents=True, exist_ok=True)
-URL = "http://localhost:8907/mccabe-thiele-ponchon-savarit-standalone-v2.html"
+URL = "http://localhost:8907/mccabe-thiele-ponchon-savarit-standalone-v4.html"
 
 report = {"console_errors": [], "page_errors": []}
 
@@ -66,6 +66,133 @@ with sync_playwright() as pw:
         shot(page, "app-live-ethanol-1440.png")
         page.reload()
         page.wait_for_timeout(2500)
+    # stages mode: drive the render functions with synthetic result
+    # objects (live Pyodide is unavailable in the sandbox). First the
+    # control-state checks, then a solved hold-xD result, then an
+    # unsolved one; the prestart run is restored afterwards.
+    page.check("input[name='specmode'][value='stages']")
+    page.wait_for_timeout(200)
+    report["stages_controls"] = page.evaluate("""() => ({
+      N_visible: document.getElementById('ctl-N').style.display !== 'none',
+      RabsIn_visible: document.getElementById('ctl-RabsIn').style.display !== 'none',
+      Rmult_hidden: document.getElementById('ctl-Rmult').style.display === 'none',
+      xB_disabled: document.getElementById('xB').disabled,
+      xD_disabled: document.getElementById('xD').disabled })""")
+    page.check("input[name='prodbasis'][value='D']")
+    page.wait_for_timeout(200)
+    report["stages_controls_D"] = page.evaluate("""() => ({
+      Drate_visible: document.getElementById('ctl-Drate').style.display !== 'none',
+      xD_disabled: document.getElementById('xD').disabled,
+      xB_disabled: document.getElementById('xB').disabled })""")
+    page.check("input[name='prodbasis'][value='hold_xD']")
+    page.check("input[name='specmode'][value='compositions']")
+    page.wait_for_timeout(200)
+    stages_js = """() => {
+      const pre = JSON.parse(
+        document.getElementById('prestart-data').textContent);
+      const r = JSON.parse(JSON.stringify(pre.result));
+      r.mode = 'stages'; r.hold = 'xD'; r.product_basis = 'hold_xD';
+      r.reflux_basis = 'abs'; r.N_stages = 15; r.D_spec = null;
+      r.R_mult_implied = 1.3;
+      Object.assign(r.mt, {xD_out: r.xD, xB_out: 0.0206,
+        stages_solved: true, limit: 'none', note: null,
+        R_out: r.R, Rmin_out: r.R_min, D_kmol_s: 0.4082,
+        B_kmol_s: 0.5918, condenser_T_C: r.condenser_T_C,
+        reboiler_T_C: 110.9});
+      Object.assign(r.ps, {xD_out: r.xD, xB_out: 0.0374,
+        stages_solved: true, limit: 'none', note: null,
+        R_out: r.R, Rmin_out: r.R_min, D_kmol_s: 0.399,
+        B_kmol_s: 0.601, condenser_T_C: r.condenser_T_C,
+        reboiler_T_C: 109.6});
+      displayResult(r, pre.spec);
+      return r;
+    }"""
+    page.evaluate(stages_js)
+    page.wait_for_timeout(600)
+    txt = page.locator("#metrics").inner_text()
+    report["stages_metrics_has_calculated"] = "calculated" in txt
+    report["stages_metrics_has_specified_N"] = "15 (specified)" in txt
+    # the reboiler row of the per-stage table must substitute the
+    # Ponchon-Savarit run's own B (0.601 here), not the top-level
+    # value (0.6111 in the prestart run)
+    report["stages_table_last_row_L"] = page.locator(
+        "#stage-rows tr").last.locator("td").nth(4).inner_text()
+    shot(page, "app-stages-1440.png")
+    page.evaluate("""() => {
+      const pre = JSON.parse(
+        document.getElementById('prestart-data').textContent);
+      const r = JSON.parse(JSON.stringify(pre.result));
+      r.mode = 'stages'; r.hold = 'xD'; r.product_basis = 'hold_xD';
+      r.reflux_basis = 'abs'; r.N_stages = 15; r.D_spec = null;
+      const un = {stages_solved: false, limit: 'pinch',
+        note: '15 stages are not attainable at this reflux: the ' +
+          'stepping pinches at every composition past the limit shown'};
+      Object.assign(r.mt, {xD_out: r.xD, xB_out: 0.31,
+        R_out: r.R, Rmin_out: r.R_min, D_kmol_s: 0.3, B_kmol_s: 0.7,
+        condenser_T_C: r.condenser_T_C, reboiler_T_C: 99.0}, un);
+      Object.assign(r.ps, {xD_out: r.xD, xB_out: 0.33,
+        R_out: r.R, Rmin_out: r.R_min, D_kmol_s: 0.29, B_kmol_s: 0.71,
+        condenser_T_C: r.condenser_T_C, reboiler_T_C: 98.0}, un);
+      r.R_mult_implied = 1.0;
+      displayResult(r, pre.spec);
+    }""")
+    page.wait_for_timeout(600)
+    txt = page.locator("#metrics").inner_text()
+    report["stages_unsolved_card"] = "not attainable at this reflux ratio" in txt
+    report["stages_unsolved_suffix_pinch"] = "(pinch limit)" in txt
+    report["stages_unsolved_banner"] = page.locator("#az-banner").inner_text()
+    shot(page, "app-stages-unsolved-1440.png")
+    # unsolved-card suffixes for the other limit kinds: the finite
+    # count classes read "(limiting composition)" and the azeotrope
+    # class "(azeotrope limit)", never "(pinch limit)"
+    for limit, suffix in (("short", "(limiting composition)"),
+                          ("exceeds", "(limiting composition)"),
+                          ("azeotrope", "(azeotrope limit)")):
+        page.evaluate("""(limit) => {
+          const pre = JSON.parse(
+            document.getElementById('prestart-data').textContent);
+          const r = JSON.parse(JSON.stringify(pre.result));
+          r.mode = 'stages'; r.hold = 'xD'; r.product_basis = 'hold_xD';
+          r.reflux_basis = 'abs'; r.N_stages = 15; r.D_spec = null;
+          const un = {stages_solved: false, limit: limit,
+            note: 'synthetic unsolved run for suffix QA'};
+          Object.assign(r.mt, {xD_out: r.xD, xB_out: 0.31,
+            R_out: r.R, Rmin_out: r.R_min, D_kmol_s: 0.3, B_kmol_s: 0.7,
+            condenser_T_C: r.condenser_T_C, reboiler_T_C: 99.0}, un);
+          Object.assign(r.ps, {xD_out: r.xD, xB_out: 0.33,
+            R_out: r.R, Rmin_out: r.R_min, D_kmol_s: 0.29, B_kmol_s: 0.71,
+            condenser_T_C: r.condenser_T_C, reboiler_T_C: 98.0}, un);
+          r.R_mult_implied = 1.0;
+          displayResult(r, pre.spec);
+        }""", limit)
+        page.wait_for_timeout(300)
+        txt = page.locator("#metrics").inner_text()
+        report["stages_suffix_" + limit] = (
+            suffix in txt and "(pinch limit)" not in txt)
+    page.evaluate("""() => {
+      const pre = JSON.parse(
+        document.getElementById('prestart-data').textContent);
+      displayResult(pre.result, pre.spec);
+    }""")
+    page.wait_for_timeout(400)
+    # F1 validation: stages mode, distillate-rate basis, D typed as
+    # 0.999 at zF = 0.40 must be rejected by runSolve before any
+    # solve (workerReady is forced so the validation is reached in
+    # the sandbox, where the Pyodide CDN is unreachable)
+    page.check("input[name='specmode'][value='stages']")
+    page.check("input[name='prodbasis'][value='D']")
+    page.wait_for_timeout(200)
+    page.evaluate("""() => {
+      document.getElementById('DrateNum').value = '0.999';
+      workerReady = true;
+      document.getElementById('run').disabled = false;
+    }""")
+    page.click("#run")
+    page.wait_for_timeout(300)
+    report["f1_banner"] = page.locator("#az-banner").inner_text()
+    report["f1_metrics_cleared"] = page.locator("#metrics .metric").count() == 0
+    page.check("input[name='specmode'][value='compositions']")
+    page.wait_for_timeout(200)
     page.click("#tabbtn-theory")
     page.wait_for_timeout(600)
     shot(page, "theory-1440.png")

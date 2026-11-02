@@ -305,4 +305,115 @@ figure([
    margin={"r": 200})
 """,
     },
+    {
+        "title": "Rating: stage count specified, distillate composition held",
+        "md": r"""
+The steps so far are design calculations: both product
+compositions are specified and the stage count comes out. The
+rating form specifies the stage count instead. With the feed, the
+reflux ratio $R$ and the stage count $N$ given, the overall
+balances plus the staircase still leave one degree of freedom, so
+one product composition must be held and the other is calculated.
+Here $x_D$ is held at the Step 1 value, $R$ is the absolute reflux
+ratio of Step 4, and $N = 15$ stages are specified. Each method
+bisects the unknown $x_B$ until its own stepped fractional count
+equals 15, so the two methods calculate slightly different values:
+at the same reflux, 15 stages strip further than the 13.16
+McCabe–Thiele stages of the design run, and both calculated values
+lie below the design $x_B = 0.05$.
+""",
+        "code": r"""
+spec_s8 = {"system": "benzene-toluene", "P_atm": 1.0, "zF": 0.40,
+           "feed_mode": "q", "q": 1.0, "spec_mode": "stages",
+           "product_basis": "hold_xD", "reflux_basis": "abs",
+           "xD": spec_bt["xD"], "R_abs": mt_res["R"], "N_stages": 15}
+res_s8 = mc.solve_column(spec_s8)
+print(f"McCabe-Thiele:   xB = {res_s8['mt']['xB_out']:.4f} "
+      f"(calculated), feed stage {res_s8['mt']['feed_stage']}")
+print(f"Ponchon-Savarit: xB = {res_s8['ps']['xB_out']:.4f} "
+      f"(calculated), feed stage {res_s8['ps']['feed_stage']}")
+re_mt8 = mc.mccabe_thiele(eqc_bt, spec_bt["zF"], 1.0,
+                          spec_bt["xD"], res_s8["mt"]["xB_out"],
+                          R_abs=mt_res["R"])
+re_ps8 = mc.ponchon_savarit(eqc_bt, spec_bt["zF"], feed_bt["hF"],
+                            spec_bt["xD"], res_s8["ps"]["xB_out"],
+                            mt_res["R"])
+print(f"re-solved counts: McCabe-Thiele {re_mt8['N']:.3f}, "
+      f"Ponchon-Savarit {re_ps8['N']:.3f} (specified 15)")
+assert res_s8["mt"]["stages_solved"]
+assert res_s8["ps"]["stages_solved"]
+assert abs(re_mt8["N"] - 15) < 0.05
+assert abs(re_ps8["N"] - 15) < 0.05
+for m8, label8 in (("mt", "McCabe-Thiele"),
+                   ("ps", "Ponchon-Savarit")):
+    bal8 = (res_s8[m8]["D_kmol_s"] * spec_bt["xD"]
+            + res_s8[m8]["B_kmol_s"] * res_s8[m8]["xB_out"])
+    print(f"{label8}: arithmetic check (not an independent "
+          f"verification: D and B are produced from these two "
+          f"balances for the solved pair, so substituting them "
+          f"back closes identically): D*xD + B*xB = {bal8:.6f} "
+          f"(feed: {spec_bt['zF']:.6f})")
+    assert abs(bal8 - spec_bt["zF"]) < 1e-9
+assert res_s8["mt"]["xB_out"] < spec_bt["xB"]
+assert res_s8["ps"]["xB_out"] < spec_bt["xB"]
+{"mt_xB": res_s8["mt"]["xB_out"], "ps_xB": res_s8["ps"]["xB_out"]}
+""",
+    },
+    {
+        "title": "Rating: distillate rate specified, both compositions calculated",
+        "md": r"""
+The one remaining specification can instead be the distillate
+flow rate $D$ itself, in $\mathrm{kmol/s}$; here $D$ is set to the
+Step 1 value, $0.388889\ \mathrm{kmol/s}$, so $B = F - D$ is fixed
+as well. The component balance then ties the two product
+compositions together, $x_B = (F z_F - D x_D)/B$, and one unknown,
+$x_D$, remains. The reflux is set as a multiple of the minimum,
+1.3 as in Step 4, which makes the solve nested: each trial pair
+first gets its McCabe–Thiele minimum reflux ratio and its
+operating reflux ratio, then its stepped count, and the bisection
+drives that count to the specified $N = 15$. Because the trial
+pairs differ between the methods, each method reports its own
+solved pair and its own operating reflux ratio. With 15 stages at
+the design split and multiple, both methods separate further than
+the design run: $x_D$ above 0.95 and $x_B$ below 0.05.
+""",
+        "code": r"""
+spec_s9 = {"system": "benzene-toluene", "P_atm": 1.0, "zF": 0.40,
+           "feed_mode": "q", "q": 1.0, "spec_mode": "stages",
+           "product_basis": "D", "reflux_basis": "mult",
+           "R_mult": 1.3, "D_spec": 0.388889, "N_stages": 15}
+res_s9 = mc.solve_column(spec_s9)
+for label9, key9 in (("McCabe-Thiele", "mt"),
+                     ("Ponchon-Savarit", "ps")):
+    mm9 = res_s9[key9]
+    print(f"{label9}: xD = {mm9['xD_out']:.4f}, "
+          f"xB = {mm9['xB_out']:.4f} (both calculated), "
+          f"R = {mm9['R_out']:.3f} = 1.3 x R_min "
+          f"{mm9['Rmin_out']:.3f}")
+    print(f"   arithmetic check (not an independent verification: "
+          f"xB was calculated from this balance at every trial): "
+          f"D*xD + B*xB = "
+          f"{mm9['D_kmol_s'] * mm9['xD_out'] + mm9['B_kmol_s'] * mm9['xB_out']:.6f} "
+          f"(feed: {spec_s9['zF']:.6f})")
+re_mt9 = mc.mccabe_thiele(eqc_bt, spec_bt["zF"], 1.0,
+                          res_s9["mt"]["xD_out"],
+                          res_s9["mt"]["xB_out"],
+                          R_abs=res_s9["mt"]["R_out"])
+re_ps9 = mc.ponchon_savarit(eqc_bt, spec_bt["zF"], feed_bt["hF"],
+                            res_s9["ps"]["xD_out"],
+                            res_s9["ps"]["xB_out"],
+                            res_s9["ps"]["R_out"])
+print(f"re-solved counts: McCabe-Thiele {re_mt9['N']:.3f}, "
+      f"Ponchon-Savarit {re_ps9['N']:.3f} (specified 15)")
+assert res_s9["mt"]["stages_solved"]
+assert res_s9["ps"]["stages_solved"]
+assert abs(re_mt9["N"] - 15) < 0.05
+assert abs(re_ps9["N"] - 15) < 0.05
+for key9 in ("mt", "ps"):
+    assert res_s9[key9]["xD_out"] > spec_bt["xD"]
+    assert res_s9[key9]["xB_out"] < spec_bt["xB"]
+{"mt_pair": [res_s9["mt"]["xD_out"], res_s9["mt"]["xB_out"]],
+ "ps_pair": [res_s9["ps"]["xD_out"], res_s9["ps"]["xB_out"]]}
+""",
+    },
 ]
