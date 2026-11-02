@@ -269,10 +269,14 @@ function renderPS(r, shown) {
     tieX.push(s.x, s.y, null); tieY.push(hL, HV, null);
     lx.push(s.x); ly.push(hL); lt.push(String(k));
     if (k < st.length) {
-      const yn = st[k].y, Hn = interp(eq.y, eq.H_vap, yn);
       const rect = s.x > r.ps.x_tie_feed;
       const px = rect ? xDp : xBp, pH = rect ? r.ps.H_DD : r.ps.H_DB;
-      rayX.push(px, yn, null); rayY.push(pH, Hn, null);
+      const yn = st[k].y, Hn = interp(eq.y, eq.H_vap, yn);
+      if (Math.abs(hL - pH) >= Math.abs(Hn - pH)) {
+        rayX.push(px, s.x, null); rayY.push(pH, hL, null);
+      } else {
+        rayX.push(px, yn, null); rayY.push(pH, Hn, null);
+      }
     }
   }
   traces.push({ type: "scatter", x: rayX, y: rayY, mode: "lines", name: "Rays to difference points",

@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).parent
 QA = ROOT / "dist" / "qa"
 QA.mkdir(parents=True, exist_ok=True)
-URL = "http://localhost:8907/mccabe-thiele-ponchon-savarit-standalone-v4.html"
+URL = "http://localhost:8907/mccabe-thiele-ponchon-savarit-standalone-v6.html"
 
 report = {"console_errors": [], "page_errors": []}
 
@@ -193,6 +193,115 @@ with sync_playwright() as pw:
     report["f1_metrics_cleared"] = page.locator("#metrics .metric").count() == 0
     page.check("input[name='specmode'][value='compositions']")
     page.wait_for_timeout(200)
+    # Ray-endpoint assertions (v6 amendment): every Ponchon-Savarit
+    # construction ray must start at its section pole and end at the
+    # farther of the stage's liquid point and the next stage's vapour
+    # point, with the nearer point on the drawn segment. Checked on
+    # the prestart run and on a core-produced stages-mode state, in
+    # the full view and in a 3-shown stepped view.
+    raycheck_js = """(shown) => {
+      const r = current;
+      const trace = document.querySelector('#fig-ps').data
+        .find(t => t.name === 'Rays to difference points');
+      const segs = []; let cur = [];
+      for (let i = 0; i <= trace.x.length; i++) {
+        if (i === trace.x.length || trace.x[i] === null) {
+          if (cur.length) segs.push(cur); cur = [];
+        } else cur.push([trace.x[i], trace.y[i]]);
+      }
+      const eq = r.eq_curve, st = r.ps.stages;
+      const ip = (xs, ys, x) => {
+        if (x <= xs[0]) return ys[0];
+        if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
+        let lo = 0, hi = xs.length - 1;
+        while (hi - lo > 1) { const m = (lo + hi) >> 1;
+          if (xs[m] <= x) lo = m; else hi = m; }
+        const t = (x - xs[lo]) / (xs[hi] - xs[lo]);
+        return ys[lo] + t * (ys[hi] - ys[lo]);
+      };
+      const xDp = r.mode === 'stages' ? r.ps.xD_out : r.xD;
+      const xBp = r.mode === 'stages' ? r.ps.xB_out : r.xB;
+      const nShow = Math.min(shown, st.length);
+      const T = 1e-9;
+      const out = {segments: segs.length, expected: 0, start_ok: 0,
+        end_ok: 0, near_ok: 0, rect: 0, strip: 0, end_liquid: 0,
+        end_vapour: 0, fails: []};
+      let idx = 0;
+      for (let k = 1; k <= nShow; k++) {
+        if (k >= st.length) break;
+        out.expected++;
+        const s = st[k - 1];
+        const hL = ip(eq.x, eq.h_liq, s.x);
+        const rect = s.x > r.ps.x_tie_feed;
+        const px = rect ? xDp : xBp, pH = rect ? r.ps.H_DD : r.ps.H_DB;
+        const yn = st[k].y, Hn = ip(eq.y, eq.H_vap, yn);
+        const liqFar = Math.abs(hL - pH) >= Math.abs(Hn - pH);
+        const far = liqFar ? [s.x, hL] : [yn, Hn];
+        const near = liqFar ? [yn, Hn] : [s.x, hL];
+        if (rect) out.rect++; else out.strip++;
+        if (liqFar) out.end_liquid++; else out.end_vapour++;
+        const seg = segs[idx++];
+        if (!seg || seg.length !== 2) {
+          out.fails.push('k=' + k + ': segment missing or not a pair');
+          continue;
+        }
+        const a = seg[0], b = seg[1];
+        if (Math.abs(a[0] - px) <= T && Math.abs(a[1] - pH) <= T) {
+          out.start_ok++;
+        } else out.fails.push('k=' + k + ': start != pole');
+        if (Math.abs(b[0] - far[0]) <= T &&
+            Math.abs(b[1] - far[1]) <= T) {
+          out.end_ok++;
+        } else out.fails.push('k=' + k + ': end != farther point');
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        let t, dev;
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          t = (near[1] - a[1]) / dy; dev = Math.abs(a[0] + t * dx - near[0]);
+        } else {
+          t = (near[0] - a[0]) / dx; dev = Math.abs(a[1] + t * dy - near[1]);
+        }
+        if (dev <= T && t >= -T && t <= 1 + T) out.near_ok++;
+        else out.fails.push('k=' + k + ': nearer point off segment');
+      }
+      out.all_ok = out.segments === out.expected && !out.fails.length &&
+        out.start_ok === out.expected && out.end_ok === out.expected &&
+        out.near_ok === out.expected;
+      return out;
+    }"""
+    page.click("#tabbtn-app")
+    page.evaluate("""() => {
+      const pre = JSON.parse(
+        document.getElementById('prestart-data').textContent);
+      displayResult(pre.result, pre.spec);
+    }""")
+    page.wait_for_timeout(500)
+    report["ray_prestart_full"] = page.evaluate(raycheck_js, 1000000)
+    page.evaluate("stepShown = 3; renderPS(current, stepShown);")
+    page.wait_for_timeout(300)
+    report["ray_prestart_step3"] = page.evaluate(raycheck_js, 3)
+    sys.path.insert(0, str(ROOT / "python"))
+    import mtps_core as _mc
+    ray_spec = {"system": "alpha", "alpha_value": 2.5,
+                "latent_ratio": 1.0, "zF": 0.40, "feed_mode": "q",
+                "q": 1.0, "P_atm": 1.0, "spec_mode": "stages",
+                "product_basis": "hold_xB", "reflux_basis": "abs",
+                "xB": 0.05, "R_abs": 0.77, "N_stages": 15}
+    ray_res = json.loads(json.dumps(_mc.solve_column(ray_spec)))
+    page.evaluate("""([res, spec]) => displayResult(res, spec)""",
+                  [ray_res, ray_spec])
+    page.wait_for_timeout(500)
+    report["ray_stages_full"] = page.evaluate(raycheck_js, 1000000)
+    page.locator("#fig-ps").screenshot(path=str(QA / "ps-stages-full.png"))
+    print("shot ps-stages-full.png")
+    page.evaluate("stepShown = 3; renderPS(current, stepShown);")
+    page.wait_for_timeout(300)
+    report["ray_stages_step3"] = page.evaluate(raycheck_js, 3)
+    page.evaluate("""() => {
+      const pre = JSON.parse(
+        document.getElementById('prestart-data').textContent);
+      displayResult(pre.result, pre.spec);
+    }""")
+    page.wait_for_timeout(400)
     page.click("#tabbtn-theory")
     page.wait_for_timeout(600)
     shot(page, "theory-1440.png")
