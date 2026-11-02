@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Fenske–Underwood–Gilliland (FUG) Shortcut Distillation</title>
+<style>
+@@KATEX_CSS@@
+</style>
+<style>
+:root{--ink:#1b1b1b;--ink-2:#5a5a5a;--rule:#d6d6d6;--paper:#ffffff;--tint:#f4f6f8;--accent:#0072B2;--accent2:#D55E00}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 Georgia,"Source Serif 4",serif;margin:0}
+.col{max-width:1150px;margin:0 auto;padding:0 24px}
+header{border-bottom:1px solid var(--rule);padding:20px 0 8px}
+h1{font-size:26px;font-weight:600;line-height:1.2;margin:0 0 4px}
+.sub{color:var(--ink-2);font:14px/1.45 system-ui,sans-serif}
+nav.tabs{display:flex;gap:4px;padding:10px 0 0;border-bottom:1px solid var(--rule);flex-wrap:wrap;position:sticky;top:0;background:var(--paper);z-index:60}
+nav.tabs button{font:600 15px system-ui,sans-serif;background:none;border:none;border-bottom:3px solid transparent;padding:8px 14px;cursor:pointer;color:var(--ink-2)}
+nav.tabs button.active{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:16px 0 40px}
+.panel{display:none}.panel.active{display:block}
+.appgrid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:24px;align-items:start}
+.appgrid>*{min-width:0}
+@media(max-width:820px){.appgrid{grid-template-columns:1fr}}
+aside{font:14px/1.4 system-ui,sans-serif;border:1px solid var(--rule);padding:14px;background:var(--tint)}
+aside h2{font-size:15px;margin:0 0 8px}
+aside label{display:block;margin:8px 0 2px;color:var(--ink-2)}
+aside input,aside select{width:100%;min-width:0;padding:5px 6px;font:14px system-ui,sans-serif;border:1px solid var(--rule);background:#fff}
+aside .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.act{font:600 14px system-ui,sans-serif;background:var(--accent);color:#fff;border:none;padding:8px 12px;cursor:pointer;margin:4px 4px 4px 0;border-radius:4px}
+button.act.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+button.act:disabled{background:#b9c9d4;cursor:wait}
+.status{font:13px system-ui,sans-serif;color:var(--ink-2);margin:6px 0}
+.help{font:13px system-ui,sans-serif;color:var(--ink-2)}
+progress{width:100%;height:10px}
+.metrics{display:flex;gap:22px;flex-wrap:wrap;font:14px system-ui,sans-serif;margin:6px 0 12px}
+.metrics div b{display:block;font-size:19px}
+figure{margin:0 0 10px}
+figcaption{font:13.5px/1.4 system-ui,sans-serif;color:var(--ink-2);margin:2px 0 10px}
+.figbox{width:100%;height:360px}
+table{border-collapse:collapse;font:13px system-ui,sans-serif;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--rule);padding:3px 6px;text-align:right}
+th{background:var(--tint)}
+td input{width:74px;font:12px system-ui,sans-serif;border:1px solid transparent;background:transparent;text-align:right}
+.scroll{overflow-x:auto}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow-x:auto;font:12.5px/1.45 ui-monospace,Menlo,monospace}
+.prose{max-width:72ch}
+.prose h1{font-size:22px}.prose h2{font-size:18px;margin-top:26px}
+.tocwrap{display:grid;grid-template-columns:225px minmax(0,1fr);gap:28px;align-items:start}
+.tocwrap>*{min-width:0}
+nav.toc{position:sticky;top:64px;font:13.5px/1.5 system-ui,sans-serif;border:1px solid var(--rule);background:var(--tint);padding:12px 14px;max-height:calc(100vh - 84px);overflow-y:auto}
+nav.toc h2{font-size:14px;margin:0 0 6px}
+nav.toc a{display:block;color:var(--ink-2);text-decoration:none;padding:2px 0}
+nav.toc a:hover{color:var(--ink);text-decoration:underline}
+@media(max-width:820px){.tocwrap{grid-template-columns:1fr}nav.toc{position:static;max-height:none}}
+.subtabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.subtabs button{font:600 14px system-ui,sans-serif;background:none;border:1px solid var(--rule);padding:6px 12px;cursor:pointer}
+.subtabs button.active{background:var(--tint)}
+.err{color:#a33;font:14px system-ui,sans-serif;white-space:pre-wrap}
+details{margin-bottom:10px}summary{font:600 14px system-ui,sans-serif;cursor:pointer}
+.katex{font-size:1.02em}
+#panel-theory .katex-display,#sub-walkthrough .katex-display{display:flex;overflow-x:auto;overflow-y:hidden;max-width:100%;padding:.15em 0}
+#panel-theory .katex-display>.katex,#sub-walkthrough .katex-display>.katex{flex:none;margin:auto}
+[id]{scroll-margin-top:64px}
+a.self-link{color:var(--ink-2);text-decoration:none;font-size:.72em;margin-left:.45em;opacity:.5}
+a.self-link:hover{opacity:1}
+ol.refs li{margin-bottom:7px}
+</style>
+<script>@@PLOTLY_JS@@</script>
+<script>@@KATEX_JS@@</script>
+</head>
+<body>
+<div class="col">
+<header>
+<h1>Fenske–Underwood–Gilliland (FUG) Shortcut Distillation</h1>
+<p class="sub">Shortcut design of a multicomponent distillation column by the Fenske equation (minimum stages), the Underwood equations (minimum reflux) and the Gilliland correlation (stages at the operating reflux), with a feed-stage location. The worked case is the debutanizer of Seader, Henley &amp; Roper, <i>Separation Process Principles</i>, 4th ed. (2016), Chapter 9. All calculations are performed in Python (Pyodide). If the Python runtime cannot load, an explicit error is shown, the precomputed default case remains visible, and no calculation is performed by JavaScript.</p>
+<p class="status" id="boot-status">Python runtime: loading&hellip;</p>
+<progress id="boot-progress" max="100" value="15"></progress>
+<p class="err" id="boot-error"></p>
+</header>
+<nav class="tabs">
+<button data-tab="app" class="active">App</button>
+<button data-tab="theory">Theory</button>
+<button data-tab="code">Code</button>
+</nav>
+<main>
+<section class="panel active" id="panel-app">
+<div class="appgrid">
+<aside>
+<h2 id="inputs">Feed, volatilities and splits</h2>
+<p class="help">Component order is decreasing volatility. LK denotes the light key (n-butane) and HK the heavy key (isopentane). Feed flow rates f are in lbmol/h (pound-moles per hour). Mean relative volatility, alpha, is dimensionless, relative to the heavy key, whose value is 1.</p>
+<div id="comp-table"></div>
+<div class="row"><div><label for="in-dlk">Light key in distillate (lbmol/h)</label><input id="in-dlk" type="number" step="any" value="442"></div>
+<div><label for="in-blk">Light key in bottoms (lbmol/h)</label><input id="in-blk" type="number" step="any" value="6"></div></div>
+<div class="row"><div><label for="in-dhk">Heavy key in distillate (lbmol/h)</label><input id="in-dhk" type="number" step="any" value="13"></div>
+<div><label for="in-bhk">Heavy key in bottoms (lbmol/h)</label><input id="in-bhk" type="number" step="any" value="23"></div></div>
+<label for="in-q">Feed quality q (liquid fraction of the feed entering the column, dimensionless; 1 = saturated liquid, 0 = saturated vapour)</label><input id="in-q" type="number" step="any" value="0.866">
+<label for="in-mult">Reflux multiplier (operating reflux ratio divided by the minimum reflux ratio, dimensionless)</label><input id="in-mult" type="number" step="any" value="1.3">
+<label for="in-eff">Overall tray efficiency (fraction; 1 = theoretical trays)</label><input id="in-eff" type="number" step="any" value="1">
+<button class="act" id="btn-run" disabled>Run calculation</button>
+<p class="status" id="stale-note" style="display:none">Inputs differ from the displayed results. Run the calculation to apply them.</p>
+<p class="status" id="action-status"></p>
+<progress id="action-progress" max="100" value="0" style="display:none"></progress>
+</aside>
+<div>
+<p class="status" id="session-note">Displaying the precomputed default case, computed when this page was built. Live calculation requires the Python runtime; press Run calculation after it is ready.</p>
+<div class="metrics" id="metrics"></div>
+<figure><div class="figbox" id="fig-gilliland"></div><figcaption>Fig. 1 | The operating point lies on the Gilliland curve. X is the dimensionless correlation variable (R − Rmin) / (R + 1), where R denotes the operating reflux ratio and Rmin the minimum reflux ratio. Y is the dimensionless correlation variable (N − Nmin) / (N + 1), where N denotes the number of equilibrium stages at R and Nmin the minimum number of equilibrium stages at total reflux. The curve is the Eduljee equation for the Gilliland correlation.</figcaption></figure>
+<figure><div class="figbox" id="fig-underwood"></div><figcaption>Fig. 2 | The Underwood feed function has one root, theta (the dimensionless Underwood parameter), in every interval between consecutive relative volatilities. Open markers show all roots; filled markers show the two roots used in the Class 2 solve: the root between the key volatilities and the root between the heavy key and n-pentane. The function is clipped to the range shown.</figcaption></figure>
+<figure><div class="figbox" id="fig-distribution"></div><figcaption>Fig. 3 | Component distribution at total reflux, from the Fenske equation. Flow rates are in lbmol/h on a logarithmic scale because they span ten orders of magnitude. Colour and pattern both encode the product stream.</figcaption></figure>
+<h2 id="flow-table-h" style="font-size:18px">Component flow rates</h2>
+<p class="help">Feed, distillate and bottoms flow rates in lbmol/h. The distillate and bottoms columns are the total-reflux (Fenske) distribution used by the method; each row and the totals close exactly. A dash denotes a flow below 10<sup>−9</sup> lbmol/h.</p>
+<div class="scroll" id="flow-table"></div>
+</div>
+</div>
+</section>
+<section class="panel" id="panel-theory">
+<div class="tocwrap">
+<nav class="toc" id="theory-toc"><h2>Contents</h2>@@THEORY_TOC@@</nav>
+<div class="prose">@@THEORY_HTML@@</div>
+</div>
+</section>
+<section class="panel" id="panel-code">
+<div class="subtabs">
+<button data-sub="listings" class="active">Listings</button>
+<button data-sub="walkthrough">Walkthrough</button>
+</div>
+<div id="sub-listings">
+<div class="tocwrap">
+<nav class="toc" id="code-toc"><h2>Contents</h2>@@CODE_TOC@@</nav>
+<div>@@LISTINGS_HTML@@</div>
+</div>
+</div>
+<div id="sub-walkthrough" style="display:none">
+<p class="status">The walkthrough results below were computed when this page was built. The editable notebook executes the same cells on MoLab.</p>
+<h3 id="editable-notebook">Editable notebook</h3>
+<p>The MoLab notebook is editable; run all cells once after opening.
+<a href="@@MOLAB_URL@@" target="_blank" rel="noopener">Open the editable notebook on MoLab</a> &middot;
+<a href="#" id="dl-notebook">Download the notebook (.py)</a></p>
+<p>The read-only walkthrough (WASM) page of the same notebook is published next to this page in the walkthrough folder.</p>
+@@WALKTHROUGH_HTML@@
+</div>
+</section>
+</main>
+</div>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="fug-b64" type="text/plain">@@FUG_B64@@</script>
+<script id="molab-b64" type="text/plain">@@MOLAB_B64@@</script>
+<script id="walk-figs" type="application/json">@@WALK_FIGS_JSON@@</script>
+<script>
+"use strict";
+const STUB = @@STUB@@;
+let booted = false, worker = null, callId = 0; const pending = {};
+let displayedInputs = null, busy = false;
+const $ = id => document.getElementById(id);
+const NAMES = ["isobutane","n-butane","isopentane","n-pentane","n-hexane","n-heptane","n-octane","n-nonane"];
+function plot(id, fig){ const el = $(id); if(!el || !fig) return; Plotly.react(el, fig.data, fig.layout, {responsive:true, displaylogo:false}); }
+function refreshControls(){ $("btn-run").disabled = busy || !booted; }
+function rejectPending(msg){ Object.keys(pending).forEach(id=>{ const p = pending[id]; delete pending[id]; p.rej(new Error(msg)); }); }
+function bootFailed(text){ $("boot-error").textContent = text; $("boot-status").textContent = "Python runtime: failed."; const bp = $("boot-progress"); bp.value = 100; bp.style.accentColor = "#a33"; }
+function call(type, payload){ return new Promise((res, rej)=>{ if(!worker){ rej(new Error(STUB ? "This stub build has no Python runtime; no calculation is available." : "The Python runtime is not available; live calculation cannot be performed.")); return; } const id = ++callId; const timer = setTimeout(()=>{ if(pending[id]){ delete pending[id]; rej(new Error("The Python runtime did not respond within 180 seconds. Reload the page to restart the runtime; no result was returned for this action.")); } }, 180000); pending[id] = {res: v=>{ clearTimeout(timer); res(v); }, rej: e=>{ clearTimeout(timer); rej(e); }}; worker.postMessage(Object.assign({type, id}, payload||{})); }); }
+function compTableUI(){ const feed = [12,448,36,15,23,39.1,272.2,31], alpha = [2.329,1.864,1,0.845,0.389,0.1825,0.0852,0.0401]; let h = "<table><tr><th>Component</th><th>Feed f (lbmol/h)</th><th>alpha</th></tr>"; NAMES.forEach((n,i)=>{ h += "<tr><td style='text-align:left'>"+n+(i===1?" (LK)":i===2?" (HK)":"")+"</td><td><input id='f"+i+"' type='number' step='any' value='"+feed[i]+"' aria-label='Feed flow rate of "+n+"'></td><td><input id='a"+i+"' type='number' step='any' value='"+alpha[i]+"' aria-label='Mean relative volatility of "+n+"'></td></tr>"; }); $("comp-table").innerHTML = h + "</table>"; }
+function numVal(id, label){ const raw = ($(id).value || "").trim(); const v = Number(raw); if(raw === "" || !Number.isFinite(v)) throw new Error(label + " must be a number; check the entry and run again."); return v; }
+function inputsFromUI(){ const feed = [], alpha = []; for(let i=0;i<8;i++){ feed.push(numVal("f"+i, "Feed flow rate of " + NAMES[i])); alpha.push(numVal("a"+i, "Relative volatility of " + NAMES[i])); } return {feed: feed, alpha: alpha, d_lk: numVal("in-dlk", "Light key in distillate"), b_lk: numVal("in-blk", "Light key in bottoms"), d_hk: numVal("in-dhk", "Heavy key in distillate"), b_hk: numVal("in-bhk", "Heavy key in bottoms"), q: numVal("in-q", "Feed quality q"), mult: numVal("in-mult", "Reflux multiplier"), efficiency: numVal("in-eff", "Overall tray efficiency")}; }
+function markStale(){ if(!displayedInputs){ $("stale-note").style.display = "none"; return; } let cur; try{ cur = inputsFromUI(); }catch(e){ $("stale-note").style.display = "block"; return; } $("stale-note").style.display = JSON.stringify(cur) !== JSON.stringify(displayedInputs) ? "block" : "none"; }
+function fmt(v, digits){ return v == null ? "--" : Number(v).toFixed(digits); }
+function renderResult(r){ const m = r.metrics; const feedStage = Math.floor(m.feed_kirkbride.n_rect) + 1; let h = "";
+h += "<div>Minimum stages, Nmin<b>"+fmt(m.n_min,2)+"</b></div>";
+h += "<div>Minimum reflux ratio, Rmin (Class 2)<b>"+fmt(m.r_min,3)+"</b></div>";
+h += "<div>Operating reflux ratio, R<b>"+fmt(m.R,3)+"</b></div>";
+h += "<div>Stages at R, N<b>"+fmt(m.N,1)+"</b></div>";
+h += "<div>Rounded stages (reboiler included)<b>"+m.n_round+"</b></div>";
+h += "<div>Theoretical trays<b>"+m.trays_theoretical+"</b></div>";
+if(m.trays_actual !== m.trays_theoretical) h += "<div>Actual trays at the stated efficiency<b>"+m.trays_actual+"</b></div>";
+h += "<div>Feed stage, Kirkbride (stage from the top)<b>"+feedStage+" of "+m.n_round+"</b></div>";
+$("metrics").innerHTML = h;
+plot("fig-gilliland", r.figs.gilliland); plot("fig-underwood", r.figs.underwood); plot("fig-distribution", r.figs.distribution);
+let t = "<table><tr><th>Component</th><th>Feed</th><th>Distillate</th><th>Bottoms</th></tr>";
+const cell = v => v < 1e-9 ? "--" : (v < 0.01 ? v.toExponential(2) : v.toFixed(3));
+r.names.forEach((n,i)=>{ t += "<tr><td style='text-align:left'>"+n+"</td><td>"+cell(r.feed[i])+"</td><td>"+cell(r.d[i])+"</td><td>"+cell(r.b[i])+"</td></tr>"; });
+const sum = arr => arr.reduce((x,y)=>x+y,0);
+t += "<tr><th style='text-align:left'>Total</th><th>"+sum(r.feed).toFixed(2)+"</th><th>"+sum(r.d).toFixed(2)+"</th><th>"+sum(r.b).toFixed(2)+"</th></tr></table>";
+$("flow-table").innerHTML = t; }
+$("btn-run").addEventListener("click", async ()=>{ let inp; try{ inp = inputsFromUI(); }catch(e){ $("action-status").textContent = "Error: " + e.message; return; } busy = true; refreshControls(); $("action-progress").style.display = "block"; $("action-progress").value = 40; $("action-status").textContent = "Calculating in Python..."; try{ const r = await call("run", {inputs: inp}); renderResult(r); displayedInputs = inp; $("session-note").textContent = "Live result computed in the browser by Python (Pyodide)."; $("action-status").textContent = "Calculation complete."; markStale(); }catch(e){ $("action-status").textContent = "Error: " + (e.message || e); } $("action-progress").style.display = "none"; busy = false; refreshControls(); });
+$("dl-notebook").addEventListener("click", e=>{ e.preventDefault(); try{ const b64 = $("molab-b64").textContent.trim(); const bin = atob(b64); const bytes = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([bytes], {type:"text/x-python"})); a.download = "walkthrough_molab.py"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000); }catch(err){ $("action-status").textContent = "Notebook download failed: the embedded notebook could not be decoded in this browser."; } });
+function activateTab(name){ document.querySelectorAll("nav.tabs button").forEach(x=>x.classList.toggle("active", x.dataset.tab === name)); document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active")); $("panel-"+name).classList.add("active"); if(name === "code") renderWalkFigs(); window.dispatchEvent(new Event("resize")); }
+function activateSub(sub){ document.querySelectorAll(".subtabs button").forEach(x=>x.classList.toggle("active", x.dataset.sub === sub)); $("sub-listings").style.display = sub === "listings" ? "block" : "none"; $("sub-walkthrough").style.display = sub === "walkthrough" ? "block" : "none"; if(sub === "walkthrough") renderWalkFigs(); }
+function panelOf(el){ let e = el; while(e && !(e.classList && e.classList.contains("panel"))) e = e.parentElement; return e; }
+function applyHash(){ const h = (location.hash || "").slice(1); if(!h) return; if(h === "app" || h === "theory" || h === "code"){ activateTab(h); return; } if(h === "code-listings" || h === "code-walkthrough"){ activateTab("code"); activateSub(h === "code-listings" ? "listings" : "walkthrough"); return; } const el = document.getElementById(h); if(!el) return; const p = panelOf(el); if(p){ activateTab(p.id.replace("panel-", "")); if(p.id === "panel-code"){ let s = el, inWalk = false, inList = false; while(s){ if(s.id === "sub-walkthrough") inWalk = true; if(s.id === "sub-listings") inList = true; s = s.parentElement; } if(inWalk) activateSub("walkthrough"); else if(inList) activateSub("listings"); } } requestAnimationFrame(()=>{ try{ el.scrollIntoView(); }catch(e){} }); }
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>{ activateTab(b.dataset.tab); history.pushState(null, "", "#"+b.dataset.tab); }));
+document.querySelectorAll(".subtabs button").forEach(b=>b.addEventListener("click", ()=>{ activateSub(b.dataset.sub); history.pushState(null, "", "#code-"+b.dataset.sub); }));
+window.addEventListener("hashchange", applyHash);
+let walkRendered = false;
+function renderWalkFigs(){ if(walkRendered) return; walkRendered = true; const figs = JSON.parse($("walk-figs").textContent); Object.keys(figs).forEach(k=>{ const el = $(k); if(el) Plotly.newPlot(el, figs[k].data, figs[k].layout, {responsive:true, displaylogo:false}); }); }
+compTableUI();
+document.querySelectorAll("aside input").forEach(el=>el.addEventListener("change", markStale));
+try{ const pre = JSON.parse($("prestart-data").textContent); renderResult(pre); displayedInputs = {feed: pre.feed, alpha: pre.alpha, d_lk: 442, b_lk: 6, d_hk: 13, b_hk: 23, q: 0.866, mult: 1.3, efficiency: 1}; }catch(e){ $("session-note").textContent = "Precomputed default case unavailable."; }
+applyHash();
+</script>
+<script>
+if(STUB){ booted = true; $("boot-status").textContent = "Python runtime: stub build for layout verification only (not published)."; $("boot-progress").value = 100; refreshControls(); }
+else {
+  const workerSrc = `
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js");
+let py = null;
+onmessage = async (ev) => { const m = ev.data;
+  if(m.type === "init"){ try{ py = await loadPyodide(); await py.loadPackage(["numpy", "scipy"]); py.globals.set("FUG_B64", m.fugB64); await py.runPythonAsync(BOOT); postMessage({type:"ready"}); }catch(e){ postMessage({type:"boot_error", message: String((e && e.message) || e)}); } return; }
+  try{ py.globals.set("MSG_JSON", JSON.stringify(m)); const out = await py.runPythonAsync("handle(MSG_JSON)"); const r = JSON.parse(out); if(r.error) postMessage({id: m.id, error: r.error}); else postMessage({id: m.id, result: r.result}); }catch(e){ postMessage({id: m.id, error: String((e && e.message) || e)}); }
+};
+const BOOT = \`
+import base64, json, sys
+sys.path.insert(0, "/")
+with open("/fug.py", "wb") as _f:
+    _f.write(base64.b64decode(FUG_B64))
+import numpy as np
+import scipy
+import fug as F
+def handle(msg_json):
+    try:
+        m = json.loads(msg_json)
+        if m.get("type") != "run":
+            return json.dumps({"error": "unknown message type"})
+        inp = F.default_inputs()
+        inp.update(m.get("inputs") or {})
+        return json.dumps({"result": F.run_case(inp)})
+    except Exception as e:
+        return json.dumps({"error": str(e) or e.__class__.__name__})
+\`;
+`;
+  worker = new Worker(URL.createObjectURL(new Blob([workerSrc], {type:"text/javascript"})));
+  worker.onmessage = (ev)=>{ const m = ev.data; if(m.type === "ready"){ booted = true; $("boot-status").textContent = "Python runtime: ready (Pyodide, NumPy, SciPy)."; $("boot-progress").value = 100; refreshControls(); return; } if(m.type === "boot_error"){ bootFailed("Python runtime failed to load: " + m.message + " The precomputed default case above remains visible; live calculation is unavailable and no calculation has been performed by JavaScript."); rejectPending("The Python runtime failed to load; live calculation is unavailable."); return; } const p = pending[m.id]; if(!p) return; delete pending[m.id]; if(m.error) p.rej(new Error(m.error)); else p.res(m.result); };
+  worker.onerror = (e)=>{ bootFailed("Python runtime worker error: " + (e.message || e) + " Live calculation is unavailable; reload the page to retry."); rejectPending("The Python runtime failed; live calculation is unavailable. Reload the page to retry."); };
+  $("boot-progress").value = 45;
+  worker.postMessage({type:"init", fugB64: $("fug-b64").textContent.trim()});
+}
+</script>
+</body>
+</html>
