@@ -77,71 +77,34 @@ figure([dict(type="bar", x=inp["names"],
 """,
     ),
     dict(
-        title="Underwood Class 1 estimate and its failed check",
-        md=r"""The minimum reflux ratio, $R_{min}$ (dimensionless), is the reflux ratio $R = L/D$ at which the stage count becomes unbounded, where $L$ denotes the liquid reflux flow rate and $D$ the distillate flow rate, both in kmol/h. Underwood's method {{cite:underwood-1948}} distinguishes two classes of separation. In a Class 1 separation every component appears in both products. In a Class 2 separation at least one component appears in only one product.
+        title="Underwood Class 1: minimum reflux and its check",
+        md=r"""The minimum reflux ratio, $R_{min}$ (dimensionless), is the reflux ratio $R = L/D$ at which the stage count becomes unbounded, where $L$ denotes the liquid reflux flow rate and $D$ the distillate flow rate, both in kmol/h. Underwood's method {{cite:underwood-1948}} distinguishes two classes of separation. In a Class 1 separation every component appears in both products; in a Class 2 separation at least one component appears in only one product. This page carries out the Class 1 calculation only, following Seader's Example 9.4.
 
-Seader's Example 9.4 evaluates the Class 1 shortcut for this feed from the feed-liquid flows of his Example 9.1 and obtains a minimum internal reflux rate of $0.414$ per unit feed. The check then fails: applied to the heavy non-keys, the Class 1 relations return negative distillate flow rates, and the isobutane distillate rate exceeds its feed rate. Only n-pentane, of the non-keys, genuinely distributes. The separation is therefore Class 2, and the Class 1 value is not used further, except as the comparison in Step 6.
+The Class 1 shortcut works from the feed liquid left by the feed flash of Example 9.1. The symbol $F_L$ denotes that feed liquid rate, $344.277$ kmol/h, and the symbols $f^L_{LK}$ and $f^L_{HK}$ denote the feed-liquid rates of the two keys, $156.675$ and $14.188$ kmol/h. The symbol $\alpha_f$ denotes the relative volatility of the light key with respect to the heavy key at feed conditions, $1.967$, dimensionless; it is distinct from the mean volatility $1.864$ of Step 1, which the Fenske equation uses. With $L_{min}$ denoting the minimum internal reflux rate, in kmol/h, the Class 1 result is
 
-One further point is recorded in this cell's output. Seader prints the Class 1 ratio as $0.864$ per unit distillate. Converted at the distillate rate of Step 3, his per-feed value of $0.414$ gives $0.774$ per unit distillate, not $0.864$; the printed $0.864$ would follow from a feed rate of $443.93$ kmol/h in place of $397.48$ kmol/h. The page reports both values and uses neither for its headline result.""",
+$$\frac{L_{min}}{F} = \frac{F_L}{F} \, \frac{\left(d_{LK}/f^L_{LK}\right) - \alpha_f \left(d_{HK}/f^L_{HK}\right)}{\alpha_f - 1}$$
+
+which gives $L_{min}/F = 0.414$ per unit feed, and the headline minimum reflux ratio is per unit distillate: $R_{min} = L_{min}/D$ at the Fenske distillate rate of Step 3. As derivation and check material, this cell also evaluates the root of the Underwood feed equation in the interval between the key volatilities, $1.0443$; the Theory panel derives that equation. No second root is used and no Class 2 solve is carried out.
+
+The validity check on the Class 1 assumption then fails, and the failure is stated plainly. Seader's Example 9.4 applies the Class 1 relations to the non-key components and obtains negative distillate flow rates for the heavy non-keys and an isobutane distillate flow rate above its feed rate. The debutanizer separation is therefore not in fact Class 1: most non-keys appear in one product only. The Class 1 minimum reflux ratio, and the Gilliland stage count that follows from it in Step 5, are the formal Class 1 results, reported as such.
+
+One further point is recorded in this cell's output. Seader prints the Class 1 ratio as $0.864$ per unit distillate. Converted at the distillate rate of Step 3, his per-feed value of $0.414$ gives $0.774$ per unit distillate, not $0.864$; the printed $0.864$ would follow from a feed rate of $444.0$ kmol/h in place of $397.5$ kmol/h. The page reports both values; its headline result is the recomputed $0.774$.""",
         code=r"""
-c1res = F.class1_check()
+und = F.underwood_class1(inp, dist)
 print("Class 1 minimum internal reflux per unit feed:",
-      round(c1res["l_per_f"], 3), " (Seader: 0.414)")
-print("converted per unit distillate:",
-      round(c1res["per_d_recomputed"], 3),
-      " (Seader prints 0.864; the two do not agree)")
-""",
-    ),
-    dict(
-        title="Underwood Class 2: roots and minimum reflux",
-        md=r"""For a Class 2 separation, Underwood {{cite:underwood-1948}} introduces a parameter $\theta$ (dimensionless, on the same scale as the relative volatilities) defined separately in the rectifying and stripping pinch zones, and assumes the two values coincide. Eliminating the unknown pinch compositions gives the feed equation:
-
-$$\sum_i \frac{\alpha_i z_i}{\alpha_i - \theta} = 1 - q$$
-
-The symbol $q$ denotes the feed quality, dimensionless; for a two-phase feed it is the liquid fraction of the feed as it enters the column, and a subcooled liquid feed has $q$ above 1. In Seader's Example 9.1 the feed is flashed into the column and $13.4$ percent vaporises, so $q = 0.866$ here, not $1$. The left side is a sum over all components $i$ of the feed. The equation has one root $\theta$ in every interval between consecutive relative volatilities — seven roots for eight components — and the chart shows the left side minus the right side, clipped to the range shown, with every root marked.
-
-Only two roots enter the minimum-reflux solve for this separation: the root between the volatilities of the two keys, and the root between the heavy key and the next heavier component, n-pentane, the one distributing non-key. With the distillate flow rates of the distributing components written against each root,
-
-$$\sum_i \frac{\alpha_i d_i}{\alpha_i - \theta} = D + L_{min}$$
-
-where $L_{min}$ denotes the minimum internal reflux rate, in kmol/h. The two root equations, together with the balance $D$ equals the sum of the distillate flow rates, are three linear equations in the three unknowns $D$, $L_{min}$, and the distillate flow rate of n-pentane. Components lighter than the light key are taken to pass wholly into the distillate, and components heavier than n-pentane wholly into the bottoms. The minimum reflux ratio is then $R_{min} = L_{min} / D$, dimensionless.""",
-        code=r"""
-und = F.underwood_class2(inp, dist)
-print("all roots of the feed equation:",
-      [round(t, 4) for t in und["theta_all"]])
-print("roots used:", [round(t, 4) for t in und["theta_used"]],
-      " (Seader: 1.0443, 0.8587)")
-print("D =", round(und["D"], 1), "kmol/h;  n-pentane in distillate =",
-      round(und["d_dist_nonkey"], 2), "kmol/h")
-print("Rmin =", round(und["r_min"], 3), " (Seader: 0.521)")
-z5 = np.array(inp["feed"]) / sum(inp["feed"])
-a5 = np.array(inp["alpha"])
-traces5 = []
-a_sorted5 = np.sort(a5)[::-1]
-for hi5, lo5 in zip(a_sorted5[:-1], a_sorted5[1:]):
-    th5 = np.linspace(lo5 + 1e-4, hi5 - 1e-4, 60)
-    uu5 = np.clip([F.underwood_function(t, a5, z5, inp["q"]) for t in th5],
-                  -6, 6)
-    traces5.append(dict(type="scatter", x=th5.tolist(), y=list(uu5),
-                        mode="lines", showlegend=False,
-                        line=dict(color="#0072B2", width=1.5)))
-traces5.append(dict(type="scatter", x=und["theta_all"],
-                    y=[0.0] * len(und["theta_all"]), mode="markers",
-                    name="All roots of the feed equation",
-                    marker=dict(color="#999999", size=8,
-                                symbol="circle-open", line=dict(width=2))))
-traces5.append(dict(type="scatter", x=und["theta_used"], y=[0.0, 0.0],
-                    mode="markers", name="Roots used for the Class 2 solve",
-                    marker=dict(color="#D55E00", size=11, symbol="circle")))
-figure(traces5, xaxis=dict(title="theta (dimensionless)"),
-       yaxis=dict(title="Underwood feed function (dimensionless)"),
-       template="plotly_white",
-       legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"))
+      round(und["l_per_f"], 3), " (Seader: 0.414)")
+print("Lmin =", round(und["l_min"], 1), "kmol/h")
+print("Rmin =", round(und["r_min"], 3),
+      " per unit distillate (recomputed; Seader prints 0.864)")
+print("feed-equation root in the key interval (check material):",
+      round(und["theta_key_interval"], 4), " (Seader: 1.0443)")
+print("feed rate implied by the printed 0.864:",
+      round(und["implied_feed_printed"], 1), "kmol/h")
 """,
     ),
     dict(
         title="Gilliland correlation: stages at the operating reflux",
-        md=r"""The operating reflux ratio $R$ is chosen as a multiple of the minimum: $R = 1.3 \, R_{min}$ in Seader's Example 9.6, where $1.3$ is the reflux multiplier (dimensionless). The Gilliland correlation {{cite:gilliland-1940}} relates the stage count at finite reflux to the two limits, total reflux and minimum reflux, through the dimensionless variables $X = (R - R_{min}) / (R + 1)$ and $Y = (N - N_{min}) / (N + 1)$, where $N$ denotes the number of equilibrium stages at $R$, with the stage counting of Step 1. The page evaluates the correlation with the explicit equation of Eduljee {{cite:eduljee-1975}}, Seader's Eq. (9-33):
+        md=r"""The operating reflux ratio $R$ is chosen as a multiple of the minimum: $R = 1.3 \, R_{min}$, the multiplier of Seader's Example 9.6, where $1.3$ is the reflux multiplier (dimensionless). Example 9.6 tabulates the correlation for both of his minimum-reflux rows; this page follows the Class 1 row, at the recomputed Class 1 minimum reflux ratio of Step 4. The Gilliland correlation {{cite:gilliland-1940}} relates the stage count at finite reflux to the two limits, total reflux and minimum reflux, through the dimensionless variables $X = (R - R_{min}) / (R + 1)$ and $Y = (N - N_{min}) / (N + 1)$, where $N$ denotes the number of equilibrium stages at $R$, with the stage counting of Step 1. The page evaluates the correlation with the explicit equation of Eduljee {{cite:eduljee-1975}}, Seader's Eq. (9-33):
 
 $$Y = 1 - \exp\left(\frac{(1 + 54.4 X)(X - 1)}{(11 + 117.2 X)\sqrt{X}}\right)$$
 
@@ -150,7 +113,7 @@ Solving $Y = (N - N_{min})/(N + 1)$ for $N$ gives the stage requirement. As $R$ 
 gil = F.gilliland(und["r_min"], n_min, inp["mult"])
 print("R =", round(gil["R"], 3), " X =", round(gil["X"], 4),
       " Y =", round(gil["Y"], 4))
-print("N =", round(gil["N"], 2), "equilibrium stages (Seader: 19.1)")
+print("N =", round(gil["N"], 2), "equilibrium stages (Seader's Class 1 row, from his printed 0.864: 17.8)")
 mults6 = np.concatenate(([1.001], np.linspace(1.01, 4.0, 120)))
 xs6 = []
 ys6 = []
@@ -178,7 +141,7 @@ $$\frac{N_R}{N_S} = \left[ \frac{z_{HK}}{z_{LK}} \left(\frac{x_{LK,B}}{x_{HK,D}}
 
 where $x_{LK,B}$ denotes the mole fraction of the light key in the bottoms, $x_{HK,D}$ the mole fraction of the heavy key in the distillate, $B$ the total bottoms rate and $D$ the total distillate rate, both in kmol/h. The second estimate applies the Fenske equation to each section separately at total reflux. Seader reports Kirkbride as the better of the two on his test problem, and it is listed first here. The total stage count is rounded up to a whole number before the split, because a column is built of whole stages; the reboiler is one of them, so the number of theoretical trays is one less than the rounded stage count.
 
-The anchor checks assert the values verified against Seader's Examples 9.2 to 9.6. A failed assertion means the calculation has drifted from the verified case.""",
+The anchor checks assert the values verified against Seader's Examples 9.2, 9.4 and 9.6 (the Class 1 row). A failed assertion means the calculation has drifted from the verified case.""",
         code=r"""
 res7 = F.run_case(inp)
 m7 = res7["metrics"]
@@ -189,10 +152,13 @@ print("Kirkbride: NR/NS =", round(fs7["kirkbride"]["ratio"], 3),
       " NR =", round(fs7["kirkbride"]["n_rect"], 2),
       " NS =", round(fs7["kirkbride"]["n_strip"], 2))
 print("Fenske sections: NR/NS =", round(fs7["fenske"]["ratio"], 3))
+print("feed stage (Kirkbride):", int(fs7["kirkbride"]["n_rect"]) + 1,
+      "of", m7["n_round"])
 assert abs(n_min - 7.8206) < 0.01, "Nmin anchor failed"
-assert abs(und["theta_used"][0] - 1.0443) < 0.002, "theta 1 anchor failed"
-assert abs(und["theta_used"][1] - 0.8587) < 0.002, "theta 2 anchor failed"
-assert abs(gil["N"] - 19.08) < 0.15, "Gilliland anchor failed"
+assert abs(und["theta_key_interval"] - 1.0443) < 0.002, "theta anchor failed"
+assert abs(und["r_min"] - 0.774) < 0.002, "Class 1 Rmin anchor failed"
+assert abs(gil["N"] - 18.09) < 0.15, "Gilliland anchor failed"
+assert m7["n_round"] == 19, "rounded stage anchor failed"
 assert abs(darr3.sum() + barr3.sum() - feed_arr.sum()) < 5e-3, \
     "balance closure failed (tolerance is the rounding of the specified splits)"
 print("all anchor checks passed")

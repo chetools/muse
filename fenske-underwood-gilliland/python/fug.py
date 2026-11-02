@@ -17,6 +17,12 @@ Symbols, defined at first use in the walkthrough and Theory text:
          dimensionless (q = 1 saturated liquid, q = 0 saturated vapour,
          q > 1 subcooled liquid)
   theta  Underwood root, dimensionless, in the same scale as alpha
+  alpha_f  relative volatility of the light key with respect to the
+         heavy key at feed conditions, dimensionless (1.967 for this
+         case, distinct from the mean value 1.864 used by Fenske)
+  Fl     feed liquid molar flow rate after the feed flash, in kmol/h
+  fl_LK, fl_HK  feed-liquid molar flow rates of the two keys, in kmol/h
+  Lmin   minimum internal reflux molar flow rate, in kmol/h
   Rmin   minimum reflux ratio, L/D at minimum reflux, dimensionless
   R      operating reflux ratio, dimensionless; mult = R / Rmin
   N      number of equilibrium stages at R, same counting as Nmin
@@ -29,7 +35,6 @@ from scipy.optimize import brentq
 NAMES = ["isobutane", "n-butane", "isopentane", "n-pentane",
          "n-hexane", "n-heptane", "n-octane", "n-nonane"]
 LK, HK = 1, 2          # indices of n-butane and isopentane in NAMES
-DIST_NONKEY = 3        # n-pentane: the one distributing non-key (Class 2)
 
 
 def default_inputs():
@@ -41,6 +46,10 @@ def default_inputs():
         "lk": LK, "hk": HK,
         "d_lk": 200.488, "b_lk": 2.722,  # specified split of the light key
         "d_hk": 5.897, "b_hk": 10.433,   # specified split of the heavy key
+        "feed_liquid": 344.2767,         # feed liquid rate after the flash, kmol/h
+        "lk_feed_liquid": 156.6745,      # feed-liquid rate of the LK, kmol/h
+        "hk_feed_liquid": 14.1884,       # feed-liquid rate of the HK, kmol/h
+        "alpha_feed": 1.967,             # key volatility at feed conditions
         "q": 0.866,                      # 13.4 % of the feed vaporised
         "mult": 1.3,                     # R = 1.3 * Rmin (Example 9.6)
         "efficiency": 1.0,               # overall tray efficiency, fraction
@@ -79,6 +88,13 @@ def validate(inp):
             raise ValueError(
                 f"The specified split of the {key} does not add up to "
                 f"its feed flow rate ({f[i]:g} kmol/h).")
+    if float(inp["feed_liquid"]) <= 0 or float(inp["lk_feed_liquid"]) <= 0 \
+            or float(inp["hk_feed_liquid"]) <= 0:
+        raise ValueError("The feed-liquid flow rates of the Class 1 "
+                         "calculation must be greater than zero.")
+    if float(inp["alpha_feed"]) <= 1.0:
+        raise ValueError("The relative volatility of the keys at feed "
+                         "conditions must be greater than 1.")
     if not (0.0 <= float(inp["q"]) <= 1.5):
         raise ValueError("The feed quality q must lie between 0 and 1.5 "
                          "on this page (0 saturated vapour, 1 saturated "
@@ -138,76 +154,56 @@ def underwood_function(theta, alpha, z, q):
     return np.sum(alpha * z / (alpha - theta)) - (1.0 - q)
 
 
-def underwood_roots(alpha, z, q):
-    """All roots of the Underwood feed equation, one per interval
-    between consecutive distinct relative volatilities, in decreasing
-    order of theta.  Intervals with no sign change are skipped."""
-    a = np.sort(np.asarray(alpha, float))[::-1]
-    roots = []
-    for hi, lo in zip(a[:-1], a[1:]):
-        eps = 1e-10 * max(1.0, hi)
-        x0, x1 = lo + eps, hi - eps
-        u0 = underwood_function(x0, alpha, z, q)
-        u1 = underwood_function(x1, alpha, z, q)
-        if np.isfinite(u0) and np.isfinite(u1) and u0 * u1 < 0:
-            roots.append(float(brentq(underwood_function, x0, x1,
-                                      args=(alpha, z, q), xtol=1e-13)))
-    return roots
+def feed_equation_root(alpha, z, q, lk, hk):
+    """The root of the Underwood feed equation in the interval between
+    the relative volatilities of the two keys.  Used on this page only
+    as derivation and check material (the Class 1 calculation itself
+    works from the feed-liquid flows)."""
+    a = np.asarray(alpha, float)
+    lo, hi = a[hk], a[lk]
+    eps = 1e-10 * max(1.0, hi)
+    r = brentq(underwood_function, lo + eps, hi - eps,
+               args=(a, np.asarray(z, float), q), xtol=1e-13)
+    return float(r)
 
 
-def underwood_class2(inp, dist):
-    """Class 2 minimum reflux, following Seader Example 9.5.
+def underwood_class1(inp, dist):
+    """Class 1 minimum reflux, following Seader Example 9.4.
 
-    Distributing components: the two keys, every component lighter than
-    the light key (taken to pass wholly into the distillate), and the
-    single non-key immediately heavier than the heavy key, whose
-    distillate flow is an unknown.  All heavier components are taken to
-    pass wholly into the bottoms.  Unknowns: the distillate rate D
-    (kmol/h), the minimum internal reflux rate Lmin (kmol/h), and the
-    distillate flow of the distributing non-key; equations: the
-    Underwood distillate equation at the two roots that bracket the
-    heavy key, and the overall balance D = sum of distillate flows.
-    Returns dict with theta_used (the two roots), r_min = Lmin/D,
-    d_dist_nonkey, D and Lmin.
+    The minimum internal reflux rate per unit feed follows from the
+    feed-liquid flows of the keys and their distillate flows, with the
+    key relative volatility at feed conditions (alpha_feed, distinct
+    from the mean volatility used by the Fenske equation):
+
+        Lmin/F = (Fl/F) * [(d_LK/fl_LK) - alpha_f (d_HK/fl_HK)]
+                 / (alpha_f - 1)
+
+    where Fl is the feed liquid rate after the flash and fl_LK, fl_HK
+    are the feed-liquid rates of the keys, all in kmol/h.  The headline
+    minimum reflux ratio is per unit distillate, at the Fenske
+    distillate rate D (kmol/h): Rmin = Lmin/D.  Also returned: the
+    feed-equation root in the key interval (check material) and
+    Seader's printed per-distillate value 0.864, which does not follow
+    from the per-feed value (see the Theory panel); the feed rate that
+    the printed value would imply is returned as well.
     """
+    validate(inp)
     f = np.asarray(inp["feed"], float)
-    a = np.asarray(inp["alpha"], float)
     lk, hk = int(inp["lk"]), int(inp["hk"])
-    z = f / f.sum()
-    roots = underwood_roots(a, z, float(inp["q"]))
-    # The two roots used bracket the heavy key from above and below.
-    above = [t for t in roots if a[hk] < t < a[lk]]
-    below = [t for t in roots if a[hk + 1] < t < a[hk]]
-    if len(above) != 1 or len(below) != 1:
-        raise ValueError("The Underwood roots bracketing the heavy key "
-                         "were not found uniquely; the separation as "
-                         "specified has no Class 2 solution of the "
-                         "form used on this page.")
-    thetas = [above[0], below[0]]
-    j = hk + 1                               # distributing non-key index
-    known = {i: float(f[i]) for i in range(lk)}   # lighter than LK: all up
-    known[lk] = float(inp["d_lk"])
-    known[hk] = float(inp["d_hk"])
-    # Unknown vector x = [D, Lmin, d_j]; for each theta:
-    #   sum_known alpha_i d_i/(alpha_i - theta)
-    #     + alpha_j d_j/(alpha_j - theta) - D - Lmin = 0
-    rows, rhs = [], []
-    for th in thetas:
-        row = [-1.0, -1.0, a[j] / (a[j] - th)]
-        val = -sum(a[i] * dv / (a[i] - th) for i, dv in known.items())
-        rows.append(row)
-        rhs.append(val)
-    rows.append([1.0, 0.0, -1.0])
-    rhs.append(sum(known.values()))
-    sol = np.linalg.solve(np.array(rows), np.array(rhs))
-    D, Lmin, d_j = (float(v) for v in sol)
-    if D <= 0 or Lmin <= 0 or d_j < 0 or d_j > f[j]:
-        raise ValueError("The Class 2 solve gave a non-physical result "
-                         "(a negative flow or a reflux rate below zero); "
-                         "check the key splits and the feed quality.")
-    return {"theta_all": roots, "theta_used": thetas,
-            "r_min": Lmin / D, "l_min": Lmin, "D": D, "d_dist_nonkey": d_j,
-            "dist_nonkey_index": j}
+    F = float(f.sum())
+    D = float(dist["d"].sum())
+    af = float(inp["alpha_feed"])
+    l_per_f = (float(inp["feed_liquid"]) / F) * (
+        (float(inp["d_lk"]) / float(inp["lk_feed_liquid"]))
+        - af * (float(inp["d_hk"]) / float(inp["hk_feed_liquid"]))) / (af - 1.0)
+    l_min = l_per_f * F
+    z = f / F
+    theta = feed_equation_root(inp["alpha"], z, float(inp["q"]), lk, hk)
+    return {"l_per_f": float(l_per_f), "l_min": float(l_min),
+            "r_min": float(l_min / D), "D": D,
+            "theta_key_interval": theta,
+            "per_d_printed": 0.864,
+            "implied_feed_printed": float(0.864 * D / l_per_f)}
 
 
 def gilliland(r_min, n_min, mult):
@@ -280,7 +276,7 @@ def run_case(inp):
     dict: metrics, the flow table, and the three App figures as Plotly
     trace/layout dicts."""
     dist = fenske(inp)
-    und = underwood_class2(inp, dist)
+    und = underwood_class1(inp, dist)
     gil = gilliland(und["r_min"], dist["n_min"], float(inp["mult"]))
     n_round = int(np.ceil(gil["N"]))
     trays_theoretical = n_round - 1        # reboiler is one of the stages
@@ -309,32 +305,25 @@ def run_case(inp):
                              line=dict(color="#7a3400", width=1)))],
         "layout": _fig_layout("X (dimensionless)", "Y (dimensionless)")}
 
-    # Fig. B: Underwood feed function on each volatility interval,
-    # clipped for display; all roots shown, the two used marked.
-    traces = []
-    a_sorted = np.sort(a)[::-1]
-    for hi, lo in zip(a_sorted[:-1], a_sorted[1:]):
-        th = np.linspace(lo + 1e-4, hi - 1e-4, 60)
-        uu = np.array([underwood_function(t, a, z, float(inp["q"]))
-                       for t in th])
-        uu = np.clip(uu, -6.0, 6.0)
-        traces.append(dict(type="scatter", x=th.tolist(), y=uu.tolist(),
-                           mode="lines", showlegend=False,
-                           line=dict(color="#0072B2", width=1.5)))
-    traces.append(dict(
-        type="scatter", x=und["theta_all"],
-        y=[0.0] * len(und["theta_all"]), mode="markers",
-        name="All roots of the feed equation",
-        marker=dict(color="#999999", size=8, symbol="circle-open",
-                    line=dict(width=2))))
-    traces.append(dict(
-        type="scatter", x=und["theta_used"], y=[0.0, 0.0],
-        mode="markers", name="Roots used for the Class 2 solve",
-        marker=dict(color="#D55E00", size=11, symbol="circle")))
-    fig_underwood = {
-        "data": traces,
-        "layout": _fig_layout("theta (dimensionless)",
-                              "Underwood feed function (dimensionless)")}
+    # Fig. B: equilibrium stages against the reflux multiplier, from
+    # the Gilliland/Eduljee relation at the Class 1 minimum reflux
+    # ratio; the operating point is marked.  The curve is clipped at
+    # 60 stages for display, close to the minimum-reflux end.
+    mvals = np.concatenate(([1.02], np.linspace(1.03, 4.0, 140)))
+    nvals = [gilliland(und["r_min"], dist["n_min"], float(m))["N"]
+             for m in mvals]
+    fig_stages = {
+        "data": [
+            dict(type="scatter", x=mvals.tolist(),
+                 y=[min(v, 60.0) for v in nvals], mode="lines",
+                 name="Equilibrium stages from the Gilliland correlation",
+                 line=dict(color="#0072B2", width=2)),
+            dict(type="scatter", x=[float(inp["mult"])], y=[gil["N"]],
+                 mode="markers", name="Operating point",
+                 marker=dict(color="#D55E00", size=11, symbol="circle",
+                             line=dict(color="#7a3400", width=1)))],
+        "layout": _fig_layout("Reflux multiplier R/Rmin (dimensionless)",
+                              "Equilibrium stages N (dimensionless count)")}
 
     # Fig. C: component distribution, logarithmic scale (flows span
     # 12 orders of magnitude); double encoding by colour and pattern.
@@ -357,9 +346,8 @@ def run_case(inp):
     metrics = {
         "n_min": dist["n_min"], "alpha_lk_hk": dist["alpha_lk_hk"],
         "D_fenske": float(dist["d"].sum()), "B_fenske": float(dist["b"].sum()),
-        "theta_used": und["theta_used"], "r_min": und["r_min"],
-        "D_class2": und["D"], "d_dist_nonkey": und["d_dist_nonkey"],
-        "dist_nonkey_name": names[und["dist_nonkey_index"]],
+        "l_per_f": und["l_per_f"], "l_min": und["l_min"],
+        "r_min": und["r_min"], "theta_key_interval": und["theta_key_interval"],
         "R": gil["R"], "X": gil["X"], "Y": gil["Y"], "N": gil["N"],
         "n_round": n_round, "trays_theoretical": trays_theoretical,
         "trays_actual": trays_actual,
@@ -370,24 +358,6 @@ def run_case(inp):
         "names": names,
         "feed": f.tolist(), "alpha": a.tolist(),
         "d": dist["d"].tolist(), "b": dist["b"].tolist(),
-        "figs": {"gilliland": fig_gilliland, "underwood": fig_underwood,
+        "figs": {"gilliland": fig_gilliland, "underwood": fig_stages,
                  "distribution": fig_dist},
     })
-
-
-def class1_check():
-    """Seader Example 9.4 (Class 1 estimate), from the quantities given
-    in Examples 9.1 and 9.4 of the source text.  Feed liquid rate
-    344.277 kmol/h of a feed rate of 397.483 kmol/h; feed-liquid flows
-    of the light key 156.675 kmol/h and of the heavy key 14.188 kmol/h;
-    relative volatility of the keys at feed conditions 1.967;
-    distillate flows of the keys 200.488 and 5.897 kmol/h.  Returns the
-    minimum internal reflux per unit feed, its conversion per unit
-    distillate at the Fenske distillate rate 212.712 kmol/h, and
-    Seader's printed per-distillate value, which does not follow from
-    the printed per-feed value (see the Theory panel)."""
-    l_per_f = (344.277 / 397.483) * ((200.488 / 156.675)
-                                     - 1.967 * (5.897 / 14.188)) / (1.967 - 1.0)
-    per_d = l_per_f * 397.483 / 212.712
-    return {"l_per_f": float(l_per_f), "per_d_recomputed": float(per_d),
-            "per_d_printed": 0.864}

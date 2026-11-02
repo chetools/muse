@@ -55,3 +55,16 @@ Two converted values in Theory Section 7 are the page's own
 solutions at the new rounding (n-pentane in distillate
 1.554 kmol/h, D = 213.382 kmol/h); the direct conversions of the
 source text's rounded totals are 1.556 and 213.370 kmol/h.
+
+Addendum (Class 1 only and in-place derivations, 2026-11-02): at
+the user's direction the Underwood scope became Class 1 only
+(item 6 as revised above) and the Theory tab was expanded to
+carry the full derivations of the Fenske and Underwood equations
+in place, adapted from the verified derivation project
+(~/workspace/fenske-underwood-derivation/). Headline values are
+now: Class 1 Rmin 0.774 per unit distillate (the page's unrounded
+evaluation gives 0.773), Gilliland N = 18.1 at a multiplier of
+1.3 (19 stages rounded, feed stage 6 of 19 by Kirkbride). The
+Class 1 validity check fails for this case and is stated plainly
+on the page. This combined revision was published as the v2
+build at the same address, together with the SI conversion.

@@ -276,7 +276,8 @@ def build(stub=False):
     log(f"prestart: Nmin {_m['n_min']:.4f}, Rmin {_m['r_min']:.4f}, "
         f"N {_m['N']:.2f}")
     assert abs(_m["n_min"] - 7.8206) < 0.01, "prestart Nmin anchor failed"
-    assert abs(_m["N"] - 19.08) < 0.15, "prestart N anchor failed"
+    assert abs(_m["N"] - 18.09) < 0.15, "prestart N anchor failed"
+    assert abs(_m["r_min"] - 0.774) < 0.002, "prestart Rmin anchor failed"
 
     theory_raw = open(os.path.join(HERE, "theory.md")).read()
     theory_body, sep, _tail = theory_raw.partition("[[BIBLIOGRAPHY]]")

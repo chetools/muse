@@ -36,29 +36,34 @@ def test_balance_closure_exact():
     assert np.allclose(dist["d"] + dist["b"], f, rtol=0, atol=2e-3)
 
 
-def test_underwood_roots_all_and_used():
+def test_feed_equation_root_in_key_interval():
     inp = F.default_inputs()
     f = np.asarray(inp["feed"], float)
-    roots = F.underwood_roots(inp["alpha"], f / f.sum(), inp["q"])
-    assert len(roots) == 7                      # one per alpha interval
-    assert roots == pytest.approx(
-        [2.3152, 1.0443, 0.8587, 0.4087, 0.2053, 0.1253, 0.0413],
-        abs=0.002)
-    und = F.underwood_class2(inp, F.fenske(inp))
-    assert und["theta_used"] == pytest.approx([1.0443, 0.8587], abs=0.002)
-    assert und["r_min"] == pytest.approx(0.521, abs=0.01)
-    assert und["D"] == pytest.approx(213.415, abs=0.25)
-    assert und["d_dist_nonkey"] == pytest.approx(1.588, abs=0.07)
+    dist = F.fenske(inp)
+    theta = F.feed_equation_root(inp["alpha"], f / f.sum(), inp["q"],
+                                 inp["lk"], inp["hk"])
+    assert theta == pytest.approx(1.0443, abs=0.002)
+    assert inp["alpha"][inp["hk"]] < theta < inp["alpha"][inp["lk"]]
+
+
+def test_underwood_class1_anchors():
+    inp = F.default_inputs()
+    und = F.underwood_class1(inp, F.fenske(inp))
+    assert und["l_per_f"] == pytest.approx(0.414, abs=0.002)
+    assert und["l_min"] == pytest.approx(164.6, abs=0.25)
+    assert und["r_min"] == pytest.approx(0.774, abs=0.002)
+    assert und["theta_key_interval"] == pytest.approx(1.0443, abs=0.002)
 
 
 def test_gilliland_anchor():
     inp = F.default_inputs()
     res = F.run_case(inp)
     m = res["metrics"]
-    assert m["N"] == pytest.approx(19.1, abs=0.15)
-    assert m["X"] == pytest.approx(0.0932, abs=0.005)
-    assert m["n_round"] == 20
-    assert m["trays_theoretical"] == 19
+    assert m["N"] == pytest.approx(18.1, abs=0.15)
+    assert m["R"] == pytest.approx(1.006, abs=0.005)
+    assert m["X"] == pytest.approx(0.1157, abs=0.005)
+    assert m["n_round"] == 19
+    assert m["trays_theoretical"] == 18
     # Stage counting: rectifying + stripping (Kirkbride) = rounded total.
     k = m["feed_kirkbride"]
     assert k["n_rect"] + k["n_strip"] == pytest.approx(m["n_round"])
@@ -67,20 +72,22 @@ def test_gilliland_anchor():
 
 def test_gilliland_limits():
     # As R -> Rmin from above, N grows without bound.
-    g1 = F.gilliland(0.521, 7.8206, 1.001)
-    g2 = F.gilliland(0.521, 7.8206, 1.05)
-    assert g1["N"] > g2["N"] > 19.0
+    g1 = F.gilliland(0.774, 7.8206, 1.001)
+    g2 = F.gilliland(0.774, 7.8206, 1.05)
+    assert g1["N"] > g2["N"] > 18.0
     # As R -> infinity, N approaches Nmin from above.
-    g3 = F.gilliland(0.521, 7.8206, 1e6)
+    g3 = F.gilliland(0.774, 7.8206, 1e6)
     assert 7.8206 < g3["N"] < 7.83
 
 
 def test_class1_conversion_discrepancy():
-    c = F.class1_check()
-    assert c["l_per_f"] == pytest.approx(0.414, abs=0.002)
+    inp = F.default_inputs()
+    und = F.underwood_class1(inp, F.fenske(inp))
+    assert und["l_per_f"] == pytest.approx(0.414, abs=0.002)
     # The recomputed per-distillate value is not Seader's printed 0.864.
-    assert c["per_d_recomputed"] == pytest.approx(0.774, abs=0.005)
-    assert abs(c["per_d_recomputed"] - c["per_d_printed"]) > 0.05
+    assert und["r_min"] == pytest.approx(0.774, abs=0.002)
+    assert abs(und["r_min"] - und["per_d_printed"]) > 0.05
+    assert und["implied_feed_printed"] == pytest.approx(443.9, abs=1.0)
 
 
 def test_input_validation():
@@ -95,8 +102,8 @@ def test_input_validation():
     inp = F.default_inputs()
     inp["q"] = 1.0                            # different q, still valid
     res = F.run_case(inp)
-    assert res["metrics"]["theta_used"][0] != pytest.approx(1.0443,
-                                                            abs=0.002)
+    assert res["metrics"]["theta_key_interval"] != pytest.approx(
+        1.0443, abs=0.002)
 
 
 def test_sweep_extremes():
