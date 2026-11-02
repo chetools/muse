@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>McCabe–Thiele and Ponchon–Savarit: binary distillation design</title>
+<style>@@KATEX_CSS@@</style>
+<style>@@BASE_CSS@@</style>
+<script>@@PLOTLY_JS@@</script>
+</head>
+<body>
+<div class="page-col">
+<header class="page-head" id="top">
+  <h1>McCabe–Thiele and Ponchon–Savarit</h1>
+  <p>Binary distillation design by the two classical graphical methods, computed
+  side by side on one specification. The real systems use the ChemCAD NRTL
+  parameters and the ChemCAD Latent Heat enthalpy model; the synthetic preset
+  holds the relative volatility fixed. All calculation runs in Python
+  (Pyodide) in the browser; the first display is the precomputed default run,
+  computed when this page was built.</p>
+</header>
+<nav class="tabs" role="tablist" aria-label="Page panels">
+  <button role="tab" id="tabbtn-app" aria-selected="true" data-panel="app">App</button>
+  <button role="tab" id="tabbtn-theory" aria-selected="false" data-panel="theory">Theory</button>
+  <button role="tab" id="tabbtn-code" aria-selected="false" data-panel="code">Code</button>
+</nav>
+<main>
+<section class="panel active" id="panel-app" role="tabpanel" aria-label="App">
+  <div class="banner" id="az-banner" role="alert"></div>
+  <div class="app-grid">
+    <aside class="controls" id="controls">
+      <h2>Specification</h2>
+      <div class="ctl">
+        <label for="sys">System</label>
+        <select id="sys">
+          <option value="alpha">Fixed relative volatility (synthetic)</option>
+          <option value="benzene-toluene" selected>Benzene–toluene</option>
+          <option value="methanol-water">Methanol–water</option>
+          <option value="ethanol-water">Ethanol–water</option>
+          <option value="isopropanol-water">Isopropanol–water</option>
+        </select>
+      </div>
+      <div class="ctl" id="ctl-alpha">
+        <label for="alpha">Relative volatility of A, &#945; <span class="val" id="alpha-val"></span></label>
+        <input type="range" id="alpha" min="1.1" max="5" step="0.01" value="2.5">
+      </div>
+      <div class="ctl" id="ctl-ratio">
+        <label for="ratio">Latent-heat ratio, r<sub>L</sub> = L<sub>B</sub>/L<sub>A</sub> <span class="val" id="ratio-val"></span></label>
+        <input type="range" id="ratio" min="0.5" max="3" step="0.05" value="1">
+        <p class="hint">At r<sub>L</sub> = 1 constant molal overflow holds exactly.</p>
+      </div>
+      <div class="ctl" id="ctl-pressure">
+        <label for="P">Column pressure, P <span class="val" id="P-val"></span></label>
+        <input type="range" id="P" min="0" max="1000" step="1" value="231">
+        <p class="hint">Logarithmic scale, 0.5 to 10 atm.</p>
+      </div>
+      <div class="ctl">
+        <label for="zF">Feed mole fraction of light component, z<sub>F</sub> <span class="val" id="zF-val"></span></label>
+        <input type="range" id="zF" min="0.05" max="0.9" step="0.01" value="0.4">
+      </div>
+      <div class="ctl">
+        <label for="xD">Distillate mole fraction, x<sub>D</sub> <span class="val" id="xD-val"></span></label>
+        <input type="range" id="xD" min="0.1" max="0.99" step="0.005" value="0.95">
+      </div>
+      <div class="ctl">
+        <label for="xB">Bottoms mole fraction, x<sub>B</sub> <span class="val" id="xB-val"></span></label>
+        <input type="range" id="xB" min="0.005" max="0.4" step="0.005" value="0.05">
+      </div>
+      <div class="ctl">
+        <label for="Rmult">Reflux ratio as a multiple of the minimum <span class="val" id="Rmult-val"></span></label>
+        <input type="range" id="Rmult" min="1.05" max="3" step="0.01" value="1.3">
+        <p class="hint">Absolute reflux ratio of the displayed run: <span id="Rabs">–</span></p>
+      </div>
+      <fieldset class="feedmode">
+        <legend>Feed condition (F = 1 kmol/s)</legend>
+        <label><input type="radio" name="feedmode" value="q" checked> Specify q directly</label>
+        <label><input type="radio" name="feedmode" value="TP"> Specify feed temperature and pressure</label>
+        <div class="ctl" id="ctl-q">
+          <label for="q">Feed quality, q <span class="val" id="q-val"></span></label>
+          <input type="range" id="q" min="-1" max="2" step="0.01" value="1">
+          <p class="hint">q &gt; 1 subcooled liquid; q = 1 saturated liquid; 0 &lt; q &lt; 1 two-phase; q = 0 saturated vapour; q &lt; 0 superheated vapour.</p>
+        </div>
+        <div class="ctl" id="ctl-tp" style="display:none">
+          <label for="TF">Feed temperature, T<sub>F</sub> (°C)</label>
+          <input type="number" id="TF" min="-20" max="230" step="1" value="25">
+          <label for="PF" style="margin-top:8px">Feed pressure, P<sub>F</sub> (atm, at or above P)</label>
+          <input type="number" id="PF" min="0.5" max="10" step="0.1" value="1">
+          <p class="hint">q is computed from the feed enthalpy after an isenthalpic let-down to the column pressure.</p>
+        </div>
+      </fieldset>
+      <button class="btn" id="run" disabled>Run</button>
+      <div class="progress" id="prog"><div></div></div>
+      <p id="run-status">Python runtime is loading. The precomputed default run is displayed below.</p>
+      <p id="stale-note">Inputs differ from the displayed run. Press Run to recompute.</p>
+    </aside>
+    <div class="app-main">
+      <div class="metrics" id="metrics"></div>
+      <div class="stepbtns">
+        <button class="btn secondary" id="step1">Step one stage</button>
+        <button class="btn secondary" id="runall">Run all stages</button>
+        <span id="stepct" class="val"></span>
+      </div>
+      <div class="diagrams">
+        <div class="figbox" id="app-mt">
+          <h3>McCabe–Thiele diagram</h3>
+          <div class="fig" id="fig-mt"></div>
+          <p class="figcap">Fig. 1 | Stage staircase on the y–x diagram. x and y are the liquid and vapour mole fractions of the light component; the staircase steps between the equilibrium curve and the operating lines (rectifying, q-line, stripping).</p>
+        </div>
+        <div class="figbox" id="app-ps">
+          <h3>Ponchon–Savarit diagram</h3>
+          <div class="fig" id="fig-ps"></div>
+          <p class="figcap">Fig. 2 | Stage construction on the enthalpy–composition diagram. h is the saturated-liquid molar enthalpy and H the saturated-vapour molar enthalpy, in kJ/mol; tie lines join the two phases of a stage, and the rays run to the rectifying difference point (pole) above the diagram and the stripping difference point below it.</p>
+        </div>
+      </div>
+      <div class="figbox single" id="app-txy" style="margin-top:16px">
+        <h3>Temperature–composition diagram</h3>
+        <div class="fig tall" id="fig-txy"></div>
+        <p class="figcap">Fig. 3 | Bubble-point (liquid) and dew-point (vapour) curves at the column pressure. T is the temperature in °C.</p>
+      </div>
+      <h3 id="app-table">Per-stage results (Ponchon–Savarit internal flows)</h3>
+      <div class="tablewrap">
+        <table class="stages">
+          <thead><tr>
+            <th>Stage</th><th>x (liquid)</th><th>y (vapour)</th>
+            <th>T (°C)</th><th>L (kmol/s)</th><th>V (kmol/s)</th>
+          </tr></thead>
+          <tbody id="stage-rows"></tbody>
+        </table>
+      </div>
+      <p class="figcap">Stage 1 is the top stage. L and V are the liquid and vapour molar flow rates leaving the stage, in kmol/s. The last row is the final stepped stage: its liquid composition overshoots x<sub>B</sub> because the reported stage count is fractional, so the last stage is counted in part; the bottoms product composition is the specified x<sub>B</sub>, and the liquid flow on that row is the bottoms flow B. The section flow relations (V &minus; L = D in the rectifying section, L &minus; V = B in the stripping section, with D the distillate flow rate) pair streams crossing one cut through the column — the vapour leaving a stage with the liquid leaving the stage above it — not the two flows in a single row of this table. Under constant molal overflow L and V would be constant within each section; their variation here is what the McCabe–Thiele construction neglects.</p>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-theory" role="tabpanel" aria-label="Theory">
+  <div class="tocgrid">
+    <aside class="toc" id="theory-toc"><p class="toc-h">Contents</p>@@THEORY_TOC@@</aside>
+    <div>
+      <details class="toc-details"><summary>Contents</summary>@@THEORY_TOC@@</details>
+      <div class="textcol" id="theory-body">@@THEORY_HTML@@</div>
+    </div>
+  </div>
+</section>
+<section class="panel" id="panel-code" role="tabpanel" aria-label="Code">
+  <div class="subtabs" role="tablist" aria-label="Code panel">
+    <button role="tab" aria-selected="true" data-sub="listings">Listings</button>
+    <button role="tab" aria-selected="false" data-sub="walkthrough">Walkthrough</button>
+  </div>
+  <div class="subpanel active" id="sub-listings">
+    <div class="tocgrid">
+      <aside class="toc" id="code-toc"><p class="toc-h">Contents</p>@@CODE_TOC@@</aside>
+      <div>
+        <details class="toc-details"><summary>Contents</summary>@@CODE_TOC@@</details>
+        <div class="textcol" style="max-width:none">
+          <h2 id="code-core">mtps_core.py</h2>
+          <p>The complete calculation: equilibrium, feed condition, both
+          stepping constructions and the duties. This listing is rendered from
+          the file on disk at build time and is byte-identical to the module
+          the App tab runs.</p>
+          @@LISTING_CORE@@
+          <h2 id="code-data">mtps_data.py</h2>
+          <p>The frozen ChemCAD data: pure-component coefficients and NRTL
+          pair parameters, generated from the export files of the public
+          chetools/chetools repository.</p>
+          @@LISTING_DATA@@
+          <h2 id="code-notebook">Editable notebook</h2>
+          <p>The walkthrough is the read-only, build-time-rendered breakdown
+          in the Walkthrough sub-tab. The editable notebook on MoLab is the
+          same cells as a marimo notebook with the two modules inlined; run
+          all cells once after opening, then edit the specification in
+          Step 1 and re-run.</p>
+          <p><a class="btn" style="display:inline-block;text-decoration:none"
+             href="https://molab.marimo.io/github/chetools/muse/blob/gh-pages/mccabe-thiele-ponchon-savarit/walkthrough_molab.py">Open the editable notebook on MoLab</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="subpanel" id="sub-walkthrough">
+    <div class="tocgrid">
+      <aside class="toc" id="walk-toc"><p class="toc-h">Contents</p>@@WALK_TOC@@</aside>
+      <div>
+        <details class="toc-details"><summary>Contents</summary>@@WALK_TOC@@</details>
+        <div class="textcol" style="max-width:none">
+          <p>The steps below were computed when this page was built, from the
+          same cells that generate the editable notebook on MoLab (linked
+          under Listings). Printed output and figures are the build-time
+          results.</p>
+          @@WALKTHROUGH_HTML@@
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="src-data" type="text/plain">@@DATA_B64@@</script>
+<script id="src-core" type="text/plain">@@CORE_B64@@</script>
+<script id="worker-src" type="text/plain">@@WORKER_JS@@</script>
+<script>@@APP_JS@@</script>
+</body>
+</html>
