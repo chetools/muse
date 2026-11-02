@@ -602,7 +602,12 @@ def _mt_step(eq, zF, q, xD, xB, R, max_stages=400):
     feed_stage = None
     pinched = False
     x_prev = xD
-    s0 = None
+    # The reference sign is taken at the top point (xD, xD), not at
+    # the first stage liquid: when xD is close to zF the first
+    # equilibrium step can jump past the q-line crossing, and a
+    # reference sign taken after that step would latch the staircase
+    # onto the rectifying line for the whole column.
+    s0 = q_sign(xD)
     switched = False
     for n in range(1, max_stages + 1):
         x = eq.x_eq(y)
@@ -614,8 +619,6 @@ def _mt_step(eq, zF, q, xD, xB, R, max_stages=400):
             break
         x_prev = x
         s = q_sign(x)
-        if s0 is None:
-            s0 = s
         if not switched and s0 != 0.0 and s * s0 < 0:
             switched = True
         rect = not switched
@@ -689,18 +692,19 @@ def mccabe_thiele(eq, zF, q, xD, xB, R_mult=None, R_abs=None):
     # staircase plot points: (x, y) corners from (xD, xD) down
     pts = [(xD, xD)]
     y = xD
-    s0 = None
+
+    def _q_sign_at(xx):
+        if abs(q - 1.0) < 1e-12:
+            return 1.0 if xx > zF else -1.0
+        m_q = q / (q - 1.0)
+        b_q = -zF / (q - 1.0)
+        return (res["m_r"] * xx + res["b_r"]) - (m_q * xx + b_q)
+
+    s0 = _q_sign_at(xD)
     switched = False
     for x in res["xs_n"]:
         pts.append((x, y))
-        if abs(q - 1.0) < 1e-12:
-            s = 1.0 if x > zF else -1.0
-        else:
-            m_q = q / (q - 1.0)
-            b_q = -zF / (q - 1.0)
-            s = (res["m_r"] * x + res["b_r"]) - (m_q * x + b_q)
-        if s0 is None:
-            s0 = s
+        s = _q_sign_at(x)
         if not switched and s0 != 0.0 and s * s0 < 0:
             switched = True
         y_next = res["m_s"] * x + res["b_s"] if switched else res["m_r"] * x + res["b_r"]
@@ -726,7 +730,15 @@ def _ray_next_vapour(eq, pole_x, pole_H, x_liq):
     def g(y):
         return eq.H(y) - (pole_H + slope * (y - pole_x))
 
-    grid = np.linspace(x_liq + 1e-6, 1.0, 400)
+    # Probe abscissae between the liquid point and the main grid:
+    # when the bottoms rate is very small the stripping pole
+    # enthalpy is extreme and the ray can cross the vapour enthalpy
+    # curve closer than 1e-6 to the liquid point; a search starting
+    # at x_liq + 1e-6 misses such a crossing and reports a false
+    # pinch. The last probe coincides with the main grid start.
+    probes = x_liq + np.array([1e-9, 3e-9, 1e-8, 3e-8, 1e-7, 3e-7])
+    grid = np.concatenate(
+        [probes, np.linspace(x_liq + 1e-6, 1.0, 400)])
     vals = [g(float(y)) for y in grid]
     for a, b, ga, gb in zip(grid[:-1], grid[1:], vals[:-1], vals[1:]):
         if ga * gb < 0:
@@ -838,19 +850,72 @@ def _clean(obj):
     return obj
 
 
+def _bisect_stage_count(count, target, lo, hi, increasing):
+    """Bisect the unknown composition u in (lo, hi) so that count(u)
+    equals the target stage count.
+
+    count(u) returns the stepped fractional stage count, +inf when
+    the stepping pinches; it is monotone in u (increasing when
+    `increasing` is true, decreasing otherwise). Returns
+    (u, count_at_u, status) with status "solved", "short" (the
+    largest attainable count is below the target), "exceeds" (the
+    smallest attainable count is above the target) or "pinch" (the
+    stepping pinches before the target is reached).
+    """
+    INF = float("inf")
+    c_lo, c_hi = count(lo), count(hi)
+    for u_end, c_end in ((lo, c_lo), (hi, c_hi)):
+        if abs(c_end - target) <= 0.01:
+            return u_end, c_end, "solved"
+    if increasing:
+        if c_hi < target:
+            return hi, c_hi, "short"
+        if c_lo > target:
+            return lo, c_lo, "pinch" if c_lo == INF else "exceeds"
+    else:
+        if c_lo < target:
+            return lo, c_lo, "short"
+        if c_hi > target:
+            return hi, c_hi, "pinch" if c_hi == INF else "exceeds"
+    a, b = lo, hi
+    best = (lo, c_lo)
+    for _ in range(70):
+        mid = 0.5 * (a + b)
+        c = count(mid)
+        best = (mid, c)
+        if abs(c - target) <= 0.01:
+            return mid, c, "solved"
+        if (c < target) == increasing:
+            a = mid
+        else:
+            b = mid
+        if b - a < 1e-10:
+            break
+    u, c = best
+    if c == INF:
+        return u, c, "pinch"
+    if abs(c - target) <= 0.01:
+        return u, c, "solved"
+    return u, c, "short" if c < target else "exceeds"
+
+
 def solve_column(p):
     """Run both methods for one specification dict p.
 
     Keys: system ("alpha" or a SYSTEMS key); P_atm; alpha_value;
     latent_ratio; zF; xD; xB; R_mult; feed_mode ("q" or "TP"); q;
-    TF_C; PF_atm. Returns a JSON-ready dict.
+    TF_C; PF_atm. Specification mode: spec_mode is "compositions"
+    (default; zF, xD, xB and the reflux multiple given, stage counts
+    computed) or "stages" (a rating calculation: N_stages, a reflux
+    basis reflux_basis ("abs" with R_abs, or "mult" with R_mult) and
+    a product basis product_basis ("hold_xD", "hold_xB" or "D", the
+    last with D_spec in kmol/s) given; the remaining composition or
+    compositions are calculated per method by bisection on the
+    stepped stage count). Returns a JSON-ready dict.
     """
     system = p["system"]
-    zF, xD, xB = float(p["zF"]), float(p["xD"]), float(p["xB"])
-    if not xB < zF < xD:
-        raise ValueError(
-            "infeasible specification: the overall balances require "
-            f"xB < zF < xD, got xB = {xB}, zF = {zF}, xD = {xD}")
+    zF = float(p["zF"])
+    mode = p.get("spec_mode", "compositions")
     if system == "alpha":
         alpha = float(p["alpha_value"])
         ratio = float(p["latent_ratio"])
@@ -877,31 +942,241 @@ def solve_column(p):
         hF = feed["hF"]
         az = azeotrope(pair, P)
         alpha_zF = alpha_at(pair, zF, P)
-    mt = mccabe_thiele(eq, zF, q, xD, xB, R_mult=float(p["R_mult"]))
-    ps = ponchon_savarit(eq, zF, hF, xD, xB, mt["R"])
+
+    def T_of(x):
+        return None if eq.Ts is None else eq.T_stage(x) - 273.15
+
+    if mode == "compositions":
+        xD, xB = float(p["xD"]), float(p["xB"])
+        if not xB < zF < xD:
+            raise ValueError(
+                "infeasible specification: the overall balances require "
+                f"xB < zF < xD, got xB = {xB}, zF = {zF}, xD = {xD}")
+        mt = mccabe_thiele(eq, zF, q, xD, xB, R_mult=float(p["R_mult"]))
+        ps = ponchon_savarit(eq, zF, hF, xD, xB, mt["R"])
+        D, B = overall_flows(zF, xD, xB)
+        extra = {"xD_out": xD, "xB_out": xB, "stages_solved": True,
+                 "limit": "none", "note": None,
+                 "R_out": mt["R"], "Rmin_out": mt["R_min"],
+                 "D_kmol_s": D, "B_kmol_s": B,
+                 "condenser_T_C": T_of(xD), "reboiler_T_C": T_of(xB)}
+        mt_out = {"N": mt["N"], "feed_stage": mt["feed_stage"],
+                  "pinched": mt["pinched"], "staircase": mt["staircase"],
+                  "x_int": mt["x_int"], "y_int": mt["y_int"], **extra}
+        ps_out = {"N": ps["N"], "feed_stage": ps["feed_stage"],
+                  "pinched": ps["pinched"], "QC_MW": ps["QC_MW"],
+                  "QB_MW": ps["QB_MW"], "H_DD": ps["H_DD"],
+                  "H_DB": ps["H_DB"], "stages": ps["stages"],
+                  "x_tie_feed": ps["x_tie_feed"], **extra}
+        top = {"xD": xD, "xB": xB, "R": mt["R"], "R_min": mt["R_min"],
+               "N_min": mt["N_min"], "D_kmol_s": D, "B_kmol_s": B,
+               "condenser_T_C": T_of(xD), "reboiler_T_C": T_of(xB),
+               "infeasible_azeotrope": bool(az is not None and xD > az[0]),
+               "hold": None, "product_basis": None,
+               "reflux_basis": "mult", "N_stages": None, "D_spec": None,
+               "R_mult_implied": float(p["R_mult"])}
+    elif mode == "stages":
+        top = _solve_stages(p, eq, zF, q, hF, az, T_of)
+        mt_out, ps_out = top.pop("mt_out"), top.pop("ps_out")
+    else:
+        raise ValueError(f"unknown spec_mode {mode!r}")
     out = {
-        "system": system, "P_atm": P / ATM, "zF": zF, "xD": xD, "xB": xB,
+        "system": system, "P_atm": P / ATM, "zF": zF,
         "q": q, "hF_kj_mol": hF, "feed_phase": feed["phase"],
-        "R": mt["R"], "R_min": mt["R_min"], "N_min": mt["N_min"],
         "alpha_at_zF": alpha_zF,
         "azeotrope": None if az is None else
             {"x": az[0], "T_C": az[1] - 273.15},
-        "infeasible_azeotrope": bool(az is not None and xD > az[0]),
-        "mt": {"N": mt["N"], "feed_stage": mt["feed_stage"],
-               "pinched": mt["pinched"], "staircase": mt["staircase"],
-               "x_int": mt["x_int"], "y_int": mt["y_int"]},
-        "ps": {"N": ps["N"], "feed_stage": ps["feed_stage"],
-               "pinched": ps["pinched"], "QC_MW": ps["QC_MW"],
-               "QB_MW": ps["QB_MW"], "H_DD": ps["H_DD"], "H_DB": ps["H_DB"],
-               "stages": ps["stages"], "x_tie_feed": ps["x_tie_feed"]},
-        "D_kmol_s": ps["D"], "B_kmol_s": ps["B"],
+        "mode": mode,
+        "mt": mt_out, "ps": ps_out,
         "eq_curve": {"x": eq.xs, "y": eq.ys,
                      "T_C": None if eq.Ts is None else eq.Ts - 273.15,
                      "h_liq": eq.h_liq, "H_vap": eq.H_vap},
-        "condenser_T_C": None if eq.Ts is None else eq.T_stage(xD) - 273.15,
-        "reboiler_T_C": None if eq.Ts is None else eq.T_stage(xB) - 273.15,
+        **top,
     }
     return _clean(out)
+
+
+def _solve_stages(p, eq, zF, q, hF, az, T_of):
+    """Stages mode (rating) of solve_column: bisect the unknown
+    composition per method until the stepped count equals N_stages.
+
+    Returns the top-level result fields plus "mt_out" and "ps_out"
+    (popped by the caller). Both modes share the one stepping path:
+    at a trial pair the operating reflux comes from the reflux
+    basis — R_abs directly, or the multiple times the McCabe-Thiele
+    minimum reflux ratio of the trial pair (the page convention,
+    for both methods).
+    """
+    N_target = int(p["N_stages"])
+    if N_target < 1:
+        raise ValueError(f"N_stages must be at least 1, got {N_target}")
+    reflux_basis = p.get("reflux_basis", "abs")
+    product_basis = p.get("product_basis") or (
+        "hold_xD" if p.get("hold", "xD") == "xD" else "hold_xB")
+    if reflux_basis == "abs":
+        R_abs = float(p["R_abs"])
+        if not R_abs > 0.0:
+            raise ValueError(f"R_abs must be positive, got {R_abs}")
+        mult = None
+    elif reflux_basis == "mult":
+        mult = float(p["R_mult"])
+        if not mult > 1.0:
+            raise ValueError(
+                f"the reflux multiple must exceed 1.0, got {mult}")
+        R_abs = None
+    else:
+        raise ValueError(f"unknown reflux_basis {reflux_basis!r}")
+
+    if product_basis == "hold_xD":
+        xD_held = float(p["xD"])
+        if not zF < xD_held:
+            raise ValueError(
+                "infeasible specification: holding xD requires "
+                f"zF < xD, got zF = {zF}, xD = {xD_held}")
+        lo, hi, increasing = 0.0005, zF - 1e-6, False
+        def pair_of(u):
+            return xD_held, u
+        hold, D_spec = "xD", None
+    elif product_basis == "hold_xB":
+        xB_held = float(p["xB"])
+        if not xB_held < zF:
+            raise ValueError(
+                "infeasible specification: holding xB requires "
+                f"xB < zF, got xB = {xB_held}, zF = {zF}")
+        # The bracket starts 1e-3 above zF, not at zF itself: at
+        # xD -> zF the bottoms flow B -> 0 and the Ponchon-Savarit
+        # stripping difference point H_DB ~ 1/B degenerates.
+        lo, hi, increasing = zF + 1e-3, 0.999, True
+        def pair_of(u):
+            return u, xB_held
+        hold, D_spec = "xB", None
+    elif product_basis == "D":
+        D_spec = float(p["D_spec"])
+        if not 0.0 < D_spec < 1.0:
+            raise ValueError(
+                "the distillate flow rate D must lie between 0 and "
+                f"F = 1 kmol/s, got D = {D_spec} kmol/s")
+        B_spec = 1.0 - D_spec
+        upper = min(0.999, zF / D_spec)
+        lo, hi, increasing = zF + 1e-3, upper - 1e-6, True
+        if hi <= lo:
+            raise ValueError(
+                "the distillate rate is too large for the feed "
+                f"composition: at D = {D_spec} kmol/s and zF = {zF} "
+                "the component-balance line reaches xB = 0 at "
+                "xD = zF/D, at or below the feed composition, so it "
+                "cannot reach a distillate composition above the "
+                "feed composition")
+        def pair_of(u):
+            return u, (zF - D_spec * u) / B_spec
+        hold = None
+    else:
+        raise ValueError(f"unknown product_basis {product_basis!r}")
+
+    def trial_R(xD_, xB_):
+        """Operating reflux ratio for a trial pair, with the
+        McCabe-Thiele run of the pair under the multiple basis."""
+        if reflux_basis == "abs":
+            return R_abs, None
+        mt_t = mccabe_thiele(eq, zF, q, xD_, xB_, R_mult=mult)
+        return mt_t["R"], mt_t
+
+    def mt_count(u):
+        xD_, xB_ = pair_of(u)
+        if reflux_basis == "mult":
+            _, mt_t = trial_R(xD_, xB_)
+            return float("inf") if mt_t["pinched"] else mt_t["N"]
+        r_ = _mt_step(eq, zF, q, xD_, xB_, R_abs)
+        return float("inf") if r_["pinched"] else r_["N"]
+
+    def ps_count(u):
+        xD_, xB_ = pair_of(u)
+        R_t, _ = trial_R(xD_, xB_)
+        r_ = ponchon_savarit(eq, zF, hF, xD_, xB_, R_t)
+        return float("inf") if r_["pinched"] else r_["N"]
+
+    solved = {}
+    for name, count in (("mt", mt_count), ("ps", ps_count)):
+        u, c, status = _bisect_stage_count(
+            count, float(N_target), lo, hi, increasing)
+        xD_o, xB_o = pair_of(u)
+        solved[name] = {"count": c, "status": status,
+                        "xD": xD_o, "xB": xB_o}
+
+    def limit_and_note(s):
+        if s["status"] == "solved":
+            return "none", None
+        if az is not None and s["xD"] >= az[0] - 0.002:
+            return "azeotrope", (
+                f"the azeotrope composition {az[0]:.3f} is the limit: "
+                f"the stepping pinches there before {N_target} stages "
+                "are reached")
+        if s["status"] == "pinch":
+            return "pinch", (
+                f"{N_target} stages are not attainable at this reflux: "
+                "the stepping pinches at every composition past the "
+                "limit shown")
+        if s["status"] == "short":
+            return "short", (
+                f"{N_target} stages are not attainable at this reflux: "
+                f"even at the limiting composition the stepped count "
+                f"is only {s['count']:.2f}")
+        return "exceeds", (
+            f"{N_target} stages are not attainable at this reflux: "
+            f"the stepped count already exceeds it at the least "
+            f"demanding composition ({s['count']:.2f})")
+
+    def extras(s, R_out, Rmin_out):
+        D_o, B_o = overall_flows(zF, s["xD"], s["xB"])
+        lim, note = limit_and_note(s)
+        return {"xD_out": s["xD"], "xB_out": s["xB"],
+                "stages_solved": s["status"] == "solved",
+                "limit": lim, "note": note,
+                "R_out": R_out, "Rmin_out": Rmin_out,
+                "D_kmol_s": D_o, "B_kmol_s": B_o,
+                "condenser_T_C": T_of(s["xD"]),
+                "reboiler_T_C": T_of(s["xB"])}
+
+    s = solved["mt"]
+    if reflux_basis == "mult":
+        mt = mccabe_thiele(eq, zF, q, s["xD"], s["xB"], R_mult=mult)
+    else:
+        mt = mccabe_thiele(eq, zF, q, s["xD"], s["xB"], R_abs=R_abs)
+    mt_out = {"N": mt["N"], "feed_stage": mt["feed_stage"],
+              "pinched": mt["pinched"], "staircase": mt["staircase"],
+              "x_int": mt["x_int"], "y_int": mt["y_int"],
+              **extras(s, mt["R"], mt["R_min"])}
+    s = solved["ps"]
+    mt_at_ps = mccabe_thiele(eq, zF, q, s["xD"], s["xB"],
+                             R_mult=mult) if reflux_basis == "mult" \
+        else mccabe_thiele(eq, zF, q, s["xD"], s["xB"], R_abs=R_abs)
+    R_ps = mt_at_ps["R"] if reflux_basis == "mult" else R_abs
+    ps = ponchon_savarit(eq, zF, hF, s["xD"], s["xB"], R_ps)
+    ps_out = {"N": ps["N"], "feed_stage": ps["feed_stage"],
+              "pinched": ps["pinched"], "QC_MW": ps["QC_MW"],
+              "QB_MW": ps["QB_MW"], "H_DD": ps["H_DD"],
+              "H_DB": ps["H_DB"], "stages": ps["stages"],
+              "x_tie_feed": ps["x_tie_feed"],
+              **extras(s, R_ps, mt_at_ps["R_min"])}
+    mt_top = solved["mt"]
+    D_top, B_top = overall_flows(zF, mt_top["xD"], mt_top["xB"])
+    return {
+        "xD": mt_top["xD"], "xB": mt_top["xB"],
+        "R": mt_out["R_out"], "R_min": mt_out["Rmin_out"],
+        "N_min": mt["N_min"],
+        "D_kmol_s": D_top, "B_kmol_s": B_top,
+        "condenser_T_C": T_of(mt_top["xD"]),
+        "reboiler_T_C": T_of(mt_top["xB"]),
+        "infeasible_azeotrope": bool(
+            az is not None and product_basis == "hold_xD"
+            and float(p["xD"]) > az[0]),
+        "hold": hold, "product_basis": product_basis,
+        "reflux_basis": reflux_basis, "N_stages": N_target,
+        "D_spec": D_spec,
+        "R_mult_implied": (mt_out["R_out"] / mt_out["Rmin_out"]
+                           if mt_out["Rmin_out"] > 0 else None),
+        "mt_out": mt_out, "ps_out": ps_out,
+    }
 '''
 
     _data_mod = _types.ModuleType("mtps_data")
@@ -1260,6 +1535,131 @@ def _(make_fig, mc, pair_bt):
        margin={"r": 200})
     _fig1
     return (a_p, alphas_p, p_atm, pressures_atm,)
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    ## Step 8: Rating: stage count specified, distillate composition held
+
+    The steps so far are design calculations: both product
+    compositions are specified and the stage count comes out. The
+    rating form specifies the stage count instead. With the feed, the
+    reflux ratio $R$ and the stage count $N$ given, the overall
+    balances plus the staircase still leave one degree of freedom, so
+    one product composition must be held and the other is calculated.
+    Here $x_D$ is held at the Step 1 value, $R$ is the absolute reflux
+    ratio of Step 4, and $N = 15$ stages are specified. Each method
+    bisects the unknown $x_B$ until its own stepped fractional count
+    equals 15, so the two methods calculate slightly different values:
+    at the same reflux, 15 stages strip further than the 13.16
+    McCabe–Thiele stages of the design run, and both calculated values
+    lie below the design $x_B = 0.05$.
+    """)
+    return
+
+
+@app.cell
+def _(eqc_bt, feed_bt, mc, mt_res, spec_bt):
+    spec_s8 = {"system": "benzene-toluene", "P_atm": 1.0, "zF": 0.40,
+               "feed_mode": "q", "q": 1.0, "spec_mode": "stages",
+               "product_basis": "hold_xD", "reflux_basis": "abs",
+               "xD": spec_bt["xD"], "R_abs": mt_res["R"], "N_stages": 15}
+    res_s8 = mc.solve_column(spec_s8)
+    print(f"McCabe-Thiele:   xB = {res_s8['mt']['xB_out']:.4f} "
+          f"(calculated), feed stage {res_s8['mt']['feed_stage']}")
+    print(f"Ponchon-Savarit: xB = {res_s8['ps']['xB_out']:.4f} "
+          f"(calculated), feed stage {res_s8['ps']['feed_stage']}")
+    re_mt8 = mc.mccabe_thiele(eqc_bt, spec_bt["zF"], 1.0,
+                              spec_bt["xD"], res_s8["mt"]["xB_out"],
+                              R_abs=mt_res["R"])
+    re_ps8 = mc.ponchon_savarit(eqc_bt, spec_bt["zF"], feed_bt["hF"],
+                                spec_bt["xD"], res_s8["ps"]["xB_out"],
+                                mt_res["R"])
+    print(f"re-solved counts: McCabe-Thiele {re_mt8['N']:.3f}, "
+          f"Ponchon-Savarit {re_ps8['N']:.3f} (specified 15)")
+    assert res_s8["mt"]["stages_solved"]
+    assert res_s8["ps"]["stages_solved"]
+    assert abs(re_mt8["N"] - 15) < 0.05
+    assert abs(re_ps8["N"] - 15) < 0.05
+    for m8, label8 in (("mt", "McCabe-Thiele"),
+                       ("ps", "Ponchon-Savarit")):
+        bal8 = (res_s8[m8]["D_kmol_s"] * spec_bt["xD"]
+                + res_s8[m8]["B_kmol_s"] * res_s8[m8]["xB_out"])
+        print(f"{label8}: arithmetic check (not an independent "
+              f"verification: D and B are produced from these two "
+              f"balances for the solved pair, so substituting them "
+              f"back closes identically): D*xD + B*xB = {bal8:.6f} "
+              f"(feed: {spec_bt['zF']:.6f})")
+        assert abs(bal8 - spec_bt["zF"]) < 1e-9
+    assert res_s8["mt"]["xB_out"] < spec_bt["xB"]
+    assert res_s8["ps"]["xB_out"] < spec_bt["xB"]
+    {"mt_xB": res_s8["mt"]["xB_out"], "ps_xB": res_s8["ps"]["xB_out"]}
+    return (bal8, label8, m8, re_mt8, re_ps8, res_s8, spec_s8,)
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    ## Step 9: Rating: distillate rate specified, both compositions calculated
+
+    The one remaining specification can instead be the distillate
+    flow rate $D$ itself, in $\mathrm{kmol/s}$; here $D$ is set to the
+    Step 1 value, $0.388889\ \mathrm{kmol/s}$, so $B = F - D$ is fixed
+    as well. The component balance then ties the two product
+    compositions together, $x_B = (F z_F - D x_D)/B$, and one unknown,
+    $x_D$, remains. The reflux is set as a multiple of the minimum,
+    1.3 as in Step 4, which makes the solve nested: each trial pair
+    first gets its McCabe–Thiele minimum reflux ratio and its
+    operating reflux ratio, then its stepped count, and the bisection
+    drives that count to the specified $N = 15$. Because the trial
+    pairs differ between the methods, each method reports its own
+    solved pair and its own operating reflux ratio. With 15 stages at
+    the design split and multiple, both methods separate further than
+    the design run: $x_D$ above 0.95 and $x_B$ below 0.05.
+    """)
+    return
+
+
+@app.cell
+def _(eqc_bt, feed_bt, mc, spec_bt):
+    spec_s9 = {"system": "benzene-toluene", "P_atm": 1.0, "zF": 0.40,
+               "feed_mode": "q", "q": 1.0, "spec_mode": "stages",
+               "product_basis": "D", "reflux_basis": "mult",
+               "R_mult": 1.3, "D_spec": 0.388889, "N_stages": 15}
+    res_s9 = mc.solve_column(spec_s9)
+    for label9, key9 in (("McCabe-Thiele", "mt"),
+                         ("Ponchon-Savarit", "ps")):
+        mm9 = res_s9[key9]
+        print(f"{label9}: xD = {mm9['xD_out']:.4f}, "
+              f"xB = {mm9['xB_out']:.4f} (both calculated), "
+              f"R = {mm9['R_out']:.3f} = 1.3 x R_min "
+              f"{mm9['Rmin_out']:.3f}")
+        print(f"   arithmetic check (not an independent verification: "
+              f"xB was calculated from this balance at every trial): "
+              f"D*xD + B*xB = "
+              f"{mm9['D_kmol_s'] * mm9['xD_out'] + mm9['B_kmol_s'] * mm9['xB_out']:.6f} "
+              f"(feed: {spec_s9['zF']:.6f})")
+    re_mt9 = mc.mccabe_thiele(eqc_bt, spec_bt["zF"], 1.0,
+                              res_s9["mt"]["xD_out"],
+                              res_s9["mt"]["xB_out"],
+                              R_abs=res_s9["mt"]["R_out"])
+    re_ps9 = mc.ponchon_savarit(eqc_bt, spec_bt["zF"], feed_bt["hF"],
+                                res_s9["ps"]["xD_out"],
+                                res_s9["ps"]["xB_out"],
+                                res_s9["ps"]["R_out"])
+    print(f"re-solved counts: McCabe-Thiele {re_mt9['N']:.3f}, "
+          f"Ponchon-Savarit {re_ps9['N']:.3f} (specified 15)")
+    assert res_s9["mt"]["stages_solved"]
+    assert res_s9["ps"]["stages_solved"]
+    assert abs(re_mt9["N"] - 15) < 0.05
+    assert abs(re_ps9["N"] - 15) < 0.05
+    for key9 in ("mt", "ps"):
+        assert res_s9[key9]["xD_out"] > spec_bt["xD"]
+        assert res_s9[key9]["xB_out"] < spec_bt["xB"]
+    {"mt_pair": [res_s9["mt"]["xD_out"], res_s9["mt"]["xB_out"]],
+     "ps_pair": [res_s9["ps"]["xD_out"], res_s9["ps"]["xB_out"]]}
+    return (key9, label9, mm9, re_mt9, re_ps9, res_s9, spec_s9,)
 
 
 if __name__ == "__main__":
