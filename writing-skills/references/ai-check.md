@@ -22,6 +22,10 @@ Source: Wikipedia, "Signs of AI writing", a WikiProject AI Cleanup advice page; 
 - Sentence form: "serves as", "stands as", "marks", "represents", "boasts", "features", "offers" in place of "is", "are", "has"; a relation hidden in "in connection with" or "associated with"; stock negative parallelisms ("not just X, but Y"; "not X, it is Y"; "X rather than Y"); lists of three used to sound complete.
 - Filler and framing: "it is important to note", "worth noting", "in summary", "in conclusion", "overall" restatements; chat filler in documents ("Certainly", "I hope this helps"); canned revision assurances ("improved clarity and flow") in place of the actual change; "while specific details are limited", "based on available information", knowledge-cutoff disclaimers, or speculation where information was not found.
 - Format: mechanical boldface; a "**Term:** description" list as the default form; emoji in headings or bullets; a thematic break between every section; title case by default; dense em dashes; placeholder or template text.
+- Framing and staging, in clusters: counted or slogan headings; manufactured counts of lessons or facts; compression claims ("fits in one sentence"); branded names for plain procedures; one figurative verb reused for unrelated results ("buys", "prices", "purchased") where a precise verb exists; exposition staged as questions, meta-headings ("What the bound says"), tour-guide transitions, next-chapter promises, or importance announced before its calculation.
+- Staged correction and overreach, in clusters: corrective antithesis as the default form; a misconception or objection raised only to be rebutted; an inflated scope disclaimer; mirror symmetry that drops a qualification; agency verbs for estimators or directions ("decides", "prefers"); "honest" for the statistical property meant; a caveat or recap repeated with no added scope, condition, or limit; a specific result restated as a general lesson.
+
+The last two bullets are editorial, not Wikipedia; the density rule above governs them.
 
 ## Independent check pass
 
