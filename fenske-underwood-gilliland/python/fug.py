@@ -12,8 +12,10 @@ Symbols, defined at first use in the walkthrough and Theory text:
   LK     light key; HK heavy key (adjacent in the volatility order)
   Nmin   minimum number of equilibrium stages (total reflux), dimensionless;
          the total condenser is not a stage, the partial reboiler is one stage
-  q      feed quality: liquid fraction of the feed as it enters the column,
-         dimensionless (q = 1 saturated liquid, q = 0 saturated vapour)
+  q      feed quality: the liquid fraction for a two-phase feed as it enters
+         the column; above 1 for a subcooled liquid feed,
+         dimensionless (q = 1 saturated liquid, q = 0 saturated vapour,
+         q > 1 subcooled liquid)
   theta  Underwood root, dimensionless, in the same scale as alpha
   Rmin   minimum reflux ratio, L/D at minimum reflux, dimensionless
   R      operating reflux ratio, dimensionless; mult = R / Rmin
@@ -335,7 +337,7 @@ def run_case(inp):
                               "Underwood feed function (dimensionless)")}
 
     # Fig. C: component distribution, logarithmic scale (flows span
-    # 10 orders of magnitude); double encoding by colour and pattern.
+    # 12 orders of magnitude); double encoding by colour and pattern.
     names = list(inp["names"])
     fig_dist = {
         "data": [

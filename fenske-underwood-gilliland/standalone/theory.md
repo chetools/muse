@@ -64,7 +64,7 @@ The heaviest component is named n-nonane in the feed table, where it is listed a
 The following material is summarised from Example 9.1 of the source text and is not computed on this page {{cite:seader-2016}}. The unit psia denotes pound per square inch absolute, a pressure unit measured from a perfect vacuum.
 
 - Column pressure. The column pressure was set at 70 psia at the total condenser, at a value that gives a condenser temperature within reach of cooling water.
-- Feed flash. The feed was flashed from 105 psia to 74 psia before entry to the column. The symbol $q$ denotes the feed quality, a dimensionless quantity, defined for a flashed feed as the fraction of the feed that is liquid after the flash. The flash vaporised 13.4 per cent of the feed, so the liquid fraction, and hence the value of $q$ used in the Underwood equations, is $q = 0.866$, a dimensionless value.
+- Feed flash. The feed was flashed from 105 psia to 74 psia before entry to the column. The symbol $q$ denotes the feed quality, a dimensionless quantity, defined for a flashed feed as the fraction of the feed that is liquid after the flash. The flash vaporised 13.4 per cent of the feed, so the liquid fraction, and hence the value of $q$ used in the Underwood equations, is $q = 0.866$, a dimensionless value. For a feed that enters as two phases, $q$ is the liquid fraction and lies between 0 and 1. A subcooled liquid feed, which must first be heated to saturation, has a value of $q$ above 1; this page accepts values of $q$ from 0 to 1.5.
 - Distribution coefficients. The values of $K_i$ were calculated with the Soave–Redlich–Kwong (SRK) equation of state in the ChemCAD simulator.
 - Mean volatilities. The value of $\alpha_i$ for each component in the table above is a geometric mean of the relative volatility evaluated at distillate conditions and the relative volatility evaluated at bottoms conditions. A geometric mean of two positive numbers is the square root of their product, in the same units as the two numbers; here both numbers are dimensionless, so the mean is dimensionless.
 
@@ -151,7 +151,7 @@ D = 468.95 \ \mathrm{lbmol/h},
 B = 407.35 \ \mathrm{lbmol/h}
 $$
 
-The sum $D + B = 876.3$ lbmol/h equals the feed rate $F = 876.3$ lbmol/h, so the overall balance closes. These totals are the distillate and bottoms flow rates at total reflux, at $N_{\min}$. The Class 2 calculation of Section 7 works at minimum reflux instead and obtains a slightly different distillate total, 470.5 lbmol/h, from its own stated assumption about which components distribute.
+The sum $D + B = 876.3$ lbmol/h equals the feed rate $F = 876.3$ lbmol/h, so the overall balance closes. The closure of each component balance is guaranteed by the construction of Section 4, in which the larger of the two flows of each component is taken by difference; closure is therefore not a check on the distribution. The check on the distribution is the comparison of these totals with the source values, in Section 11. These totals are the distillate and bottoms flow rates at total reflux, at $N_{\min}$. The Class 2 calculation of Section 7 works at minimum reflux instead and obtains a slightly different distillate total, 470.4 lbmol/h, from its own stated assumption about which components distribute; the source text prints 470.5 lbmol/h for that total.
 
 ## Minimum reflux and pinch zones
 
@@ -181,9 +181,9 @@ L_{\min} = 0.414 \times 876.3 = 362.8 \ \mathrm{lbmol/h},
 R_{\min} = \frac{362.8}{468.95} = 0.774
 $$
 
-where 876.3 lbmol/h is the feed rate $F$ and 468.95 lbmol/h is the distillate rate $D$ from Section 4. The value per unit of distillate is therefore 0.774, a dimensionless ratio. The source text prints 0.864 for this converted value. That printed value does not follow from the stated feed rate of 876.3 lbmol/h; it follows, within the rounding of the source values, if the feed rate is taken as 976.3 lbmol/h instead. The conversion in the source text is therefore recorded here as a discrepancy: 0.414 per unit of feed converts to 0.774 per unit of distillate, not to 0.864.
+where 876.3 lbmol/h is the feed rate $F$ and 468.95 lbmol/h is the distillate rate $D$ from Section 4. The value per unit of distillate is therefore 0.774, a dimensionless ratio. The source text prints 0.864 for this converted value. That printed value does not follow from the stated feed rate of 876.3 lbmol/h; it would follow from a feed rate of 978.7 lbmol/h ($0.864 \times 468.95 / 0.414 = 978.7$ lbmol/h), which is not the feed rate of this case. The conversion in the source text is therefore recorded here as a discrepancy: 0.414 per unit of feed converts to 0.774 per unit of distillate, not to 0.864.
 
-The Class 1 result also fails a direct check on its own assumption. Using the Class 1 value of $\theta$ to compute the distillate flow rate of each non-key component gives flow rates that violate the component balance: each value of $d_i$, in lbmol/h, must lie between zero and the feed flow rate $F_i$, in lbmol/h. The computed values instead give negative distillate flow rates for heavy non-key components, and a distillate flow rate for isobutane that exceeds its feed flow rate of 12 lbmol/h. The specified distribution is therefore not consistent for this case: at least one non-key component, n-pentane, does distribute between the products, so the separation is of Class 2, and the Class 1 value is not used as the headline result on this page.
+The Class 1 result also fails the check on its own assumption, as reported in Example 9.4 of the source text {{cite:seader-2016}}. The value of $\theta$ in the interval between the key volatilities is 1.0443, a dimensionless value, the second root in the list of Section 7. Using that value of $\theta$ to compute the distillate flow rate of each non-key component gives flow rates that violate the component balance: each value of $d_i$, in lbmol/h, must lie between zero and the feed flow rate $F_i$, in lbmol/h. The source text's calculation instead gives negative distillate flow rates for heavy non-key components, and a distillate flow rate for isobutane that exceeds its feed flow rate of 12 lbmol/h. This page does not reproduce that Class 1 distribution calculation; it reports the outcome as the source text states it. The specified distribution is therefore not consistent for this case: at least one non-key component, n-pentane, does distribute between the products, so the separation is of Class 2, and the Class 1 value is not used as the headline result on this page.
 
 For the record only: if a Gilliland stage count based on the Class 1 route is shown anywhere, it uses the printed converted value 0.864, a dimensionless ratio per unit of distillate, and it gives 17.8 stages, a dimensionless count. That conditional value plays no part in the Class 2 result that follows.
 
@@ -197,7 +197,7 @@ $$
 \sum_i \frac{\alpha_i z_i}{\alpha_i - \theta} = 1 - q
 $$
 
-Every quantity in the equation has been defined above: $\alpha_i$ is the dimensionless mean relative volatility of component $i$ with respect to the HK; $z_i$ is the dimensionless feed mole fraction of component $i$; $\theta$ is the dimensionless Underwood parameter; and $q$ is the dimensionless feed quality, with the value 0.866 for this case, so the right-hand side is $1 - 0.866 = 0.134$, a dimensionless value equal to the vaporised fraction of the feed. Each term of the sum is dimensionless, and the equation has one root in each interval between successive values of $\alpha_i$. For the eight components of this case there are seven such intervals and seven roots, as follows, with the interval stated for each root; every value is dimensionless.
+Every quantity in the equation has been defined above: $\alpha_i$ is the dimensionless mean relative volatility of component $i$ with respect to the HK; $z_i$ is the dimensionless feed mole fraction of component $i$; $\theta$ is the dimensionless Underwood parameter; and $q$ is the dimensionless feed quality, with the value 0.866 for this case, so the right-hand side is $1 - 0.866 = 0.134$, a dimensionless value equal to the vaporised fraction of this feed. Each term of the sum is dimensionless, and the equation has one root in each interval between successive values of $\alpha_i$. For the eight components of this case there are seven such intervals and seven roots, as follows, with the interval stated for each root; every value is dimensionless.
 
 | Root $\theta$ | Interval of $\alpha_i$ |
 |---|---|
@@ -229,11 +229,13 @@ The distributing set for this case is assumed as follows.
 
 The unknowns are three in number: the distillate flow rate of n-pentane, in lbmol/h; the total distillate flow rate $D$, in lbmol/h; and the minimum reflux flow rate $L_{\min}$, in lbmol/h. The equations are also three in number: the distillate equation at the root 1.0443, the distillate equation at the root 0.8587, and the total balance $D$ equals the sum of the distillate component flow rates, in lbmol/h. Each distillate equation is linear in the unknowns, because each unknown appears to the first power only, so the three equations are solved as a linear system.
 
-The solution gives a distillate flow rate for n-pentane of 3.5 lbmol/h and a total distillate flow rate of
+The solution gives a distillate flow rate for n-pentane of 3.43 lbmol/h and a total distillate flow rate of
 
 $$
-D = 12 + 442 + 13 + 3.5 = 470.5 \ \mathrm{lbmol/h}
+D = 12 + 442 + 13 + 3.43 = 470.4 \ \mathrm{lbmol/h}
 $$
+
+The source text prints 3.5 lbmol/h and 470.5 lbmol/h for these two values; the values above are the solution of the equations as stated, and the difference is rounding in the source values.
 
 The corresponding minimum reflux ratio is printed in the source text as $R_{\min} = 0.521$, a dimensionless ratio per unit of distillate. Solving the same equations on this page from the same rounded input values gives 0.529. The printed value and the recomputed value are both reported, and the result is stated as $R_{\min}$ in the range 0.52 to 0.53, a dimensionless ratio per unit of distillate, when the rounding of the inputs is taken into account.
 
@@ -347,16 +349,16 @@ N_{S,\min}
 \ln \alpha_{\mathrm{LK}}
 }
 = \frac{\ln \left[ (448 / 6)(23 / 36) \right]}{\ln 1.864}
-= 6.20
+= 6.21
 $$
 
 The section ratio from the Fenske method is the ratio of these two section counts,
 
 $$
-\frac{N_{R,\min}}{N_{S,\min}} = \frac{1.61}{6.20} = 0.260
+\frac{N_{R,\min}}{N_{S,\min}} = \frac{1.6140}{6.2066} = 0.260
 $$
 
-a dimensionless ratio. The sum $N_{R,\min} + N_{S,\min} = 7.81$ stages equals the value $N_{\min} = 7.82$ stages of Section 3 within the rounding of the input values, as the construction requires: the two section split ratios multiply to the overall key split ratio of Section 3, so the sum is an identity of the construction, not an independent check of either section count.
+a dimensionless ratio. The unrounded sum $N_{R,\min} + N_{S,\min} = 1.6140 + 6.2066 = 7.8206$ stages is exactly the value $N_{\min} = 7.8206$ stages of Section 3, and the rounded section counts, 1.61 and 6.21, sum to 7.82. The equality holds as the construction requires: the two section split ratios multiply to the overall key split ratio of Section 3, so the sum is an identity of the construction, not an independent check of either section count.
 
 The source text assesses both feed-stage estimates as unsatisfactory, and the Kirkbride estimate as the better of the two {{cite:seader-2016}}. The two ratios for this case, 0.445 from Kirkbride and 0.260 from the Fenske section ratio, differ by a wide margin, which shows the size of the uncertainty in the feed-stage location from shortcut methods. A rigorous stage-by-stage calculation, which this page does not perform, is required to fix the feed stage more closely.
 
@@ -366,7 +368,7 @@ The stage counts of the preceding sections are theoretical: each stage is an equ
 
 The symbol $N_{\mathrm{tray}}$ denotes the number of theoretical trays, a dimensionless count. For this case the rounded total of 20 stages of Section 8 gives $N_{\mathrm{tray}} = 19$, because one of the 20 stages is the partial reboiler and the total condenser is no stage, by the counting convention of Section 1.
 
-The symbol $E$ denotes the overall column efficiency, a dimensionless fraction, defined as the number of theoretical stages required for a separation divided by the number of actual trays required for the same separation. The value of $E$ lies between 0 and 1. A value of 1 states that each actual tray acts as a full equilibrium stage.
+The symbol $E$ denotes the overall column efficiency, a dimensionless fraction, defined as the number of theoretical trays required for a separation divided by the number of actual trays required for the same separation. The value of $E$ lies between 0 and 1. A value of 1 states that each actual tray acts as a full equilibrium stage.
 
 The symbol $N_{\mathrm{actual}}$ denotes the number of actual trays, a dimensionless count. The notation $\lceil \ \rceil$ around a dimensionless number denotes rounding that number up to the next whole number. The conversion computed on this page is
 
@@ -397,7 +399,7 @@ The agreement is exact, at the precision printed, for $N_{\min}$, for the produc
 Three rows differ, for two distinct reasons.
 
 - The Class 2 value of $R_{\min}$, the value of $X$ and the value of $N$ differ in the second or third significant figure. The page solves the Underwood equations from the rounded input values printed in the source: relative volatilities to three or four significant figures, key flow rates to the nearest lbmol/h, and a value of $q$ to three significant figures. Solving from inputs rounded at that level gives $R_{\min}$ in the range 0.52 to 0.53 in place of the printed 0.521, and the small differences in $X$ and $N$ follow from that difference through the definitions of Section 8. These three rows are a rounding difference, not a difference of method.
-- The Class 1 ratio per unit of distillate differs by a large margin, 0.864 printed against 0.774 recomputed. This row is the conversion discrepancy named in Section 6: the ratio per unit of feed, 0.414, on which both values rest, converts to 0.774 at the stated feed rate of 876.3 lbmol/h and the distillate rate of 468.95 lbmol/h, and the printed 0.864 follows only if a feed rate of 976.3 lbmol/h is used in the conversion. The discrepancy is in the conversion printed in the source text, and it does not affect any other row, because the Class 1 value is not used in the Class 2 result.
+- The Class 1 ratio per unit of distillate differs by a large margin, 0.864 printed against 0.774 recomputed. This row is the conversion discrepancy named in Section 6: the ratio per unit of feed, 0.414, on which both values rest, converts to 0.774 at the stated feed rate of 876.3 lbmol/h and the distillate rate of 468.95 lbmol/h, and the printed 0.864 would follow only from a feed rate of 978.7 lbmol/h in the conversion. The discrepancy is in the conversion printed in the source text, and it does not affect any other row, because the Class 1 value is not used in the Class 2 result.
 
 ## References
 

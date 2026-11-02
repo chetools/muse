@@ -56,7 +56,7 @@ print("minimum stages Nmin =", round(n_min, 4), " (Seader: 7.82)")
 
 $$\frac{d_i}{b_i} = \frac{d_{HK}}{b_{HK}} \; \alpha_i^{\,N_{min}}$$
 
-Combined with $f_i = d_i + b_i$, this fixes every non-key flow. Following Seader's guidance, the smaller of $d_i$ and $b_i$ is computed from the equation first and the larger by difference, which keeps the small flows accurate; several distillate flows are below $10^{-6}$ lbmol/h. The chart uses a logarithmic scale because the flows span ten orders of magnitude; colour and pattern both encode the product, so the chart reads in greyscale. These total-reflux flows are the product distribution used by the rest of the method.""",
+Combined with $f_i = d_i + b_i$, this fixes every non-key flow. Following Seader's guidance, the smaller of $d_i$ and $b_i$ is computed from the equation first and the larger by difference, which keeps the small flows accurate; several distillate flows are below $10^{-6}$ lbmol/h. The chart uses a logarithmic scale because the flows span twelve orders of magnitude; colour and pattern both encode the product, so the chart reads in greyscale. These total-reflux flows are the product distribution used by the rest of the method.""",
         code=r"""
 darr3 = dist["d"]
 barr3 = dist["b"]
@@ -82,7 +82,7 @@ figure([dict(type="bar", x=inp["names"],
 
 Seader's Example 9.4 evaluates the Class 1 shortcut for this feed from the feed-liquid flows of his Example 9.1 and obtains a minimum internal reflux rate of $0.414$ per unit feed. The check then fails: applied to the heavy non-keys, the Class 1 relations return negative distillate flow rates, and the isobutane distillate rate exceeds its feed rate. Only n-pentane, of the non-keys, genuinely distributes. The separation is therefore Class 2, and the Class 1 value is not used further, except as the comparison in Step 6.
 
-One further point is recorded in this cell's output. Seader prints the Class 1 ratio as $0.864$ per unit distillate. Converted at the distillate rate of Step 3, his per-feed value of $0.414$ gives $0.774$ per unit distillate, not $0.864$; the printed $0.864$ follows from a feed rate of $976.3$ lbmol/h in place of $876.3$ lbmol/h. The page reports both values and uses neither for its headline result.""",
+One further point is recorded in this cell's output. Seader prints the Class 1 ratio as $0.864$ per unit distillate. Converted at the distillate rate of Step 3, his per-feed value of $0.414$ gives $0.774$ per unit distillate, not $0.864$; the printed $0.864$ would follow from a feed rate of $978.7$ lbmol/h in place of $876.3$ lbmol/h. The page reports both values and uses neither for its headline result.""",
         code=r"""
 c1res = F.class1_check()
 print("Class 1 minimum internal reflux per unit feed:",
@@ -98,7 +98,7 @@ print("converted per unit distillate:",
 
 $$\sum_i \frac{\alpha_i z_i}{\alpha_i - \theta} = 1 - q$$
 
-The symbol $q$ denotes the feed quality, the liquid fraction of the feed as it enters the column, dimensionless. In Seader's Example 9.1 the feed is flashed into the column and $13.4$ percent vaporises, so $q = 0.866$ here, not $1$. The left side is a sum over all components $i$ of the feed. The equation has one root $\theta$ in every interval between consecutive relative volatilities — seven roots for eight components — and the chart shows the left side minus the right side, clipped to the range shown, with every root marked.
+The symbol $q$ denotes the feed quality, dimensionless; for a two-phase feed it is the liquid fraction of the feed as it enters the column, and a subcooled liquid feed has $q$ above 1. In Seader's Example 9.1 the feed is flashed into the column and $13.4$ percent vaporises, so $q = 0.866$ here, not $1$. The left side is a sum over all components $i$ of the feed. The equation has one root $\theta$ in every interval between consecutive relative volatilities — seven roots for eight components — and the chart shows the left side minus the right side, clipped to the range shown, with every root marked.
 
 Only two roots enter the minimum-reflux solve for this separation: the root between the volatilities of the two keys, and the root between the heavy key and the next heavier component, n-pentane, the one distributing non-key. With the distillate flow rates of the distributing components written against each root,
 
@@ -145,7 +145,7 @@ figure(traces5, xaxis=dict(title="theta (dimensionless)"),
 
 $$Y = 1 - \exp\left(\frac{(1 + 54.4 X)(X - 1)}{(11 + 117.2 X)\sqrt{X}}\right)$$
 
-Solving $Y = (N - N_{min})/(N + 1)$ for $N$ gives the stage requirement. As $R$ approaches $R_{min}$, $X$ approaches $0$ and $N$ grows without bound; as $R$ grows without bound, $N$ approaches $N_{min}$. The correlation carries no feed-condition parameter, a known limitation Seader records: it is conservative for feeds of low $q$. The chart plots the full curve, not only the operating point.""",
+Solving $Y = (N - N_{min})/(N + 1)$ for $N$ gives the stage requirement. As $R$ approaches $R_{min}$, $X$ approaches $0$ and $N$ grows without bound; as $R$ grows without bound, $N$ approaches $N_{min}$. The correlation carries no feed-condition parameter, a known limitation Seader records: it is conservative for feeds of low $q$. The chart plots the curve for reflux multipliers from 1.001 to 4, not only the operating point.""",
         code=r"""
 gil = F.gilliland(und["r_min"], n_min, inp["mult"])
 print("R =", round(gil["R"], 3), " X =", round(gil["X"], 4),
