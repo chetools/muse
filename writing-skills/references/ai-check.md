@@ -31,6 +31,8 @@ The last two bullets are editorial, not Wikipedia; the density rule above govern
 
 A document of consequence is checked by a checker that did not write it: a separate session, a subagent, or a human reviewer. The checker's context holds the frozen source material, the draft, and this package, never the writer's reasoning or earlier drafts. The checker returns findings and does not edit the draft. Each finding quotes the sentence, names the head below that it fails, gives the evidence (the source passage or the recomputation), and proposes a correction. The writer or the user adjudicates each finding against the primary source before any correction is applied. For a long or high-stakes document, two checkers with disjoint scopes replace one checker with the full list. A completed check is an exhausted findings list, not a certification: agreement between writer and checker does not verify a fact against its primary source.
 
+Boundary with the artifact reviewer workflow: this pass governs prose documents. Artifacts, HTML pages, WASM pages and apps, notebooks, and worked-example documents with computed examples or figures are reviewed under the Independent-reviewer workflow in AGENTS.md instead. Where both apply (for example the Theory prose of a WASM page), one review event satisfies both: the workflow's Brief C carries heads C1, C3, and C6 in addition to its own scope, and no second check pass is run for the same delivery.
+
 Heads:
 
 C1. Traceability: every fact, figure, and consequence in the draft is stated in the source material (an addition is a finding); every source fact the brief requires is carried (a silent omission is a finding).
