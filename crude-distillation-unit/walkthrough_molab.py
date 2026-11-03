@@ -45,11 +45,11 @@ def _(mo):
     _SRC = r'''"""Mass balance and furnace duty model for the crude oil atmospheric
     distillation unit shown in the process flow diagram.
 
-    The model is a slate balance on the crude oil feed, together with a
+    The model is a material balance on the crude oil feed, based on the cut yields, together with a
     sensible-heat estimate of the fired furnace duty. It performs no
     separation calculation: the product distribution is prescribed by the
     cut yields supplied as inputs, and the closing remainder is obtained
-    by difference, so the slate closes to the crude feed rate exactly.
+    by difference, so the product flow rates and the closing remainder sum to the crude feed rate exactly.
 
     Symbols (defined before first use, with SI units where applicable):
       feed_rate: crude oil feed rate, in kilogram per hour (kg/h).
@@ -119,7 +119,7 @@ def _(mo):
 
 
     def run_model(feed_rate, yields_pct, t_out, cp):
-        """Run the slate balance and the furnace duty estimate.
+        """Run the material balance and the furnace duty estimate.
 
         Returns a dictionary with the product rows (name, yield in mass
         per cent, flow rate in kg/h), the closing remainder, the desalted
@@ -232,7 +232,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Closing remainder and design anchor
 
-    The closing remainder (in kg/h) is the crude feed rate minus the sum of the five product flow rates, and the slate closes to the feed rate exactly. The anchor assertion checks the design basis itself: the five design product flow rates (55,000, 85,000, 120,000, 150,000 and 425,000 kg/h), with fuel gas (10,000 kg/h), sour water (14,000 kg/h) and brine (45,000 kg/h), give total outputs of 904,000 kg/h, equal to the total inputs of crude oil (850,000 kg/h), wash water (40,000 kg/h) and stripping steam (14,000 kg/h). A failure of the assertion stops the breakdown loudly.
+    The closing remainder (in kg/h) is the crude feed rate minus the sum of the five product flow rates, and the product flow rates and the closing remainder sum to the feed rate exactly. The anchor assertion checks the design basis itself: the five design product flow rates (55,000, 85,000, 120,000, 150,000 and 425,000 kg/h), with fuel gas (10,000 kg/h), sour water (14,000 kg/h) and brine (45,000 kg/h), give total outputs of 904,000 kg/h, equal to the total inputs of crude oil (850,000 kg/h), wash water (40,000 kg/h) and stripping steam (14,000 kg/h). A failure of the assertion stops the breakdown loudly.
     """)
     return
 
