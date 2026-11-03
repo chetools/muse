@@ -57,7 +57,8 @@ CELLS = [
         md=(
             "The closing remainder (in kg/h) is the crude feed rate "
             "minus the sum of the five product flow rates, and the "
-            "slate closes to the feed rate exactly. The anchor "
+            "product flow rates and the closing remainder sum to "
+            "the feed rate exactly. The anchor "
             "assertion checks the design basis itself: the "
             "five design product flow rates (55,000, 85,000, "
             "120,000, 150,000 and 425,000 kg/h), with fuel gas "

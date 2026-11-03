@@ -68,7 +68,7 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <body>
 <div class="hwrap"><header>
 <h1>Crude oil atmospheric distillation unit</h1>
-<p class="subtitle">Process flow diagram with a live slate balance and furnace duty model. The unit performs physical separation by fractional distillation; no chemical reaction is carried out in the unit and no catalyst is present.</p>
+<p class="subtitle">Process flow diagram with a live material balance and furnace duty model. The unit performs physical separation by fractional distillation; no chemical reaction is carried out in the unit and no catalyst is present.</p>
 <div id="bootbar"><div></div></div>
 <p id="bootstatus">Python runtime: loading.</p>
 <p id="boot-error"></p>
@@ -85,8 +85,8 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 </nav>
 
 <div class="panel active" id="panel-app">
-<h2 id="app-model">Slate balance and furnace duty model</h2>
-<p>The model is computed in Python. The precomputed default run is displayed on load; a live run replaces the displayed values. Symbols: the crude oil feed rate is denoted feed rate (in kilogram per hour, kg/h); each product cut yield is in mass per cent of the crude feed; the furnace outlet temperature is in degree Celsius; the mean specific heat capacity of the desalted crude, denoted cp, is in kilojoule per kilogram per kelvin (kJ/(kg K)). The default value of cp is 2.2 kJ/(kg K), an assumed value stated as an assumption in the Theory panel.</p>
+<h2 id="app-model">Material balance and furnace duty model</h2>
+<p>The precomputed default run is displayed on load; a live run replaces the displayed values. Symbols: the crude oil feed rate is denoted feed rate (in kilogram per hour, kg/h); each product cut yield is in mass per cent of the crude feed; the furnace outlet temperature is in degree Celsius; the mean specific heat capacity of the desalted crude, denoted cp, is in kilojoule per kilogram per kelvin (kJ/(kg K)). The default value of cp is 2.2 kJ/(kg K), an assumed value stated as an assumption in the Theory panel.</p>
 <div class="grid">
 <div>
 <label for="in-feed">Crude oil feed rate (kg/h)</label><input id="in-feed" type="number" step="any" value="850000">

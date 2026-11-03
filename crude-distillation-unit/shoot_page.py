@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Playwright visual verification of the built seven-panel page (v6).
+"""Playwright visual verification of the built seven-panel page (v7).
 
 Serves dist/ on local port 8941 (server started and stopped by this
 script), screenshots every panel at desktop width (2560 px) and at
@@ -22,7 +22,7 @@ from playwright.async_api import async_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIST = os.path.join(HERE, "dist")
-PAGE = "crude-distillation-unit-v6.html"
+PAGE = "crude-distillation-unit-v7.html"
 OUT = os.path.join(HERE, "shots")
 os.makedirs(OUT, exist_ok=True)
 PORT = 8941
@@ -34,7 +34,7 @@ async def shoot_panels(pg, prefix):
     for name in PANELS:
         await pg.click(f"#tabbtn-{name}")
         await pg.wait_for_timeout(450)
-        await pg.screenshot(path=os.path.join(OUT, f"v6-{prefix}-{name}.png"))
+        await pg.screenshot(path=os.path.join(OUT, f"v7-{prefix}-{name}.png"))
 
 
 async def main():
@@ -88,7 +88,7 @@ async def main():
             await pg.wait_for_timeout(400)
             report["switch_while_scrolled"] = await pg.evaluate(
                 "document.querySelector('#panel-safety').classList.contains('active')")
-            await pg.screenshot(path=os.path.join(OUT, "v6-desktop-scrolled-safety.png"))
+            await pg.screenshot(path=os.path.join(OUT, "v7-desktop-scrolled-safety.png"))
             # fragment routing
             frag = await pg.evaluate("""async () => {
               location.hash = '#economics-capital-cost';

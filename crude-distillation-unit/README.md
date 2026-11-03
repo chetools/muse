@@ -1,7 +1,7 @@
 # Crude oil atmospheric distillation unit (PFD-103) — page sources
 
 Standalone WASM educational page: App panel with the PFD-103 diagram
-and a live Python (Pyodide) slate balance and furnace duty model,
+and a live Python (Pyodide) material balance and furnace duty model,
 Theory panel from the verified process dossier, Code panel with
 byte-identical listings and a statically rendered marimo walkthrough.
 

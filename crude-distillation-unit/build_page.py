@@ -41,7 +41,7 @@ PFD_SVG = next((p for p in PFD_SVG_CANDIDATES if os.path.exists(p)), PFD_SVG_CAN
 DESIGN_MD = os.path.join(EXAMPLES_DIR, "DESIGN.md")
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-VERSION = 6
+VERSION = 7
 OUT = os.path.join(HERE, "dist", f"crude-distillation-unit-v{VERSION}.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "crude-distillation-unit/walkthrough_molab.py")
@@ -205,7 +205,7 @@ def main():
                     "overhead-system-and-corrosion-control", "pumparound",
                     "side-strippers", "product-rundown-and-residue-handling",
                     "product-slate"],
-        "theory": ["slate-balance", "furnace-duty-estimate"],
+        "theory": ["material-balance", "furnace-duty-estimate"],
         "economics": ["production-scale", "energy-consumption",
                       "capital-cost", "crack-spread"],
         "safety": ["hazard-inventory-and-controls", "incidents-of-record",

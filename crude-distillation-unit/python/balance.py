@@ -1,11 +1,11 @@
 """Mass balance and furnace duty model for the crude oil atmospheric
 distillation unit shown in the process flow diagram.
 
-The model is a slate balance on the crude oil feed, together with a
+The model is a material balance on the crude oil feed, based on the cut yields, together with a
 sensible-heat estimate of the fired furnace duty. It performs no
 separation calculation: the product distribution is prescribed by the
 cut yields supplied as inputs, and the closing remainder is obtained
-by difference, so the slate closes to the crude feed rate exactly.
+by difference, so the product flow rates and the closing remainder sum to the crude feed rate exactly.
 
 Symbols (defined before first use, with SI units where applicable):
   feed_rate: crude oil feed rate, in kilogram per hour (kg/h).
@@ -75,7 +75,7 @@ def furnace_duty_kw(desalted_rate, cp, t_out, t_in=FURNACE_INLET_TEMPERATURE):
 
 
 def run_model(feed_rate, yields_pct, t_out, cp):
-    """Run the slate balance and the furnace duty estimate.
+    """Run the material balance and the furnace duty estimate.
 
     Returns a dictionary with the product rows (name, yield in mass
     per cent, flow rate in kg/h), the closing remainder, the desalted

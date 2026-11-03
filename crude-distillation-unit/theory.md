@@ -62,9 +62,9 @@ The reference yields of Table 1 are the distillation yields for a crude feed of 
 
 Liquefied petroleum gas (LPG) denotes propane and butane recovered from light ends. On the basis of Table 1 the atmospheric unit separates approximately 63 wt% of the feed into gases, naphtha, kerosene and gas oils up to the 427 °C cut, and the material boiling above the atmospheric cut (vacuum gas oil and vacuum residue, 37.1 wt% in total) passes with the atmospheric residue to the vacuum unit [9]. The split is crude-dependent and the yields of Table 1 apply to the stated 26.3 °API feed only. The sample slate, computed from the design stream table [25], is fuel gas 10,000 kg/h, light naphtha 55,000 kg/h, heavy naphtha 85,000 kg/h, kerosene 120,000 kg/h, light gas oil 150,000 kg/h and atmospheric residue 425,000 kg/h. Relative to the desalted crude charge of 845,000 kg/h, the respective mass fractions are 1.2, 6.5, 10.1, 14.2, 17.8 and 50.3 percent [25]. The overall unit balance closes at 904,000 kg/h on each side, comprising crude 850,000 kg/h, wash water 40,000 kg/h and stripping steam 14,000 kg/h as inputs, and brine 45,000 kg/h, fuel gas, sour water 14,000 kg/h and the five hydrocarbon products as outputs [25].
 
-## Slate balance
+## Material balance
 
-The App panel computes a slate balance and a sensible-heat furnace duty estimate. The symbol $\dot{m}_{\mathrm{feed}}$ denotes the crude oil feed rate (in kg/h) and the symbol $y_i$ denotes the cut yield of product $i$ (in mass per cent of the crude feed). The product flow rate of product $i$, denoted $\dot{m}_i$ (in kg/h), is
+The App panel computes a material balance from the cut yields and a sensible-heat furnace duty estimate. The symbol $\dot{m}_{\mathrm{feed}}$ denotes the crude oil feed rate (in kg/h) and the symbol $y_i$ denotes the cut yield of product $i$ (in mass per cent of the crude feed). The product flow rate of product $i$, denoted $\dot{m}_i$ (in kg/h), is
 
 $$\dot{m}_i = \dot{m}_{\mathrm{feed}} \, y_i / 100$$
 
