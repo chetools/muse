@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v5"
+VERSION = "v7"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -236,14 +236,8 @@ for _n, (_hid, _vb, _cap) in enumerate(_SUBDIAGRAMS, 1):
     assert _m, f"sub-diagram anchor heading not found: {_hid}"
     rendered["process"] = rendered["process"].replace(
         _m.group(1), _m.group(1) + _fig, 1)
-pfd_record = """<h3 id="process-record">Compliance record for PFD-102</h3>
-<p>Symbol record: equipment glyphs are placements of the traced symbol library of specification PFD-SPEC-001, Annex A (compressor compressor_1, expander expander_1, heat exchangers heat_exchanger_1, adsorber vessel_1, columns scds_1, valves valve_1, terminals feed_1 and product_1); the air filter, the multi-stream main heat exchanger and the integrated condenser/reboiler are drawn per ISO 10628-2 under requirement S5 of specification PFD-SPEC-001 and are recorded for addition to Annex A. The glyphs are library placements whose port coordinates are asserted in the builder; they are not re-verified by a fresh overlay campaign for this drawing.</p>
-<p>Measured quality scores: number of crossings Nc = 6; total bends Nb = 14; maximum bends on one stream bmax = 2; total routed length Lt = 1590 mm at final scale; minimum parallel spacing smin = 12.5 mm. Hard-failure checks: topology graph comparison (30 streams, 16 equipment items), stream identity cross-count, and balance closure from displayed values all pass in the builder.</p>
-<p>Crossing justifications (requirement P6). Streams 11 and 15, 11 and 29, 11 and 30: the liquid nitrogen distribution lane rises east of the low-pressure column and crosses the three east-face streams (reflux entry, argon side draw, argon bottom return), whose destinations are ordered along the column height; the west-side distribution alternative was examined during design and gave nine crossings. Streams 6 and 18: the throttled rich liquid rises west of the columns to its low-pressure column entry and crosses the cold air spine; an east-face entry was examined and transits the crude argon column. Streams 7 and 19 and streams 18 and 19: the cold oxygen stream leaves the condenser/reboiler sump westward and crosses the pressure column feed lane and the rich liquid lane once each; routing the oxygen stream below both lanes was examined and adds a further crossing with the rich liquid bottom lane.</p>"""
-
 # ---------------- TOCs ----------------
-process_toc = [("2", "process-pfd", "Process flow diagram PFD-102"),
-               ("3", "process-record", "Compliance record for PFD-102")] + tocs["process"]
+process_toc = [("2", "process-pfd", "Process flow diagram PFD-102")] + tocs["process"]
 code_toc = [("2", "code-listings", "Listings"), ("3", "code-model", "Listing 1 — asu_model.py"),
             ("3", "code-walkthrough-source", "Listing 2 — walkthrough.py"),
             ("2", "code-walkthrough", "Walkthrough")] + \
@@ -270,7 +264,6 @@ subs = {
     "@@TOC_CODE@@": toc_html(code_toc),
     "@@TOC_REFERENCES@@": toc_html(tocs["references"]),
     "@@PFD_SVG@@": pfd_svg,
-    "@@PFD_RECORD@@": pfd_record,
     "@@PROCESS_HTML@@": rendered["process"],
     "@@THEORY_HTML@@": rendered["theory"],
     "@@ECONOMICS_HTML@@": rendered["economics"],
@@ -296,6 +289,7 @@ math_map = _render_math()
 for i, h in math_map.items():
     page = page.replace(f"KATEXMATH{i}TOKEN", h)
 assert "KATEXMATH" not in page
+assert "Compliance record" not in page, "PFD compliance record must not appear on the page (project record only)"
 
 OUT.write_text(page)
 print("page written:", OUT, len(page), "bytes; math expressions:", len(math_map))

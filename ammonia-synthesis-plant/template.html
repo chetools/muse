@@ -59,6 +59,8 @@ code{font-family:Consolas,"DejaVu Sans Mono",monospace}
 .subtabs button[aria-selected="true"]{background:var(--ink);color:#fff}
 .wt-output{background:#fff;border:1px solid var(--rule);padding:8px 12px;white-space:pre-wrap;font-family:Consolas,monospace;font-size:.85rem}
 .katex{font-size:1.04em}
+.katex-display{overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
+.panel p,.panel li{overflow-wrap:anywhere}
 a{color:var(--accent)}
 .metric{font-size:1.15rem}
 footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);font-size:.9rem}
@@ -76,18 +78,15 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <div class="wrap">
 <nav class="tabs" role="tablist">
 <button role="tab" id="tabbtn-app" aria-selected="true" data-panel="app">App</button>
+<button role="tab" id="tabbtn-process" aria-selected="false" data-panel="process">Process</button>
 <button role="tab" id="tabbtn-theory" aria-selected="false" data-panel="theory">Theory</button>
+<button role="tab" id="tabbtn-economics" aria-selected="false" data-panel="economics">Economics</button>
+<button role="tab" id="tabbtn-safety" aria-selected="false" data-panel="safety">Safety</button>
 <button role="tab" id="tabbtn-code" aria-selected="false" data-panel="code">Code</button>
+<button role="tab" id="tabbtn-references" aria-selected="false" data-panel="references">References</button>
 </nav>
 
 <div class="panel active" id="panel-app">
-<h2 id="app-diagram">Process flow diagram</h2>
-<figure>
-<div class="diagram">@@PFD_SVG@@</div>
-<figcaption>Fig. 1 | Process flow diagram PFD-102, Revision 2: feed preparation and reforming, shift conversion and condensate separation, carbon dioxide removal with solvent regeneration, methanation and synthesis gas compression, and the ammonia synthesis loop with recycle and purge. Stream values on the diagram are sample design values.</figcaption>
-</figure>
-<h2 id="app-equipment-index">Equipment index</h2>
-@@EQUIPMENT_INDEX@@
 <h2 id="app-model">Overall and synthesis loop balance model</h2>
 <p>The model is computed in Python. The precomputed default run is displayed on load; a live run replaces the displayed values. All rates are mass flow rates in kilogram per hour (kg/h, where kg denotes kilogram and h denotes hour). Part 1, the overall plant balance, takes the natural gas, process steam and process air feed rates and the process condensate, carbon dioxide product and purge gas rates, and returns the liquid ammonia product rate as the closing stream of the balance. Part 2, the synthesis loop balance, takes the fresh synthesis gas rate, the liquid ammonia product rate and the recycle gas rate, and returns the loop purge rate (fresh rate minus product rate), the converter feed rate (fresh rate plus recycle rate), the separator vapour rate (converter feed rate minus product rate), the recycle ratio (recycle rate divided by fresh rate, dimensionless) and the ammonia formation per pass (product rate divided by converter feed rate, in mass per cent).</p>
 <div class="grid">
@@ -113,7 +112,21 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <div id="out-table">@@PRESTART_TABLE@@</div>
 <p id="out-note">Displayed results: precomputed default run, computed when this page was built.</p>
 <div id="chart" style="width:100%;height:430px"></div>
-<p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 2 | Synthesis loop flows of the displayed run. Flow denotes mass flow rate (in kg/h) of the converter feed, recycle gas, liquid ammonia product and purge gas streams of Part 2.</p>
+<p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 1 | Synthesis loop flows of the displayed run. Flow denotes mass flow rate (in kg/h) of the converter feed, recycle gas, liquid ammonia product and purge gas streams of Part 2.</p>
+</div>
+</div>
+</div>
+
+<div class="panel" id="panel-process">
+<div class="with-toc">
+<nav class="toc" id="process-toc"><div class="toc-title">Contents</div>@@PROCESS_TOC@@</nav>
+<div>
+<h2 id="process-pfd">Process flow diagram PFD-102</h2>
+<p>Drawing PFD-102, Revision 2: ammonia synthesis plant — feed preparation and reforming, shift conversion and condensate separation, carbon dioxide removal with solvent regeneration, methanation and synthesis gas compression, and the ammonia synthesis loop with recycle and purge, on the design basis of 28,000 kg/h of natural gas, 42,000 kg/h of process steam and 52,000 kg/h of process air, where kg/h denotes kilogram per hour. Stream values on the drawing are sample design values; the overall balance closes at 122,000 kg/h on each side, and the balance of the displayed values closes on every unit.</p>
+<div class="diagram">@@PFD_SVG@@</div>
+<h2 id="process-equipment-index">Equipment index</h2>
+@@EQUIPMENT_INDEX@@
+@@PROCESS_HTML@@
 </div>
 </div>
 </div>
@@ -122,6 +135,20 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <div class="with-toc">
 <nav class="toc" id="theory-toc"><div class="toc-title">Contents</div>@@THEORY_TOC@@</nav>
 <div class="theory">@@THEORY_HTML@@</div>
+</div>
+</div>
+
+<div class="panel" id="panel-economics">
+<div class="with-toc">
+<nav class="toc" id="economics-toc"><div class="toc-title">Contents</div>@@ECONOMICS_TOC@@</nav>
+<div>@@ECONOMICS_HTML@@</div>
+</div>
+</div>
+
+<div class="panel" id="panel-safety">
+<div class="with-toc">
+<nav class="toc" id="safety-toc"><div class="toc-title">Contents</div>@@SAFETY_TOC@@</nav>
+<div>@@SAFETY_HTML@@</div>
 </div>
 </div>
 
@@ -137,7 +164,7 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 @@LISTINGS_HTML@@
 <h2 id="code-notebooks">Notebooks</h2>
 <p>Pre-run read-only WASM walkthrough page (instant results, read-only code): <a href="@@WASM_LINK@@">@@WASM_LINK@@</a></p>
-<p>Editable notebook (MoLab): the MoLab notebook is editable; run all cells once after opening.</p>
+<p>Editable notebook (MoLab): run all cells once after opening.</p>
 <p>MoLab link: <a href="@@MOLAB_LINK@@">@@MOLAB_LINK@@</a></p>
 <p>Notebook file download: <a href="@@NOTEBOOK_FILE@@">@@NOTEBOOK_FILE@@</a></p>
 </div>
@@ -150,8 +177,15 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 </div>
 </div>
 
+<div class="panel" id="panel-references">
+<div class="with-toc">
+<nav class="toc" id="references-toc"><div class="toc-title">Contents</div>@@REFERENCES_TOC@@</nav>
+<div>@@REFERENCES_HTML@@</div>
+</div>
+</div>
+
 <footer>
-<p>Standalone page. Calculations are performed in Python (Pyodide) only; no JavaScript calculation is used. Diagram: PFD-102 Revision 2 (sample design values). Sources are cited in the Theory panel.</p>
+<p>Standalone page. Calculations are performed in Python (Pyodide) only; no JavaScript calculation is used. Diagram: PFD-102 Revision 2 (sample design values). Sources are cited in the References panel.</p>
 </footer>
 </div>
 <script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
@@ -181,13 +215,13 @@ function checkStale(){
 }
 ["in-ng","in-steam","in-air","in-cond","in-co2","in-purge","in-fresh","in-product","in-recycle"].forEach(function(id){ document.getElementById(id).addEventListener("input", checkStale); });
 function showPanel(name, push){
-  ["app","theory","code"].forEach(function(p){
+  ["app","process","theory","economics","safety","code","references"].forEach(function(p){
     document.getElementById("panel-" + p).classList.toggle("active", p === name);
     document.getElementById("tabbtn-" + p).setAttribute("aria-selected", p === name ? "true" : "false");
   });
   if(push){ history.replaceState(null, "", "#" + name); }
 }
-["app","theory","code"].forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
+["app","process","theory","economics","safety","code","references"].forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
 function showSub(name){
   document.getElementById("code-listings").style.display = name === "listings" ? "block" : "none";
   document.getElementById("code-walkthrough").style.display = name === "walkthrough" ? "block" : "none";
@@ -206,8 +240,9 @@ function renderWalkthroughCharts(){
 document.querySelectorAll(".toc a").forEach(function(a){
   a.addEventListener("click", function(){
     var id = a.getAttribute("href").slice(1);
-    if(id.indexOf("theory-") === 0){ showPanel("theory", false); }
-    if(id.indexOf("code-") === 0){ showPanel("code", false); showSub(walkthroughId(id) ? "walkthrough" : "listings"); }
+    var panel = id.split("-")[0];
+    if(panel === "code"){ showPanel("code", false); showSub(walkthroughId(id) ? "walkthrough" : "listings"); }
+    else if(["app","process","theory","economics","safety","references"].indexOf(panel) >= 0){ showPanel(panel, false); }
   });
 });
 function walkthroughId(id){ return id === "code-walkthrough-sec" || id.indexOf("code-walkthrough-step") === 0; }
@@ -222,10 +257,11 @@ document.querySelectorAll("section[id], h2[id]").forEach(function(el){ spy.obser
 function route(){
   var h = location.hash.slice(1);
   if(!h) return;
-  if(h === "app" || h === "theory" || h === "code"){ showPanel(h, false); return; }
-  if(h.indexOf("theory-") === 0){ showPanel("theory", false); }
-  else if(h.indexOf("code-") === 0){ showPanel("code", false); showSub(walkthroughId(h) ? "walkthrough" : "listings"); }
-  else if(h.indexOf("app-") === 0){ showPanel("app", false); }
+  var panels = ["app","process","theory","economics","safety","code","references"];
+  if(panels.indexOf(h) >= 0){ showPanel(h, false); return; }
+  var panel = h.split("-")[0];
+  if(panel === "code"){ showPanel("code", false); showSub(walkthroughId(h) ? "walkthrough" : "listings"); }
+  else if(panels.indexOf(panel) >= 0){ showPanel(panel, false); }
   var el = document.getElementById(h);
   if(el){ el.scrollIntoView(); }
 }

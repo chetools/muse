@@ -324,7 +324,7 @@ def _(mo):
     mo.md(r"""
     ## Step 6: Capacity sweep and scale economy
 
-    The capacity sweep rescales the feed flow rate so that the contained oxygen capacity takes each value in a stated range, holding recoveries, purities and pressures fixed. The specific power is unchanged by scale in this model, because the compressor equation is linear in flow rate; the unit cost falls with capacity through the capital scaling relation alone. The curve is therefore a statement about capital cost dilution, not about the additional efficiency gains of large machines, which the model does not represent.
+    The capacity sweep rescales the feed flow rate so that the contained oxygen capacity takes each value in a stated range, holding recoveries, purities and pressures fixed. Specific power is unchanged by scale in this model, because the compressor equation is linear in flow rate; the unit cost decreases with capacity through the capital scaling relation alone. The curve is a statement about capital cost dilution, not about the additional efficiency gains of large machines, which the model does not represent.
     """)
     return
 

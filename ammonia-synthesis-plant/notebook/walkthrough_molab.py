@@ -266,7 +266,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Synthesis loop flows
 
-    Three loop flows follow from the Part 2 inputs by addition and subtraction of streams at two junctions. The converter feed rate (converter_feed_rate, in kg/h) is the fresh synthesis gas rate plus the recycle gas rate at the feed junction. The loop purge rate (loop_purge_rate, in kg/h) is the fresh rate minus the product rate: at steady state the loop receives the fresh rate and discharges product and purge only, so the purge carries the balance of the fresh feed, including the inerts that enter with the fresh gas. The separator vapour rate (separator_vapour_rate, in kg/h) is the converter feed rate minus the product rate, and it divides into recycle gas and purge gas, which the second assertion checks.
+    Three loop flows follow from the Part 2 inputs by addition and subtraction of streams at two junctions. The converter feed rate (converter_feed_rate, in kg/h) is the fresh synthesis gas rate plus the recycle gas rate at the feed junction. Loop purge rate (loop_purge_rate, in kg/h) is the fresh rate minus the product rate: at steady state the loop receives the fresh rate and discharges product and purge only, and the purge carries the balance of the fresh feed, including the inerts that enter with the fresh gas. Separator vapour rate (separator_vapour_rate, in kg/h) is the converter feed rate minus the product rate, and it divides into recycle gas and purge gas, which the second assertion checks.
     """)
     return
 
@@ -290,7 +290,7 @@ def _(mo):
     mo.md(r"""
     ## Step 4: Loop ratios and ammonia formation per pass
 
-    The recycle ratio (recycle_ratio, dimensionless) is the recycle gas rate divided by the fresh synthesis gas rate. The circulation ratio (circulation_ratio, dimensionless) is the converter feed rate divided by the fresh rate. The ammonia formation per pass (formation_pct, in mass per cent) is the liquid ammonia product rate divided by the converter feed rate, multiplied by 100: a mass-basis measure formed from the loop streams, not a molar single-pass conversion. At the design basis the recycle ratio is 2.56, the circulation ratio is 3.56 and the formation per pass is 26.0 mass per cent.
+    The recycle ratio (recycle_ratio, dimensionless) is the recycle gas rate divided by the fresh synthesis gas rate. Circulation ratio (circulation_ratio, dimensionless) is the converter feed rate divided by the fresh rate. Ammonia formation per pass (formation_pct, in mass per cent) is the liquid ammonia product rate divided by the converter feed rate, multiplied by 100: a mass-basis measure formed from the loop streams, not a molar single-pass conversion. At the design basis the recycle ratio is 2.56, the circulation ratio is 3.56 and the formation per pass is 26.0 mass per cent.
     """)
     return
 
@@ -312,7 +312,7 @@ def _(mo):
     mo.md(r"""
     ## Step 5: Synthesis loop flows chart
 
-    The chart displays the four loop flows of the design basis in kg/h: converter feed, recycle gas, liquid ammonia product and purge gas. Colours follow the Okabe-Ito categorical palette and each bar is additionally identified by its legend entry, so the chart remains readable in greyscale.
+    The chart displays the four loop flows of the design basis in kg/h: converter feed, recycle gas, liquid ammonia product and purge gas. Colours follow the Okabe-Ito categorical palette and each bar is identified by its legend entry, and the chart remains readable in greyscale.
     """)
     return
 
@@ -334,7 +334,7 @@ def _(mo):
     mo.md(r"""
     ## Step 6: Limiting case: zero recycle rate
 
-    With the recycle gas rate set to zero, the converter feed rate equals the fresh synthesis gas rate and the ammonia formation per pass rises to the product rate divided by the fresh rate. The loop purge rate is unchanged, because the purge is set by the fresh and product rates alone. The limiting case confirms that the recycle stream enters the model only through the converter feed rate and the two ratios.
+    With the recycle gas rate set to zero, the converter feed rate equals the fresh synthesis gas rate and the ammonia formation per pass rises to the product rate divided by the fresh rate. Loop purge rate is unchanged, because the purge is set by the fresh and product rates alone. The limiting case confirms that the recycle stream enters the model only through the converter feed rate and the two ratios.
     """)
     return
 

@@ -41,7 +41,8 @@ PFD_SVG = next((p for p in PFD_SVG_CANDIDATES if os.path.exists(p)), PFD_SVG_CAN
 DESIGN_MD = os.path.join(EXAMPLES_DIR, "DESIGN.md")
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-OUT = os.path.join(HERE, "dist", "crude-distillation-unit-v4.html")
+VERSION = 5
+OUT = os.path.join(HERE, "dist", f"crude-distillation-unit-v{VERSION}.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "crude-distillation-unit/walkthrough_molab.py")
 WASM_LINK = "crude-distillation-unit-walkthrough.html"
@@ -60,6 +61,29 @@ EQUIPMENT = [
     ("E-310", "Light gas oil cooler"), ("P-307", "Light gas oil pump"),
 ]
 
+# Process panel section (fragment id) explaining each equipment item;
+# the equipment index in the Process panel links to these sections.
+EQUIP_SECTION = {
+    "P-301": "process-process-description",
+    "E-301": "process-preheat-train", "E-302": "process-preheat-train",
+    "V-301": "process-desalter", "P-302": "process-desalter",
+    "E-303": "process-preheat-train", "E-304": "process-preheat-train",
+    "F-301": "process-fired-furnace", "T-301": "process-atmospheric-column",
+    "E-305": "process-overhead-system-and-corrosion-control",
+    "V-302": "process-overhead-system-and-corrosion-control",
+    "T-302": "process-side-strippers", "T-303": "process-side-strippers",
+    "T-304": "process-side-strippers",
+    "P-303": "process-pumparound", "E-306": "process-pumparound",
+    "E-307": "process-product-rundown-and-residue-handling",
+    "P-304": "process-product-rundown-and-residue-handling",
+    "E-308": "process-product-rundown-and-residue-handling",
+    "P-305": "process-product-rundown-and-residue-handling",
+    "E-309": "process-product-rundown-and-residue-handling",
+    "P-306": "process-product-rundown-and-residue-handling",
+    "E-310": "process-product-rundown-and-residue-handling",
+    "P-307": "process-product-rundown-and-residue-handling",
+}
+
 
 def fail(msg):
     raise SystemExit(f"BUILD FAILURE: {msg}")
@@ -75,8 +99,8 @@ def citation_check(theory_md):
     refs = {int(n) for n in re.findall(r"(?m)^\[(\d+)\]", refs_text)}
     if cited != refs:
         fail(f"citation mismatch: cited-only {sorted(cited - refs)}, orphan refs {sorted(refs - cited)}")
-    if refs != set(range(1, 26)):
-        fail(f"reference set is not 1..25: {sorted(refs)}")
+    if refs != set(range(1, 30)):
+        fail(f"reference set is not 1..29: {sorted(refs)}")
     print(f"[build] citation mechanical check PASS ({len(refs)} references, all cited, no orphans)")
 
 
@@ -171,22 +195,73 @@ def main():
     rendered = katex_render(formulas)
     math_map = {key: rendered[i] for i, key in enumerate(store)}
     print(f"[build] KaTeX strict render PASS ({len(formulas)} formulas)")
-    # ---- theory panel ----
+    # ---- text panels (seven-panel form) ----
+    # theory.md is rendered once, then split at its h2 headings into
+    # the five text panels. Every heading is assigned to exactly one
+    # panel by its slug; an unassigned heading is a build failure.
+    PANEL_SLUGS = {
+        "process": ["process-description", "preheat-train", "desalter",
+                    "fired-furnace", "atmospheric-column",
+                    "overhead-system-and-corrosion-control", "pumparound",
+                    "side-strippers", "product-rundown-and-residue-handling",
+                    "product-slate"],
+        "theory": ["slate-balance", "furnace-duty-estimate"],
+        "economics": ["production-scale", "energy-consumption",
+                      "capital-cost", "crack-spread"],
+        "safety": ["hazard-inventory-and-controls", "incidents-of-record",
+                   "issues-of-special-concern", "codes-and-industry-guidance"],
+        "references": ["references"],
+    }
+    SLUG_PANEL = {s: p for p, ss in PANEL_SLUGS.items() for s in ss}
     theory_html = md_to_html(theory_work, math_map)
     heads = re.findall(r"<h2>(.*?)</h2>", theory_html)
     if len(heads) < 10:
-        fail("Theory panel has too few headings for a table of contents")
-    toc_items = []
+        fail("text panels have too few headings for tables of contents")
+    toc_items = {p: [] for p in PANEL_SLUGS}
     def head_repl(m):
         text = re.sub(r"<[^>]+>", "", m.group(1))
-        hid = "theory-" + slug(text)
-        toc_items.append((hid, text))
+        s = slug(text)
+        panel = SLUG_PANEL.get(s)
+        if panel is None:
+            fail(f"heading not assigned to a panel: {text}")
+        hid = f"{panel}-{s}"
+        toc_items[panel].append((hid, text))
         return f'<h2 id="{hid}">{m.group(1)}</h2>'
     theory_html = re.sub(r"<h2>(.*?)</h2>", head_repl, theory_html)
-    theory_html = theory_html.replace("<h2 ", "<h2 ")  # no-op clarity
-    # wrap each h2 section in <section> for fragment targeting
-    parts = re.split(r'(<h2 id="[^"]+">.*?</h2>)', theory_html)
-    theory_toc = "\n".join(f'<a href="#{hid}">{html.escape(t)}</a>' for hid, t in toc_items)
+    # split the rendered HTML at the h2 headings into per-panel HTML
+    tokens = re.split(r'(<h2 id="[^"]+">.*?</h2>)', theory_html)
+    if tokens[0].strip():
+        fail("rendered text has content before the first heading")
+    panel_html = {p: "" for p in PANEL_SLUGS}
+    panel_order_seen = []
+    current = None
+    for tok in tokens[1:]:
+        mh = re.match(r'<h2 id="([a-z]+)-', tok)
+        if mh:
+            current = mh.group(1)
+            if current not in panel_html:
+                fail(f"heading id with unknown panel prefix: {tok[:60]}")
+            if current not in panel_order_seen:
+                panel_order_seen.append(current)
+        if current is None:
+            fail("rendered text segment before any heading")
+        panel_html[current] += tok
+    if panel_order_seen != list(PANEL_SLUGS):
+        fail(f"panels out of order or missing: {panel_order_seen}")
+    for p, items in toc_items.items():
+        if not items:
+            fail(f"panel {p} has no headings for its table of contents")
+    print(f"[build] panel split PASS ({sum(len(v) for v in toc_items.values())} headings "
+          f"across {len(toc_items)} text panels)")
+    def toc_html(items):
+        return "\n".join(f'<a href="#{hid}">{html.escape(t)}</a>' for hid, t in items)
+    process_toc = toc_html([("process-pfd", "Process flow diagram PFD-103"),
+                            ("process-equipment-index", "Equipment index")]
+                           + toc_items["process"])
+    theory_toc = toc_html(toc_items["theory"])
+    economics_toc = toc_html(toc_items["economics"])
+    safety_toc = toc_html(toc_items["safety"])
+    references_toc = toc_html(toc_items["references"])
     # ---- walkthrough execution (build time, repository module) ----
     cells = [dict(title="_setup", md="", code="import balance")] + walkthrough.CELLS
     results = runner.run_cells(cells)
@@ -236,7 +311,12 @@ def main():
     if not code_toc_items:
         fail("Code panel has no headings")
     # ---- equipment index ----
-    rows = "".join(f"<tr><td>{tag}</td><td>{name}</td></tr>" for tag, name in EQUIPMENT)
+    rows = ""
+    for tag, name in EQUIPMENT:
+        target = EQUIP_SECTION.get(tag)
+        if target is None:
+            fail(f"equipment tag {tag} has no Process section link")
+        rows += (f'<tr><td>{tag}</td><td><a href="#{target}">{name}</a></td></tr>')
     equip_index = f"<table><tr><th>Designation</th><th>Service</th></tr>{rows}</table>"
     # ---- prestart ----
     default = balance.run_model(850000.0, [6.5, 10.0, 14.1, 17.6, 50.0], 365.0, 2.2)
@@ -264,12 +344,12 @@ def main():
     if _product.lower() in pfd_svg.lower():
         fail("embedded PFD sheet still carries a product name after correction")
     # ---- unrendered-mathematics guard (incident 2026-10-24) ----
-    for _panel_name, _frag in (("Theory", theory_html),
+    for _panel_name, _frag in (("Text panels", "".join(panel_html.values())),
                                ("Walkthrough", walkthrough_html)):
         if re.search(r"\$[^$<>]*\\[a-zA-Z]", _frag):
             fail(f"{_panel_name} panel contains a literal dollar span "
                  "holding a TeX command (unrendered mathematics)")
-    # ---- sub-process diagrams in the Theory panel ----
+    # ---- sub-process diagrams in the Process panel ----
     def crop_svg(vb):
         s = pfd_svg.replace('viewBox="0 0 2560 1560"', f'viewBox="{vb}"', 1)
         s = s.replace('width="2560" height="1560"', 'width="100%"', 1)
@@ -277,37 +357,38 @@ def main():
             fail(f"sub-diagram crop failed: {vb}")
         return s
     SUBDIAGRAMS = [
-        ("theory-preheat-train", "30 400 1450 330",
+        ("process-preheat-train", "30 400 1450 330",
          "Sub-process flow diagram: crude feed, preheat train, desalter "
          "and fired furnace — the feed section of the full sheet in the "
-         "App panel, from the battery-limit feed through the desalted "
+         "Process panel, from the battery-limit feed through the desalted "
          "crude pump and the second preheat stage to the furnace, whose "
          "outlet stream 12 continues to the atmospheric column in "
-         "Fig. T2."),
-        ("theory-atmospheric-column", "1300 30 900 700",
+         "Fig. P2."),
+        ("process-atmospheric-column", "1300 30 900 700",
          "Sub-process flow diagram: fired furnace outlet, atmospheric "
          "column and overhead condensing — the column section of the full "
-         "sheet in the App panel; the pumparound return stream 34 "
+         "sheet in the Process panel; the pumparound return stream 34 "
          "enters at the left boundary from the pumparound cooler in "
-         "Fig. T3, and the overhead product streams and the product "
+         "Fig. P3, and the overhead product streams and the product "
          "rundown streams leave at the right boundary, the rundown "
-         "streams to the rundown section in Fig. T4."),
-        ("theory-overhead-system-and-corrosion-control", "1100 30 1150 520",
+         "streams to the rundown section in Fig. P4."),
+        ("process-overhead-system-and-corrosion-control", "1100 30 1150 520",
          "Sub-process flow diagram: overhead system, pumparound returns "
          "and product draws at the top of the atmospheric column; the "
          "overhead product streams 17 and 16 leave at the right boundary "
          "to their product terminals."),
-        ("theory-side-strippers", "1500 260 1060 560",
+        ("process-side-strippers", "1500 260 1060 560",
          "Sub-process flow diagram: side strippers and product rundown — "
-         "the side-draw section of the full sheet in the App panel."),
+         "the side-draw section of the full sheet in the Process panel."),
     ]
     for _n, (_hid, _vb, _cap) in enumerate(SUBDIAGRAMS, 1):
         _fig = (f'<figure class="subdiagram">{crop_svg(_vb)}'
-                f'<figcaption>Fig. T{_n} | {_cap}</figcaption></figure>')
-        _m = re.search(rf'(<h2 id="{_hid}">.*?</h2>)', theory_html)
+                f'<figcaption>Fig. P{_n} | {_cap}</figcaption></figure>')
+        _m = re.search(rf'(<h2 id="{_hid}">.*?</h2>)', panel_html["process"])
         if not _m:
             fail(f"sub-diagram anchor heading not found: {_hid}")
-        theory_html = theory_html.replace(_m.group(1), _m.group(1) + _fig, 1)
+        panel_html["process"] = panel_html["process"].replace(
+            _m.group(1), _m.group(1) + _fig, 1)
     plotly_js = "<script>" + open(PLOTLY_JS, encoding="utf-8").read() + "</script>"
     model_b64 = json.dumps(base64.b64encode(balance_src.encode()).decode())
     page = template
@@ -318,8 +399,16 @@ def main():
         "@@PRESTART_DUTY@@": duty_text,
         "@@PRESTART_TABLE@@": prestart_table,
         "@@PRESTART_JSON@@": json.dumps(prestart),
+        "@@PROCESS_TOC@@": process_toc,
+        "@@PROCESS_HTML@@": panel_html["process"],
         "@@THEORY_TOC@@": theory_toc,
-        "@@THEORY_HTML@@": theory_html,
+        "@@THEORY_HTML@@": panel_html["theory"],
+        "@@ECONOMICS_TOC@@": economics_toc,
+        "@@ECONOMICS_HTML@@": panel_html["economics"],
+        "@@SAFETY_TOC@@": safety_toc,
+        "@@SAFETY_HTML@@": panel_html["safety"],
+        "@@REFERENCES_TOC@@": references_toc,
+        "@@REFERENCES_HTML@@": panel_html["references"],
         "@@CODE_TOC@@": code_toc,
         "@@LISTINGS_HTML@@": listings,
         "@@WALKTHROUGH_HTML@@": walkthrough_html,
@@ -338,6 +427,14 @@ def main():
     # any remaining placeholder of any kind is a build failure.
     if leftovers:
         fail(f"unfilled placeholders remain: {sorted(set(leftovers))[:5]}")
+    # ---- seven-panel assertion ----
+    for _tab in ("app", "process", "theory", "economics", "safety",
+                 "code", "references"):
+        if f'data-panel="{_tab}"' not in page or f'id="panel-{_tab}"' not in page:
+            fail(f"seven-panel assertion: panel {_tab} missing from built page")
+    if "Compliance record" in page:
+        fail("seven-panel assertion: built page contains 'Compliance record' text")
+    print("[build] seven-panel assertion PASS (7 tabs and panels, no Compliance record)")
     os.makedirs(os.path.join(HERE, "dist"), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(page)

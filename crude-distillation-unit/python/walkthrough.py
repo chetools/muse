@@ -56,7 +56,7 @@ CELLS = [
         title="Closing remainder and design anchor",
         md=(
             "The closing remainder (in kg/h) is the crude feed rate "
-            "minus the sum of the five product flow rates, so the "
+            "minus the sum of the five product flow rates, and the "
             "slate closes to the feed rate exactly. The anchor "
             "assertion checks the PFD-103 design basis itself: the "
             "five design product flow rates (55,000, 85,000, "
@@ -89,7 +89,7 @@ CELLS = [
             "convert kilojoule per hour to kilowatt. The estimate "
             "covers sensible heat only; the latent heat of the "
             "portion vaporised in the furnace is excluded, and the "
-            "result is therefore a lower bound on the fired duty at "
+            "result is a lower bound on the fired duty at "
             "the stated outlet temperature."
         ),
         code=(
@@ -105,8 +105,8 @@ CELLS = [
             "The chart displays the product flow rates of the slate, "
             "including the closing remainder, in kg/h. Colours follow "
             "the Okabe-Ito categorical palette and each bar is "
-            "additionally labelled by its product name in the legend, "
-            "so the chart remains readable in greyscale."
+            "labelled by its product name in the legend, and the "
+            "chart remains readable in greyscale."
         ),
         code=(
             "names = [name for name, _d, _y in balance.PRODUCTS] + ['Closing remainder']\n"

@@ -232,7 +232,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Closing remainder and design anchor
 
-    The closing remainder (in kg/h) is the crude feed rate minus the sum of the five product flow rates, so the slate closes to the feed rate exactly. The anchor assertion checks the PFD-103 design basis itself: the five design product flow rates (55,000, 85,000, 120,000, 150,000 and 425,000 kg/h), with fuel gas (10,000 kg/h), sour water (14,000 kg/h) and brine (45,000 kg/h), give total outputs of 904,000 kg/h, equal to the total inputs of crude oil (850,000 kg/h), wash water (40,000 kg/h) and stripping steam (14,000 kg/h). A failure of the assertion stops the breakdown loudly.
+    The closing remainder (in kg/h) is the crude feed rate minus the sum of the five product flow rates, and the slate closes to the feed rate exactly. The anchor assertion checks the PFD-103 design basis itself: the five design product flow rates (55,000, 85,000, 120,000, 150,000 and 425,000 kg/h), with fuel gas (10,000 kg/h), sour water (14,000 kg/h) and brine (45,000 kg/h), give total outputs of 904,000 kg/h, equal to the total inputs of crude oil (850,000 kg/h), wash water (40,000 kg/h) and stripping steam (14,000 kg/h). A failure of the assertion stops the breakdown loudly.
     """)
     return
 
@@ -253,7 +253,7 @@ def _(mo):
     mo.md(r"""
     ## Step 4: Furnace duty estimate
 
-    The desalted crude flow rate through the furnace (in kg/h) is the crude feed rate multiplied by the design ratio 845,000/850,000. The furnace duty estimate (in kilowatt, kW) is the desalted rate multiplied by the mean specific heat capacity and by the temperature rise from the furnace inlet temperature of 250 degree Celsius to the outlet temperature, divided by 3600 to convert kilojoule per hour to kilowatt. The estimate covers sensible heat only; the latent heat of the portion vaporised in the furnace is excluded, and the result is therefore a lower bound on the fired duty at the stated outlet temperature.
+    The desalted crude flow rate through the furnace (in kg/h) is the crude feed rate multiplied by the design ratio 845,000/850,000. The furnace duty estimate (in kilowatt, kW) is the desalted rate multiplied by the mean specific heat capacity and by the temperature rise from the furnace inlet temperature of 250 degree Celsius to the outlet temperature, divided by 3600 to convert kilojoule per hour to kilowatt. The estimate covers sensible heat only; the latent heat of the portion vaporised in the furnace is excluded, and the result is a lower bound on the fired duty at the stated outlet temperature.
     """)
     return
 
@@ -273,7 +273,7 @@ def _(mo):
     mo.md(r"""
     ## Step 5: Product slate chart
 
-    The chart displays the product flow rates of the slate, including the closing remainder, in kg/h. Colours follow the Okabe-Ito categorical palette and each bar is additionally labelled by its product name in the legend, so the chart remains readable in greyscale.
+    The chart displays the product flow rates of the slate, including the closing remainder, in kg/h. Colours follow the Okabe-Ito categorical palette and each bar is labelled by its product name in the legend, and the chart remains readable in greyscale.
     """)
     return
 

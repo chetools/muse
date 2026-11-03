@@ -6,7 +6,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PAGE = os.path.join(HERE, "dist", "methanol-synthesis-plant-v1.html")
+PAGE = os.path.join(HERE, "dist", "methanol-synthesis-plant-v2.html")
 page = open(PAGE, encoding="utf-8").read()
 fails = []
 
@@ -26,19 +26,31 @@ from collections import Counter
 dup_targets = [t for t in toc_links if Counter(ids)[t] > 1]
 check("fragment target ids are unique (KaTeX-internal ids excluded)",
       not dup_targets)
-for needed in ["panel-app", "panel-theory", "panel-code", "app-diagram",
-               "app-equipment-index", "app-model", "code-listings",
-               "code-walkthrough", "theory-references", "code-notebooks",
-               "theory-steam-reforming", "theory-autothermal-reforming",
-               "theory-carbon-dioxide-addition", "theory-synthesis-loop-and-converter",
-               "theory-crude-methanol-separation", "theory-topping-column-t-401",
-               "theory-refining-column-t-402", "theory-balance-model",
-               "theory-operating-conditions", "theory-production-scale",
-               "theory-process-economics", "theory-safety-and-environmental-issues",
-               "theory-issues-of-special-concern"]:
+for needed in ["panel-app", "panel-process", "panel-theory", "panel-economics",
+               "panel-safety", "panel-code", "panel-references",
+               "process-pfd", "process-equipment-index", "app-model",
+               "code-listings", "code-walkthrough", "code-notebooks",
+               "references-references",
+               "process-steam-reforming", "process-autothermal-reforming",
+               "process-carbon-dioxide-addition", "process-synthesis-loop-and-converter",
+               "process-crude-methanol-separation", "process-topping-column-t-401",
+               "process-refining-column-t-402", "theory-synthesis-loop-behaviour",
+               "theory-balance-model", "theory-operating-conditions",
+               "economics-production-scale", "economics-energy-consumption",
+               "economics-capital-cost", "economics-production-cost",
+               "safety-methanol-toxicity", "safety-hydrogen-and-pressure-hazards",
+               "safety-reforming-section-hazards", "safety-carbon-dioxide-emissions",
+               "safety-catalyst-sensitivity", "safety-feed-gas-composition-control",
+               "safety-water-management-in-purification", "safety-product-grades",
+               "safety-codes-and-industry-guidance"]:
     check(f"fragment target present: {needed}", needed in idset)
-theory_heads = re.findall(r'<h2 id="theory-[^"]+">', page)
-check(f"theory sections carry fragment ids ({len(theory_heads)} found)", len(theory_heads) >= 18)
+for _pn, _min in [("process", 12), ("theory", 3), ("economics", 4), ("safety", 9), ("references", 1)]:
+    _heads = re.findall(rf'<h2 id="{_pn}-[^"]+">', page)
+    check(f"{_pn} panel sections carry fragment ids ({len(_heads)} found)", len(_heads) >= _min)
+check("all seven tab buttons present",
+      all(f'id="tabbtn-{_tb}"' in page for _tb in
+          ["app", "process", "theory", "economics", "safety", "code", "references"]))
+check("no Compliance record text", "Compliance record" not in page)
 check("no unfilled placeholders", not re.findall(r"@@[A-Z0-9_]+@@", page))
 check("no prompt meta-commentary markers", "as requested" not in page.lower())
 # The removed product name is assembled from parts so that this
@@ -62,16 +74,19 @@ check("walkthrough listing is byte-identical to walkthrough.py",
       listing_text("code-listing-walkthrough") in (walkthrough_src, walkthrough_src.rstrip("\n")))
 check("KaTeX output present (no raw dollar-math leftovers)",
       'class="katex"' in page and "$\\dot" not in page)
-_theory_region = page.split('id="panel-theory"', 1)[1].split('id="panel-code"', 1)[0]
+_theory_region = page.split('id="panel-theory"', 1)[1].split('id="panel-economics"', 1)[0]
 check("no literal dollar span holding a TeX command in the Theory panel",
       not re.findall(r"\$[^$\n]*\\[a-zA-Z]", _theory_region))
-check("nine sub-process flow diagrams embedded with Fig. T captions",
-      _theory_region.count("Sub-process flow diagram:") == 9 and _theory_region.count("<svg") >= 9)
+_process_region = page.split('id="panel-process"', 1)[1].split('id="panel-theory"', 1)[0]
+check("nine sub-process flow diagrams embedded with Fig. P captions in the Process panel",
+      _process_region.count("Sub-process flow diagram:") == 9
+      and _process_region.count("<figcaption>Fig. P") == 9
+      and _process_region.count("<svg") >= 10)
 check("sticky tab bar CSS present",
       "nav.tabs" in page and "position:sticky" in page.replace(" ", "")
       and "scroll-margin-top:64px" in page.replace(" ", "")
       and "top:64px" in page.replace(" ", ""))
-check("PFD diagram embedded inline", page.count("<svg") >= 2 and "PFD-104" in page)
+check("PFD diagram embedded inline", page.count("<svg") >= 10 and "PFD-104" in page)
 check("precomputed data embedded", '"prestart-data"' in page and "65000" in page)
 print("RESULT:", "FAIL" if fails else "ALL PASS")
 sys.exit(1 if fails else 0)

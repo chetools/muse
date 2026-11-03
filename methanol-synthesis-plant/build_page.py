@@ -6,7 +6,7 @@ Run with the marimo-export venv python (markdown_it, pygments):
 
 Pipeline: citation mechanical check on theory.md; KaTeX server-side
 rendering of every equation (one batched node call); markdown-it
-rendering of the Theory panel; walkthrough cells executed at build
+rendering of the text panels; walkthrough cells executed at build
 time through python/runner.py against the repository balance module;
 precomputed default run embedded as JSON; the balance module embedded
 base64 for the Pyodide worker; boot compile guard on the finished
@@ -41,9 +41,10 @@ PFD_SVG = next((p for p in PFD_SVG_CANDIDATES if os.path.exists(p)), PFD_SVG_CAN
 DESIGN_MD = os.path.join(EXAMPLES_DIR, "DESIGN.md")
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-OUT = os.path.join(HERE, "dist", "methanol-synthesis-plant-v1.html")
+VERSION = 3
+OUT = os.path.join(HERE, "dist", f"methanol-synthesis-plant-v{VERSION}.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
-              "muse-html/methanol-synthesis-plant/walkthrough_molab.py")
+              "methanol-synthesis-plant/walkthrough_molab.py")
 WASM_LINK = "methanol-synthesis-plant-walkthrough-v1.html"
 NOTEBOOK_FILE = "walkthrough_molab.py"
 
@@ -78,8 +79,8 @@ def citation_check(theory_md):
     refs = {int(n) for n in re.findall(r"(?m)^\[(\d+)\]", refs_text)}
     if cited != refs:
         fail(f"citation mismatch: cited-only {sorted(cited - refs)}, orphan refs {sorted(refs - cited)}")
-    if refs != set(range(1, 21)):
-        fail(f"reference set is not 1..20: {sorted(refs)}")
+    if refs != set(range(1, 24)):
+        fail(f"reference set is not 1..23: {sorted(refs)}")
     print(f"[build] citation mechanical check PASS ({len(refs)} references, all cited, no orphans)")
 
 
@@ -180,39 +181,63 @@ def main():
     rendered = katex_render(formulas)
     math_map = {key: rendered[i] for i, key in enumerate(store)}
     print(f"[build] KaTeX strict render PASS ({len(formulas)} formulas)")
-    # ---- theory panel ----
-    theory_html = md_to_html(theory_work, math_map)
-    heads = re.findall(r"<h2>(.*?)</h2>", theory_html)
-    if len(heads) < 10:
-        fail("Theory panel has too few headings for a table of contents")
-    toc_items = []
-    def head_repl(m):
-        text = re.sub(r"<[^>]+>", "", m.group(1))
-        hid = "theory-" + slug(text)
-        toc_items.append((hid, text))
-        return f'<h2 id="{hid}">{m.group(1)}</h2>'
-    theory_html = re.sub(r"<h2>(.*?)</h2>", head_repl, theory_html)
+    # ---- text panels (seven-panel form): render theory.md once,
+    # then split the rendered HTML at the boundary headings into
+    # the five text panels, one table of contents per panel ----
+    full_html = md_to_html(theory_work, math_map)
+    BOUNDARIES = [("theory", "Synthesis loop behaviour"),
+                  ("economics", "Production scale"),
+                  ("safety", "Methanol toxicity"),
+                  ("references", "References")]
+    PANEL_NAMES = ["process", "theory", "economics", "safety", "references"]
+    chunks = re.split(r"(<h2>.*?</h2>)", full_html)
+    if chunks[0].strip():
+        fail("content before the first heading in theory.md")
+    sections = []
+    panel = "process"
+    bi = 0
+    for i in range(1, len(chunks), 2):
+        head_inner = chunks[i][len("<h2>"):-len("</h2>")]
+        text = re.sub(r"<[^>]+>", "", head_inner)
+        if bi < len(BOUNDARIES) and text == BOUNDARIES[bi][1]:
+            panel = BOUNDARIES[bi][0]
+            bi += 1
+        hid = f"{panel}-{slug(text)}"
+        sections.append([panel, hid, text,
+                         f'<h2 id="{hid}">{head_inner}</h2>', chunks[i + 1]])
+    if bi != len(BOUNDARIES):
+        fail(f"panel boundary headings not all found ({bi} of {len(BOUNDARIES)})")
+    panels = {}
+    tocs = {}
+    for pn in PANEL_NAMES:
+        secs = [s for s in sections if s[0] == pn]
+        if not secs:
+            fail(f"panel {pn} has no headings to build a table of contents from")
+        panels[pn] = "".join(s[3] + s[4] for s in secs)
+        tocs[pn] = "\n".join(f'<a href="#{s[1]}">{html.escape(s[2])}</a>' for s in secs)
+    print("[build] text panels split: " + ", ".join(
+        f"{pn} {sum(1 for s in sections if s[0] == pn)} sections" for pn in PANEL_NAMES))
     # ---- sub-process flow diagrams (cropped viewBox re-embeddings
-    # of the full sheet) at the end of each subunit section ----
+    # of the full sheet) at the end of each Process subunit section ----
     CROPS = {
-        "theory-feed-desulfurisation": ("18 100 1150 660",
-            "Sub-process flow diagram: natural gas feed, compression and preheat; the feed system presupposed by the desulfurisation unit. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. T5)."),
-        "theory-steam-reforming": ("18 100 1150 660",
-            "Sub-process flow diagram: feed preparation and primary reformer R-401. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. T5)."),
-        "theory-autothermal-reforming": ("18 100 1150 660",
-            "Sub-process flow diagram: autothermal reformer R-402 and oxygen compression. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. T5)."),
-        "theory-heat-recovery-and-condensate-separation": ("18 100 1150 660",
-            "Sub-process flow diagram: waste-heat boiler E-402, syngas cooler E-403 and condensate separator V-401. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. T5)."),
-        "theory-carbon-dioxide-addition": ("1080 100 1000 720",
-            "Sub-process flow diagram: carbon dioxide addition at the suction of the synthesis gas compressor C-403 and the loop junction. The left boundary of the window passes through the condensate separator V-401 (streams 12 and 13) and the right boundary through the topping column T-401 (streams 23, 25 and 29); T-401 is shown in full in the purification window (Fig. T8)."),
-        "theory-synthesis-loop-and-converter": ("1080 100 1000 720",
-            "Sub-process flow diagram: synthesis loop with converter R-403, separator V-402 and recycle compressor C-404. The left boundary of the window passes through the condensate separator V-401 (streams 12 and 13) and the right boundary through the topping column T-401 (streams 23, 25 and 29); T-401 is shown in full in the purification window (Fig. T8)."),
-        "theory-crude-methanol-separation": ("1080 100 1000 720",
-            "Sub-process flow diagram: effluent cooling in E-405 and E-406 and methanol separation in V-402. The left boundary of the window passes through the condensate separator V-401 (streams 12 and 13) and the right boundary through the topping column T-401 (streams 23, 25 and 29); T-401 is shown in full in the purification window (Fig. T8)."),
-        "theory-topping-column-t-401": ("1900 100 642 720",
-            "Sub-process flow diagram: topping column T-401 with condenser E-407, reflux drum V-403 and reboiler E-408. The left boundary of the window passes through the crude methanol pump P-401 (streams 24 and 25), shown in the synthesis loop window (Fig. T6)."),
-        "theory-refining-column-t-402": ("1900 100 642 720",
-            "Sub-process flow diagram: refining column T-402 with condenser E-409, reflux drum V-404, reboiler E-410 and refined methanol cooler E-411. The left boundary of the window passes through the crude methanol pump P-401 (streams 24 and 25), shown in the synthesis loop window (Fig. T6)."),
+        "process-feed-desulfurisation": ("18 100 1150 660",
+            "Sub-process flow diagram: natural gas feed, compression and preheat; the feed system presupposed by the desulfurisation unit. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. P5)."),
+        "process-steam-reforming": ("18 100 1150 660",
+            "Sub-process flow diagram: feed preparation and primary reformer R-401. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. P5)."),
+        "process-autothermal-reforming": ("18 100 1150 660",
+            "Sub-process flow diagram: autothermal reformer R-402 and oxygen compression. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. P5)."),
+        "process-heat-recovery-and-condensate-separation": ("18 100 1150 660",
+            "Sub-process flow diagram: waste-heat boiler E-402, syngas cooler E-403 and condensate separator V-401. The right boundary of the window passes through the condensate separator V-401 (streams 11, 12 and 13); V-401 is shown at the left boundary of the synthesis loop window (Fig. P5)."),
+        "process-carbon-dioxide-addition": ("1080 100 1000 720",
+            "Sub-process flow diagram: carbon dioxide addition at the suction of the synthesis gas compressor C-403 and the loop junction. The left boundary of the window passes through the condensate separator V-401 (streams 12 and 13) and the right boundary through the topping column T-401 (streams 23, 25 and 29); T-401 is shown in full in the purification window (Fig. P8)."),
+        "process-synthesis-loop-and-converter": ("1080 100 1000 720",
+            "Sub-process flow diagram: synthesis loop with converter R-403, separator V-402 and recycle compressor C-404. The left boundary of the window passes through the condensate separator V-401 (streams 12 and 13) and the right boundary through the topping column T-401 (streams 23, 25 and 29); T-401 is shown in full in the purification window (Fig. P8)."),
+        "process-crude-methanol-separation": ("1080 100 1000 720",
+            "Sub-process flow diagram: effluent cooling in E-405 and E-406 and methanol separation in V-402. The left boundary of the window passes through the condensate separator V-401 (streams 12 and 13) and the right boundary through the topping column T-401 (streams 23, 25 and 29); T-401 is shown in full in the purification window (Fig. P8)."),
+        "process-topping-column-t-401": ("1900 100 642 720",
+            "Sub-process flow diagram: topping column T-401 with condenser E-407, reflux drum V-403 and reboiler E-408. The left boundary of the window passes through the crude methanol pump P-401 (streams 24 and 25), shown in the synthesis loop window (Fig. P6)."),
+        "process-refining-column-t-402": ("1900 100 642 720",
+            "Sub-process flow diagram: refining column T-402 with condenser E-409, reflux drum V-404, reboiler E-410 and refined methanol cooler E-411. The left boundary of the window passes through the crude methanol pump P-401 (streams 24 and 25), shown in the synthesis loop window (Fig. P6)."),
     }
 
     def crop_svg(viewbox):
@@ -221,27 +246,25 @@ def main():
         c = c.replace('width="2560" height="1560"', f'width="{w}" height="{h}"', 1)
         return c
 
-    h2_positions = [m.start() for m in re.finditer(r'<h2 id="theory-', theory_html)]
-    h2_positions.append(len(theory_html))
+    process_html = panels["process"]
+    h2_positions = [m.start() for m in re.finditer(r'<h2 id="process-', process_html)]
+    h2_positions.append(len(process_html))
     inserts = []
     fig_no = 0
     for k, pos in enumerate(h2_positions[:-1]):
-        m_id = re.match(r'<h2 id="(theory-[^"]+)"', theory_html[pos:])
+        m_id = re.match(r'<h2 id="(process-[^"]+)"', process_html[pos:])
         if m_id and m_id.group(1) in CROPS:
             fig_no += 1
             vb, cap = CROPS[m_id.group(1)]
             fig = (f'<figure><div class="diagram">{crop_svg(vb)}</div>'
-                   f'<figcaption>Fig. T{fig_no} | {cap}</figcaption></figure>')
+                   f'<figcaption>Fig. P{fig_no} | {cap}</figcaption></figure>')
             inserts.append((h2_positions[k + 1], fig))
     if fig_no != len(CROPS):
         fail(f"sub-process crops placed: {fig_no} of {len(CROPS)} mapped sections")
     for pos, fig in sorted(inserts, reverse=True):
-        theory_html = theory_html[:pos] + fig + theory_html[pos:]
+        process_html = process_html[:pos] + fig + process_html[pos:]
+    panels["process"] = process_html
     print(f"[build] sub-process flow diagrams embedded: {fig_no}")
-    theory_html = theory_html.replace("<h2 ", "<h2 ")  # no-op clarity
-    # wrap each h2 section in <section> for fragment targeting
-    parts = re.split(r'(<h2 id="[^"]+">.*?</h2>)', theory_html)
-    theory_toc = "\n".join(f'<a href="#{hid}">{html.escape(t)}</a>' for hid, t in toc_items)
     # ---- walkthrough execution (build time, repository module) ----
     cells = [dict(title="_setup", md="", code="import balance")] + walkthrough.CELLS
     results = runner.run_cells(cells)
@@ -292,9 +315,9 @@ def main():
     # 2026-10-24): no rendered panel may still contain a literal
     # dollar span holding a TeX command; such a span would mean the
     # math extractor left a formula unrendered.
-    for panel_name, panel_html in [("theory", theory_html),
-                                   ("walkthrough", walkthrough_html),
-                                   ("listings", listings)]:
+    for panel_name, panel_html in ([(pn, panels[pn]) for pn in PANEL_NAMES] +
+                                   [("walkthrough", walkthrough_html),
+                                    ("listings", listings)]):
         bad = re.findall(r"\$[^$\n]*\\[a-zA-Z]", panel_html)
         if bad:
             fail(f"literal dollar span holding a TeX command in the {panel_name} panel: {bad[:3]}")
@@ -302,8 +325,41 @@ def main():
     if not code_toc_items:
         fail("Code panel has no headings")
     # ---- equipment index ----
-    rows = "".join(f"<tr><td>{tag}</td><td>{name}</td></tr>" for tag, name in EQUIPMENT)
-    equip_index = f"<table><tr><th>Designation</th><th>Service</th></tr>{rows}</table>"
+    SECTION_FOR = {
+        "C-401": ("process-process-description", "Process description"),
+        "E-401": ("process-process-description", "Process description"),
+        "R-401": ("process-steam-reforming", "Steam reforming"),
+        "C-402": ("process-autothermal-reforming", "Autothermal reforming"),
+        "R-402": ("process-autothermal-reforming", "Autothermal reforming"),
+        "E-402": ("process-heat-recovery-and-condensate-separation", "Heat recovery and condensate separation"),
+        "E-403": ("process-heat-recovery-and-condensate-separation", "Heat recovery and condensate separation"),
+        "V-401": ("process-heat-recovery-and-condensate-separation", "Heat recovery and condensate separation"),
+        "C-403": ("process-synthesis-loop-and-converter", "Synthesis loop and converter"),
+        "E-404": ("process-synthesis-loop-and-converter", "Synthesis loop and converter"),
+        "E-405": ("process-crude-methanol-separation", "Crude methanol separation"),
+        "R-403": ("process-synthesis-loop-and-converter", "Synthesis loop and converter"),
+        "E-406": ("process-crude-methanol-separation", "Crude methanol separation"),
+        "V-402": ("process-crude-methanol-separation", "Crude methanol separation"),
+        "C-404": ("process-synthesis-loop-and-converter", "Synthesis loop and converter"),
+        "P-401": ("process-process-description", "Process description"),
+        "T-401": ("process-topping-column-t-401", "Topping column T-401"),
+        "E-407": ("process-topping-column-t-401", "Topping column T-401"),
+        "V-403": ("process-topping-column-t-401", "Topping column T-401"),
+        "E-408": ("process-topping-column-t-401", "Topping column T-401"),
+        "T-402": ("process-refining-column-t-402", "Refining column T-402"),
+        "E-409": ("process-refining-column-t-402", "Refining column T-402"),
+        "V-404": ("process-refining-column-t-402", "Refining column T-402"),
+        "E-410": ("process-refining-column-t-402", "Refining column T-402"),
+        "E-411": ("process-refining-column-t-402", "Refining column T-402"),
+        "P-402": ("process-refining-column-t-402", "Refining column T-402"),
+    }
+    rows = ""
+    for tag, name in EQUIPMENT:
+        sid, stitle = SECTION_FOR[tag]
+        rows += (f'<tr><td>{tag}</td><td>{name}</td>'
+                 f'<td><a href="#{sid}">{stitle}</a></td></tr>')
+    equip_index = ("<table><tr><th>Designation</th><th>Service</th>"
+                   f"<th>Section</th></tr>{rows}</table>")
     # ---- prestart ----
     default = balance.run_model(90000.0, 16000.0, 350000.0, 2000.0, 7000.0)
     prestart = {"result": default}
@@ -345,8 +401,16 @@ def main():
         "@@PRESTART_PURIF@@": purif_text,
         "@@PRESTART_TABLE@@": prestart_table,
         "@@PRESTART_JSON@@": json.dumps(prestart),
-        "@@THEORY_TOC@@": theory_toc,
-        "@@THEORY_HTML@@": theory_html,
+        "@@PROCESS_TOC@@": tocs["process"],
+        "@@PROCESS_HTML@@": panels["process"],
+        "@@THEORY_TOC@@": tocs["theory"],
+        "@@THEORY_HTML@@": panels["theory"],
+        "@@ECONOMICS_TOC@@": tocs["economics"],
+        "@@ECONOMICS_HTML@@": panels["economics"],
+        "@@SAFETY_TOC@@": tocs["safety"],
+        "@@SAFETY_HTML@@": panels["safety"],
+        "@@REFERENCES_TOC@@": tocs["references"],
+        "@@REFERENCES_HTML@@": panels["references"],
         "@@CODE_TOC@@": code_toc,
         "@@LISTINGS_HTML@@": listings,
         "@@WALKTHROUGH_HTML@@": walkthrough_html,
@@ -365,6 +429,12 @@ def main():
     # any remaining placeholder of any kind is a build failure.
     if leftovers:
         fail(f"unfilled placeholders remain: {sorted(set(leftovers))[:5]}")
+    for _tab in ["app", "process", "theory", "economics", "safety", "code", "references"]:
+        if f'id="panel-{_tab}"' not in page or f'id="tabbtn-{_tab}"' not in page:
+            fail(f"seven-panel assertion: tab/panel missing for {_tab}")
+    if "Compliance record" in page:
+        fail("seven-panel assertion: built page contains Compliance record text")
+    print("[build] seven-panel assertion PASS (all seven tabs present, no Compliance record text)")
     os.makedirs(os.path.join(HERE, "dist"), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(page)

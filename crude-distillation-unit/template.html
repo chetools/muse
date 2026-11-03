@@ -43,6 +43,7 @@ input{width:100%;padding:6px 8px;font-size:1rem;border:1px solid var(--ink2);bor
 #run-error{color:var(--err);display:none;margin-top:8px}
 #boot-error{color:var(--err);display:none;margin-top:8px}
 .toc{font-family:Arial,Helvetica,sans-serif;font-size:.9rem}
+.theory{overflow-wrap:anywhere}
 @media(min-width:801px){.toc{position:sticky;top:64px;max-height:calc(100vh - 74px);overflow:auto}}
 .toc a{display:block;color:var(--ink);text-decoration:none;padding:3px 8px;border-left:3px solid transparent}
 .toc a.current{border-left-color:var(--accent);background:var(--tint)}
@@ -75,18 +76,15 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <div class="wrap">
 <nav class="tabs" role="tablist">
 <button role="tab" id="tabbtn-app" aria-selected="true" data-panel="app">App</button>
+<button role="tab" id="tabbtn-process" aria-selected="false" data-panel="process">Process</button>
 <button role="tab" id="tabbtn-theory" aria-selected="false" data-panel="theory">Theory</button>
+<button role="tab" id="tabbtn-economics" aria-selected="false" data-panel="economics">Economics</button>
+<button role="tab" id="tabbtn-safety" aria-selected="false" data-panel="safety">Safety</button>
 <button role="tab" id="tabbtn-code" aria-selected="false" data-panel="code">Code</button>
+<button role="tab" id="tabbtn-references" aria-selected="false" data-panel="references">References</button>
 </nav>
 
 <div class="panel active" id="panel-app">
-<h2 id="app-diagram">Process flow diagram</h2>
-<figure>
-<div class="diagram">@@PFD_SVG@@</div>
-<figcaption>Fig. 1 | Process flow diagram PFD-103, Revision 1: crude preheat and desalting, fired furnace, atmospheric column with overhead system, pumparound, three side strippers and product rundown. Stream values on the diagram are sample design values.</figcaption>
-</figure>
-<h2 id="app-equipment-index">Equipment index</h2>
-@@EQUIPMENT_INDEX@@
 <h2 id="app-model">Slate balance and furnace duty model</h2>
 <p>The model is computed in Python. The precomputed default run is displayed on load; a live run replaces the displayed values. Symbols: the crude oil feed rate is denoted feed rate (in kilogram per hour, kg/h); each product cut yield is in mass per cent of the crude feed; the furnace outlet temperature is in degree Celsius; the mean specific heat capacity of the desalted crude, denoted cp, is in kilojoule per kilogram per kelvin (kJ/(kg K)). The default value of cp is 2.2 kJ/(kg K), an assumed value stated as an assumption in the Theory panel.</p>
 <div class="grid">
@@ -109,8 +107,22 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <div id="out-table">@@PRESTART_TABLE@@</div>
 <p id="out-note">Displayed results: precomputed default run, computed when this page was built.</p>
 <div id="chart" style="width:100%;height:430px"></div>
-<p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 2 | Product slate of the displayed run. Flow denotes product flow rate (in kg/h); the closing remainder represents fuel gas, sour water, brine and losses on the crude-feed basis of the model.</p>
+<p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 1 | Product slate of the displayed run. Flow denotes product flow rate (in kg/h); the closing remainder is fuel gas, sour water, brine and losses on the crude-feed basis of the model.</p>
 </div>
+</div>
+</div>
+
+<div class="panel" id="panel-process">
+<h2 id="process-pfd">Process flow diagram PFD-103</h2>
+<p>Drawing PFD-103, Revision 1: crude preheat and desalting, fired furnace, atmospheric column with overhead system, pumparound, three side strippers and product rundown. Stream values on the drawing are sample design values on a basis of 850,000 kg/h of crude oil feed; the overall balance of the displayed values closes at 904,000 kg/h on each side.</p>
+<figure>
+<div class="diagram">@@PFD_SVG@@</div>
+</figure>
+<h2 id="process-equipment-index">Equipment index</h2>
+@@EQUIPMENT_INDEX@@
+<div class="with-toc">
+<nav class="toc" id="process-toc"><div class="toc-title">Contents</div>@@PROCESS_TOC@@</nav>
+<div class="theory">@@PROCESS_HTML@@</div>
 </div>
 </div>
 
@@ -118,6 +130,20 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <div class="with-toc">
 <nav class="toc" id="theory-toc"><div class="toc-title">Contents</div>@@THEORY_TOC@@</nav>
 <div class="theory">@@THEORY_HTML@@</div>
+</div>
+</div>
+
+<div class="panel" id="panel-economics">
+<div class="with-toc">
+<nav class="toc" id="economics-toc"><div class="toc-title">Contents</div>@@ECONOMICS_TOC@@</nav>
+<div class="theory">@@ECONOMICS_HTML@@</div>
+</div>
+</div>
+
+<div class="panel" id="panel-safety">
+<div class="with-toc">
+<nav class="toc" id="safety-toc"><div class="toc-title">Contents</div>@@SAFETY_TOC@@</nav>
+<div class="theory">@@SAFETY_HTML@@</div>
 </div>
 </div>
 
@@ -146,8 +172,15 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 </div>
 </div>
 
+<div class="panel" id="panel-references">
+<div class="with-toc">
+<nav class="toc" id="references-toc"><div class="toc-title">Contents</div>@@REFERENCES_TOC@@</nav>
+<div class="theory">@@REFERENCES_HTML@@</div>
+</div>
+</div>
+
 <footer>
-<p>Standalone page. Calculations are performed in Python (Pyodide) only; no JavaScript calculation is used. Diagram: PFD-103 Revision 1 (sample design values). Sources are cited in the Theory panel.</p>
+<p>Standalone page. Calculations are performed in Python (Pyodide) only; no JavaScript calculation is used. Diagram: PFD-103 Revision 1 (sample design values). Sources are cited in the References panel.</p>
 </footer>
 </div>
 <script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
@@ -176,14 +209,15 @@ function checkStale(){
   document.getElementById("stale-note").style.display = (currentInputs() !== displayedParams) ? "block" : "none";
 }
 ["in-feed","in-y1","in-y2","in-y3","in-y4","in-y5","in-tout","in-cp"].forEach(function(id){ document.getElementById(id).addEventListener("input", checkStale); });
+var PANELS = ["app","process","theory","economics","safety","code","references"];
 function showPanel(name, push){
-  ["app","theory","code"].forEach(function(p){
+  PANELS.forEach(function(p){
     document.getElementById("panel-" + p).classList.toggle("active", p === name);
     document.getElementById("tabbtn-" + p).setAttribute("aria-selected", p === name ? "true" : "false");
   });
   if(push){ history.replaceState(null, "", "#" + name); }
 }
-["app","theory","code"].forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
+PANELS.forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
 function showSub(name){
   document.getElementById("code-listings").style.display = name === "listings" ? "block" : "none";
   document.getElementById("code-walkthrough").style.display = name === "walkthrough" ? "block" : "none";
@@ -199,11 +233,17 @@ function renderWalkthroughCharts(){
   var data = JSON.parse(document.getElementById("walkthrough-data").textContent);
   Object.keys(data).forEach(function(k){ Plotly.newPlot(k, data[k].data, data[k].layout, {responsive:true}); });
 }
+function panelForId(id){
+  var prefix = id.split("-")[0];
+  if(PANELS.indexOf(prefix) >= 0){ return prefix; }
+  return null;
+}
 document.querySelectorAll(".toc a").forEach(function(a){
   a.addEventListener("click", function(){
     var id = a.getAttribute("href").slice(1);
-    if(id.indexOf("theory-") === 0){ showPanel("theory", false); }
-    if(id.indexOf("code-") === 0){ showPanel("code", false); showSub(id === "code-walkthrough-sec" ? "walkthrough" : "listings"); }
+    var p = panelForId(id);
+    if(p){ showPanel(p, false); }
+    if(id.indexOf("code-") === 0){ showSub(id === "code-walkthrough-sec" ? "walkthrough" : "listings"); }
   });
 });
 var spy = new IntersectionObserver(function(entries){
@@ -217,10 +257,10 @@ document.querySelectorAll("section[id], h2[id]").forEach(function(el){ spy.obser
 function route(){
   var h = location.hash.slice(1);
   if(!h) return;
-  if(h === "app" || h === "theory" || h === "code"){ showPanel(h, false); return; }
-  if(h.indexOf("theory-") === 0){ showPanel("theory", false); }
-  else if(h.indexOf("code-") === 0){ showPanel("code", false); showSub(h === "code-walkthrough-sec" ? "walkthrough" : "listings"); }
-  else if(h.indexOf("app-") === 0){ showPanel("app", false); }
+  if(PANELS.indexOf(h) >= 0){ showPanel(h, false); return; }
+  var p = panelForId(h);
+  if(p){ showPanel(p, false); }
+  if(h.indexOf("code-") === 0){ showSub(h === "code-walkthrough-sec" ? "walkthrough" : "listings"); }
   var el = document.getElementById(h);
   if(el){ el.scrollIntoView(); }
 }
