@@ -25,7 +25,7 @@ def _(mo):
     mo.md(r"""
     # McCabe–Thiele and Ponchon–Savarit walkthrough
 
-    This notebook is editable. Run all cells once after opening, then edit the specification in Step 1 and re-run. Each step carries one part of the calculation: the overall balances, the equilibrium curve from the ChemCAD NRTL parameters, the feed condition, the two graphical constructions, the fixed-relative-volatility anchors, and the pressure effect. Symbols are defined in the step that first uses them, with SI units.
+    This notebook is editable. Run all cells once after opening, then edit the specification in Step 1 and re-run. Each step carries one part of the calculation: the overall balances, the equilibrium curve from the ChemCAD NRTL parameters, the feed condition, the two graphical constructions, the fixed-relative-volatility anchors, and the pressure effect.
     """)
     return
 
