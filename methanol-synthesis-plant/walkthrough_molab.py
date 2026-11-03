@@ -198,7 +198,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs
 
-    The inputs are plain values, taken from the PFD-104 design basis. The fresh synthesis gas feed rate (fresh, in kg/h) is 90,000 kg/h. The purge rate (purge, in kg/h), withdrawn from the separator vapour to limit inert accumulation in the loop, is 16,000 kg/h. The circulation rate (recycle, in kg/h), the separator vapour returned to the converter inlet by the recycle compressor, is 350,000 kg/h. For the purification part, the light ends rate (light_ends, in kg/h) removed overhead in the topping column T-401 is 2,000 kg/h and the aqueous bottoms rate (aqueous_bottoms, in kg/h) of the refining column T-402 is 7,000 kg/h; both are model-level splits of the crude methanol, as defined in the balance model section of the Theory panel.
+    The inputs are plain values, taken from the PFD-104 design basis. Fresh synthesis gas feed rate (fresh, in kg/h) is 90,000 kg/h. Purge rate (purge, in kg/h), withdrawn from the separator vapour to limit inert accumulation in the loop, is 16,000 kg/h. Circulation rate (recycle, in kg/h), the separator vapour returned to the converter inlet by the recycle compressor, is 350,000 kg/h. For the purification part, the light ends rate (light_ends, in kg/h) removed overhead in the topping column T-401 is 2,000 kg/h and the aqueous bottoms rate (aqueous_bottoms, in kg/h) of the refining column T-402 is 7,000 kg/h; both are model-level splits of the crude methanol, as defined in the balance model section of the Theory panel.
     """)
     return
 
@@ -220,7 +220,7 @@ def _(mo):
     mo.md(r"""
     ## Step 2: Synthesis loop balance
 
-    The crude methanol rate (crude, in kg/h) is the closing product of the loop balance: the fresh feed minus the purge, because at steady state the loop inventory is constant and every kilogram of fresh feed leaves the loop either as purge gas or as condensed crude methanol. The converter feed rate (in kg/h) is the fresh feed plus the circulation. The separator vapour rate (in kg/h) is the converter feed minus the condensed crude methanol, and it splits into purge and recycle. The recycle ratio (dimensionless) is the circulation divided by the fresh feed. The methanol formation per pass (in mass per cent) is the crude methanol condensed per pass divided by the converter feed, multiplied by 100.
+    The crude methanol rate (crude, in kg/h) is the closing product of the loop balance: the fresh feed minus the purge, because at steady state the loop inventory is constant and every kilogram of fresh feed leaves the loop either as purge gas or as condensed crude methanol. Converter feed rate (in kg/h) is the fresh feed plus the circulation. Separator vapour rate (in kg/h) is the converter feed minus the condensed crude methanol, and it splits into purge and recycle. Recycle ratio (dimensionless) is the circulation divided by the fresh feed. Methanol formation per pass (in mass per cent) is the crude methanol condensed per pass divided by the converter feed, multiplied by 100.
     """)
     return
 
@@ -263,7 +263,7 @@ def _(mo):
     mo.md(r"""
     ## Step 4: Purification balance
 
-    The crude methanol of the loop balance is separated in the two-column train into refined methanol, light ends and aqueous bottoms. The refined methanol rate (in kg/h) is the closing product of the purification balance: the crude methanol minus the light ends removed in the topping column T-401 and minus the aqueous bottoms of the refining column T-402, so that the purification balance closes to the crude methanol feed exactly.
+    The crude methanol of the loop balance is separated in the two-column train into refined methanol, light ends and aqueous bottoms. Refined methanol rate (in kg/h) is the closing product of the purification balance: the crude methanol minus the light ends removed in the topping column T-401 and minus the aqueous bottoms of the refining column T-402, and the purification balance closes to the crude methanol feed exactly.
     """)
     return
 
@@ -284,7 +284,7 @@ def _(mo):
     mo.md(r"""
     ## Step 5: Purification slate chart
 
-    The chart displays the purification slate of the displayed inputs: refined methanol, light ends and aqueous bottoms, in kg/h. Colours follow the Okabe-Ito categorical palette and each bar is additionally labelled by its stream name in the legend, so the chart remains readable in greyscale.
+    The chart displays the purification slate of the displayed inputs: refined methanol, light ends and aqueous bottoms, in kg/h. Colours follow the Okabe-Ito categorical palette and each bar is also labelled by its stream name in the legend; the chart remains readable in greyscale.
     """)
     return
 
