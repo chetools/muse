@@ -39,7 +39,7 @@ intro = (
     '    mo.md(r"""\n'
     "    # Linde air separation unit — calculation walkthrough\n\n"
     "    The breakdown of the balance, power and cost model of the Linde\n"
-    "    cryogenic air separation unit shown on the process flow diagram. This notebook is\n"
+    "    cryogenic air separation unit (drawing PFD-102). This notebook is\n"
     "    editable: edit a value in the inputs cell and re-run; every\n"
     "    downstream cell recomputes.\n"
     '    """)\n'

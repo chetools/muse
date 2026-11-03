@@ -1,7 +1,0 @@
-Carbon dioxide and hydrogen react over a copper-zinc oxide catalyst to give formaldehyde. Two catalyst forms were compared at one set of conditions (250 °C, 50 bar, feed ratio H2/CO2 = 3, one feed composition), and space-time yield and pressure drop are reported for the same catalyst charge, a pairing seldom reported. Space-time yield is the mass of product per unit catalyst volume per hour (kg L-1 h-1).
-
-Washcoated monolith gave a space-time yield of 0.67 kg L-1 h-1 at a pressure drop of 0.24 bar, with an activity loss of 3% after 100 h. Extruded pellet gave a space-time yield of 0.36 kg L-1 h-1 at a pressure drop of 1.39 bar, with an activity loss of 17% after 100 h. Yield, pressure drop and activity loss separate the two forms in one direction: monolith holds the higher yield, the lower pressure drop and the smaller activity loss over the same 100 h, under the same feed and the same conditions.
-
-Activity loss is reported after 100 h for both forms, at 3% for washcoated monolith and 17% for extruded pellet, on the same time basis as the space-time yield and pressure drop reported for each form at the stated test conditions.
-
-No sulfur-bearing feed was tested. At 250 °C and 50 bar, with a feed ratio of H2/CO2 = 3 and the one feed composition tested, washcoated monolith holds a space-time yield of 0.67 kg L-1 h-1 against 0.36 kg L-1 h-1 for extruded pellet, at a pressure drop of 0.24 bar against 1.39 bar. Behaviour of either form on a sulfur-bearing feed is outside the tested record.

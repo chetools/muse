@@ -1,7 +1,0 @@
-Recommendation: run a metered trial of the heat-recovery retrofit on one of the three refrigeration lines before any capital decision. The plant engineer owns the trial.
-
-A food plant uses 2485 MWh of electricity per year in refrigeration. A heat-recovery retrofit is projected by the equipment vendor to save 16% of that use, a derived saving of 398 MWh per year at the vendor figure. Capital cost is $380k. At an electricity price of $0.1 per kWh, the derived annual saving is $40k and the derived simple payback is 9.5 years. Each derived figure carries its basis in its sentence: the saving in energy from the vendor percentage applied to the stated annual use, the saving in money from the stated electricity price, and the payback from the capital cost and the annual saving.
-
-The payback sets the terms of the decision: $380k of capital against $40k of derived annual saving, a simple payback of 9.5 years, on a saving that rests on a vendor projection. The saving figure is a vendor projection and was not measured at this plant; refrigeration load in the summer peak month was not modelled. A capital decision taken on the projection alone would rest on a percentage supplied by the equipment vendor, a price of $0.1 per kWh, and a load profile with the summer peak month missing.
-
-A metered trial on one of the three lines measures the saving on the plant's own refrigeration load before the capital cost is committed. The trial result replaces the vendor percentage as the basis of the payback, and the capital decision follows the trial.

@@ -41,7 +41,7 @@ PFD_SVG = next((p for p in PFD_SVG_CANDIDATES if os.path.exists(p)), PFD_SVG_CAN
 DESIGN_MD = os.path.join(EXAMPLES_DIR, "DESIGN.md")
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-VERSION = 5
+VERSION = 3
 OUT = os.path.join(HERE, "dist", f"methanol-synthesis-plant-v{VERSION}.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "methanol-synthesis-plant/walkthrough_molab.py")

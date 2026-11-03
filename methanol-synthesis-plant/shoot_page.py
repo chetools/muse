@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Playwright visual verification of the built v4 page (seven-panel
+"""Playwright visual verification of the built v2 page (seven-panel
 form) at desktop and phone widths, served locally on port 8943.
 The sandbox browser cannot fetch CDN resources, so the Pyodide
 worker boot is expected to fail here; the checks assert that the
 precomputed run is displayed and the failure is reported in plain
 language. Sticky tab bar check: scroll at least 1000 px, assert the
 tab bar stays at the top and every panel switches while scrolled.
-Screenshots carry the page version (v4) in their filenames."""
+Screenshots carry the page version (v2) in their filenames."""
 import asyncio
 import json
 import os
@@ -22,7 +22,7 @@ OUT = os.path.join(HERE, "shots")
 os.makedirs(OUT, exist_ok=True)
 DIST = os.path.join(HERE, "dist")
 PORT = int(os.environ.get("SHOOT_PORT", "8943"))
-PAGE_URL = f"http://localhost:{PORT}/methanol-synthesis-plant-v5.html"
+PAGE_URL = f"http://localhost:{PORT}/methanol-synthesis-plant-v2.html"
 PANELS = ["app", "process", "theory", "economics", "safety", "code", "references"]
 
 STICKY_JS = """() => {
@@ -81,7 +81,7 @@ async def main():
             report["desktop_prestart_loop"] = await pg.text_content("#out-loop")
             report["desktop_tabs"] = await pg.evaluate(
                 "Array.from(document.querySelectorAll('nav.tabs button')).map(x => x.textContent)")
-            await pg.screenshot(path=os.path.join(OUT, "v5-desktop-app.png"))
+            await pg.screenshot(path=os.path.join(OUT, "v2-desktop-app.png"))
             # sticky check: the App panel page is too short at this
             # viewport to scroll 1500 px (document height 1602 px,
             # maximum scrollY 202 px, measured), so the scroll test
@@ -106,7 +106,7 @@ async def main():
             for panel in PANELS[1:]:
                 await pg.evaluate("window.scrollTo(0, 0)")
                 await switch(pg, panel)
-                await pg.screenshot(path=os.path.join(OUT, f"v5-desktop-{panel}.png"))
+                await pg.screenshot(path=os.path.join(OUT, f"v2-desktop-{panel}.png"))
             # sub-process diagram visibility in a Process section
             await switch(pg, "process")
             await pg.evaluate(
@@ -117,12 +117,12 @@ async def main():
               return {count: figs.length,
                       anyVisible: Array.from(figs).some(f => f.getBoundingClientRect().width > 100)};
             }""")
-            await pg.screenshot(path=os.path.join(OUT, "v5-desktop-process-crop.png"))
+            await pg.screenshot(path=os.path.join(OUT, "v2-desktop-process-crop.png"))
             # walkthrough sub-tab
             await switch(pg, "code")
             await pg.click("#subtab-walkthrough")
             await pg.wait_for_timeout(600)
-            await pg.screenshot(path=os.path.join(OUT, "v5-desktop-walkthrough.png"))
+            await pg.screenshot(path=os.path.join(OUT, "v2-desktop-walkthrough.png"))
             # fragment routing to a mid-panel section
             frag = await pg.evaluate("""async () => {
               location.hash = '#economics-capital-cost';
@@ -148,7 +148,7 @@ async def main():
                   innerW: innerWidth, bodyW: document.body.scrollWidth})""")
             report["phone_geometry"] = await phone_geo()
             report["phone_no_sideways_scroll"] = report["phone_geometry"]["scrollW"] <= 390
-            await pg.screenshot(path=os.path.join(OUT, "v5-phone-app.png"))
+            await pg.screenshot(path=os.path.join(OUT, "v2-phone-app.png"))
             await pg.evaluate("window.scrollTo(0, 1500)")
             await pg.wait_for_timeout(400)
             g = await pg.evaluate(STICKY_JS)
@@ -160,7 +160,7 @@ async def main():
                 await pg.evaluate("window.scrollTo(0, 0)")
                 await pg.wait_for_timeout(200)
                 overflow[panel] = (await phone_geo())["scrollW"]
-                await pg.screenshot(path=os.path.join(OUT, f"v5-phone-{panel}.png"))
+                await pg.screenshot(path=os.path.join(OUT, f"v2-phone-{panel}.png"))
             report["phone_tab_switch_while_scrolled"] = sw
             report["phone_scroll_width_by_panel"] = overflow
             report["phone_no_sideways_scroll_any_panel"] = all(

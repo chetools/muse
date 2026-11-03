@@ -1,7 +1,0 @@
-Calculate the half-life of a first-order reaction, and the fraction remaining after 60 min. The results are t1/2 = 15.1 min and a fraction remaining of 0.06 (dimensionless) after 60 min.
-
-For a first-order reaction, the rate constant k (min-1) fixes the half-life t1/2 (min) by t1/2 = ln(2) / k, and the fraction remaining after time t (min) is exp(-k t). Measured rate constant: k = 0.046 min-1 at 323 K, from concentration measurements every 5 min over 90 min. One measured constant supplies both results, through the two stated relations. The half-life relation and the decay relation both take the same measured k, so a single measurement at 323 K fixes both the time at which half remains and the fraction remaining at any stated later time under the stated relations.
-
-Substitution of k = 0.046 min-1 into the half-life relation gives t1/2 = ln(2) / 0.046. Thus t1/2 = 15.1 min. Substitution of the same constant and t = 60 min into the decay relation gives exp(-0.046 x 60). Thus the fraction remaining after 60 min is 0.06. Sixty minutes spans about four of the stated half-lives, and a fraction remaining of 0.06 sits in that direction: most of the starting material has reacted by 60 min, at the measured rate constant and at 323 K.
-
-The two relations hold for a first-order reaction only; a reaction of another order follows a different decay law. Half-life and fraction remaining here rest on k = 0.046 min-1, measured at 323 K from concentration measurements every 5 min over 90 min, and on first-order behaviour throughout that period.

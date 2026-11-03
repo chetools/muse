@@ -41,7 +41,7 @@ PFD_SVG = next((p for p in PFD_SVG_CANDIDATES if os.path.exists(p)), PFD_SVG_CAN
 DESIGN_MD = os.path.join(EXAMPLES_DIR, "DESIGN.md")
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-VERSION = 6
+VERSION = 5
 OUT = os.path.join(HERE, "dist", f"crude-distillation-unit-v{VERSION}.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "crude-distillation-unit/walkthrough_molab.py")
@@ -255,7 +255,7 @@ def main():
           f"across {len(toc_items)} text panels)")
     def toc_html(items):
         return "\n".join(f'<a href="#{hid}">{html.escape(t)}</a>' for hid, t in items)
-    process_toc = toc_html([("process-pfd", "Process flow diagram"),
+    process_toc = toc_html([("process-pfd", "Process flow diagram PFD-103"),
                             ("process-equipment-index", "Equipment index")]
                            + toc_items["process"])
     theory_toc = toc_html(toc_items["theory"])

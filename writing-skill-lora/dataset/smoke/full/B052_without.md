@@ -1,7 +1,0 @@
-This executive summary considers a heat-recovery retrofit at a food plant, where refrigeration uses a large amount of electricity. The plant currently uses 2485 MWh of electricity per year in refrigeration, so even a modest percentage saving could be worthwhile in absolute terms.
-
-The equipment vendor projects that the retrofit would save 16% of that electricity use, which works out to a derived saving of 398 MWh per year at the vendor's figure. The capital cost of the retrofit is $380k. At an electricity price of $0.1 per kWh, the derived annual saving is $40k, and the derived simple payback works out to 9.5 years, which is a fairly long period over which to recover the capital cost.
-
-There are, however, some important caveats to keep in mind. The saving figure is a vendor projection, and it was not measured at this plant, so the actual saving could turn out to be different. In addition, the refrigeration load in the summer peak month was not modelled, which is another source of uncertainty in the projected figures.
-
-The recommendation is therefore to carry out a metered trial on one of the three refrigeration lines before any capital decision is taken. The plant engineer owns the trial, and the trial should show what saving the retrofit can actually deliver on one of the three refrigeration lines before the plant commits to the full capital cost of $380k for a retrofit across a refrigeration load that currently uses 2485 MWh of electricity per year.

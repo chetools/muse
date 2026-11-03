@@ -1,7 +1,0 @@
-Recommendation under consideration: install the scheduling system at Plant 2 first, at a quoted cost of $157k, and hold the other plant until Plant 2 results are reported. On-time delivery over the last two quarters was 88% against a target of 95%, and Plant 2 accounts for 60% of late orders. The firm runs 2 plants with revenue of $100 million per year; the evidence base is order records for 12 months, covering 14469 orders, and every performance figure in this summary is drawn from that base.
-
-Overtime cost was $1.5 million last year, up 25% on the year before. The order backlog stands at 3.9 weeks, against 1.9 weeks a year ago. Late orders are concentrated rather than spread across the firm: Plant 2, one of 2 plants, carries 60% of them, and the delivery shortfall against the 95% target is stated for the same two quarters in which that concentration is measured.
-
-A scheduling system for all plants is quoted at $280k; Plant 2 alone is quoted at $157k. An internal estimate puts the overtime reduction at Plant 2 at 15-20% in the first year; the estimate is an internal estimate, not a vendor figure, and it applies to Plant 2 overtime only, not to overtime across both plants. The staged installation costs $157k first, with the balance of the $280k held until evidence exists.
-
-The operations director owns the scheduling programme. Installation at the remaining plant is held until Plant 2 results are reported, and the Plant 2 results, read against the 14469-order evidence base, are the ground for any extension of the system beyond Plant 2.

@@ -16,7 +16,7 @@ CELLS = [
         md=(
             "The inputs are plain values. The crude oil feed rate "
             "(feed_rate, in kilogram per hour, kg/h) takes the "
-            "design value of 850,000 kg/h. The five product "
+            "PFD-103 design value of 850,000 kg/h. The five product "
             "cut yields (each in mass per cent of the crude feed) are "
             "the design-basis slate yields: light naphtha 6.5, heavy "
             "naphtha 10.0, kerosene 14.1, light gas oil 17.6 and "
@@ -58,7 +58,7 @@ CELLS = [
             "The closing remainder (in kg/h) is the crude feed rate "
             "minus the sum of the five product flow rates, and the "
             "slate closes to the feed rate exactly. The anchor "
-            "assertion checks the design basis itself: the "
+            "assertion checks the PFD-103 design basis itself: the "
             "five design product flow rates (55,000, 85,000, "
             "120,000, 150,000 and 425,000 kg/h), with fuel gas "
             "(10,000 kg/h), sour water (14,000 kg/h) and brine "

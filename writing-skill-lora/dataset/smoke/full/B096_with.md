@@ -1,7 +1,0 @@
-Recommendation: run a metered trial on one of the three refrigeration lines before any capital decision on the heat-recovery retrofit. The plant engineer owns the trial.
-
-Refrigeration at the food plant uses 2452 MWh of electricity per year. A heat-recovery retrofit is projected by the equipment vendor to save 13% of that use, a derived saving of 319 MWh per year at the vendor figure. Capital cost is $496k; at an electricity price of $0.13 per kWh, the derived annual saving is $41k and the derived simple payback is 12.1 years. Each money figure after the capital cost is derived from the vendor projection, and the payback of 12.1 years inherits the standing of that projection.
-
-Electricity use in refrigeration is the quantity the retrofit acts on, at 2452 MWh per year for the plant as a whole. The vendor percentage of 13%, applied to that use, gives the derived saving of 319 MWh per year, and the electricity price of $0.13 per kWh converts that derived saving into the derived annual money saving of $41k.
-
-The saving figure is a vendor projection and was not measured at this plant. Refrigeration load in the summer peak month was not modelled, so the derived saving of 319 MWh per year rests on a load record with the peak month absent. A metered trial on one of the three lines replaces the projection with a measurement at this plant, on one line, before the $496k capital decision is taken on the retrofit as a whole.

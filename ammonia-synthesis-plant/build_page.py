@@ -31,7 +31,7 @@ PFD_SVG = "/home/hatch/workspace/your_files/pfd-examples/ammonia-pfd102-v3.svg"
 DESIGN_MD = "/home/hatch/workspace/pfd-examples/DESIGN.md"
 KATEX_DIR = os.path.join(HERE, ".buildtools", "katex_pkg", "dist")
 PLOTLY_JS = os.path.join(HERE, ".buildtools", "plotly.min.js")
-VERSION = 6
+VERSION = 5
 OUT = os.path.join(HERE, "dist", f"ammonia-synthesis-plant-v{VERSION}.html")
 MOLAB_LINK = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
               "ammonia-synthesis-plant/walkthrough_molab.py")
@@ -226,7 +226,7 @@ def main():
                   for name, items in panel_toc_items.items()}
     process_toc = "\n".join(
         f'<a href="#{hid}">{html.escape(tx)}</a>'
-        for hid, tx in [("process-pfd", "Process flow diagram"),
+        for hid, tx in [("process-pfd", "Process flow diagram PFD-102"),
                         ("process-equipment-index", "Equipment index")]
         + panel_toc_items["process"])
     print("[build] panel split PASS ("

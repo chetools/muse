@@ -1,7 +1,7 @@
 """Linde air separation unit (ASU): steady-state balance, power and cost model.
 
 The model is a component-balance model of the cryogenic double-column
-process shown on the diagram. It computes no column internals: product
+process of drawing PFD-102. It computes no column internals: product
 flows follow from specified recoveries and purities, the waste stream
 closes every component balance, the main air compressor power follows
 from the isothermal compression equation, and costs follow from a
@@ -55,7 +55,7 @@ def product_flows(u):
     Returns a dictionary of arrays indexed by component (N2, O2, Ar):
     feed, gox (gaseous oxygen product), gan (gaseous nitrogen product),
     crude (crude argon product) and waste (waste nitrogen). Impurity
-    assignments follow the diagram: the oxygen product impurity is
+    assignments follow drawing PFD-102: the oxygen product impurity is
     nitrogen, the nitrogen product impurity is oxygen, and the crude
     argon impurity is split equally between nitrogen and oxygen.
     """

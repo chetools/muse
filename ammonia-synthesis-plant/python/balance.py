@@ -1,5 +1,5 @@
-"""Mass balance model for the ammonia synthesis plant shown on the
-process flow diagram.
+"""Mass balance model for the ammonia synthesis plant of process flow
+diagram PFD-102.
 
 The model has two parts. Part 1 is the overall plant balance: the
 liquid ammonia product rate is obtained as the closing stream of the
@@ -136,7 +136,7 @@ def run_model(ng_rate, steam_rate, air_rate, condensate_rate, co2_rate,
 
 
 def design_anchor_check():
-    """Anchor check on the design basis closures.
+    """Anchor check on the PFD-102 design basis closures.
 
     Overall balance: inputs of 28,000 + 42,000 + 52,000 = 122,000 kg/h
     and outputs of 18,000 + 22,000 + 6,000 + 76,000 = 122,000 kg/h.

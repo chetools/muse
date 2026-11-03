@@ -1,7 +1,0 @@
-Carbon dioxide and hydrogen react over a copper-zinc oxide catalyst to give methanol. A washcoated monolith catalyst and an extruded pellet catalyst were compared at 280 °C and 40 bar, at a feed ratio H2/CO2 = 3 and one feed composition. Space-time yield denotes the mass of product per unit catalyst volume per hour (kg L-1 h-1).
-
-The washcoated monolith catalyst gave a space-time yield of 1.05 kg L-1 h-1 at a pressure drop of 0.1 bar, and lost 9% of its activity after 100 h. The extruded pellet catalyst gave a space-time yield of 0.34 kg L-1 h-1 at a pressure drop of 1.17 bar, and lost 18% of its activity after 100 h. Yield and pressure drop stand together in each result: the monolith pairs the higher yield (1.05 kg L-1 h-1) with the lower pressure drop (0.1 bar), and the pellet pairs the lower yield (0.34 kg L-1 h-1) with the higher pressure drop (1.17 bar). Activity loss after 100 h follows the same ordering, at 9% for the monolith and 18% for the pellet.
-
-Yield and pressure drop are seldom reported for the same catalyst charge. The comparison reports both quantities for each charge, at the stated temperature, pressure and feed ratio, and at the one feed composition tested. The activity losses are stated at one time, 100 h, for both catalysts.
-
-The comparison is limited to the conditions tested. No sulfur-bearing feed was tested, and the stated yields, pressure drops and activity losses rest on the one feed composition at 280 °C and 40 bar with a feed ratio H2/CO2 = 3.

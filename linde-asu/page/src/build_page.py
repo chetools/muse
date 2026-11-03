@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v9"
+VERSION = "v8"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -237,7 +237,7 @@ for _n, (_hid, _vb, _cap) in enumerate(_SUBDIAGRAMS, 1):
     rendered["process"] = rendered["process"].replace(
         _m.group(1), _m.group(1) + _fig, 1)
 # ---------------- TOCs ----------------
-process_toc = [("2", "process-pfd", "Process flow diagram")] + tocs["process"]
+process_toc = [("2", "process-pfd", "Process flow diagram PFD-102")] + tocs["process"]
 code_toc = [("2", "code-listings", "Listings"), ("3", "code-model", "Listing 1 — asu_model.py"),
             ("3", "code-walkthrough-source", "Listing 2 — walkthrough.py"),
             ("2", "code-walkthrough", "Walkthrough")] + \

@@ -17,7 +17,7 @@ def _():
     # Linde air separation unit — calculation walkthrough
 
     The breakdown of the balance, power and cost model of the Linde
-    cryogenic air separation unit shown on the process flow diagram. This notebook is
+    cryogenic air separation unit (drawing PFD-102). This notebook is
     editable: edit a value in the inputs cell and re-run; every
     downstream cell recomputes.
     """)
@@ -44,7 +44,7 @@ def _():
     _SRC = r'''"""Linde air separation unit (ASU): steady-state balance, power and cost model.
 
 The model is a component-balance model of the cryogenic double-column
-process shown on the diagram. It computes no column internals: product
+process of drawing PFD-102. It computes no column internals: product
 flows follow from specified recoveries and purities, the waste stream
 closes every component balance, the main air compressor power follows
 from the isothermal compression equation, and costs follow from a
@@ -98,7 +98,7 @@ def product_flows(u):
     Returns a dictionary of arrays indexed by component (N2, O2, Ar):
     feed, gox (gaseous oxygen product), gan (gaseous nitrogen product),
     crude (crude argon product) and waste (waste nitrogen). Impurity
-    assignments follow the diagram: the oxygen product impurity is
+    assignments follow drawing PFD-102: the oxygen product impurity is
     nitrogen, the nitrogen product impurity is oxygen, and the crude
     argon impurity is split equally between nitrogen and oxygen.
     """
@@ -212,7 +212,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs and feed composition
 
-    The feed flow rate $F$ (kmol/h), where kmol denotes kilomole and h denotes hour, is split into component molar flow rates with the mole fractions of dry air: nitrogen (N2) 0.7809, oxygen (O2) 0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three product recoveries (the fraction of each feed component leaving in its named product), the three product purities (mol %), the compressor pressures and efficiency, and the economic parameters. Default values reproduce the sample basis of the diagram (a feed flow rate of 1000 kmol/h).
+    The feed flow rate $F$ (kmol/h), where kmol denotes kilomole and h denotes hour, is split into component molar flow rates with the mole fractions of dry air: nitrogen (N2) 0.7809, oxygen (O2) 0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three product recoveries (the fraction of each feed component leaving in its named product), the three product purities (mol %), the compressor pressures and efficiency, and the economic parameters. Default values reproduce the sample basis of drawing PFD-102 (a feed flow rate of 1000 kmol/h).
     """)
     return
 
@@ -233,7 +233,7 @@ def _(mo):
     mo.md(r"""
     ## Step 2: Product flow rates from recoveries and purities
 
-    Each product flow rate follows from its recovery and purity. The oxygen product carries the recovered fraction of the feed oxygen as its oxygen component; its remaining component is nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow the same construction, with the crude argon impurity split equally between nitrogen and oxygen, as in the stream table of the diagram. The waste stream is not specified: it is whatever the component balances leave over, which is computed in the next step.
+    Each product flow rate follows from its recovery and purity. The oxygen product carries the recovered fraction of the feed oxygen as its oxygen component; its remaining component is nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow the same construction, with the crude argon impurity split equally between nitrogen and oxygen, as in the stream table of drawing PFD-102. The waste stream is not specified: it is whatever the component balances leave over, which is computed in the next step.
     """)
     return
 
@@ -258,7 +258,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Component balance verification
 
-    The waste component flow rates are the feed rates minus the three product rates, component by component. Two checks follow. The closure check asserts that the products plus the waste reproduce the feed exactly. The feasibility check asserts that no waste component is negative: a negative value would mean that the specified recoveries and purities demand more of a component than the feed contains. The anchor check compares the oxygen product rate with the hand calculation from the sample basis of the diagram (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %).
+    The waste component flow rates are the feed rates minus the three product rates, component by component. Two checks follow. The closure check asserts that the products plus the waste reproduce the feed exactly. The feasibility check asserts that no waste component is negative: a negative value would mean that the specified recoveries and purities demand more of a component than the feed contains. The anchor check compares the oxygen product rate with the hand calculation from the PFD-102 basis (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %).
     """)
     return
 
