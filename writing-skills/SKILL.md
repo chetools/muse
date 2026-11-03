@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Writing rules for scientific, engineering, instructional and business text in English (papers, reports, tutorials, theory text on pages, notebook prose, captions, memos, executive summaries, slide storylines, commit messages), measured from highly cited Nature and Science papers, AI-lab instructional writing, chemical-engineering textbooks and consulting documents. Load before drafting or revising such text, and at a check pass.
+description: Writing rules for scientific, engineering, instructional and business text in English (papers, reports, tutorials, theory text on pages, notebook prose, captions, memos, executive summaries, slide storylines, commit messages). Load before drafting or revising such text, and at a check pass.
 ---
 
 # Writing skills
