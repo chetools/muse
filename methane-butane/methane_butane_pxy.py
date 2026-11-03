@@ -68,7 +68,7 @@ def _(mo):
 
         ### Symbols
 
-        Every symbol is defined at or before its first use. The cast:
+        The cast:
 
         - $T$ temperature [K], $P$ pressure [Pa] (plots use [bar])
         - $n$ total moles [mol], $V$ total volume [m$^3$], $R$ gas constant

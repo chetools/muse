@@ -6,8 +6,6 @@ balance model module), the name go (plotly.graph_objects) is used
 only through the figure() recording function supplied by the runner
 or by the notebook setup cell.
 
-Symbols are defined in the balance module docstring and again at
-first use in each cell text, with SI units.
 """
 
 CELLS = [

@@ -4,7 +4,7 @@ The recursion below (predict + linear update) is the exact computation
 used by TwinEKF and by the moving-horizon estimator's arrival-cost filter.
 It lives in one module so the two estimators cannot drift apart.
 
-Nomenclature -- every symbol defined at first use; SI units throughout.
+Nomenclature.
 x       state mean vector, mixed units [mol/L, K, K, J/(s K)]
 Pm      prior state covariance matrix, mixed^2
 xp      predicted state mean vector, mixed units

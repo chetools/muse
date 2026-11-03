@@ -8,7 +8,7 @@ The twin consumes only the published sensor stream (T, T_j, F, T0 every
 dt seconds with noise, plus delayed laboratory C_A samples). It never
 uses the hidden process internals.
 
-Nomenclature -- every symbol defined at first use; SI units throughout.
+Nomenclature.
 C_A     reactant concentration in the reactor, mol/L
 T       reactor temperature, K
 T_j     jacket temperature, K

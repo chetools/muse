@@ -10,7 +10,6 @@ stream and never the plant's internal state or parameters.
 
 ## Nomenclature
 
-Every symbol below is defined at first use. SI units throughout.
 
 | Symbol | Unit | Meaning |
 |---|---|---|

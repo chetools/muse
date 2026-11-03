@@ -2,8 +2,7 @@
 
 One idea per cell.  Cells share one namespace, executed in order by
 runner.py at build time and by the generated marimo notebook on MoLab.
-Every symbol is defined in the markdown of the cell where it first
-appears.  The recorded chat-mode answers are data in the module
+The recorded chat-mode answers are data in the module
 (chatagent.CHAT_1 to CHAT_4); every other number in these cells is
 computed by execution.
 """

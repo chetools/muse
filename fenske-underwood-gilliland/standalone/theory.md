@@ -494,7 +494,7 @@ The division is performed first and the result is rounded up, because a fraction
 
 ## Validation against Seader's examples
 
-The table below compares the values printed in the source examples {{cite:seader-2016}} with the values computed on this page from the input values stated in Section 2. Every symbol in the table has been defined in the preceding sections, and every unit is stated in the first column.
+The table below compares the values printed in the source examples {{cite:seader-2016}} with the values computed on this page from the input values stated in Section 2.
 
 | Quantity | Seader printed | This page |
 |---|---|---|

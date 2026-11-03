@@ -7,8 +7,7 @@ Code panel and for the editable marimo notebook on MoLab
 Each cell is a dict with a title, Markdown prose (md) and Python code.
 The code cells share one namespace, run in order, and use only
 mtps_core (imported as mc), numpy (imported as np) and figure(),
-which records a Plotly figure as plain dicts. Symbols are defined in
-the prose of the cell that first uses them, with SI units.
+which records a Plotly figure as plain dicts.
 """
 
 CELLS = [

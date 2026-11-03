@@ -6,8 +6,7 @@ balance model module), and the name go (plotly.graph_objects) is
 used only through the figure() recording function supplied by the
 runner or by the notebook setup cell.
 
-Symbols are defined in the balance module docstring and again at
-first use in each cell text, with SI units. Every rate is a mass
+Every rate is a mass
 flow rate in kilogram per hour (kg/h).
 """
 

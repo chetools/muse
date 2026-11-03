@@ -2,8 +2,7 @@
 
 One idea per cell.  Cells share one namespace, executed in order by
 runner.py at build time and by the generated marimo notebook on MoLab.
-Every symbol is defined in the markdown of the cell where it first
-appears.  All input variables are scaled to the unit interval and are
+All input variables are scaled to the unit interval and are
 dimensionless.
 """
 import os, sys

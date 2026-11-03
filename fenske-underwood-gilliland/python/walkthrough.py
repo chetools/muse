@@ -2,8 +2,7 @@
 
 One idea per cell.  Cells share one namespace, executed in order by
 runner.py at build time and by the generated marimo notebook on MoLab.
-Every symbol is defined in the markdown of the cell where it first
-appears.  Flow rates are in kmol/h (kilomoles per hour), for the
+Flow rates are in kmol/h (kilomoles per hour), for the
 source example of Seader, Henley & Roper, Separation Process
 Principles, 4th ed. (2016), Chapter 9.
 """

@@ -54,10 +54,9 @@ def _(mo):
         **How to use it.** Set the stability parameter $r$ with the slider in
         §5 (try values just below and just above $0.5$), pick the grid
         resolution $N$ and the end time, then watch the temperature profiles
-        evolve in the plotly figures of §7–§10. Every symbol is defined where
-        it first appears; the full symbol table is below.
+        evolve in the plotly figures of §7–§10. The full symbol table is below.
 
-        ### Symbol table (SI units throughout)
+        ### Symbol table
 
         | Symbol | Meaning | Value / units |
         |---|---|---|

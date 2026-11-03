@@ -7,7 +7,7 @@ separation calculation: the product distribution is prescribed by the
 cut yields supplied as inputs, and the closing remainder is obtained
 by difference, so the product flow rates and the closing remainder sum to the crude feed rate exactly.
 
-Symbols (defined before first use, with SI units where applicable):
+Symbols:
   feed_rate: crude oil feed rate, in kilogram per hour (kg/h).
   yield_pct: product cut yield, in mass per cent of the crude feed
     (mass of the cut divided by the mass of crude feed, multiplied

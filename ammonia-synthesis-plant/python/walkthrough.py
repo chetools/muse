@@ -6,8 +6,7 @@ module), and the name figure is supplied by the runner or by the
 notebook setup cell as a recording function for plotly figure
 dictionaries.
 
-Symbols are defined in the balance module docstring and again at
-first use in each cell text, with SI units. All flow rates are mass
+All flow rates are mass
 flow rates in kilogram per hour (kg/h, where kg denotes kilogram and
 h denotes hour).
 """

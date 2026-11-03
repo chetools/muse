@@ -565,7 +565,7 @@ def _(mo):
 
     ## 1. Nomenclature
 
-    Every symbol is defined at or before its first use. SI units throughout. The reactor model — mole balance on $C_A$, reactor and jacket energy balances, Arrhenius kinetics, reverse-acting PI control of $T$ via $F_j$, and exponential fouling of $UA$ — is that of the base theory page and is not re-derived here. This document derives the estimator only.
+    The reactor model — mole balance on $C_A$, reactor and jacket energy balances, Arrhenius kinetics, reverse-acting PI control of $T$ via $F_j$, and exponential fouling of $UA$ — is that of the base theory page and is not re-derived here. This document derives the estimator only.
 
     | Symbol | Unit | Meaning |
     |---|---|---|

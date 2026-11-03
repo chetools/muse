@@ -1,7 +1,7 @@
 """Sequential design for global predictive models: core engine.
 
 All variables are scaled to the unit interval and are dimensionless.
-Symbols used in this module, defined before first use:
+Symbols used in this module:
   d   number of input variables (dimensionless count)
   n   number of experiments (runs) in a session budget
   m   number of responses measured on each experiment

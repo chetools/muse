@@ -57,8 +57,7 @@ def _(mo):
     of the separator vapour between purge and recycle and the split of
     the crude methanol in purification are prescribed by the inputs.
 
-    Symbols (defined before first use, with SI units where applicable;
-    every rate is a mass flow rate in kilogram per hour, kg/h):
+    Symbols (every rate is a mass flow rate in kilogram per hour, kg/h):
       fresh: fresh synthesis gas feed rate to the loop, in kg/h.
       purge: purge gas rate withdrawn from the separator vapour, in
         kg/h.

@@ -42,7 +42,7 @@ def _(mo, ):
           with no constant-molal-overflow assumption; enthalpy balances are honored through
           the rectifying and stripping difference (pole) points.
 
-        Every symbol is defined at first use. All root-finding uses `scipy.optimize.brentq`,
+        All root-finding uses `scipy.optimize.brentq`,
         all fitting uses `scipy.optimize.least_squares`, and all figures use plotly.
         """
     )

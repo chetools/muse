@@ -70,8 +70,7 @@ def _(mo):
         4. §12 compares two independent pressure-drop estimates;
            §11 explains turndown.
 
-        Every symbol is defined where it first appears (see also the
-        nomenclature in §1). All units are SI unless stated.
+        All units are SI unless stated.
         """
     )
     return

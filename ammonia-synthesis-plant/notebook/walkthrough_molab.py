@@ -52,7 +52,7 @@ def _(mo):
     obtained from the fresh synthesis gas rate, the liquid ammonia product
     rate and the recycle gas rate, together with two dimensionless ratios.
 
-    Symbols (defined before first use, with SI units where applicable).
+    Symbols.
     All flow rates are mass flow rates in kilogram per hour (kg/h, where
     kg denotes kilogram and h denotes hour):
 

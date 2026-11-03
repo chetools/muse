@@ -81,8 +81,7 @@ def _(mo):
 
         ## How to use this notebook
 
-        - §3–§4 define the simulator (planted ground truth). **Every symbol is
-          defined where it first appears.**
+        - §3–§4 define the simulator (planted ground truth).
         - §5 generates the dataset — set the target size with the slider
           (default 600 examples; the full runbook uses 6000).
         - §6 lets you inspect any batch: its QC report, note, and complaints.

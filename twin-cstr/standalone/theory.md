@@ -2,7 +2,6 @@
 
 ## Nomenclature
 
-Every symbol below is defined at first use. SI units throughout.
 
 | Symbol | Unit | Meaning |
 |---|---|---|

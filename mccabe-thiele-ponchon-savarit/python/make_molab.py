@@ -131,9 +131,7 @@ def generate(path):
         "carries one part of the calculation: the overall balances, "
         "the equilibrium curve from the ChemCAD NRTL parameters, the "
         "feed condition, the two graphical constructions, the "
-        "fixed-relative-volatility anchors, and the pressure effect. "
-        "Symbols are defined in the step that first uses them, with "
-        "SI units.")
+        "fixed-relative-volatility anchors, and the pressure effect. ")
     def md_cell(text_md):
         # Marimo-native markdown cell: the string opens with a
         # newline and every content line is indented with the cell.
