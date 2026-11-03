@@ -10,4 +10,4 @@ F5. Every abbreviation, legend entry, and axis label used on a page appears at l
 F6. Symbols in a figure match the text exactly: variables italic, units and descriptive subscripts upright, vectors bold.
 F7. Legends sit outside the plot area; direct labels are preferred where they fit.
 F8. A log scale is used only by decision, with decades labelled as powers (10^2).
-F9. A table is used for a comparison across shared attributes; its title or caption follows core rule 34, and its column heads carry units.
+F9. A table's title or caption follows core rule 34, and its column heads carry units.

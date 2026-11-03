@@ -3,7 +3,7 @@
 ## Contents
 
 - `SKILL.md`: the core rules (rules 1–35), loaded for all writing under the package. It states which reference file loads under which condition.
-- `references/`: `textbook.md` (detail sentences: derivations, definitions, procedure steps, worked calculations), `equations.md` (displayed equations), `figures.md` (figures, plots, and tables), `business.md` (business documents), `ste100.md` (the Simplified Technical English dial, on request only), `ai-check.md` (the revision pass, the AI-writing pattern list, and the independent check pass), and `evidence.md` (evidence, corpus sizes, and limits; not loaded for writing).
+- `references/`: `textbook.md` (detail sentences), `equations.md` (displayed equations), `figures.md` (figures and tables), `business.md` (business documents), `ste100.md` (the Simplified Technical English dial, on request only), `ai-check.md` (the revision and check passes), and `evidence.md` (evidence and limits; not loaded for writing).
 - `APPENDIX.md`: two chief executive officer letter patterns held out of the main rules because they rest on one corpus.
 
 ## Worked examples on the web
@@ -14,7 +14,7 @@ Paired samples, with and without the rules, are rendered on a published page wit
 
 ## Use with an AI assistant
 
-Install the folder as a skill (for Claude Code, `.claude/skills/writing-skills/`), or give the assistant `SKILL.md` as a standing instruction file, and name the document type in each request: a paper, a report, a tutorial, an executive summary, a recommendation memo. Ask for the revision pass in `references/ai-check.md` before delivery: "Revise this draft under writing-skills as a STEM report, and run the revision pass." For a document of consequence, ask a separate session, one that did not write the draft, to run the independent check pass against the source material, and adjudicate its findings before delivery.
+Install the folder as a skill (for Claude Code, `.claude/skills/writing-skills/`), or give the assistant `SKILL.md` as a standing instruction file, and name the document type in each request: a paper, a report, a tutorial, an executive summary, a recommendation memo. Ask for the revision pass in `references/ai-check.md` before delivery: "Revise this draft under writing-skills as a STEM report, and run the revision pass." A document of consequence also gets the independent check pass in the same file, run by a session that did not write the draft.
 
 ## Use without an assistant
 

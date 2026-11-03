@@ -1,6 +1,6 @@
 # Evidence and limits
 
-This file is not loaded for writing. It holds the evidence, corpus sizes, and limits for the core and the reference files. Rule numbers refer to version 7 of the package; the house rules added in version 7 (core rules 5–7, 33, 35, `figures.md`, `ste100.md`, and heads C6–C7 in `ai-check.md`) come from the author's standing style guide, not from a coded corpus.
+This file is not loaded for writing. It holds the evidence, corpus sizes, and limits for the core and the reference files. Rule numbers refer to the current package. The house rules come from the author's standing style guide, not from a coded corpus: core rules 5–7, 33, and 35, `figures.md`, `ste100.md`, and heads C6–C7 in `ai-check.md` (version 7); the field-term clause of core rule 2 and the content-order clause of core rule 6 (version 9); the compliance clause of core rule 6 (version 10); head C8 was added after version 7. Test-case codes below (T1–T5, D1–D2, S6, C1–C6) name paired-test cases, not the rules that share their letters in `textbook.md` and `ai-check.md`.
 
 ## Method
 

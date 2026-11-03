@@ -27,7 +27,7 @@ for name, t in text.items():
         if name in ("evidence.md",) and ref[0] in "TCDS":
             continue  # evidence.md uses test case codes T1-T5, C1-C6, D1-D2, S6
         p = ref[0]
-        if p in defined and ref not in defined[p] and not (name == "ai-check.md" and p == "C"):
+        if p in defined and ref not in defined[p]:
             errors.append(f"{name}: cites missing {ref}")
     for fref in re.findall(r"`(?:references/)?([a-z0-9-]+\.md)`", t):
         if fref not in text:
