@@ -57,8 +57,8 @@ PYODIDE_URL = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/pyodide
 
 # --- MHE panel (MHE track): v3 output names (additive change) ---
 # v1/v2 files are untouched; v2 remains published.
-OUT_NAME = "twin-cstr-standalone-v5.html"
-STUB_NAME = "twin-cstr-standalone-v5-stub.html"
+OUT_NAME = "twin-cstr-standalone-v6.html"
+STUB_NAME = "twin-cstr-standalone-v6-stub.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "twin-cstr/walkthrough_molab_v4.py")
 
@@ -243,6 +243,33 @@ EXTRA_CSS = """
 .linklike{background:none;border:none;color:var(--st-red);cursor:pointer;
   text-decoration:underline;font-size:.9rem;padding:0;margin-top:.4rem;
   font-family:inherit}
+/* --- Conformance (v6): sticky main tab bar, contents sidebars, fragments --- */
+nav.tabs[data-panels="tpanel"]{position:sticky;top:0;z-index:60;background:#fff;
+  padding:.35rem 0}
+#panel-theory h2,#panel-theory h3,#panel-code h3,.wt-step{scroll-margin-top:96px}
+section.tpanel,section.cpanel{scroll-margin-top:64px}
+.toc-layout:not([hidden]){display:grid;grid-template-columns:230px minmax(0,1fr);
+  gap:0 1.6rem;align-items:start}
+.toc-col{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow-y:auto;
+  font-size:.9rem;padding-right:.4rem}
+.toc-title{font-weight:600;margin:.2rem 0 .5rem}
+.toc-toggle{display:none}
+.toc-list{list-style:none;margin:0;padding:0}
+.toc-list li{margin:.18rem 0}
+.toc-list li.lvl3{margin-left:1rem}
+.toc-list a{color:var(--text);text-decoration:none}
+.toc-list a:hover{text-decoration:underline}
+.toc-list a.active{color:var(--st-red);font-weight:600}
+@media (max-width:860px){
+  .toc-layout:not([hidden]){display:block}
+  .toc-col{position:static;max-height:none;overflow:visible;margin-bottom:1rem;
+    border:1px solid var(--card-border);border-radius:.4rem;padding:.5rem .8rem}
+  .toc-toggle{display:block;background:none;border:none;font:inherit;
+    font-weight:600;cursor:pointer;padding:.2rem 0;color:var(--text)}
+  .toc-title{display:none}
+  .toc-list{display:none}
+  .toc-col.open .toc-list{display:block}
+}
 """
 
 COMMON_JS = r"""
@@ -260,6 +287,7 @@ document.querySelectorAll('.tabs').forEach((bar) => {
     document.querySelectorAll('.' + bar.dataset.panels).forEach((p) => {
       p.hidden = (p.id !== btn.dataset.tab);
     });
+    history.replaceState(null, '', '#' + btn.dataset.tab);
     setTimeout(renderPendingPlots, 30);
   });
 });
@@ -624,6 +652,145 @@ document.querySelectorAll('aside.sidebar input').forEach((inp) => {
   inp.addEventListener('input', pfCheckStale);
 });
 $('btn-run-pf').addEventListener('click', runPF);
+
+// ======================================================================
+// --- Conformance (v6): heading identifiers, contents sidebars for the
+// Theory and Code panels, and URL-fragment routing. Identifiers and
+// contents entries are derived from the rendered headings at load, so
+// the prose sources need no hand-maintained anchors.
+// ======================================================================
+function tocLabel(el){
+  const c = el.cloneNode(true);
+  c.querySelectorAll('.katex-mathml').forEach((n) => n.remove());
+  return c.textContent.replace(/\s+/g, ' ').trim();
+}
+function tocSlug(text){
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 60) || 'section';
+}
+const tocUsedIds = new Set(
+  [...document.querySelectorAll('[id]')].map((e) => e.id));
+function tocAssignId(el, prefix, label){
+  if (el.id) { tocUsedIds.add(el.id); return el.id; }
+  let id = prefix + tocSlug(label), n = 2;
+  while (tocUsedIds.has(id)) { id = prefix + tocSlug(label) + '-' + (n++); }
+  el.id = id;
+  tocUsedIds.add(id);
+  return id;
+}
+const tocSpy = new IntersectionObserver((entries) => {
+  entries.forEach((en) => {
+    if (!en.isIntersecting) return;
+    const link = document.querySelector(
+      '.toc-list a[href="#' + en.target.id + '"]');
+    if (!link) return;
+    link.closest('.toc-col').querySelectorAll('a.active')
+      .forEach((a) => a.classList.remove('active'));
+    link.classList.add('active');
+  });
+}, {rootMargin: '-90px 0px -65% 0px'});
+function buildToc(panel, items){
+  // items: [{el, label, lvl3}] in document order; ids assigned by caller.
+  if (!panel || !items.length) return;
+  const aside = document.createElement('aside');
+  aside.className = 'toc-col';
+  const nav = document.createElement('nav');
+  nav.className = 'toc';
+  nav.innerHTML = '<div class="toc-title">Contents</div>' +
+    '<button type="button" class="toc-toggle" aria-expanded="false">' +
+    'Contents</button>';
+  const ul = document.createElement('ul');
+  ul.className = 'toc-list';
+  items.forEach((it) => {
+    const li = document.createElement('li');
+    if (it.lvl3) li.className = 'lvl3';
+    const a = document.createElement('a');
+    a.href = '#' + it.el.id;
+    a.textContent = it.label;
+    li.appendChild(a);
+    ul.appendChild(li);
+    tocSpy.observe(it.el);
+  });
+  nav.appendChild(ul);
+  aside.appendChild(nav);
+  const wrap = document.createElement('div');
+  wrap.className = 'toc-content';
+  while (panel.firstChild) wrap.appendChild(panel.firstChild);
+  panel.appendChild(aside);
+  panel.appendChild(wrap);
+  panel.classList.add('toc-layout');
+  nav.querySelector('.toc-toggle').addEventListener('click', (e) => {
+    aside.classList.toggle('open');
+    e.currentTarget.setAttribute('aria-expanded',
+                                 aside.classList.contains('open'));
+  });
+}
+(function initTocs(){
+  const theory = $('panel-theory');
+  const tItems = [...theory.querySelectorAll('h2, h3')].map((h) => {
+    const label = tocLabel(h);
+    tocAssignId(h, 'theory-', label);
+    return {el: h, label, lvl3: h.tagName === 'H3'};
+  });
+  buildToc(theory, tItems);
+  const wt = $('sub-walkthrough');
+  const wItems = [...wt.querySelectorAll('.wt-step, h3')].map((el) => {
+    const label = el.classList.contains('wt-step')
+      ? tocLabel(el.querySelector('.wt-stepnum')) : tocLabel(el);
+    tocAssignId(el, 'code-', label);
+    return {el, label, lvl3: false};
+  });
+  buildToc(wt, wItems);
+  const listings = $('sub-listings');
+  const lItems = [...listings.querySelectorAll('h3')].map((h) => {
+    const label = tocLabel(h);
+    tocAssignId(h, 'code-', label);
+    return {el: h, label, lvl3: false};
+  });
+  buildToc(listings, lItems);
+})();
+// ---- fragment routing: a panel or heading fragment opens its panel
+// (and sub-panel) and scrolls to it; the scroll waits until the app is
+// revealed at boot completion.
+let pendingFragmentScroll = null;
+function scrollToPending(){
+  if (!pendingFragmentScroll) return;
+  if ($('app').hidden) return;
+  const el = pendingFragmentScroll;
+  pendingFragmentScroll = null;
+  setTimeout(() => el.scrollIntoView(), 30);
+}
+new MutationObserver(scrollToPending).observe($('app'), {
+  attributes: true, attributeFilter: ['hidden'],
+});
+function routeFragment(){
+  const raw = location.hash.slice(1);
+  if (!raw) return;
+  let el = null;
+  try { el = document.getElementById(decodeURIComponent(raw)); }
+  catch (e) { el = document.getElementById(raw); }
+  if (!el) return;
+  const cp = el.closest('.cpanel');
+  if (cp && cp.hidden) {
+    const b = document.querySelector(
+      '.tabs button[data-tab="' + cp.id + '"]');
+    if (b) b.click();
+  }
+  const tp = el.closest('.tpanel');
+  if (tp && tp.hidden) {
+    const b = document.querySelector(
+      '.tabs button[data-tab="' + tp.id + '"]');
+    if (b) b.click();
+  }
+  if (el.classList.contains('tpanel') || el.classList.contains('cpanel')) {
+    return;
+  }
+  history.replaceState(null, '', '#' + el.id);
+  pendingFragmentScroll = el;
+  scrollToPending();
+}
+window.addEventListener('hashchange', routeFragment);
+routeFragment();
 """
 
 # --- MHE panel (MHE track): additive JS (v3) ---
@@ -1702,6 +1869,22 @@ def main():
     plotly_js = open(plotly_path, encoding="utf-8").read()
     if "plotly.js v2.35.2" not in plotly_js[:600]:
         raise SystemExit("unexpected plotly.js version vendored")
+
+    # Conformance (v6, Hard Rule 10): the Theory and Code contents
+    # sidebars are built from the rendered headings at load; a section
+    # with no headings to build its contents from is a build failure.
+    import re as _re_head
+    n_theory_heads = len(_re_head.findall(
+        r"<h[23][ >]", theory_html + pf_theory_html + mhe_theory_html))
+    n_wt_steps = wt_html.count("wt-stepnum")
+    n_listing_heads = TEMPLATE.count("<h3>")
+    if n_theory_heads == 0 or n_wt_steps == 0 or n_listing_heads == 0:
+        raise SystemExit(
+            f"contents check: theory headings {n_theory_heads}, "
+            f"walkthrough steps {n_wt_steps}, listing headings "
+            f"{n_listing_heads} -- every long tab needs headings")
+    log(f"contents check: {n_theory_heads} theory headings, "
+        f"{n_wt_steps} walkthrough steps, {n_listing_heads} template h3")
 
     page = TEMPLATE
     page = sub_once(page, "__BUILD_PAGE_CSS__", S.page_css(pyg_css) + EXTRA_CSS)
