@@ -201,7 +201,6 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
   font-family:inherit}
 #btn-run-pf:disabled{opacity:.5;cursor:wait}
 #pf-stale-note{color:#a05a00;margin-top:.4rem}
-*/
 /* --- MHE panel (MHE track): additive styles (v3) --- */
 #mhe-section{margin-top:1.5rem;border-top:2px solid var(--card-border);padding-top:1rem}
 .mhe-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
@@ -5147,16 +5146,37 @@ function renderPendingPlots(){
     el.setAttribute('data-rendered','1');
   });
 }
-// Charts plotted before first layout can keep Plotly's 700 px default width
-// instead of the container width (clipped legends, mobile overflow); resize
-// every rendered chart once the page layout has settled.
+// Charts plotted while their container is hidden (the prestart payload is
+// rendered inside the still-hidden #app, and panels start hidden) keep
+// Plotly's 700 px default width instead of the container width: the SVG
+// overflows its grid column, overlaps the neighbouring chart, and pushes
+// the page wider than the viewport. Resizing must therefore happen when a
+// chart BECOMES visible, not only at window load: in the real boot path
+// window load fires while the Python runtime is still loading and #app is
+// still hidden, so a load-only resize skips every chart (offsetParent is
+// null) and the defect returns. The triggers below cover every reveal:
+// boot completion (explicit call in boot()), any `hidden` attribute change
+// (tab, scene, and estimator switches all toggle `hidden`), the end of
+// renderPayload, window load, and window resize.
 function resizeAllPlots(){
   document.querySelectorAll('.js-plotly-plot').forEach((el) => {
     if (el.offsetParent === null) return;
     try { Plotly.Plots.resize(el); } catch (e) {}
   });
 }
-window.addEventListener('load', () => { setTimeout(resizeAllPlots, 60); });
+let plotResizeTimer = null;
+function schedulePlotResize(){
+  if (plotResizeTimer !== null) return;
+  plotResizeTimer = setTimeout(() => {
+    plotResizeTimer = null;
+    resizeAllPlots();
+  }, 40);
+}
+window.addEventListener('load', schedulePlotResize);
+window.addEventListener('resize', schedulePlotResize);
+new MutationObserver(schedulePlotResize).observe(document.body, {
+  attributes: true, attributeFilter: ['hidden'], subtree: true,
+});
 // ---- scene tabs
 let currentScene = 's1';
 document.querySelectorAll('#scene-tabs button').forEach((btn) => {
@@ -5243,6 +5263,7 @@ function renderPayload(p){
   }
   if (p.note) { $('scene-note').hidden = false; $('scene-note').textContent = p.note; }
   else { $('scene-note').hidden = true; }
+  schedulePlotResize();
 }
 function showErr(msg){
   const e = $('err');
@@ -5818,6 +5839,7 @@ async function boot(){
     driver = pyodide.globals.get('driver');
     $('boot').hidden = true;
     $('app').hidden = false;
+    setTimeout(resizeAllPlots, 50);
     setBoot('Ready \u2014 press Run scenario.');
     for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf',
                       'btn-run-mhe', 'btn-run-mhe-cmp']) {
@@ -5827,6 +5849,7 @@ async function boot(){
     $('boot').hidden = true;
     $('app').hidden = false;  // v2: keep the precomputed run visible; only
                               // live recompute needs the runtime
+    setTimeout(resizeAllPlots, 50);
     const f = $('fatal');
     f.hidden = false;
     f.innerHTML = '<b>Could not start the Python runtime.</b><br>' +
