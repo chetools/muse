@@ -294,8 +294,13 @@ def _(adapter_repo, base_model, ds, hf_token, mo, train_btn, train_ds):
     _trainer.save_model("adapter-out/final")
     _tok.save_pretrained("adapter-out/final")
     model = _trainer.model
+    _losses = ", ".join(
+        f"step {h['step']}: {h['loss']:.3f}"
+        for h in _trainer.state.log_history if "loss" in h
+    )
     _out = mo.md(
         "Training finished. Adapter saved under `adapter-out/final`. "
+        f"Loss history: {_losses}. "
         f"Heartbeat at start: {_hb_start}. At finish: {_hb_end}."
     )
     _out
@@ -326,6 +331,7 @@ def _(base_model, ds, eval_btn, mo, model):
         "every fact, number, unit, symbol and citation exactly. Change "
         "style only: wording, sentence structure, ordering and emphasis."
     )
+    model.eval()
     _items = ds["test"].select(range(min(3, len(ds["test"]))))
     _blocks = []
     for _ex in _items:
@@ -337,13 +343,23 @@ def _(base_model, ds, eval_btn, mo, model):
         )
         _ids = _tok(_text, return_tensors="pt").to(model.device)
         with _torch_eval.no_grad():
-            _gen = model.generate(**_ids, max_new_tokens=700)
+            _gen = model.generate(**_ids, max_new_tokens=700,
+                                  repetition_penalty=1.05)
         _rewrite = _tok.decode(_gen[0][_ids["input_ids"].shape[1]:],
                                skip_special_tokens=True)
+        _control = ""
+        if len(_blocks) == 0:
+            with model.disable_adapter():
+                with _torch_eval.no_grad():
+                    _gen0 = model.generate(**_ids, max_new_tokens=700,
+                                           repetition_penalty=1.05)
+            _base = _tok.decode(_gen0[0][_ids["input_ids"].shape[1]:],
+                                skip_special_tokens=True)
+            _control = f"\n\n**Base model, adapter off (control)**\n\n{_base}"
         _blocks.append(
             mo.md(
                 f"**Input**\n\n{_ex['input']}\n\n**Target**\n\n"
-                f"{_ex['target']}\n\n**Model rewrite**\n\n{_rewrite}"
+                f"{_ex['target']}\n\n**Model rewrite**\n\n{_rewrite}{_control}"
             )
         )
     _out = mo.vstack(_blocks)
