@@ -17,7 +17,7 @@ def _():
 @app.cell
 def _(mo):
     mo.md(r"""
-    # Ammonia synthesis plant (PFD-102): balance model breakdown
+    # Ammonia synthesis plant: balance model breakdown
 
     Edit a value in the inputs cell and re-run; every downstream cell recomputes. Run all cells once after opening. If the plotly package is missing, use the installer cell below.
     """)
@@ -42,8 +42,8 @@ def _(mo):
     import sys
     import types as _types
     import plotly.graph_objects as go
-    _SRC = r'''"""Mass balance model for the ammonia synthesis plant of process flow
-    diagram PFD-102.
+    _SRC = r'''"""Mass balance model for the ammonia synthesis plant shown on the
+    process flow diagram.
 
     The model has two parts. Part 1 is the overall plant balance: the
     liquid ammonia product rate is obtained as the closing stream of the
@@ -180,7 +180,7 @@ def _(mo):
 
 
     def design_anchor_check():
-        """Anchor check on the PFD-102 design basis closures.
+        """Anchor check on the design basis closures.
 
         Overall balance: inputs of 28,000 + 42,000 + 52,000 = 122,000 kg/h
         and outputs of 18,000 + 22,000 + 6,000 + 76,000 = 122,000 kg/h.
@@ -215,7 +215,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs
 
-    The inputs are plain values at the PFD-102 design basis. Part 1 (overall plant balance): the natural gas feed rate (ng_rate, in kg/h) is 28,000 kg/h; the process steam feed rate (steam_rate, in kg/h) is 42,000 kg/h; the process air feed rate (air_rate, in kg/h) is 52,000 kg/h; the process condensate product rate (condensate_rate, in kg/h) is 18,000 kg/h; the carbon dioxide product rate (co2_rate, in kg/h) is 22,000 kg/h; and the purge gas rate entered for Part 1 (purge_input_rate, in kg/h) is 6,000 kg/h. Part 2 (synthesis loop balance): the fresh synthesis gas rate (fresh_rate, in kg/h) is 82,000 kg/h; the liquid ammonia product rate (product_rate, in kg/h) is 76,000 kg/h; and the recycle gas rate (recycle_rate, in kg/h) is 210,000 kg/h.
+    The inputs are plain values at the design basis. Part 1 (overall plant balance): the natural gas feed rate (ng_rate, in kg/h) is 28,000 kg/h; the process steam feed rate (steam_rate, in kg/h) is 42,000 kg/h; the process air feed rate (air_rate, in kg/h) is 52,000 kg/h; the process condensate product rate (condensate_rate, in kg/h) is 18,000 kg/h; the carbon dioxide product rate (co2_rate, in kg/h) is 22,000 kg/h; and the purge gas rate entered for Part 1 (purge_input_rate, in kg/h) is 6,000 kg/h. Part 2 (synthesis loop balance): the fresh synthesis gas rate (fresh_rate, in kg/h) is 82,000 kg/h; the liquid ammonia product rate (product_rate, in kg/h) is 76,000 kg/h; and the recycle gas rate (recycle_rate, in kg/h) is 210,000 kg/h.
     """)
     return
 
@@ -241,7 +241,7 @@ def _(mo):
     mo.md(r"""
     ## Step 2: Overall plant balance
 
-    The liquid ammonia product rate of Part 1 (ammonia_rate, in kg/h) is the closing stream of the overall balance: the sum of the three feed rates minus the condensate, carbon dioxide and purge product rates. The anchor assertion checks the design closure of 122,000 kg/h on each side, as recorded in the PFD-102 design basis: inputs of 28,000 + 42,000 + 52,000 kg/h and outputs of 18,000 + 22,000 + 6,000 + 76,000 kg/h. A failure of the assertion stops the breakdown loudly.
+    The liquid ammonia product rate of Part 1 (ammonia_rate, in kg/h) is the closing stream of the overall balance: the sum of the three feed rates minus the condensate, carbon dioxide and purge product rates. The anchor assertion checks the design closure of 122,000 kg/h on each side, as recorded in the design basis: inputs of 28,000 + 42,000 + 52,000 kg/h and outputs of 18,000 + 22,000 + 6,000 + 76,000 kg/h. A failure of the assertion stops the breakdown loudly.
     """)
     return
 
@@ -355,7 +355,7 @@ def _(mo):
     mo.md(r"""
     ## Step 7: Full model run and design anchor
 
-    The complete model is run once through the module function run_model, and the design anchor function checks every closure of the PFD-102 design basis: 122,000 kg/h on each side of the overall balance and a converter feed rate of 292,000 kg/h. The printed dictionary is the same result structure that the App panel displays for a live run.
+    The complete model is run once through the module function run_model, and the design anchor function checks every closure of the design basis: 122,000 kg/h on each side of the overall balance and a converter feed rate of 292,000 kg/h. The printed dictionary is the same result structure that the App panel displays for a live run.
     """)
     return
 

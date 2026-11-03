@@ -17,7 +17,7 @@ def _():
 @app.cell
 def _(mo):
     mo.md(r"""
-    # Crude oil atmospheric distillation unit (PFD-103): balance model breakdown
+    # Crude oil atmospheric distillation unit: balance model breakdown
 
     Edit a value in the inputs cell and re-run; every downstream cell recomputes. Run all cells once after opening. If the plotly package is missing, use the installer cell below.
     """)
@@ -43,7 +43,7 @@ def _(mo):
     import types as _types
     import plotly.graph_objects as go
     _SRC = r'''"""Mass balance and furnace duty model for the crude oil atmospheric
-    distillation unit of process flow diagram PFD-103.
+    distillation unit shown in the process flow diagram.
 
     The model is a slate balance on the crude oil feed, together with a
     sensible-heat estimate of the fired furnace duty. It performs no
@@ -66,7 +66,7 @@ def _(mo):
         panel of the host page.
       desalted_rate: desalted crude flow rate through the furnace, in
         kg/h, taken as the crude feed rate multiplied by the design
-        ratio 845000/850000 from the PFD-103 design basis.
+        ratio 845000/850000 from the design basis.
       specific heat capacity (cp): mean specific heat capacity of the
         desalted crude over the furnace temperature interval, in
         kilojoule per kilogram per kelvin (kJ/(kg K)).
@@ -81,7 +81,7 @@ def _(mo):
         included.
     """
 
-    # Design-basis product cuts of PFD-103: (product name, design flow
+    # Design-basis product cuts: (product name, design flow
     # rate in kg/h at the design crude feed rate, default yield in mass
     # per cent of the crude feed rate). The default yields are the design
     # flow rates divided by the design crude feed rate of 850000 kg/h,
@@ -163,7 +163,7 @@ def _(mo):
 
 
     def design_slate_check():
-        """Anchor check on the PFD-103 design basis slate.
+        """Anchor check on the design basis slate.
 
         The five design product flow rates, with fuel gas (10000 kg/h),
         sour water (14000 kg/h) and brine (45000 kg/h), give total unit
@@ -192,7 +192,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs
 
-    The inputs are plain values. The crude oil feed rate (feed_rate, in kilogram per hour, kg/h) takes the PFD-103 design value of 850,000 kg/h. The five product cut yields (each in mass per cent of the crude feed) are the design-basis slate yields: light naphtha 6.5, heavy naphtha 10.0, kerosene 14.1, light gas oil 17.6 and atmospheric residue 50.0. The furnace outlet temperature (t_out, in degree Celsius) is the design value of 365 degree Celsius, and the mean specific heat capacity of the desalted crude (cp, in kilojoule per kilogram per kelvin, kJ/(kg K)) takes the assumed value 2.2; the assumption is stated in the Theory panel.
+    The inputs are plain values. The crude oil feed rate (feed_rate, in kilogram per hour, kg/h) takes the design value of 850,000 kg/h. The five product cut yields (each in mass per cent of the crude feed) are the design-basis slate yields: light naphtha 6.5, heavy naphtha 10.0, kerosene 14.1, light gas oil 17.6 and atmospheric residue 50.0. The furnace outlet temperature (t_out, in degree Celsius) is the design value of 365 degree Celsius, and the mean specific heat capacity of the desalted crude (cp, in kilojoule per kilogram per kelvin, kJ/(kg K)) takes the assumed value 2.2; the assumption is stated in the Theory panel.
     """)
     return
 
@@ -232,7 +232,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Closing remainder and design anchor
 
-    The closing remainder (in kg/h) is the crude feed rate minus the sum of the five product flow rates, and the slate closes to the feed rate exactly. The anchor assertion checks the PFD-103 design basis itself: the five design product flow rates (55,000, 85,000, 120,000, 150,000 and 425,000 kg/h), with fuel gas (10,000 kg/h), sour water (14,000 kg/h) and brine (45,000 kg/h), give total outputs of 904,000 kg/h, equal to the total inputs of crude oil (850,000 kg/h), wash water (40,000 kg/h) and stripping steam (14,000 kg/h). A failure of the assertion stops the breakdown loudly.
+    The closing remainder (in kg/h) is the crude feed rate minus the sum of the five product flow rates, and the slate closes to the feed rate exactly. The anchor assertion checks the design basis itself: the five design product flow rates (55,000, 85,000, 120,000, 150,000 and 425,000 kg/h), with fuel gas (10,000 kg/h), sour water (14,000 kg/h) and brine (45,000 kg/h), give total outputs of 904,000 kg/h, equal to the total inputs of crude oil (850,000 kg/h), wash water (40,000 kg/h) and stripping steam (14,000 kg/h). A failure of the assertion stops the breakdown loudly.
     """)
     return
 
