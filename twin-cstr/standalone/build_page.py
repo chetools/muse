@@ -57,8 +57,8 @@ PYODIDE_URL = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/pyodide
 
 # --- MHE panel (MHE track): v3 output names (additive change) ---
 # v1/v2 files are untouched; v2 remains published.
-OUT_NAME = "twin-cstr-standalone-v4.html"
-STUB_NAME = "twin-cstr-standalone-v4-stub.html"
+OUT_NAME = "twin-cstr-standalone-v5.html"
+STUB_NAME = "twin-cstr-standalone-v5-stub.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "twin-cstr/walkthrough_molab_v4.py")
 
@@ -215,7 +215,6 @@ EXTRA_CSS = """
   font-family:inherit}
 #btn-run-pf:disabled{opacity:.5;cursor:wait}
 #pf-stale-note{color:#a05a00;margin-top:.4rem}
-*/
 /* --- MHE panel (MHE track): additive styles (v3) --- */
 #mhe-section{margin-top:1.5rem;border-top:2px solid var(--card-border);padding-top:1rem}
 .mhe-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
@@ -273,16 +272,37 @@ function renderPendingPlots(){
     el.setAttribute('data-rendered','1');
   });
 }
-// Charts plotted before first layout can keep Plotly's 700 px default width
-// instead of the container width (clipped legends, mobile overflow); resize
-// every rendered chart once the page layout has settled.
+// Charts plotted while their container is hidden (the prestart payload is
+// rendered inside the still-hidden #app, and panels start hidden) keep
+// Plotly's 700 px default width instead of the container width: the SVG
+// overflows its grid column, overlaps the neighbouring chart, and pushes
+// the page wider than the viewport. Resizing must therefore happen when a
+// chart BECOMES visible, not only at window load: in the real boot path
+// window load fires while the Python runtime is still loading and #app is
+// still hidden, so a load-only resize skips every chart (offsetParent is
+// null) and the defect returns. The triggers below cover every reveal:
+// boot completion (explicit call in boot()), any `hidden` attribute change
+// (tab, scene, and estimator switches all toggle `hidden`), the end of
+// renderPayload, window load, and window resize.
 function resizeAllPlots(){
   document.querySelectorAll('.js-plotly-plot').forEach((el) => {
     if (el.offsetParent === null) return;
     try { Plotly.Plots.resize(el); } catch (e) {}
   });
 }
-window.addEventListener('load', () => { setTimeout(resizeAllPlots, 60); });
+let plotResizeTimer = null;
+function schedulePlotResize(){
+  if (plotResizeTimer !== null) return;
+  plotResizeTimer = setTimeout(() => {
+    plotResizeTimer = null;
+    resizeAllPlots();
+  }, 40);
+}
+window.addEventListener('load', schedulePlotResize);
+window.addEventListener('resize', schedulePlotResize);
+new MutationObserver(schedulePlotResize).observe(document.body, {
+  attributes: true, attributeFilter: ['hidden'], subtree: true,
+});
 // ---- scene tabs
 let currentScene = 's1';
 document.querySelectorAll('#scene-tabs button').forEach((btn) => {
@@ -369,6 +389,9 @@ function renderPayload(p){
   }
   if (p.note) { $('scene-note').hidden = false; $('scene-note').textContent = p.note; }
   else { $('scene-note').hidden = true; }
+  // A payload rendered into a just-revealed (or still-hidden) panel can
+  // carry Plotly's default width; re-fit once the reveal has settled.
+  schedulePlotResize();
 }
 function showErr(msg){
   const e = $('err');
@@ -949,6 +972,10 @@ async function boot(){
     driver = pyodide.globals.get('driver');
     $('boot').hidden = true;
     $('app').hidden = false;
+    // The prestart charts were plotted while #app was hidden and carry
+    // Plotly's 700 px default width; re-fit them now that they are visible
+    // (window load fired long ago, while the runtime was still loading).
+    setTimeout(resizeAllPlots, 50);
     setBoot('Ready \u2014 press Run scenario.');
     for (const id of ['btn-run', 'btn-whatif', 'btn-closed', 'btn-run-pf',
                       'btn-run-mhe', 'btn-run-mhe-cmp']) {
@@ -958,6 +985,7 @@ async function boot(){
     $('boot').hidden = true;
     $('app').hidden = false;  // v2: keep the precomputed run visible; only
                               // live recompute needs the runtime
+    setTimeout(resizeAllPlots, 50);  // re-fit the prestart charts (above)
     const f = $('fatal');
     f.hidden = false;
     f.innerHTML = '<b>Could not start the Python runtime.</b><br>' +
@@ -981,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const b = $(id); if (b) b.disabled = false;
   }
   renderPayload(STUB_DATA);
+  setTimeout(resizeAllPlots, 50);
 });
 """
 
@@ -1605,8 +1634,37 @@ def _mhe_theory_for_page(md_text):
     return "\n".join(lines)
 
 
+def _check_css(css, label):
+    """Fail the build on unbalanced CSS comments or a missing key rule.
+
+    A stray '*/' in EXTRA_CSS (present through v4) is invalid CSS: Chromium
+    recovers and still applies the following rules, but another parser or a
+    minifier may drop the whole MHE block. Balance and presence are cheap
+    deterministic checks, so they are build failures, not warnings.
+    """
+    depth = 0
+    i = 0
+    while i < len(css):
+        if css.startswith("/*", i):
+            depth += 1
+            i += 2
+        elif css.startswith("*/", i):
+            depth -= 1
+            if depth < 0:
+                raise SystemExit(f"{label}: stray '*/' at offset {i}")
+            i += 2
+        else:
+            i += 1
+    if depth != 0:
+        raise SystemExit(f"{label}: unclosed CSS comment (depth {depth})")
+    for needle in (".mhepanel .charts", "#mhe-section"):
+        if needle not in css:
+            raise SystemExit(f"{label}: required rule missing: {needle}")
+
+
 def main():
     stub = "--stub" in sys.argv[1:]
+    _check_css(EXTRA_CSS, "EXTRA_CSS")
     log("loading sources...")
     model, driver_src, theory_md, twpf_src, pf_theory_md, twmhe_src, \
         mhe_theory_md, wasm_b64, wasm_api_src, arrival_src = load_sources()
