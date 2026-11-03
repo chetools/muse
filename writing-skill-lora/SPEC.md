@@ -35,6 +35,12 @@ the drafting-from-outline LoRA project eliminated on 2026-11-01.
   document). The target neither re-opens nor closes the document,
   and defines nothing the packet lists as already defined. These
   teach chunk-wise rewriting of long documents. (Amendment, 2026-11-03.)
+- Equation-bearing pairs (a subtype within the STEM share of the pilot
+  and full sets): passages whose prose carries inline and display
+  mathematics in LaTeX source form. The prose is restyled; every math
+  span is byte-identical between input and target. These teach
+  copy-through of mathematics. The smoke set contains none.
+  (Amendment adopted by the user, 2026-11-03.)
 - Every pair is generated from a frozen brief: a fact base with every
   number, unit, name and limit the passages may state. Writers state no
   fact outside the brief. All quantities are in SI units; any source
@@ -85,6 +91,9 @@ Held-out topics only, blind-coded, randomised labels.
 
 - Deterministic: number and unit preservation 100% on held-out outputs;
   any changed, dropped or added number is a failure of that output.
+  Protected-span preservation is also 100%: the set of protected spans
+  (math, code, tables, tags) in each output matches the input set
+  exactly, compared by hash; any mismatch fails that output.
 - Audit: no added facts in a sample of held-out outputs, checked against
   the frozen briefs.
 - Style: LoRA rewrites win blind comparison against the untuned base
@@ -110,6 +119,15 @@ Held-out topics only, blind-coded, randomised labels.
   is sent with a context packet built from the chunks already
   processed (title, defined symbols and abbreviations, fixed object
   names, chunk position), matching the fragment training format.
+- Protected spans (amendment adopted by the user, 2026-11-03): before
+  rewriting, the endpoint splits each chunk into prose spans and
+  protected spans. Protected spans are inline and display mathematics
+  (LaTeX source, delimiters included), code blocks, tables, HTML tags
+  and figure references. Only prose reaches the model; an inline
+  protected span is replaced in the prose by a short placeholder.
+  Protected spans are reinserted verbatim after rewriting, and the
+  gate's hash comparison verifies the reinserted set against the
+  input set before delivery.
 - Adapter loaded from Hugging Face; base model in 4-bit form on a
   low-cost GPU is acceptable for inference if output quality holds.
 - The endpoint is a tool called by the assistant; it is not part of the
