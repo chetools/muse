@@ -1,0 +1,6 @@
+Adsorption of a dye from water on a metal-organic framework was measured in batch tests at 298 K. The fitted Langmuir capacity was 163 mg of dye per gram of adsorbent at pH 6. At an adsorbent dose of 0.7 g L-1, removal after 120 min was 88% of the initial dye concentration of 50 mg L-1.
+
+Capacity and removal stand on different bases in the same set of tests. The Langmuir capacity is a fitted value, reported at pH 6 and 298 K. Removal is a measured outcome at a stated dose (0.7 g L-1), a stated initial concentration (50 mg L-1) and a stated time (120 min). Both values come from batch tests at 298 K.
+
+The Langmuir fit is reported for pH 6 only; capacity at other pH values was not measured. No capacity value is given for any other pH, and the removal figure stands at the stated dose and time. At pH 6 and 298 K, the fitted capacity is 163 mg of dye per gram of adsorbent, and removal after 120 min is 88% of the initial concentration at a dose of 0.7 g L-1.
+The test conditions stand with each value in the record. Batch tests ran at 298 K. The fitted Langmuir capacity of 163 mg of dye per gram of adsorbent stands at pH 6. Removal of 88% after 120 min stands at an initial dye concentration of 50 mg L-1 and an adsorbent dose of 0.7 g L-1. No other temperature, dose or initial concentration is reported in this set of tests.

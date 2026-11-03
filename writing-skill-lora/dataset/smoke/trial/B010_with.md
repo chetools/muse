@@ -1,0 +1,9 @@
+Goal: calculate the diffusive flux of oxygen through a stagnant water film, from the stated diffusivity and concentration gradient. The diffusive flux J (mol m-2 s-1) is 1.05 x 10-6 mol m-2 s-1 for oxygen in water with a diffusivity of 2.1 x 10-9 m2 s-1 and a concentration gradient of -500 mol m-4.
+
+Fick's first law is J = -D dC/dx, where J denotes the diffusive flux (mol m-2 s-1), D denotes the diffusivity (m2 s-1), C denotes concentration (mol m-3) and x denotes position (m), so dC/dx is the change in concentration per unit distance (mol m-4). The negative sign in Fick's first law states that diffusion runs from high concentration to low concentration: a concentration that falls as x increases gives a negative gradient and a positive flux in the direction of increasing x.
+
+Inputs: oxygen in water has D = 2.1 x 10-9 m2 s-1. Concentration falls by 0.25 mol m-3 across a film 0.5 mm thick, so dC/dx = -500 mol m-4. Substitution of D and dC/dx into J = -D dC/dx gives J = -(2.1 x 10-9) x (-500). Thus J = 1.05 x 10-6 mol m-2 s-1. The sign of the result follows the sign convention of the law: the product of the stated negative sign and the negative gradient is positive.
+
+Check: the computed flux has the sign the law requires for the stated gradient. Concentration falls across the film, the gradient dC/dx is negative, and Fick's first law returns a positive flux, in the direction from the higher concentration to the lower concentration. The magnitude of the flux rests on the two stated inputs only, the diffusivity of oxygen in water and the gradient across the 0.5 mm film, and no other quantity enters the calculation.
+
+Fick's first law as stated holds for a stagnant medium. A moving medium adds convection, which the equation does not include, and the flux in a moving medium is not given by this calculation. The diffusive flux of oxygen through the stagnant water film, at the stated gradient, is 1.05 x 10-6 mol m-2 s-1.

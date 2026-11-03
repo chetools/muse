@@ -1,0 +1,5 @@
+Calculate the Reynolds number for water in a pipe and state the flow regime; the Reynolds number is 114800 and the flow is turbulent. The Reynolds number Re (dimensionless) is computed from density rho (kg m-3), mean velocity v (m s-1), pipe diameter D (m) and dynamic viscosity mu (Pa s) by Re = rho v D / mu. Water at 293 K has rho = 998 kg m-3 and mu = 1.00 x 10-3 Pa s. Pipe diameter D = 0.05 m and mean velocity v = 2.3 m s-1 are the stated inputs.
+
+Substitution gives Re = 998 x 2.3 x 0.05 / 0.001 = 114800, thus the Reynolds number is 114800 (dimensionless). Flow is laminar below Re = 2300 and turbulent above Re = 4000; between the two values the regime is transitional and is not assigned by the number alone. The computed Reynolds number (114800) stands above 4000, and the flow is turbulent. The check rests on the stated thresholds: laminar below Re = 2300, turbulent above Re = 4000, and transitional between the two values, where the regime is not assigned by the number alone.
+
+For water at 293 K (rho = 998 kg m-3, mu = 1.00 x 10-3 Pa s) in a pipe of diameter D = 0.05 m at mean velocity v = 2.3 m s-1, the Reynolds number is 114800 and the flow is turbulent.

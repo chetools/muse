@@ -1,0 +1,7 @@
+An amine absorption unit at pilot scale captured 85% of the carbon dioxide in gas from a cement kiln, over 90 days at 13 t of carbon dioxide per day. Steam demand was 3.3 gigajoules per tonne of carbon dioxide captured, and solvent loss was 2.4 kg per tonne captured. Each operating figure stands on the same basis: the treated gas from the kiln, the 90 days of the test, and the capture rate of 13 t of carbon dioxide per day.
+
+Capture of 85% is stated for the carbon dioxide in the treated gas, over the full 90 days. Steam demand and solvent loss are stated per tonne captured, not per tonne treated: 3.3 gigajoules of steam and 2.4 kg of solvent for each tonne of carbon dioxide the unit captured. The two consumption figures and the capture figure describe one run at one rate, and no figure is reported at another rate or over another period.
+
+The run length fixes the scope of each number. A capture rate of 13 t of carbon dioxide per day over 90 days at 85% capture, with steam demand of 3.3 gigajoules per tonne captured and solvent loss of 2.4 kg per tonne captured, is a pilot result on cement kiln gas, from a single unit at pilot scale. Restatement of the run on its own basis adds no second case: one unit, one gas source, one rate, one period.
+
+Beyond 90 days, the effect of kiln dust on the solvent is untested. The capture of 85%, the steam demand of 3.3 gigajoules per tonne captured and the solvent loss of 2.4 kg per tonne captured are limited to the 90 days tested, at 13 t of carbon dioxide per day on gas from a cement kiln.

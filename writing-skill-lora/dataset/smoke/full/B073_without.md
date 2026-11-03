@@ -1,0 +1,7 @@
+This executive summary presents the delivery performance of a contract packaging firm that operates 3 plants and generates revenue of $112 million per year. The analysis is based on order records covering a period of 12 months, comprising a total of 17515 orders, which provides a substantial evidence base for the findings discussed below.
+
+Over the last two quarters, on-time delivery stood at 87%, which falls short of the target of 95% that the firm has set for itself. At the same time, overtime cost reached $1.7 million last year, which was up 21% on the year before, adding further pressure. The order backlog currently stands at 3.4 weeks, compared with 1.7 weeks a year ago, so the backlog has grown considerably over the past year.
+
+A closer look at the pattern of late orders shows that Plant 2 accounts for 54% of late orders, making it the main focus for improvement. A scheduling system covering all plants has been quoted at $358k, while the cost for Plant 2 alone is $127k. An internal estimate, which is not a vendor figure, puts the overtime reduction at Plant 2 at 15-20% in the first year.
+
+The recommendation under consideration is to install at Plant 2 first, at $127k, and to hold the other plants until the Plant 2 results are reported. The operations director owns the scheduling programme, and under this approach the wider installation across all plants, quoted at $358k, would only proceed once the Plant 2 results are known and reported, with the operations director remaining responsible for the scheduling programme throughout.

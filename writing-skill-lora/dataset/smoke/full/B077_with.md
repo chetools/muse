@@ -1,0 +1,7 @@
+Calculate the half-life of a first-order reaction with rate constant k = 0.012 min-1 at 323 K, and the fraction remaining after 60 min; the half-life is 57.8 min and the fraction remaining is 0.49. The rate constant k (min-1) was measured at 323 K from concentration measurements every 5 min over 90 min, giving k = 0.012 min-1. For a first-order reaction, the half-life t1/2 (min) is defined by t1/2 = ln(2) / k.
+
+Substitution of k = 0.012 min-1 gives t1/2 = ln(2) / 0.012 = 57.8 min, thus the half-life is 57.8 min. For a first-order reaction, the fraction remaining after time t (min) is exp(-k t). Substitution of k = 0.012 min-1 and t = 60 min gives exp(-0.012 x 60) = 0.49, thus the fraction remaining after 60 min is 0.49 (dimensionless).
+
+The relations t1/2 = ln(2) / k and exp(-k t) hold for a first-order reaction only. A reaction of another order follows a different decay law. At 323 K, with k = 0.012 min-1 measured every 5 min over 90 min, the half-life is 57.8 min and the fraction remaining after 60 min is 0.49 (dimensionless).
+
+The half-life t1/2 is stated in min (57.8 min) from k in min-1 (0.012 min-1 at 323 K), and the fraction remaining after 60 min (0.49, dimensionless) comes from exp(-k t) at the same rate constant. Concentration was measured every 5 min over 90 min at 323 K. Both relations hold for a first-order reaction only; another order follows a different decay law.
