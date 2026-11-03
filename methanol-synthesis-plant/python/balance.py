@@ -1,5 +1,5 @@
 """Loop and purification mass balance model for the methanol
-synthesis and purification plant of process flow diagram PFD-104.
+synthesis and purification plant shown on the process flow diagram.
 
 The model has two parts. Part 1 is the synthesis loop balance: the
 fresh synthesis gas feed and the purge are prescribed inputs, the
@@ -41,7 +41,7 @@ every rate is a mass flow rate in kilogram per hour, kg/h):
     aqueous bottoms.
 """
 
-# Design-basis defaults of PFD-104 for the model inputs.
+# Design-basis defaults for the model inputs.
 DESIGN_FRESH = 90000.0
 DESIGN_PURGE = 16000.0
 DESIGN_RECYCLE = 350000.0
@@ -124,7 +124,7 @@ def run_model(fresh, purge, recycle, light_ends, aqueous_bottoms):
 
 
 def overall_balance_check():
-    """Anchor check on the PFD-104 overall design basis.
+    """Anchor check on the overall design basis.
 
     Total plant inputs are natural gas (38000 kg/h), steam
     (30000 kg/h), oxygen (22000 kg/h) and carbon dioxide

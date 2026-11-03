@@ -1,5 +1,5 @@
 """Mass balance and furnace duty model for the crude oil atmospheric
-distillation unit of process flow diagram PFD-103.
+distillation unit shown in the process flow diagram.
 
 The model is a slate balance on the crude oil feed, together with a
 sensible-heat estimate of the fired furnace duty. It performs no
@@ -22,7 +22,7 @@ Symbols (defined before first use, with SI units where applicable):
     panel of the host page.
   desalted_rate: desalted crude flow rate through the furnace, in
     kg/h, taken as the crude feed rate multiplied by the design
-    ratio 845000/850000 from the PFD-103 design basis.
+    ratio 845000/850000 from the design basis.
   specific heat capacity (cp): mean specific heat capacity of the
     desalted crude over the furnace temperature interval, in
     kilojoule per kilogram per kelvin (kJ/(kg K)).
@@ -37,7 +37,7 @@ Symbols (defined before first use, with SI units where applicable):
     included.
 """
 
-# Design-basis product cuts of PFD-103: (product name, design flow
+# Design-basis product cuts: (product name, design flow
 # rate in kg/h at the design crude feed rate, default yield in mass
 # per cent of the crude feed rate). The default yields are the design
 # flow rates divided by the design crude feed rate of 850000 kg/h,
@@ -119,7 +119,7 @@ def run_model(feed_rate, yields_pct, t_out, cp):
 
 
 def design_slate_check():
-    """Anchor check on the PFD-103 design basis slate.
+    """Anchor check on the design basis slate.
 
     The five design product flow rates, with fuel gas (10000 kg/h),
     sour water (14000 kg/h) and brine (45000 kg/h), give total unit

@@ -15,7 +15,7 @@ CELLS = [
     dict(
         title="Inputs",
         md=(
-            "The inputs are plain values, taken from the PFD-104 "
+            "The inputs are plain values, taken from the "
             "design basis. Fresh synthesis gas feed rate (fresh, "
             "in kg/h) is 90,000 kg/h. Purge rate (purge, in "
             "kg/h), withdrawn from the separator vapour to limit "
@@ -81,7 +81,7 @@ CELLS = [
             "process condensate (12,000 kg/h), purge gas (16,000 "
             "kg/h), light ends (4,000 kg/h), refined methanol "
             "(65,000 kg/h) and aqueous bottoms (5,000 kg/h) of the "
-            "PFD-104 design basis. A failure of either assertion "
+            "design basis. A failure of either assertion "
             "stops the breakdown loudly."
         ),
         code=(

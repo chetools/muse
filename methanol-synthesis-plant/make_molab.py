@@ -95,14 +95,14 @@ def generate(run_mode=False):
     out.append(cell("import marimo as mo", set(), ["mo"]))
     if run_mode:
         intro = (
-            "# Methanol synthesis and purification plant (PFD-104): balance model breakdown\n\n"
+            "# Methanol synthesis and purification plant: balance model breakdown\n\n"
             "The notebook executes automatically on load and the results are shown below. "
             "The notebook is read-only in this form; the editable notebook is on the MoLab link "
             "of the host page, in which a value may be edited and the cells re-run."
         )
     else:
         intro = (
-            "# Methanol synthesis and purification plant (PFD-104): balance model breakdown\n\n"
+            "# Methanol synthesis and purification plant: balance model breakdown\n\n"
             "Edit a value in the inputs cell and re-run; every downstream cell recomputes. "
             "Run all cells once after opening. If the plotly package is missing, use the "
             "installer cell below."

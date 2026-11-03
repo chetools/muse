@@ -16,7 +16,7 @@ CELLS = [
     dict(
         title="Inputs",
         md=(
-            "The inputs are plain values at the PFD-102 design basis. "
+            "The inputs are plain values at the design basis. "
             "Part 1 (overall plant balance): the natural gas feed "
             "rate (ng_rate, in kg/h) is 28,000 kg/h; the process "
             "steam feed rate (steam_rate, in kg/h) is 42,000 kg/h; "
@@ -53,7 +53,7 @@ CELLS = [
             "overall balance: the sum of the three feed rates minus "
             "the condensate, carbon dioxide and purge product rates. "
             "The anchor assertion checks the design closure of "
-            "122,000 kg/h on each side, as recorded in the PFD-102 "
+            "122,000 kg/h on each side, as recorded in the "
             "design basis: inputs of 28,000 + 42,000 + 52,000 kg/h "
             "and outputs of 18,000 + 22,000 + 6,000 + 76,000 kg/h. "
             "A failure of the assertion stops the breakdown loudly."
@@ -168,7 +168,7 @@ CELLS = [
         md=(
             "The complete model is run once through the module "
             "function run_model, and the design anchor function "
-            "checks every closure of the PFD-102 design basis: "
+            "checks every closure of the design basis: "
             "122,000 kg/h on each side of the overall balance and a "
             "converter feed rate of 292,000 kg/h. The printed "
             "dictionary is the same result structure that the App "
