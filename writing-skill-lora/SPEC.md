@@ -67,6 +67,12 @@ the drafting-from-outline LoRA project eliminated on 2026-11-01.
   input is the raw draft; output is the target draft.
 - Checkpoints per epoch on the MoLab volume / project folder; the run
   must be resumable after a session closure.
+- Heartbeat (added 2026-11-03 at the user's direction): at training
+  start, at each epoch end and at finish, the notebook writes a status
+  file (stage, epoch, step, latest loss, UTC timestamp) and, when a
+  Hugging Face token is entered in the notebook, uploads it with that
+  epoch's adapter weights to the private adapter repository. Progress
+  between MoLab sessions is read from that repository.
 - Progress: every long step in the notebook shows a live progress
   indicator (marimo progress bar) — standing rule, no exceptions.
 - All non-default packages are declared in the notebook PEP 723 header,

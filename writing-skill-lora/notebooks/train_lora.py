@@ -125,11 +125,16 @@ def _(mo):
         value="carlosco/writing-skill-lora",
         full_width=True,
     )
+    hf_token = mo.ui.text(
+        label="Hugging Face write token (used for heartbeat and upload, not stored)",
+        kind="password",
+        full_width=True,
+    )
     load_btn = mo.ui.run_button(label="Load dataset")
-    _out = mo.vstack([dataset_repo, base_model, adapter_repo, load_btn])
+    _out = mo.vstack([dataset_repo, base_model, adapter_repo, hf_token, load_btn])
     _out
 
-    return (adapter_repo, base_model, dataset_repo, load_btn)
+    return (adapter_repo, base_model, dataset_repo, hf_token, load_btn)
 
 
 @app.cell
@@ -192,7 +197,7 @@ def _(base_model, mo):
 
 
 @app.cell
-def _(base_model, ds, mo, train_btn, train_ds):
+def _(adapter_repo, base_model, ds, hf_token, mo, train_btn, train_ds):
     if not train_btn.value:
         mo.stop(True)
     import torch as _torch_train
@@ -231,19 +236,68 @@ def _(base_model, ds, mo, train_btn, train_ds):
         model=_model, args=_cfg, train_dataset=train_ds, peft_config=_lora
     )
     _steps = max(1, int(_trainer.state.max_steps or 1)) if hasattr(_trainer, "state") else 1
+    def _heartbeat(_stage, _state=None):
+        # Writes a small status file and, when a token is present,
+        # uploads it with the latest adapter weights to the private
+        # adapter repository, so progress is visible between sessions.
+        import datetime as _dt
+        import json as _json
+        import pathlib as _pl
+
+        _status = {"stage": _stage,
+                   "updated_at": _dt.datetime.now(_dt.timezone.utc).isoformat()}
+        if _state is not None:
+            _status["epoch"] = _state.epoch
+            _status["step"] = _state.global_step
+            _logs = [h for h in _state.log_history if "loss" in h]
+            if _logs:
+                _status["loss"] = _logs[-1]["loss"]
+        _pl.Path("training_status.json").write_text(_json.dumps(_status, indent=1))
+        if not hf_token.value:
+            return "heartbeat saved locally only (no token entered)"
+        try:
+            from huggingface_hub import HfApi as _HfApi
+
+            _api = _HfApi(token=hf_token.value)
+            _api.create_repo(adapter_repo.value, repo_type="model",
+                             private=True, exist_ok=True)
+            _api.upload_file(path_or_fileobj="training_status.json",
+                             path_in_repo="training_status.json",
+                             repo_id=adapter_repo.value, repo_type="model")
+            if _state is not None and _state.epoch:
+                _ckpt = _pl.Path(
+                    f"adapter-out/checkpoint-{_state.global_step}")
+                for _fname in ("adapter_model.safetensors",
+                               "adapter_config.json"):
+                    if (_ckpt / _fname).exists():
+                        _api.upload_file(
+                            path_or_fileobj=str(_ckpt / _fname),
+                            path_in_repo=(
+                                f"checkpoints/epoch-{int(_state.epoch)}/{_fname}"),
+                            repo_id=adapter_repo.value, repo_type="model")
+            return "heartbeat uploaded"
+        except Exception as _exc:
+            return f"heartbeat upload failed: {_exc}"
+
+    _hb_start = _heartbeat("training started")
     with mo.status.progress_bar(total=3, title="Training epochs") as _bar:
         from transformers import TrainerCallback as _TrainerCallback
 
         class _EpochBar(_TrainerCallback):
             def on_epoch_end(self, args, state, control, **kwargs):
                 _bar.update(increment=1)
+                _heartbeat(f"epoch {int(state.epoch)} complete", state)
 
         _trainer.add_callback(_EpochBar())
         _trainer.train()
+    _hb_end = _heartbeat("training finished")
     _trainer.save_model("adapter-out/final")
     _tok.save_pretrained("adapter-out/final")
     model = _trainer.model
-    _out = mo.md("Training finished. Adapter saved under `adapter-out/final`.")
+    _out = mo.md(
+        "Training finished. Adapter saved under `adapter-out/final`. "
+        f"Heartbeat at start: {_hb_start}. At finish: {_hb_end}."
+    )
     _out
 
     return (model,)
@@ -252,16 +306,11 @@ def _(base_model, ds, mo, train_btn, train_ds):
 @app.cell
 def _(mo):
     eval_btn = mo.ui.run_button(label="Run small evaluation (3 test items)")
-    hf_token = mo.ui.text(
-        label="Hugging Face write token (used once, not stored)",
-        kind="password",
-        full_width=True,
-    )
     upload_btn = mo.ui.run_button(label="Upload adapter (private repository)")
-    _out = mo.vstack([eval_btn, hf_token, upload_btn])
+    _out = mo.vstack([eval_btn, upload_btn])
     _out
 
-    return (eval_btn, hf_token, upload_btn)
+    return (eval_btn, upload_btn)
 
 
 @app.cell
