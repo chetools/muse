@@ -6,7 +6,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PAGE = os.path.join(HERE, "dist", "crude-distillation-unit-v5.html")
+PAGE = os.path.join(HERE, "dist", "crude-distillation-unit-v6.html")
 page = open(PAGE, encoding="utf-8").read()
 fails = []
 
@@ -62,7 +62,10 @@ check("walkthrough listing is byte-identical to walkthrough.py",
       listing_text("code-listing-walkthrough") in (walkthrough_src, walkthrough_src.rstrip("\n")))
 check("KaTeX output present (no raw dollar-math leftovers)",
       'class="katex"' in page and "$\\dot" not in page)
-check("PFD diagram embedded inline", page.count("<svg") >= 2 and "PFD-103" in page)
+check("PFD diagram embedded inline", page.count("<svg") >= 2)
+_vis = re.sub(r"<(svg|script|style)\b.*?</\1>", " ", page, flags=re.S)
+check("no drawing number or revision in visible text",
+      not re.search(r"PFD-10\d|revision|drawing\s+\d", _vis, flags=re.I))
 check("precomputed data embedded", '"prestart-data"' in page and "59384" in page)
 print("RESULT:", "FAIL" if fails else "ALL PASS")
 sys.exit(1 if fails else 0)

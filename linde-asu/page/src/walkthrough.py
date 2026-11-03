@@ -14,7 +14,7 @@ CELLS = [
             "0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three "
             "product recoveries (the fraction of each feed component leaving in its named product), the three "
             "product purities (mol %), the compressor pressures and efficiency, and the economic parameters. "
-            "Default values reproduce the sample basis of drawing PFD-102 (a feed flow rate of 1000 kmol/h)."
+            "Default values reproduce the sample basis of the diagram (a feed flow rate of 1000 kmol/h)."
         ),
         code=(
             "import numpy as np\n"
@@ -33,7 +33,7 @@ CELLS = [
             "recovered fraction of the feed oxygen as its oxygen component; its remaining component is "
             "nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow "
             "the same construction, with the crude argon impurity split equally between nitrogen and oxygen, "
-            "as in the stream table of drawing PFD-102. The waste stream is not specified: it is whatever the "
+            "as in the stream table of the diagram. The waste stream is not specified: it is whatever the "
             "component balances leave over, which is computed in the next step."
         ),
         code=(
@@ -55,7 +55,7 @@ CELLS = [
             "the feed exactly. The feasibility check asserts that no waste component is negative: a negative "
             "value would mean that the specified recoveries and purities demand more of a component than the "
             "feed contains. The anchor check compares the oxygen product rate with the hand calculation from "
-            "the PFD-102 basis (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %)."
+            "the sample basis of the diagram (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %)."
         ),
         code=(
             "waste_comp = flows['waste']\n"
