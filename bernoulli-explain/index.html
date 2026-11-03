@@ -60,10 +60,11 @@ pre#summary{white-space:pre-wrap;word-wrap:break-word;background:#faf8f2;border:
 .hidden{display:none}
 a.dl{display:inline-block;margin:8px 10px 8px 0;padding:12px 18px;border:1px solid #1f4d6e;border-radius:6px;color:#1f4d6e;text-decoration:none;background:#fff}
 video#playback{width:100%;max-width:560px;display:block;background:#000;border-radius:6px;margin:10px 0}
+html,body{max-width:100%;overflow-x:hidden}
+img,svg,canvas{max-width:100%}
+.stage,.panel,.eq{max-width:100%;box-sizing:border-box}
+.recItem{border-top:1px solid #ddd;padding:10px 0}
 @media (max-width:520px){
- .prompt{font-size:1.55rem}
- .eq{font-size:1.05rem}
- h1{font-size:1.55rem}
  .stage{padding:16px 14px}
  .wrap{padding:14px 10px 40px}
 }
@@ -118,6 +119,11 @@ video#playback{width:100%;max-width:560px;display:block;background:#000;border-r
 <p><button id="listenBtn" type="button">Start listening</button> <span id="srStatus" style="font-size:.95rem;color:#444"></span></p>
 <div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your words appear here as you speak.</div>
 <p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. This page stores nothing.</p>
+</section>
+<section class="panel" id="recordingsPanel">
+<h2>Recordings</h2>
+<p class="small" id="recEmpty">No recordings yet. A recording exists only in this page&rsquo;s memory while the page stays open &mdash; nothing is uploaded and nothing is written to disk. Closing or reloading the page discards every recording.</p>
+<div id="recList"></div>
 </section>
 
 <main id="mainArea">
@@ -202,13 +208,13 @@ var SLIDES = [
   eq: eqFromFlow(FLOW_PV, true) + '<span class="row">&nbsp;</span>' + eqFromFlow(FLOW_PR, true) },
 { n:6, title:"Enthalpy", time:60, prompt:"", symbols:"",
   eq: eqFromFlow(FLOW_PR, true) + '<span class="row">&nbsp;</span>' + eqFromFlow(FLOW_H, true) },
-{ n:7, title:"Expanded form", time:75, prompt:"", symbols:"",
+{ n:7, title:"Expanded form", time:75, prompt:"Incompressible flow", symbols:"",
   eq:'<span class="row">' + FR('(P<sub>2</sub> \u2212 P<sub>1</sub>)','\u03c1') + ' + ' + FR('(V<sub>2</sub><sup>2</sup> \u2212 V<sub>1</sub><sup>2</sup>)','2') + ' + g(z<sub>2</sub> \u2212 z<sub>1</sub>)</span>'
    + '<span class="row">= ' + DQ + ' + ' + DW + ' \u2212 (u<sub>2</sub> \u2212 u<sub>1</sub>)</span>' },
 { n:8, title:"Frictional heating", time:75, prompt:"", symbols:"",
   eq:'<span class="row">\u2131 = (u<sub>2</sub> \u2212 u<sub>1</sub>) \u2212 ' + DQ + '</span>'
    + '<span class="row">' + FR('(P<sub>2</sub> \u2212 P<sub>1</sub>)','\u03c1') + ' + ' + FR('(V<sub>2</sub><sup>2</sup> \u2212 V<sub>1</sub><sup>2</sup>)','2') + ' + g(z<sub>2</sub> \u2212 z<sub>1</sub>) = ' + DW + ' \u2212 \u2131</span>' },
-{ n:9, title:"", time:60, prompt:"", symbols:"",
+{ n:9, title:"Bernoulli's Equation", time:60, prompt:"", symbols:"",
   eq:'<span class="row">' + FR('P<sub>1</sub>','\u03c1') + ' + ' + FR('V<sub>1</sub><sup>2</sup>','2') + ' + g z<sub>1</sub> = ' + FR('P<sub>2</sub>','\u03c1') + ' + ' + FR('V<sub>2</sub><sup>2</sup>','2') + ' + g z<sub>2</sub></span>' },
 { n:10, title:"Interesting observation", time:75, prompt:"", symbols:"", eq:"", svg:true },
 { n:11, title:"Summary \u2014 Conclusion", time:60, prompt:"Summary\nConclusion", symbols:"", eq:"", center:true }
@@ -222,12 +228,10 @@ var VARIATIONS = [
 ];
 
 var RUBRIC = [
- "Selection for the level (Overview / Peer / Expert)",
- "Symbols defined before use, with SI units",
- "Assumptions stated",
- "Each part of the derivation justified in words",
- "Frictional heating explained from its definition",
- "Closing takeaway given"
+  "Complete: every equation explained in full, nothing skipped",
+  "Correct: terms, signs and subscripts as shown \u2014 work done on the system is positive, frictional heating is subtracted",
+  "Assumptions stated where they are used: steady flow, a single density throughout (incompressible), and frictional heating and external work set to zero for the final equation",
+  "The final equation named, and the observation on 10 explained with it"
 ];
 
 function el(id){ return document.getElementById(id); }
@@ -297,6 +301,61 @@ function prev(){ goTo(current - 1); }
 var stream = null, recorder = null, chunks = [], recordBlob = null, recordUrl = null;
 var hasRecorder = (typeof MediaRecorder !== "undefined");
 var takeEndSec = null, rendering = false, finalBlob = null, finalUrl = null;
+var recordings = [], recSeq = 0;
+function fmtSize(b){ return b >= 104858 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+function registerRecording(kind, blob){
+  if (!blob || !blob.size) return;
+  recordings.push({ id: ++recSeq, kind: kind, blob: blob, url: URL.createObjectURL(blob), when: new Date() });
+  renderRecordings();
+}
+function renderRecordings(){
+  var list = el("recList"); if (!list) return;
+  list.innerHTML = "";
+  el("recEmpty").style.display = recordings.length ? "none" : "";
+  recordings.forEach(function(e){
+    var d = document.createElement("div"); d.className = "recItem";
+    var head = document.createElement("p");
+    head.innerHTML = "<strong>" + e.kind + " " + e.id + "</strong> &middot; " + fmtSize(e.blob.size) + " &middot; " + e.when.toLocaleTimeString();
+    var v = document.createElement("video");
+    v.controls = true; v.src = e.url; v.setAttribute("playsinline", "");
+    v.style.cssText = "width:100%;max-width:560px;max-height:220px;background:#000;border-radius:6px;display:block";
+    var rowp = document.createElement("p");
+    var a = document.createElement("a");
+    a.href = e.url; a.className = "dl";
+    a.download = "bernoulli-" + e.kind.toLowerCase().replace(/ /g, "-") + "-" + e.id + ".webm";
+    a.textContent = "Download";
+    var del = document.createElement("button");
+    del.type = "button"; del.textContent = "Delete";
+    del.addEventListener("click", function(){ deleteRecording(e.id); });
+    rowp.appendChild(a); rowp.appendChild(del);
+    d.appendChild(head); d.appendChild(v); d.appendChild(rowp);
+    list.appendChild(d);
+  });
+}
+function deleteRecording(id){
+  for (var i = 0; i < recordings.length; i++){
+    if (recordings[i].id !== id) continue;
+    var e = recordings[i];
+    URL.revokeObjectURL(e.url);
+    if (e.blob === recordBlob){
+      recordBlob = null;
+      if (recordUrl){ URL.revokeObjectURL(recordUrl); recordUrl = null; }
+      el("playback").removeAttribute("src");
+      el("playArea").classList.add("hidden");
+      el("noRecording").classList.remove("hidden");
+      el("buildFinal").classList.add("hidden");
+    }
+    if (e.blob === finalBlob){
+      finalBlob = null;
+      if (finalUrl){ URL.revokeObjectURL(finalUrl); finalUrl = null; }
+      el("finalPlayback").removeAttribute("src");
+      el("finalArea").classList.add("hidden");
+    }
+    recordings.splice(i, 1);
+    break;
+  }
+  renderRecordings();
+}
 function camError(msg){ el("camStatus").innerHTML = '<span class="err">Camera error: ' + msg + '</span> Type mode remains fully available.'; }
 
 el("enableCam").addEventListener("click", function(){
@@ -346,6 +405,7 @@ el("startTake").addEventListener("click", function(){
           el("playArea").classList.remove("hidden");
           el("noRecording").classList.add("hidden");
           if (!el("endScreen").classList.contains("hidden")) el("buildFinal").classList.remove("hidden");
+          registerRecording("Take recording", recordBlob);
         };
         recorder.start(1000);
       } else {
@@ -814,6 +874,7 @@ el("buildFinal").addEventListener("click", function(){
       el("finalArea").classList.remove("hidden");
       el("renderStatus").textContent = transcriptText() ? "Final video ready." : "Final video ready. No transcript was captured, so it has no captions.";
       rendering = false; el("buildFinal").disabled = false;
+      registerRecording("Final video", finalBlob);
       vid.pause(); if (actx) actx.close();
     };
     var renderT0 = null;
