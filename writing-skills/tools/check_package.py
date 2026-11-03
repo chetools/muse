@@ -1,7 +1,7 @@
 """Consistency check for the writing-skills package. Exit 1 on any failure.
 
 Checks: every cited core rule number exists; every cited prefixed rule (T, E, B, F, C) exists in its
-file; every referenced file exists; no stale names (CHECKLIST, What not to do, writing-style, old rule
+file; every referenced file exists (any *.md name, backticked or not, except CLAUDE.md, which is the host repository's; and tools/*.py); no stale names (CHECKLIST, What not to do, writing-style, old rule
 ranges); SKILL.md front matter has name writing-skills.
 """
 import re, sys, pathlib
@@ -24,14 +24,15 @@ for name, t in text.items():
             if n not in core_rules:
                 errors.append(f"{name}: cites missing core rule {n}: '{m.group(0)}'")
     for ref in re.findall(r"\b([TEBFC]\d+)\b", t):
-        if name in ("evidence.md",) and ref[0] in "TCDS":
-            continue  # evidence.md uses test case codes T1-T5, C1-C6, D1-D2, S6
         p = ref[0]
         if p in defined and ref not in defined[p]:
             errors.append(f"{name}: cites missing {ref}")
-    for fref in re.findall(r"`(?:references/)?([a-z0-9-]+\.md)`", t):
-        if fref not in text:
+    for fref in re.findall(r"\b([A-Za-z0-9_-]+\.md)\b", t):
+        if fref not in text and fref != "CLAUDE.md":
             errors.append(f"{name}: references missing file {fref}")
+    for tref in re.findall(r"\btools/([a-z0-9_]+\.py)\b", t):
+        if not (root / "tools" / tref).exists():
+            errors.append(f"{name}: references missing tool {tref}")
     for stale in ["CHECKLIST", "What not to do", "writing-style", "predecessor skills, which remain"]:
         if stale in t:
             errors.append(f"{name}: stale reference '{stale}'")
