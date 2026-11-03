@@ -1,0 +1,12 @@
+{
+ "id": "P0989",
+ "input": "The analogy between the transfer processes, expressed in its most familiar form by the Chilton-Colburn analogy, draws together momentum transfer, heat transfer and mass transfer by setting the transfer factors for heat and mass alongside the friction factor for the flowing fluid, the suggestion being that the same surface behaviour governs all three. In the case of mass transfer the analogy takes $j_D$ to be equal to $f/2$, and a short check illustrates the kind of use that is made of it: for a surface at which $f$ has the value 0.008, the analogy gives $j_D$ as 0.004, a prediction obtained directly from the friction behaviour without a separate mass-transfer measurement. The analogy is, however, an analogy and not an identity, and there is a well-recognised case in which it breaks down. Where the friction factor contains a substantial contribution from form drag, as it does for flow across a bluff body, part of $f$ arises from pressure forces that have no counterpart in heat or mass transfer at the surface, and the equality with the transfer factors, which respond only to the surface shear contribution, can no longer be expected to hold.",
+ "target": "The Chilton-Colburn analogy sets the transfer factors for heat and mass transfer alongside the friction factor for the flowing fluid. One surface behaviour is taken to govern momentum, heat and mass transfer together. For mass transfer, the analogy gives $j_D$ equal to $f/2$. A short check shows the use made of the relation: at a surface where $f$ is 0.008, the analogy gives $j_D$ as 0.004, obtained from the friction behaviour with no separate mass-transfer measurement. The analogy is not an identity, and one case marks where the analogy fails. Where $f$ contains a substantial contribution from form drag, as in flow across a bluff body, part of $f$ comes from pressure forces. Pressure forces of that kind have no counterpart in heat or mass transfer at the surface. The transfer factors respond to the surface shear contribution alone. An equality between the friction term and a transfer factor cannot be expected in that case.\n\nThe check also shows the character of an analogy prediction. A value obtained from the analogy is an estimate tied to the friction measurement. The standing of the estimate rests on the case at hand falling inside the conditions where surface shear alone governs both the friction and the transfer at the surface.",
+ "derived": [
+  "0.004 = 0.008 / 2"
+ ],
+ "excerpt_numbers": [
+  0.008,
+  0.004
+ ]
+}
