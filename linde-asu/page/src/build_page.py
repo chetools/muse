@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v7"
+VERSION = "v8"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -272,7 +272,7 @@ subs = {
     "@@MODEL_LISTING@@": model_listing,
     "@@WALKTHROUGH_LISTING@@": walk_listing,
     "@@WALKTHROUGH_HTML@@": walkthrough_html,
-    "@@MOLAB_URL@@": "https://molab.marimo.io/github/chetools/muse/blob/gh-pages/muse-html/linde-asu/walkthrough_molab.py",
+    "@@MOLAB_URL@@": "https://molab.marimo.io/github/chetools/muse/blob/gh-pages/linde-asu/walkthrough_molab.py",
     "@@PRESTART_JSON@@": json.dumps(prestart),
     "@@PLOTLY_JS@@": plotly_js,
     "@@APP_JS@@": app_js,
