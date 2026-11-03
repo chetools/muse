@@ -68,6 +68,9 @@ img,svg,canvas{max-width:100%}
  .stage{padding:16px 14px}
  .wrap{padding:14px 10px 40px}
 }
+@media (max-width:600px){ .eq{font-size:.80rem} }
+@media (max-width:380px){ .eq{font-size:.76rem} }
+@media (max-width:340px){ .eq{font-size:.70rem} }
 </style>
 </head>
 <body>
@@ -76,48 +79,36 @@ img,svg,canvas{max-width:100%}
 <h1>Bernoulli Equation</h1>
 <p class="purpose">Explain the Bernoulli equation aloud or in writing, from an energy balance.</p>
 <div>
-<fieldset><legend>Mode</legend>
-<label class="choice"><input type="radio" name="mode" value="Review" checked> Review &mdash; free navigation, all prompts visible</label>
-<label class="choice"><input type="radio" name="mode" value="Record"> Record &mdash; one continuous take, movements logged</label>
-</fieldset>
 <fieldset><legend>Response</legend>
 <label class="choice"><input type="radio" name="response" value="Speak" checked> Speak (camera recording)</label>
 <label class="choice"><input type="radio" name="response" value="Type"> Type (written explanation)</label>
-</fieldset>
-<fieldset><legend>Time scale (preparation and speaking times)</legend>
-<select id="timescale">
-<option value="1" selected>1&times;</option>
-<option value="1.5">1.5&times;</option>
-<option value="2">2&times;</option>
-</select>
 </fieldset>
 </div>
 </header>
 
 <section class="panel" id="setupPanel">
-<h2 style="margin-top:0;font-size:1.15rem">Setup</h2>
+<h2 style="margin-top:0;font-size:1.15rem">Camera</h2>
 <div id="cameraArea">
-<button id="enableCam" type="button">Enable camera and microphone</button>
 <video id="preview" autoplay muted playsinline></video>
-<p id="camStatus">Camera not enabled. Speak mode needs the camera; Type mode works without it.</p>
+<p id="camStatus">The camera switches on when you press Record. Type mode works without it.</p>
 </div>
-<p style="font-size:.92rem;color:#444">Camera is evidence for a human reviewer only. The recording stays on this device.</p>
+<p style="font-size:.92rem;color:#444">The recording stays on this device until you download it.</p>
 </section>
 
 <section class="panel" id="recordPanel">
-<h2 style="margin-top:0;font-size:1.15rem">Take</h2>
+<h2 style="margin-top:0;font-size:1.15rem">Record</h2>
 <p>
-<button id="startTake" class="primary" type="button">Start take</button>
-<button id="stopTake" type="button" disabled>Stop take</button>
+<button id="startTake" class="primary" type="button">&#9679; Record</button>
+<button id="stopTake" type="button" disabled>Stop</button>
 <span class="recind" id="recInd">&#9679; RECORDING</span>
 </p>
-<p id="takeStatus" style="font-size:.95rem;color:#444">In Review mode there is no take &mdash; move freely. In Record mode, press Start take, then work through to 11.</p>
+<p id="takeStatus" style="font-size:.95rem;color:#444">Press Record to start &mdash; the camera recording and the transcript start together. Work through to 11; the variation appears on 11 while you record.</p>
 </section>
 
 <section class="panel" id="transcriptPanel">
 <h2 style="margin-top:0;font-size:1.15rem">Transcript</h2>
-<p><button id="listenBtn" type="button">Start listening</button> <span id="srStatus" style="font-size:.95rem;color:#444"></span></p>
-<div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your words appear here as you speak.</div>
+<p><span id="srStatus" style="font-size:.95rem;color:#444"></span></p>
+<div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your words appear here while you record.</div>
 <p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. This page stores nothing.</p>
 </section>
 <section class="panel" id="recordingsPanel">
@@ -235,9 +226,7 @@ var RUBRIC = [
 ];
 
 function el(id){ return document.getElementById(id); }
-function modeVal(){ var r=document.querySelectorAll('input[name="mode"]'); for(var i=0;i<r.length;i++){ if(r[i].checked) return r[i].value; } return "Review"; }
 function respVal(){ var r=document.querySelectorAll('input[name="response"]'); for(var i=0;i<r.length;i++){ if(r[i].checked) return r[i].value; } return "Speak"; }
-function timeScale(){ return parseFloat(el("timescale").value); }
 
 var current = 1;
 var sessionStart = Date.now();
@@ -274,11 +263,11 @@ function render(){
   el("counter").textContent = current + " of 11";
   el("progressInner").style.width = (current/11*100) + "%";
   var vb = el("variationBox");
-  if (current === 11 && modeVal() === "Record" && variation){
+  if (current === 11 && taking && variation){
     vb.innerHTML = "<strong>Variation \u2014 answer this in your take:</strong><br>" + variation;
     vb.classList.remove("hidden");
-  } else if (current === 11 && modeVal() === "Record" && taking === false){
-    vb.innerHTML = "<strong>Variation:</strong> revealed when your take starts.";
+  } else if (current === 11 && !taking){
+    vb.innerHTML = "<strong>Variation:</strong> revealed while you record.";
     vb.classList.remove("hidden");
   } else { vb.innerHTML=""; vb.classList.add("hidden"); }
   el("typeArea").classList.toggle("hidden", respVal() !== "Type");
@@ -358,33 +347,28 @@ function deleteRecording(id){
 }
 function camError(msg){ el("camStatus").innerHTML = '<span class="err">Camera error: ' + msg + '</span> Type mode remains fully available.'; }
 
-el("enableCam").addEventListener("click", function(){
+function enableCamera(cb){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    camError("this browser does not provide camera access (navigator.mediaDevices.getUserMedia is unavailable)."); return;
+    camError("this browser does not provide camera access (navigator.mediaDevices.getUserMedia is unavailable)."); cb(false); return;
   }
   navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(function(st){
     stream = st; el("preview").srcObject = st;
-    el("camStatus").innerHTML = '<span class="okmsg">Camera and microphone enabled.</span>' + (hasRecorder ? "" : " Note: MediaRecorder is not available in this browser, so a video take cannot be recorded here.");
-  }).catch(function(e){ camError("camera/microphone access was denied or failed (" + e.name + ")."); });
-});
+    el("camStatus").innerHTML = '<span class="okmsg">Camera and microphone on.</span>' + (hasRecorder ? "" : " Note: MediaRecorder is not available in this browser, so a video take cannot be recorded here.");
+    cb(true);
+  }).catch(function(e){ camError("camera/microphone access was denied or failed (" + e.name + ")."); cb(false); });
+}
 
 function setSettingsDisabled(dis){
-  document.querySelectorAll('input[name="mode"], input[name="response"]').forEach(function(r){ r.disabled = dis; });
-  el("timescale").disabled = dis;
+  document.querySelectorAll('input[name="response"]').forEach(function(r){ r.disabled = dis; });
 }
-el("startTake").addEventListener("click", function(){
-  if (modeVal() !== "Record"){ el("takeStatus").textContent = "Switch Mode to Record before starting a take. In Review mode, navigation is free and untimed as a take."; return; }
-  if (respVal() === "Speak" && !stream){
-    el("takeStatus").textContent = "No camera is enabled \u2014 the take has not started. Enable the camera, or switch Response to Type, then press Start take.";
-    return;
-  }
+function beginTake(){
   saveTyped();
   takeStart = Date.now(); taking = true; endedAt = null; finalEndT = null; endFrozen = false;
   visitLog = []; current = 1; logVisit(1);
   takeStarted = true; takeFirstLogT = visitLog[visitLog.length - 1].t;
   variationIdx = Math.floor(Math.random() * VARIATIONS.length);
   variation = VARIATIONS[variationIdx];
-  snapshot = { mode: modeVal(), response: respVal(), timeScale: timeScale(), variation: variation };
+  snapshot = { response: respVal(), variation: variation };
   recordBlob = null; chunks = []; recorderStopPending = false;
   if (respVal() === "Speak"){
     if (stream && hasRecorder){
@@ -412,7 +396,7 @@ el("startTake").addEventListener("click", function(){
         camError("MediaRecorder could not be started in this browser.");
       }
     } else if (!stream){
-      camError("no camera stream is enabled. Enable the camera above, or switch Response to Type and restart the take.");
+      camError("the camera could not be switched on. Allow camera access, or switch Response to Type and restart the take.");
     } else {
       camError("MediaRecorder is unavailable in this browser.");
     }
@@ -420,14 +404,26 @@ el("startTake").addEventListener("click", function(){
   el("startTake").disabled = true; el("stopTake").disabled = false;
   el("recInd").classList.add("on");
   setSettingsDisabled(true);
-  el("takeStatus").textContent = "Take running. Work through to 11; every slide move is logged. The variation is revealed on 11.";
-  el("listenBtn").disabled = true; startListening();
+  el("takeStatus").textContent = "Recording. Work through to 11; the variation is on 11.";
+  startListening();
   render();
+}
+el("startTake").addEventListener("click", function(){
+  if (taking) return;
+  if (respVal() === "Speak" && !stream){
+    el("takeStatus").textContent = "Switching the camera on\u2026";
+    enableCamera(function(ok){
+      if (ok) beginTake();
+      else el("takeStatus").textContent = "The camera could not be switched on \u2014 the take has not started. Allow camera access, or switch Response to Type.";
+    });
+    return;
+  }
+  beginTake();
 });
 
 function stopTakeInternal(){
   if (takeStarted && takeEndSec === null) takeEndSec = nowSec();
-  stopListening(); el("listenBtn").disabled = false;
+  stopListening();
   if (recorder && recorder.state !== "inactive"){ recorderStopPending = true; recorder.stop(); }
   taking = false; takeStart = null;
   el("startTake").disabled = false; el("stopTake").disabled = true;
@@ -474,7 +470,7 @@ function applyPhrases(){
 }
 function showLiveTranscript(){
   var box = el("liveTranscript"); if (!box) return;
-  if (taking && modeVal() === "Record"){ box.textContent = "Transcript is recorded during the take and shown at the end."; return; }
+  if (taking){ box.textContent = "Transcript is recorded during the take and shown at the end."; return; }
   var t = transcriptByStep[current] || "";
   if (!t && !interimText){ box.textContent = "Your words appear here as you speak."; return; }
   box.innerHTML = escHtml(t) + (interimText ? " <span style=\"color:#888;font-style:italic\">" + escHtml(interimText) + "</span>" : "");
@@ -503,7 +499,6 @@ function makeRecog(){
     if (e.error === "not-allowed" || e.error === "service-not-allowed"){
       wantListen = false;
       el("srStatus").textContent = "Speech recognition is not available here (permission or service).";
-      el("listenBtn").textContent = "Start listening";
     }
   };
   applyPhrases();
@@ -514,19 +509,15 @@ function startListening(){
   applyPhrases();
   wantListen = true;
   try { recog.start(); } catch(e){}
-  el("listenBtn").textContent = "Stop listening";
   el("srStatus").textContent = "Listening.";
 }
 function stopListening(){
   wantListen = false; interimText = "";
   if (recog){ try { recog.stop(); } catch(e){} }
-  el("listenBtn").textContent = "Start listening";
   if (!taking) el("srStatus").textContent = SR ? "Speech recognition available." : "Speech recognition is not available in this browser.";
   showLiveTranscript();
 }
-el("listenBtn").addEventListener("click", function(){ if (wantListen) stopListening(); else startListening(); });
-el("srStatus").textContent = SR ? "Speech recognition available." : "Speech recognition is not available in this browser.";
-if (!SR) el("listenBtn").disabled = true;
+el("srStatus").textContent = SR ? "Speech recognition available. It starts when you press Record." : "Speech recognition is not available in this browser.";
 function transcriptText(){
   var out = [];
   for (var k = 1; k <= 11; k++){ if (transcriptByStep[k]) out.push(k + " (" + SLIDES[k-1].title + "): " + transcriptByStep[k]); }
@@ -549,8 +540,7 @@ document.addEventListener("keydown", function(e){
   if (e.key === "ArrowRight" || e.key === " "){ e.preventDefault(); next(); }
   else if (e.key === "ArrowLeft"){ e.preventDefault(); prev(); }
 });
-document.querySelectorAll('input[name="mode"], input[name="response"]').forEach(function(r){ r.addEventListener("change", function(ev){ render(); if (ev.target && ev.target.blur) ev.target.blur(); }); });
-el("timescale").addEventListener("change", function(){ render(); el("timescale").blur(); });
+document.querySelectorAll('input[name="response"]').forEach(function(r){ r.addEventListener("change", function(ev){ render(); if (ev.target && ev.target.blur) ev.target.blur(); }); });
 
 /* ---- end screen ---- */
 RUBRIC.forEach(function(item, i){
@@ -560,39 +550,17 @@ RUBRIC.forEach(function(item, i){
   el("rubricBox").appendChild(lab);
 });
 
-function dwellTotals(endT){
-  var totals = {};
-  for (var i = 0; i < visitLog.length; i++){
-    var until = (i + 1 < visitLog.length) ? visitLog[i+1].t : endT;
-    var d = Math.max(0, until - visitLog[i].t);
-    totals[visitLog[i].step] = (totals[visitLog[i].step] || 0) + d;
-  }
-  return totals;
-}
 
 function buildSummary(){
   var endT = (finalEndT !== null) ? finalEndT : nowSec();
-  var totals = dwellTotals(endT);
   var total = (takeStarted && takeFirstLogT !== null) ? (endT - takeFirstLogT) : endT;
-  var hdrMode = snapshot ? snapshot.mode : modeVal();
   var hdrResp = snapshot ? snapshot.response : respVal();
-  var hdrScale = snapshot ? snapshot.timeScale : timeScale();
   var hdrVariation = snapshot ? snapshot.variation : variation;
   var lines = [];
   lines.push("Bernoulli Equation \u2014 session summary");
-  lines.push("Mode: " + hdrMode);
   lines.push("Response: " + hdrResp);
-  lines.push("Time scale: " + hdrScale + "x");
   lines.push("Total time: " + fmtTime(total) + " (" + Math.round(total) + " s)");
-  lines.push("Variation shown: " + (hdrMode === "Record" && hdrVariation ? hdrVariation : "none (Review mode, or no take started)"));
-  lines.push("");
-  lines.push("Time on each slide (s), from the slide visit log:");
-  for (var k = 1; k <= 11; k++){
-    lines.push(k + " (" + SLIDES[k-1].title + "): " + (totals[k] ? Math.round(totals[k]) : 0) + " s");
-  }
-  lines.push("");
-  lines.push("Slide visit log (slide at seconds from session start):");
-  visitLog.forEach(function(v){ lines.push("  slide " + v.step + " at " + v.t.toFixed(1) + " s"); });
+  lines.push("Variation shown: " + (hdrVariation ? hdrVariation : "none (no take started)"));
   var anyTyped = false;
   for (var q = 1; q <= 11; q++){ if (typed[q] && typed[q].trim()) anyTyped = true; }
   if (anyTyped){
@@ -659,7 +627,7 @@ el("restartBtn").addEventListener("click", function(){
   el("endScreen").classList.add("hidden");
   el("mainArea").classList.remove("hidden");
   current = 1; logVisit(1); render();
-  el("takeStatus").textContent = "Restarted. In Record mode, press Start take to begin a new take.";
+  el("takeStatus").textContent = "Restarted. Press Record to begin a new take.";
   window.scrollTo(0,0);
 });
 
