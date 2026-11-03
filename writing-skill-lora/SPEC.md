@@ -40,7 +40,11 @@ the drafting-from-outline LoRA project eliminated on 2026-11-01.
   mathematics in LaTeX source form. The prose is restyled; every math
   span is byte-identical between input and target. These teach
   copy-through of mathematics. The smoke set contains none.
-  (Amendment adopted by the user, 2026-11-03.)
+  (Amendment adopted by the user, 2026-11-03.) Symbols named in the
+  prose are symbols, written as inline math spans (for example $\rho$,
+  the density, in kg m-3), never as spelled-out names ("rho"); a
+  spelled-out symbol name in a draft is itself a style fault the
+  rewrite corrects by restoring the symbol.
 - Every pair is generated from a frozen brief: a fact base with every
   number, unit, name and limit the passages may state. Writers state no
   fact outside the brief. All quantities are in SI units; any source
@@ -127,7 +131,15 @@ Held-out topics only, blind-coded, randomised labels.
   protected span is replaced in the prose by a short placeholder.
   Protected spans are reinserted verbatim after rewriting, and the
   gate's hash comparison verifies the reinserted set against the
-  input set before delivery.
+  input set before delivery. Segmentation and reinsertion are
+  deterministic code, not model behaviour: the module
+  `tools/protect_spans.py` in this project (protect / restore,
+  standard library only), destined for the writing-skill package and
+  used unchanged by the endpoint and by any other caller of the
+  rewriter. Its restore step raises on any placeholder mismatch, so a
+  passage whose placeholders were altered fails instead of being
+  repaired silently; text with unparseable math delimiters is
+  protected whole and reaches the model not at all.
 - Adapter loaded from Hugging Face; base model in 4-bit form on a
   low-cost GPU is acceptable for inference if output quality holds.
 - The endpoint is a tool called by the assistant; it is not part of the
