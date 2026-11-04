@@ -104,7 +104,10 @@ body.study-on #studyPanel { grid-column:2; }
 <h1>Bernoulli Equation</h1>
 <p class="purpose">Explain the Bernoulli equation aloud, from an energy balance.</p>
 <div>
-<p style="font-size:.95rem;color:#444;margin:4px 0">Response: Speak &mdash; explain aloud to the camera.</p>
+<fieldset><legend>Response</legend>
+<label class="choice"><input type="radio" name="response" value="Speak" checked> Speak (camera recording)</label>
+<label class="choice"><input type="radio" name="response" value="Audio"> Audio only (microphone, no camera)</label>
+</fieldset>
 </div>
 </header>
 
@@ -172,6 +175,7 @@ body.study-on #studyPanel { grid-column:2; }
 <h3>Your recording</h3>
 <video id="playback" controls playsinline></video>
 <p><a class="dl" id="dlRecording" download="bernoulli-explanation.webm">Download recording</a></p>
+<p><a class="dl hidden" id="dlAudio" download="bernoulli-explanation-audio.wav">Download audio only (WAV)</a></p>
 </div>
 <p id="noRecording">No recording was made in this session.</p>
 <div id="finalArea" class="hidden">
@@ -316,7 +320,7 @@ function goTo(n){
   saveTyped();
   if (n < 1) n = 1;
   if (n > SLIDES.length){ showEnd(); return; }
-  current = n; logVisit(current); render();
+  current = n; logVisit(current); audioMark(); render();
 }
 function next(){ goTo(current + 1); }
 function prev(){ goTo(current - 1); }
@@ -400,7 +404,7 @@ function beginTake(){
   saveTyped();
   takeStart = Date.now(); taking = true; endedAt = null; finalEndT = null; endFrozen = false;
   visitLog = []; current = 1; logVisit(1);
-  transcriptByStep = {};
+  transcriptByStep = {}; audioSegs = []; takeAudioRegistered = false;
   takeStarted = true; takeFirstLogT = visitLog[visitLog.length - 1].t;
   variationIdx = Math.floor(Math.random() * VARIATIONS.length);
   variation = VARIATIONS[variationIdx];
@@ -424,6 +428,8 @@ function beginTake(){
           el("dlRecording").href = recordUrl;
           el("playArea").classList.remove("hidden");
           el("noRecording").classList.add("hidden");
+          el("playback").classList.remove("hidden");
+          el("dlRecording").classList.remove("hidden");
           if (!el("endScreen").classList.contains("hidden")) el("buildFinal").classList.remove("hidden");
           registerRecording("Take recording", recordBlob);
         };
@@ -441,11 +447,12 @@ function beginTake(){
   el("recInd").classList.add("on");
   setSettingsDisabled(true);
   el("takeStatus").textContent = "Recording. Work through to " + SLIDES.length + "; the variation is on " + SLIDES.length + ".";
+  if (stream){ startAudioCapture(stream); }
   render();
 }
 el("startTake").addEventListener("click", function(){
   if (taking) return;
-  if (respVal() === "Speak" && !stream){
+  if (respVal() === "Speak" && (!stream || !stream.getVideoTracks().length)){
     el("takeStatus").textContent = "Switching the camera on\u2026";
     enableCamera(function(ok){
       if (ok) beginTake();
@@ -453,10 +460,126 @@ el("startTake").addEventListener("click", function(){
     });
     return;
   }
+  if (respVal() === "Audio" && !micStream){
+    el("takeStatus").textContent = "Switching the microphone on\u2026";
+    primeAudioCapture();
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(ms){
+      micStream = ms; stream = ms; beginTake();
+    }).catch(function(){
+      el("takeStatus").textContent = "The microphone could not be switched on \u2014 the take has not started. Allow microphone access, or switch Response to Speak.";
+    });
+    return;
+  }
   beginTake();
 });
 
+/* ---- take audio capture: one segment per slide, for the audio download ---- */
+var audioSegs = [];
+var audioCapture = null, audioCtx = null;
+var micStream = null;
+function primeAudioCapture(){
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch(e){}
+}
+function startAudioCapture(srcStream){
+  stopAudioCapture();
+  try {
+    if (!srcStream || !srcStream.getAudioTracks || !srcStream.getAudioTracks().length) return;
+    primeAudioCapture();
+    if (!audioCtx) return;
+    var src = audioCtx.createMediaStreamSource(srcStream);
+    var proc = audioCtx.createScriptProcessor(4096, 1, 1);
+    var cap = { proc: proc, chunks: [], samples: 0, rate: audioCtx.sampleRate, marks: [{ step: 1, at: 0 }] };
+    proc.onaudioprocess = function(ev){
+      var data = ev.inputBuffer.getChannelData(0);
+      var copy = new Float32Array(data.length); copy.set(data);
+      cap.chunks.push(copy); cap.samples += data.length;
+      var out = ev.outputBuffer.getChannelData(0);
+      for (var i = 0; i < out.length; i++) out[i] = 0;
+    };
+    src.connect(proc); proc.connect(audioCtx.destination);
+    audioCapture = cap;
+  } catch(e){ audioCapture = null; }
+}
+function audioMark(){
+  if (audioCapture && taking){ audioCapture.marks.push({ step: current, at: audioCapture.samples }); }
+}
+function stopAudioCapture(){
+  if (!audioCapture) return;
+  try { audioCapture.proc.disconnect(); } catch(e){}
+  audioCapture = null;
+}
+function resample16k(samples, fromRate){
+  if (fromRate === 16000) return samples;
+  var ratio = fromRate / 16000;
+  var len = Math.floor(samples.length / ratio);
+  var out = new Float32Array(len);
+  for (var i = 0; i < len; i++){
+    var pos = i * ratio; var j = Math.floor(pos); var frac = pos - j;
+    var a = samples[j] || 0; var b = (j + 1 < samples.length) ? samples[j + 1] : a;
+    out[i] = a + (b - a) * frac;
+  }
+  return out;
+}
+function buildAudioSegs(){
+  audioSegs = [];
+  var cap = audioCapture;
+  if (!cap || !cap.samples){ stopAudioCapture(); return; }
+  var all = new Float32Array(cap.samples); var off = 0;
+  cap.chunks.forEach(function(c){ all.set(c, off); off += c.length; });
+  var marks = cap.marks;
+  for (var i = 0; i < marks.length; i++){
+    var start = marks[i].at;
+    var end = (i + 1 < marks.length) ? marks[i + 1].at : cap.samples;
+    if (end > start + cap.rate * 0.05){
+      audioSegs.push({ step: marks[i].step, audio: resample16k(all.subarray(start, end), cap.rate) });
+    }
+  }
+  stopAudioCapture();
+}
+function encodeWAV(samples){
+  var buf = new ArrayBuffer(44 + samples.length * 2);
+  var v = new DataView(buf);
+  function wstr(off, str){ for (var i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i)); }
+  wstr(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); wstr(8, "WAVE");
+  wstr(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  wstr(36, "data"); v.setUint32(40, samples.length * 2, true);
+  for (var i = 0; i < samples.length; i++){
+    var x = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(44 + i * 2, x < 0 ? x * 32768 : x * 32767, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+var takeAudioUrl = null, takeAudioRegistered = false;
+function takeAudioBlob(){
+  if (!audioSegs.length) return null;
+  var total = 0;
+  audioSegs.forEach(function(s){ total += s.audio.length; });
+  var all = new Float32Array(total); var off = 0;
+  audioSegs.forEach(function(s){ all.set(s.audio, off); off += s.audio.length; });
+  return encodeWAV(all);
+}
+function offerTakeAudio(){
+  var blob = takeAudioBlob();
+  var link = el("dlAudio");
+  if (!blob){ if (link) link.classList.add("hidden"); return; }
+  if (takeAudioUrl) URL.revokeObjectURL(takeAudioUrl);
+  takeAudioUrl = URL.createObjectURL(blob);
+  if (link){ link.href = takeAudioUrl; link.classList.remove("hidden"); }
+  el("playArea").classList.remove("hidden");
+  el("noRecording").classList.add("hidden");
+  if (!takeAudioRegistered){ takeAudioRegistered = true; registerRecording("Take audio (WAV)", blob); }
+}
+window.addEventListener("beforeunload", function(e){
+  if (taking || takeStarted || el("recList").children.length){ e.preventDefault(); e.returnValue = ""; }
+});
 function stopTakeInternal(){
+  buildAudioSegs();
   if (takeStarted && takeEndSec === null) takeEndSec = nowSec();
   if (recorder && recorder.state !== "inactive"){ recorderStopPending = true; recorder.stop(); }
   taking = false; takeStart = null;
@@ -533,9 +656,13 @@ function showEnd(){
   el("mainArea").classList.add("hidden");
   el("endScreen").classList.remove("hidden");
   var hasRec = !!recordBlob;
-  el("playArea").classList.toggle("hidden", !hasRec);
-  el("noRecording").classList.toggle("hidden", hasRec || recorderStopPending);
+  var hasAudio = audioSegs.length > 0;
+  el("playArea").classList.toggle("hidden", !(hasRec || hasAudio));
+  el("noRecording").classList.toggle("hidden", hasRec || hasAudio || recorderStopPending);
   el("buildFinal").classList.toggle("hidden", !hasRec);
+  el("playback").classList.toggle("hidden", !hasRec);
+  el("dlRecording").classList.toggle("hidden", !hasRec);
+  offerTakeAudio();
   studyMarkPass();
   el("summary").textContent = buildSummary();
   studyEndUpdate(); studyRender();
