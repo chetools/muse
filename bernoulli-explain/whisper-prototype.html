@@ -111,7 +111,7 @@ img,svg,canvas{max-width:100%}
 <div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your words appear here while you record.</div>
 <p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. On Safari, recognition is Apple&rsquo;s: it may pause after each phrase, and it may not run while the camera records &mdash; Type mode leaves the microphone to recognition alone. This page stores nothing.</p>
 <h3 style="font-size:1rem;margin:14px 0 6px">Whisper transcription &mdash; prototype</h3>
-<p style="font-size:.92rem;color:#444">A second recogniser, Whisper, runs in this page from the take&rsquo;s own recorded audio. The model is the same in every browser, and no audio leaves the device. The model downloads on first use and is then cached by the browser. After a take, transcribe it from the end screen and compare the two transcripts.</p>
+<p style="font-size:.92rem;color:#444">A second recogniser, Whisper, runs in this page from the take&rsquo;s own recorded audio. The model is the same in every browser, and no audio leaves the device. The model downloads on first use and is then cached by the browser. After a take, transcribe it from the end screen and compare the two transcripts. On an iPhone the Tiny model and the WebAssembly engine are used: the Base model and the graphics-processor engine can exceed the phone browser&rsquo;s memory limit and close the page.</p>
 <p style="font-size:.95rem">Model:
 <select id="whisperModel" style="max-width:100%">
 <option value="base" selected>Base &mdash; better on accents and technical words; larger download</option>
@@ -789,7 +789,9 @@ function whisperWorkerSource(){
     "      m.env.allowLocalModels = false;",
     "      try { m.env.backends.onnx.wasm.numThreads = 1; } catch(err){}",
     "      var prog = function(p){ if (p && p.status === 'progress' && p.file && String(p.file).indexOf('.onnx') >= 0){ self.postMessage({ type: 'progress', file: p.file, progress: p.progress || 0 }); } };",
-    "      var attempts = [",
+    "      var attempts = d.wasmOnly ? [",
+    "        { device: 'wasm', dtype: 'q8' }",
+    "      ] : [",
     "        { device: 'webgpu', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' } },",
     "        { device: 'wasm', dtype: 'q8' }",
     "      ];",
@@ -826,6 +828,10 @@ function whisperGetWorker(){
   };
   return whisperWorker;
 }
+function whisperIsIOS(){
+  var ua = navigator.userAgent || "";
+  return /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
 function whisperEnsureLoaded(cb){
   var model = WHISPER_MODELS[el("whisperModel").value] || WHISPER_MODELS.base;
   if (whisperReady && whisperLoadedModel === model){ cb(true); return; }
@@ -836,7 +842,7 @@ function whisperEnsureLoaded(cb){
   whisperLoadWaiter = cb; whisperLoadedModel = model;
   whisperProgressShow(true, 0);
   whisperStatus("Loading Whisper — the model downloads on first use and is then cached.");
-  whisperGetWorker().postMessage({ type: "load", model: model });
+  whisperGetWorker().postMessage({ type: "load", model: model, wasmOnly: whisperIsIOS() });
 }
 function whisperOnMessage(e){
   var d = e.data || {};
@@ -890,6 +896,10 @@ el("whisperRun").addEventListener("click", whisperRunTranscription);
 el("whisperModel").addEventListener("change", function(){
   if (whisperReady) whisperStatus("Model changed — Whisper reloads on next use.");
 });
+if (whisperIsIOS()){
+  el("whisperModel").value = "tiny";
+  whisperStatus("Whisper is not loaded. On an iPhone the Tiny model is selected: the Base model can exceed the browser memory limit and close the page.");
+}
 
 /* ---- final video: slide + face strip + captions, built after the take ---- */
 function stepSegments(){
