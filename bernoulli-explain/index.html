@@ -25,7 +25,6 @@ video#preview{width:100%;max-width:420px;background:#000;border-radius:6px;displ
 .err{color:#8b1a1a;font-weight:bold}
 .okmsg{color:#1e5c2e}
 .stage{background:#fff;border:1px solid #c9c4b8;border-radius:8px;padding:22px 22px 16px;position:relative;min-height:340px}
-.stage.cmdflash{outline:5px solid #1f7a3d;outline-offset:-5px}
 .steptag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:.9rem;color:#555;margin-bottom:6px}
 .leveltag{background:#e8e2d2;border-radius:4px;padding:2px 8px;font-weight:bold;color:#333}
 h2.steptitle{font-size:1.45rem;margin:2px 0 10px}
@@ -104,14 +103,13 @@ img,svg,canvas{max-width:100%}
 <span class="recind" id="recInd">&#9679; RECORDING</span>
 </p>
 <p id="takeStatus" style="font-size:.95rem;color:#444">Press Record to start &mdash; the camera recording and the transcript start together. Work through to 13; the variation appears on 13 while you record.</p>
-<p style="font-size:.92rem;color:#444">While recording, you can say &ldquo;next slide&rdquo; or &ldquo;previous slide&rdquo; to move. Commands are left out of the transcript and are muted in the final video.</p>
 </section>
 
 <section class="panel" id="transcriptPanel">
 <h2 style="margin-top:0;font-size:1.15rem">Transcript</h2>
 <p><span id="srStatus" style="font-size:.95rem;color:#444"></span></p>
 <div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your words appear here while you record.</div>
-<p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. On Safari, recognition is Apple&rsquo;s: it may pause after each phrase, and it may not run while the camera records &mdash; Type mode, or Chrome, is more reliable for voice commands. This page stores nothing.</p>
+<p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. On Safari, recognition is Apple&rsquo;s: it may pause after each phrase, and it may not run while the camera records &mdash; Type mode leaves the microphone to recognition alone. This page stores nothing.</p>
 </section>
 <section class="panel" id="recordingsPanel">
 <h2>Recordings</h2>
@@ -246,8 +244,6 @@ var sessionStart = Date.now();
 var takeStart = null;
 var taking = false;
 var visitLog = [];       // {step, t} t = seconds relative to take start (Record take) or session start
-var cmdEvents = [], takeCmds = [];
-var lastCmdText = "", lastCmdAt = 0;   // voice navigation commands, take-relative times; frozen copy per take
 var typed = {};          // step -> text
 var variation = null;    // variation string or null
 var variationIdx = -1;
@@ -294,7 +290,7 @@ function render(){
 function saveTyped(){ if (respVal() === "Type"){ typed[current] = el("typebox").value; } }
 function goTo(n){
   saveTyped();
-  if (taking && interimText && interimText.trim() && !commandDirection(interimText)){ pendingInterim[current] = correctText(interimText.trim()); }
+  if (taking && interimText && interimText.trim()){ pendingInterim[current] = correctText(interimText.trim()); }
   if (n < 1) n = 1;
   if (n > SLIDES.length){ showEnd(); return; }
   current = n; logVisit(current); render();
@@ -380,8 +376,8 @@ function setSettingsDisabled(dis){
 function beginTake(){
   saveTyped();
   takeStart = Date.now(); taking = true; endedAt = null; finalEndT = null; endFrozen = false;
-  visitLog = []; cmdEvents = []; current = 1; logVisit(1);
-  transcriptByStep = {}; pendingInterim = {}; interimText = ""; lastCmdText = ""; lastCmdAt = 0;
+  visitLog = []; current = 1; logVisit(1);
+  transcriptByStep = {}; pendingInterim = {}; interimText = "";
   takeStarted = true; takeFirstLogT = visitLog[visitLog.length - 1].t;
   variationIdx = Math.floor(Math.random() * VARIATIONS.length);
   variation = VARIATIONS[variationIdx];
@@ -450,10 +446,9 @@ function reconcileTranscript(){
   }
 }
 function stopTakeInternal(){
-  if (interimText && interimText.trim() && !commandDirection(interimText)){ pendingInterim[current] = correctText(interimText.trim()); }
+  if (interimText && interimText.trim()){ pendingInterim[current] = correctText(interimText.trim()); }
   reconcileTranscript();
   if (takeStarted && takeEndSec === null) takeEndSec = nowSec();
-  takeCmds = cmdEvents.slice();
   stopListening();
   if (recorder && recorder.state !== "inactive"){ recorderStopPending = true; recorder.stop(); }
   taking = false; takeStart = null;
@@ -521,25 +516,11 @@ function makeRecog(){
       var r = e.results[i];
       if (r.isFinal){
         var raw = (r[0].transcript || "").trim();
-        var dir = taking ? commandDirection(raw) : 0;
-        if (dir && raw.toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim() === lastCmdText && (Date.now() - lastCmdAt) < 3500){ continue; }
-        if (dir){ handleVoiceCommand(dir); continue; }
         var seg = correctText(raw);
         if (seg){ transcriptByStep[current] = ((transcriptByStep[current] || "") + " " + seg).trim(); }
       } else { inter += r[0].transcript; }
     }
-    interimText = inter;
-    if (taking && inter){
-      var idir = commandDirection(inter);
-      if (idir){
-        lastCmdText = inter.toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
-        lastCmdAt = Date.now();
-        interimText = "";
-        handleVoiceCommand(idir);
-        return;
-      }
-    }
-    showLiveTranscript();
+    interimText = inter; showLiveTranscript();
   };
   recog.onstart = function(){ recogActive = true; };
   recog.onend = function(){ recogActive = false; if (wantListen){ setTimeout(function(){ if (wantListen && !recogActive){ try { recog.start(); } catch(e){} } }, 250); } };
@@ -552,21 +533,6 @@ function makeRecog(){
     }
   };
   applyPhrases();
-}
-var CMD_NEXT = {"next slide":1, "next":1, "next please":1, "please next slide":1, "neck slide":1, "go next":1, "forward slide":1};
-var CMD_PREV = {"previous slide":1, "previous":1, "previous please":1, "please previous slide":1, "go back":1, "back slide":1};
-function commandDirection(text){
-  var n = String(text || "").toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
-  if (CMD_NEXT[n]) return 1;
-  if (CMD_PREV[n]) return -1;
-  return 0;
-}
-function handleVoiceCommand(dir){
-  cmdEvents.push({ t: nowSec() - (takeFirstLogT || 0), dir: dir });
-  var st = el("stage");
-  st.classList.add("cmdflash");
-  setTimeout(function(){ st.classList.remove("cmdflash"); }, 700);
-  if (dir > 0) next(); else prev();
 }
 function startListening(){
   if (!SR) return;
@@ -685,7 +651,7 @@ el("restartBtn").addEventListener("click", function(){
   if (rendering){ el("renderStatus").textContent = "Wait for the final video to finish building."; return; }
   if (taking) stopTakeInternal();
   sessionStart = Date.now(); takeStart = null; taking = false;
-  visitLog = []; cmdEvents = []; takeCmds = []; typed = {}; transcriptByStep = {}; pendingInterim = {}; interimText = ""; variation = null; variationIdx = -1; endedAt = null; finalEndT = null;
+  visitLog = []; typed = {}; transcriptByStep = {}; pendingInterim = {}; interimText = ""; variation = null; variationIdx = -1; endedAt = null; finalEndT = null;
   endFrozen = false; takeStarted = false; takeFirstLogT = null; snapshot = null; recorderStopPending = false;
   takeEndSec = null; finalBlob = null; finalUrl = null; el("finalArea").classList.add("hidden"); el("renderStatus").textContent = "";
   recordBlob = null; chunks = [];
@@ -866,7 +832,7 @@ el("buildFinal").addEventListener("click", function(){
     var canvas = document.createElement("canvas"); canvas.width = 1280; canvas.height = 720;
     var cx = canvas.getContext("2d");
     var AC = window.AudioContext || window.webkitAudioContext;
-    var actx = null, audioDest = null, useWebAudio = false, muteGain = null;
+    var actx = null, audioDest = null, useWebAudio = false;
     if (AC){
       try {
         actx = new AC();
@@ -874,8 +840,7 @@ el("buildFinal").addEventListener("click", function(){
         if (actx.state === "running"){
           var srcNode = actx.createMediaElementSource(vid);
           audioDest = actx.createMediaStreamDestination();
-          muteGain = actx.createGain();
-          srcNode.connect(muteGain); muteGain.connect(audioDest);
+          srcNode.connect(audioDest);
           useWebAudio = true;
         }
       } catch(e){ actx = null; audioDest = null; useWebAudio = false; }
@@ -910,19 +875,13 @@ el("buildFinal").addEventListener("click", function(){
       el("renderStatus").textContent = transcriptText() ? "Final video ready." : "Final video ready. No transcript was captured, so it has no captions.";
       rendering = false; el("buildFinal").disabled = false;
       registerRecording("Final video", finalBlob);
-      vid.muted = false; vid.pause(); if (actx) actx.close();
+      vid.pause(); if (actx) actx.close();
     };
     var renderT0 = null;
     function drawFrame(){
       if (finished) return;
       if (renderT0 === null) renderT0 = performance.now();
       var ct = (performance.now() - renderT0) / 1000;
-      var cmdMuted = false;
-      for (var ci = 0; ci < takeCmds.length; ci++){
-        if (ct >= Math.max(0, takeCmds[ci].t - 2.2) && ct <= takeCmds[ci].t + 0.3){ cmdMuted = true; break; }
-      }
-      if (muteGain) muteGain.gain.value = cmdMuted ? 0 : 1;
-      if (!useWebAudio) vid.muted = cmdMuted;
       cx.fillStyle = "#f7f3ea"; cx.fillRect(0, 0, 1280, 720);
       var seg = null;
       for (var i = 0; i < info.segs.length; i++){ if (ct >= info.segs[i].start && ct < info.segs[i].end) seg = info.segs[i]; }
