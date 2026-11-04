@@ -39,17 +39,17 @@
 <body>
 <div class="page">
 <h1>Writing skill: paired samples</h1>
-<p class="standfirst">This skill corrects defects that recur in AI-written prose: claims stronger than the evidence, numbers apart from their comparisons and conditions, terms used before definition, findings held to the final paragraph. A draft written with this skill states each claim at the strength of its evidence, where a reader can check the claim. Development came from analysis of published writing: highly cited papers in Nature and Science, tutorials and explainers from Anthropic, OpenAI, Google and DeepMind, and business reports from Harvard Business Review, MIT Sloan Management Review, McKinsey, Boston Consulting Group and Bain. The samples below state the same facts with and without this skill.</p>
+<p class="standfirst">This skill corrects defects that recur in AI-written prose: claims stronger than the evidence, numbers apart from their comparisons and conditions, terms used before definition, findings held to the final paragraph. A draft written with this skill states each claim at the strength of its evidence, where a reader can check the claim. Development came from analysis of published writing: highly cited papers in Nature and Science, tutorials and explainers from Anthropic, OpenAI, Google and DeepMind, chemical-engineering textbooks, and business reports from Harvard Business Review, MIT Sloan Management Review, McKinsey, Boston Consulting Group and Bain. The samples below state the same facts with and without this skill.</p>
 <div class="legend">Highlighting: <mark class="bad">pale red</mark> marks a weak form in the without-skill passage. <mark class="good">Pale green</mark> marks the corresponding form in the with-skill passage. The line after each pair names the differences shown.</div>
 
 <section class="sample">
 <h2>Sample 1 (STEM) — Research abstract: structured catalyst for methanol synthesis</h2>
-<p class="trigger">Package load for the with-skill version: core + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. Carbon dioxide and hydrogen react over a copper–zinc oxide catalyst to give methanol. Space-time yield is the mass of methanol produced per unit catalyst volume per hour, in kilograms per litre per hour (kg L<sup>−1</sup> h<sup>−1</sup>). Test conditions: 250 °C, 50 bar, feed ratio H<sub>2</sub>/CO<sub>2</sub> = 3. Structured catalyst: space-time yield 0.84 kg L<sup>−1</sup> h<sup>−1</sup>, pressure drop 0.18 bar, activity loss 6% after 100 h. Pellet catalyst: 0.61 kg L<sup>−1</sup> h<sup>−1</sup>, 1.25 bar, 14% after 100 h. One feed composition was tested; no sulfur-bearing feed was tested. Yield and pressure drop are seldom reported for the same catalyst charge.</p>
 <div class="pair">
 <div class="col">
 <h3>Without the skill</h3>
-<p>Methanol synthesis from carbon dioxide and hydrogen was studied over a copper–zinc oxide catalyst in two forms: a structured catalyst and a pellet catalyst having the same composition. Space-time yield, defined as the mass of methanol produced per unit catalyst volume per hour, was measured together with pressure drop and activity loss. Tests were conducted at 250 °C and 50 bar with a feed ratio H2/CO2 = 3. The structured catalyst gave a space-time yield of 0.84 kg L−1 h−1 and a pressure drop of 0.18 bar. Its activity loss after 100 h was 6%. The pellet catalyst gave a lower space-time yield of 0.61 kg L−1 h−1, a higher pressure drop of 1.25 bar, and an activity loss of 14% after 100 h. Only one feed composition was tested, and no sulfur-bearing feed was included. <mark class="bad">Yield and pressure drop are seldom reported together for the same catalyst charge, although both quantities were also measured here for each catalyst form.</mark></p>
+<p>Methanol synthesis from carbon dioxide and hydrogen was studied over a copper–zinc oxide catalyst in two forms: a structured catalyst and a pellet catalyst having the same composition. Space-time yield, defined as the mass of methanol produced per unit catalyst volume per hour, was measured together with pressure drop and activity loss. Tests were conducted at 250 °C and 50 bar with a feed ratio H2/CO2 = 3. The structured catalyst gave a space-time yield of 0.84 kg L−1 h−1 and a pressure drop of 0.18 bar. Its activity loss after 100 h was 6%. The pellet catalyst gave a lower space-time yield of 0.61 kg L−1 h−1, a higher pressure drop of 1.25 bar, and an activity loss of 14% after 100 h. <mark class="bad">Only one feed composition was tested, and no sulfur-bearing feed was included.</mark> Yield and pressure drop are seldom reported together for the same catalyst charge, although both quantities were also measured here for each catalyst form.</p>
 </div>
 <div class="col">
 <h3>With the skill</h3>
@@ -60,7 +60,7 @@
 </section>
 <section class="sample">
 <h2>Sample 2 (STEM) — Tutorial: heat-transfer coefficient from a cooling curve</h2>
-<p class="trigger">Package load for the with-skill version: core + textbook reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + textbook reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. An estimate of the overall heat-transfer coefficient, denoted U (W m<sup>−2</sup> K<sup>−1</sup>), comes from fitting a cooling model to measured liquid temperatures. A residual is a measured temperature minus the model temperature at the same time; the sum of squared residuals has units of K<sup>2</sup>. Standard error of an estimate is the spread of estimates the same fit would give across repeated measurement sets with the same measurement noise. Worked example: 6 measurements over 30 min; starting guess U = 420 W m<sup>−2</sup> K<sup>−1</sup> gives a sum of squared residuals of 18.6 K<sup>2</sup>; the fit gives U = 512 W m<sup>−2</sup> K<sup>−1</sup> with a standard error of 24 W m<sup>−2</sup> K<sup>−1</sup> and a sum of squared residuals of 2.1 K<sup>2</sup>; iterations stop when the relative change in the sum of squared residuals falls below 0.1%. Room temperature is held constant in the model, and no evaporation is admitted.</p>
 <div class="pair">
 <div class="col">
@@ -71,15 +71,15 @@
 </div>
 <div class="col">
 <h3>With the skill</h3>
-<p>This tutorial estimates the overall heat-transfer coefficient from a cooling curve. The symbol U denotes that coefficient (W m−2 K−1). An estimate of U comes from fitting a cooling model to measured liquid temperatures. A residual is a measured temperature minus the model temperature at the same time. Each residual pairs one measured temperature with the model temperature at the same time in the worked example. For residuals, the sum of squared residuals has units of K2. Standard error of an estimate is the spread of estimates the same fit would give across repeated measurement sets with the same measurement noise. <mark class="good">Fitting gives U = 512 W m−2 K−1, with a standard error of 24 W m−2 K−1</mark>.</p>
-<p>In the worked example, the stated data are 6 measurements over 30 min. At the starting guess U = 420 W m−2 K−1, the sum of squared residuals is 18.6 K2. Fitted-model output gives a sum of squared residuals of 2.1 K2. Iterations stop when the relative change in the sum of squared residuals falls below 0.1%. Room temperature is held constant in the model, and no evaporation is admitted. By subtraction of 2.1 K2 from 18.6 K2, the fitted sum of squared residuals is 16.5 K2 lower than the starting-guess sum.</p>
+<p>This tutorial estimates the overall heat-transfer coefficient from a cooling curve. The symbol U denotes that coefficient (W m−2 K−1). An estimate of U comes from fitting a cooling model to measured liquid temperatures. A residual is a measured temperature minus the model temperature at the same time. Each residual pairs one measured temperature with the model temperature at the same time in the worked example. For residuals, the sum of squared residuals has units of K2. Standard error of an estimate is the spread of estimates the same fit would give across repeated measurement sets with the same measurement noise. Fitting gives U = 512 W m−2 K−1, with a standard error of 24 W m−2 K−1.</p>
+<p>In the worked example, the stated data are 6 measurements over 30 min. At the starting guess U = 420 W m−2 K−1, the sum of squared residuals is 18.6 K2. Fitted-model output gives a sum of squared residuals of 2.1 K2. Iterations stop when the relative change in the sum of squared residuals falls below 0.1%. Room temperature is held constant in the model, and no evaporation is admitted. <mark class="good">By subtraction of 2.1 K2 from 18.6 K2, the fitted sum of squared residuals is 16.5 K2 lower than the starting-guess sum.</mark></p>
 </div>
 </div>
 <div class="diff"><p>Differences: the with-skill version bundles the fitted value with its standard error in one sentence and quantifies the residual reduction as a computed difference (16.5 K2 lower). Its fitted value stands in the first paragraph, before the worked example's data. The without-skill version runs in procedure order (measurements, starting guess, fit) and leaves the improvement qualitative, as a comparison of the two residual sums. Word counts: 210 words each version.</p></div>
 </section>
 <section class="sample">
 <h2>Sample 3 (STEM) — Equation passage: Reynolds number and flow regime in a pipe</h2>
-<p class="trigger">Package load for the with-skill version: core + equations reference + textbook reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + equations reference + textbook reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base and notation for this sample. Re (dimensionless), the Reynolds number, is computed from the fluid density ρ (kg m<sup>−3</sup>), the mean velocity v (m s<sup>−1</sup>), the pipe diameter D (m), and the dynamic viscosity μ (Pa s). Flow is laminar below Re = 2,300 and turbulent above Re = 4,000; between the two values the regime is transitional and is not assigned by the number alone. Worked values: water in a pipe of diameter 0.05 m at a mean velocity of 1.2 m s<sup>−1</sup> gives Re = 60,000.</p>
 <div class="pair">
 <div class="col">
@@ -101,7 +101,7 @@
 </section>
 <section class="sample">
 <h2>Sample 4 (Business) — Recommendation memo: predictive maintenance sensors on pumps</h2>
-<p class="trigger">Package load for the with-skill version: core + business reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + business reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. 214 pumps run at the plant. Maintenance records for 12 months show 1,180 h of unplanned downtime; bearing failures account for 46% of the downtime hours. A sensor set for all 214 pumps is quoted at $420k installed, plus $68k per year. In a vendor trial on a comparable unit, the sensors cut downtime by 22%; the figure is a vendor figure and was not measured at this plant. Pilot cost on 18 pumps is $36k over three months. Spare-part lead times are unchanged by the sensors. Responsibility for running the pilot and reporting before the March capital review sits with the reliability engineering group.</p>
 <div class="pair">
 <div class="col">
@@ -115,7 +115,7 @@
 <h3>With the skill</h3>
 <p>The reliability engineering group should run a three-month pilot of predictive maintenance sensors on 18 pumps, with the decision on full installation held until the pilot results are reported.</p>
 <p>214 pumps run at the plant, and maintenance records for 12 months record 1,180 h of unplanned downtime. Bearing failures account for 46% of the downtime hours. Other causes make up the remaining 54%. Whether the 22% reduction is valid at this plant is the question the pilot answers.</p>
-<p>For all 214 pumps, a sensor set is quoted at $420k installed, plus $68k per year. A vendor trial on a comparable unit cut downtime by 22%; the 22% figure is a vendor figure, and no downtime reduction from the sensors has been measured at this plant. Full installation covers 214 pumps; the pilot covers 18. At $36k over three months, <mark class="good">the pilot tests the sensors on 18 pumps before any commitment to the $420k installation</mark>. Spare-part lead times are unchanged by the sensors.</p>
+<p>For all 214 pumps, a sensor set is quoted at $420k installed, plus $68k per year. A vendor trial on a comparable unit cut downtime by 22%; the 22% figure is a vendor figure, and no downtime reduction from the sensors has been measured at this plant. Full installation covers 214 pumps; the pilot covers 18. At $36k over three months, the pilot tests the sensors on 18 pumps before any commitment to the $420k installation. <mark class="good">Spare-part lead times are unchanged by the sensors.</mark></p>
 <p>Responsibility for running the pilot and reporting before the March capital review sits with the reliability engineering group.</p>
 </div>
 </div>
@@ -123,15 +123,15 @@
 </section>
 <section class="sample">
 <h2>Sample 5 (STEM/business mix) — Carbon capture retrofit at a cement kiln: technical note and investment recommendation</h2>
-<p class="trigger">Package load for the with-skill version: core + business reference (business sections) + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + business reference (business sections) + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. Kiln emissions are 780 kilotonnes (kt) of CO<sub>2</sub> per year. An amine absorption unit, tested at pilot scale at 12 t of CO<sub>2</sub> per day over 60 days, captured 86% of the CO<sub>2</sub> in the treated gas; steam demand was 3.4 GJ per tonne of CO<sub>2</sub> captured and solvent loss 1.8 kg per tonne. Beyond 60 days, the effect of kiln dust on the solvent is untested. Full-scale capital cost is $210 million and operating cost $38 million per year. Figure set corrected 2026-11-02: an earlier capture cost of $64 per tonne and payback of 9.6 years did not recompute from the stated figures and are removed; on the stated basis (pilot capture rate of 86% applied to kiln emissions; scenario carbon price of $70 per tonne, an assumption, not a forecast), captured CO<sub>2</sub> is 671 kt per year, carbon revenue is $47.0 million per year, the net after operating cost is $9.0 million per year, and the simple payback is 23.4 years. Ownership is split: the process engineering group owns the design; the finance group owns the investment case.</p>
 <div class="pair">
 <div class="col">
 <h3>Without the skill</h3>
 <p><strong>Technical note</strong></p>
-<p>The kiln emits 780 kt of CO2 annually. An amine absorption unit, tested at pilot scale at 12 t of CO2 per day for 60 days, captured 86% of CO2 in treated gas. Steam demand was 3.4 GJ per tonne of CO2 captured; solvent loss was 1.8 kg per tonne. Beyond 60 days, the effect of kiln dust on solvent remains untested. These results describe performance during a relatively short pilot, not the solvent's behaviour over sustained full-scale operation with continuing exposure to dust from the kiln. <mark class="bad">That distinction matters for the investment decision.</mark></p>
+<p>The kiln emits 780 kt of CO2 annually. An amine absorption unit, tested at pilot scale at 12 t of CO2 per day for 60 days, captured 86% of CO2 in treated gas. Steam demand was 3.4 GJ per tonne of CO2 captured; solvent loss was 1.8 kg per tonne. Beyond 60 days, the effect of kiln dust on solvent remains untested. These results describe performance during a relatively short pilot, not the solvent's behaviour over sustained full-scale operation with continuing exposure to dust from the kiln. That distinction matters for the investment decision.</p>
 <p><strong>Investment recommendation</strong></p>
-<p>Full-scale capital cost is $210 million, and operating cost is $38 million per year. At a scenario carbon price of $70 per tonne—an assumption, not a forecast—the derived chain is: captured CO2 is 671 kt per year when the 86% capture rate is applied to kiln emissions; carbon revenue is $47.0 million per year; the net after operating cost is $9.0 million per year; and simple payback on capital cost is 23.4 years. The recommendation is a staged design study. Process engineering owns the design, and finance owns the investment case. Construction is held until a longer pilot settles the solvent question.</p>
+<p>Full-scale capital cost is $210 million, and operating cost is $38 million per year. At a scenario carbon price of $70 per tonne—an assumption, not a forecast—the derived chain is: captured CO2 is 671 kt per year when the 86% capture rate is applied to kiln emissions; carbon revenue is $47.0 million per year; the net after operating cost is $9.0 million per year; and simple payback on capital cost is 23.4 years. <mark class="bad">The recommendation is a staged design study.</mark> Process engineering owns the design, and finance owns the investment case. Construction is held until a longer pilot settles the solvent question.</p>
 </div>
 <div class="col">
 <h3>With the skill</h3>
@@ -141,11 +141,11 @@
 <p><mark class="good">A staged design study is recommended: the process engineering group owns the design, and the finance group owns the investment case.</mark> Construction is held until a longer pilot run settles the effect of kiln dust on the solvent. Full-scale capital cost is $210 million, with operating cost of $38 million per year. The figures are derived on one basis: the pilot capture rate of 86% applied to kiln emissions, and carbon priced at $70 per tonne. That price is a scenario value, an assumption, not a forecast. On that basis, captured CO2 is 671 kt per year and carbon revenue is $47.0 million per year. Against the operating cost, the net is $9.0 million per year. Simple payback on the capital cost is 23.4 years.</p>
 </div>
 </div>
-<div class="diff"><p>Differences: both versions carry the corrected figure set, with the payback of 23.4 years stated on its basis. In the with-skill version the investment section opens with the recommendation and its two owners, and the basis is stated before the derived figures. In the without-skill version the investment section opens with the capital and operating costs, the recommendation stands mid-section, and the technical note closes with a comment on its own distinction (That distinction matters). Word counts: 200 words each version.</p></div>
+<div class="diff"><p>Differences: both versions use the corrected figure set, with the payback of 23.4 years stated on its basis. In the with-skill version the investment section opens with the recommendation and its two owners, and the basis is stated before the derived figures. In the without-skill version the investment section opens with the capital and operating costs, the recommendation stands mid-section, and the technical note closes with a comment on its own distinction (That distinction matters). Word counts: 200 words each version.</p></div>
 </section>
 <section class="sample">
 <h2>Sample 6 (STEM) — Research abstract: pervaporation membranes for ethanol dehydration</h2>
-<p class="trigger">Package load for the with-skill version: core + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. Pervaporation is a membrane separation in which a liquid feed contacts one side of a membrane and vacuum on the other side draws the permeating component through as vapour. Flux is the mass permeating per unit membrane area per hour (kg m<sup>−2</sup> h<sup>−1</sup>). The separation factor is the water-to-ethanol ratio in the permeate divided by the water-to-ethanol ratio in the feed (dimensionless). Feed: 85 wt% ethanol in water, at 60 °C. Polymer membrane: flux 1.9 kg m<sup>−2</sup> h<sup>−1</sup>, separation factor 180, flux decreased 11% over 500 h. Zeolite membrane: flux 1.2 kg m<sup>−2</sup> h<sup>−1</sup>, separation factor 420, flux unchanged over 500 h within measurement error. One feed composition was tested; no test ran beyond 500 h; no fouling feed was tested. Seldom are flux, selectivity, and stability reported together for the same membrane.</p>
 <div class="pair">
 <div class="col">
@@ -161,7 +161,7 @@
 </section>
 <section class="sample">
 <h2>Sample 7 (STEM) — Tutorial: vapour pressure from the Antoine equation</h2>
-<p class="trigger">Package load for the with-skill version: core + textbook reference + equations reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + textbook reference + equations reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. An estimate of the vapour pressure of ethanol at a stated temperature is the goal. Vapour pressure is the pressure at which a liquid and its vapour stand in equilibrium at that temperature. The Antoine equation relates vapour pressure P (mmHg) to temperature T (°C): log10(P) = A − B/(T + C), where A, B, C are constants for the liquid (dimensionless, dimensionless, °C). Ethanol constants: A = 8.20417, B = 1642.89, C = 230.300, for temperatures from −57 °C to 80 °C. Worked example at T = 60 °C: T + C = 290.300 °C; B/(T + C) = 5.659; log10(P) = 2.545; P = 351 mmHg (0.468 bar). Check at T = 78.4 °C: P = 762 mmHg, against 760 mmHg for boiling at atmospheric pressure. As an empirical fit, the Antoine equation does not apply outside the stated range.</p>
 <div class="pair">
 <div class="col">
@@ -186,7 +186,7 @@
 </section>
 <section class="sample">
 <h2>Sample 8 (STEM) — Equation passage: Fick's first law of diffusion</h2>
-<p class="trigger">Package load for the with-skill version: core + equations reference + textbook reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + equations reference + textbook reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base and notation for this sample. The diffusive flux J (mol m<sup>−2</sup> s<sup>−1</sup>) through a stagnant, dilute medium is computed from the diffusivity D (m<sup>2</sup> s<sup>−1</sup>) and the concentration gradient dC/dx; C is concentration (mol m<sup>−3</sup>) and x is position (m). Fick's first law: J = −D dC/dx. A negative sign in the law states that diffusion runs from high concentration to low concentration. Worked values: oxygen in water, D = 2.1 × 10<sup>−9</sup> m<sup>2</sup> s<sup>−1</sup>; concentration decreases by 0.25 mol m<sup>−3</sup> across a film 0.5 mm thick, giving dC/dx = −500 mol m<sup>−4</sup> and J = 1.05 × 10<sup>−6</sup> mol m<sup>−2</sup> s<sup>−1</sup>. In a stagnant medium, Fick's first law applies; a moving medium adds convection, which is not included in the equation.</p>
 <div class="pair">
 <div class="col">
@@ -208,7 +208,7 @@
 </section>
 <section class="sample">
 <h2>Sample 9 (Business) — Executive summary: delivery performance at a contract packaging firm</h2>
-<p class="trigger">Package load for the with-skill version: core + business reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + business reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. A contract packaging firm runs 3 plants; revenue is $86 million per year. Evidence base: order records for 12 months, 14,200 orders. On-time delivery over the last two quarters was 88%, against a target of 95%. Overtime cost was $1.9 million last year, up 23% on the year before. Backlog stands at 3.4 weeks, against 1.8 weeks a year ago. Plant 2 accounts for 61% of late orders. Quoted cost for a scheduling system for all three plants is $310k; Plant 2 alone is $140k. An internal estimate (not a vendor figure) puts the overtime reduction at Plant 2 at 15–20% in the first year. Recommendation under consideration: install at Plant 2 first, hold the other two plants until Plant 2 results are reported. Ownership of the scheduling programme sits with the operations director.</p>
 <div class="pair">
 <div class="col">
@@ -224,7 +224,7 @@
 </section>
 <section class="sample">
 <h2>Sample 10 (STEM/business mix) — Compressed-air leak repair at a plastics plant: technical note and investment recommendation</h2>
-<p class="trigger">Package load for the with-skill version: core + business reference (business sections) + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + business reference (business sections) + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. An ultrasonic leak survey of the plant's compressed-air system, over two weekends, found 47 leaks. Estimated loss is 18% of compressor output, from leak-flow calculations, not from metering. The compressor is rated 160 kW and runs 6,000 h per year; electricity costs $0.11 per kilowatt-hour. Repair of 41 of the 47 leaks needs no shutdown and is costed at $9.8k in parts and labour; the remaining 6 leaks sit on a header isolable only at the July shutdown. Saving from the 41 repairs is estimated at $17.5k per year (an estimate, not a metered value), a payback of 6.7 months on the repair cost. Maintenance would carry out the repairs and owns the repair programme; the plant manager owns the decision. A meter can be fitted after repair to measure the saving.</p>
 <div class="pair">
 <div class="col">
@@ -235,14 +235,14 @@
 <div class="col">
 <h3>With the skill</h3>
 <p>An ultrasonic leak survey of the plant's compressed-air system, carried out over two weekends, found 47 leaks. Leak-flow calculations estimate the loss at 18% of compressor output; the estimate does not rest on metering, and no metered loss figure exists. Compressor rating is 160 kW, running time is 6,000 h per year, and electricity costs $0.11 per kilowatt-hour. Repair of 41 of the 47 leaks needs no shutdown, and parts and labour for the 41 repairs are costed at $9.8k. Six leaks remain on a header that can be isolated only at the July shutdown. The saving from the 41 repairs is estimated at $17.5k per year, and the figure has no metered value behind it. Dividing the repair cost by the estimated saving gives a payback of 6.7 months.</p>
-<p>Recommendation: the plant manager approves repair of the 41 leaks that need no shutdown, and the maintenance group, which owns the repair programme, carries out the work. The case rests on an estimate: $17.5k per year of saving against $9.8k of cost, a payback of 6.7 months, with no metered figure behind any of the three. For the 6 header leaks, repair is deferred to the July shutdown, the only point at which the header can be isolated. A meter is fitted by the maintenance group after the repairs are complete to measure the saving the repairs achieve; <mark class="good">the estimate is the only saving figure until that measurement is taken</mark>.</p>
+<p><mark class="good">Recommendation: the plant manager approves repair of the 41 leaks that need no shutdown, and the maintenance group, which owns the repair programme, carries out the work.</mark> The case rests on an estimate: $17.5k per year of saving against $9.8k of cost, a payback of 6.7 months, with no metered figure behind any of the three. For the 6 header leaks, repair is deferred to the July shutdown, the only point at which the header can be isolated. A meter is fitted by the maintenance group after the repairs are complete to measure the saving the repairs achieve; the estimate is the only saving figure until that measurement is taken.</p>
 </div>
 </div>
 <div class="diff"><p>Differences: the with-skill version heads its recommendation with the decision owner named in the sentence, repeats the estimate's status at each use, and closes on the meter as the route to a measured figure. The without-skill version gives its recommendation in the first person at the end of the second part, and adds a planning sentence for the July shutdown that restates the isolation limit. Word counts: 240 words each version.</p></div>
 </section>
 <section class="sample">
 <h2>Sample 11 (STEM) — Textbook derivation: batch reactor with a first-order reaction</h2>
-<p class="trigger">Package load for the with-skill version: core + textbook reference + equations reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + textbook reference + equations reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. Reaction A → products runs in a batch reactor with rate law r = kC, where r is the rate of reaction (mol L<sup>−1</sup> min<sup>−1</sup>), k is the rate constant (min<sup>−1</sup>), and C is the concentration of A (mol L<sup>−1</sup>). Assumptions: constant volume, constant temperature, first-order kinetics, no reverse reaction. Design relation: dC/dt = −kC. Integrated form: ln(C0/C) = kt, with C0 the initial concentration of A and t time (min). Conversion X = 1 − C/C0. Worked example: k = 0.045 min<sup>−1</sup> at 80 °C, C0 = 1.2 mol L<sup>−1</sup>; at X = 0.90, C = 0.12 mol L<sup>−1</sup> and t = 51.2 min; at X = 0.50, t = 15.4 min. For a second-order reaction, the integrated form is 1/C − 1/C0 = kt.</p>
 <div class="pair">
 <div class="col">
@@ -260,7 +260,7 @@
 </div>
 <div class="col">
 <h3>With the skill</h3>
-<p>Determine the concentration history and reaction times for a batch reactor with the first-order reaction A → products. <mark class="good">At conversions of 0.90 and 0.50, the calculated times are 51.2 min and 15.4 min.</mark></p>
+<p>Determine the concentration history and reaction times for a batch reactor with the first-order reaction A → products. At conversions of 0.90 and 0.50, the calculated times are 51.2 min and 15.4 min.</p>
 <p>Assume constant volume, constant temperature, first-order kinetics, and no reverse reaction.</p>
 <p>The rate of disappearance of A is r = kC, where r denotes the rate of reaction (mol L−1 min−1), k denotes the rate constant (min−1), and C denotes the concentration of A (mol L−1). At constant volume, the design relation for the batch reactor relates the concentration C to time t, where t denotes time (min):</p>
 <p class="eq">dC/dt = −kC (1)</p>
@@ -268,7 +268,7 @@
 <p>Integration of Eq. (1) thus gives the integrated form:</p>
 <p class="eq">ln(C0/C) = kt (2)</p>
 <p>In Eq. (2), C0 denotes the initial concentration of A (mol L−1). The integrated form relates the concentration ratio C0/C to the product of the rate constant and time. Conversion X is defined as X = 1 − C/C0, so a stated conversion fixes the corresponding concentration ratio used in Eq. (2) in the worked example.</p>
-<p>Take k = 0.045 min−1 at 80 °C and C0 = 1.2 mol L−1. At a conversion of 0.90, the conversion definition gives C = 0.12 mol L−1. Substitution of C, C0, and k in Eq. (2) thus gives t = 51.2 min. At a conversion of 0.50, the conversion definition and Eq. (2) thus give t = 15.4 min.</p>
+<p><mark class="good">Take k = 0.045 min−1 at 80 °C and C0 = 1.2 mol L−1.</mark> At a conversion of 0.90, the conversion definition gives C = 0.12 mol L−1. Substitution of C, C0, and k in Eq. (2) thus gives t = 51.2 min. At a conversion of 0.50, the conversion definition and Eq. (2) thus give t = 15.4 min.</p>
 <p>At t = 15.4 min, the first-order form returns X = 0.50, the half-conversion point. The integrated form in Eq. (2) holds for first-order kinetics. For a second-order reaction, the integrated form is 1/C − 1/C0 = kt; the quantity that changes is the integrated relation, and the first-order times do not apply to that case.</p>
 </div>
 </div>
@@ -276,7 +276,7 @@
 </section>
 <section class="sample">
 <h2>Sample 12 (Business) — Slide storyline: warehouse consolidation</h2>
-<p class="trigger">Package load for the with-skill version: core + business reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + business reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. A food manufacturer runs three warehouses. The north and south satellite warehouses cost $3.1 million per year combined in rent and operation; one expanded central warehouse costs $2.2 million per year; the one-off move and refit cost is $0.8 million. On-time delivery stands at 96.2% over the last 12 months, and the consolidation plan keeps the delivery promise at the current level. Stock across the three sites is $5.6 million; the consolidated stock figure is $4.4 million. Evidence base: logistics records for 12 months and a site survey of the three warehouses. Recommendation: consolidate the north warehouse into the central warehouse in October, hold the south warehouse under its current lease to March, with the decision on the south warehouse at the March board meeting; the supply chain director owns the consolidation. At current volumes, the $2.2 million figure is a plan figure.</p>
 <div class="pair">
 <div class="col">
@@ -298,11 +298,11 @@
 <p>Slide 6: Twelve months of company logistics records and a site survey of the three warehouses support the figures<br>The board decides the south warehouse at the March board meeting, after the north warehouse move planned for October.</p>
 </div>
 </div>
-<div class="diff"><p>Differences: in the with-skill storyline the opening title carries the complete recommendation, and later titles carry their figures ($3.1 million against $2.2 million; $5.6 million against $4.4 million), with derived differences labelled as derived in the support lines. In the without-skill storyline the recommendation is split between the first title and its support line, and three titles assert comparisons without figures (would cost less; Less stock would be held), the figures standing only in the support lines. Word counts: 220 words each version.</p></div>
+<div class="diff"><p>Differences: in the with-skill storyline the opening title states the complete recommendation, and later titles state their figures ($3.1 million against $2.2 million; $5.6 million against $4.4 million), with derived differences labelled as derived in the support lines. In the without-skill storyline the recommendation is split between the first title and its support line, and three titles assert comparisons without figures (would cost less; Less stock would be held), the figures standing only in the support lines. Word counts: 220 words each version.</p></div>
 </section>
 <section class="sample">
 <h2>Sample 13 (Business) — Chairman's letter to shareholders: Halloway Packaging</h2>
-<p class="trigger">Package load for the with-skill version: core + appendix letter patterns L1 and L2 + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + appendix letter patterns L1 and L2 + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. Halloway Packaging plc, a packaging manufacturer, reports for the year: revenue $412 million, up 6% on the prior year; operating profit $38 million, decomposed as profit before the resin charge $47 million, resin charge $9 million, reported operating profit $38 million. In January the company bought resin for the year under a single unhedged contract; resin prices decreased after the contract was signed, and the contract cost $9 million against the prices the company would have paid across the year. Decision: the chief executive's, taken with the procurement director. Resin buying now runs under contracts of at most one quarter, with the board reviewing any longer commitment. Dividend is held at the prior year's level. Closing form: gratitude to staff and shareholders, and an invitation to the annual meeting.</p>
 <div class="pair">
 <div class="col">
@@ -318,7 +318,7 @@
 <div class="col">
 <h3>With the skill</h3>
 <p>Revenue for the year at Halloway Packaging plc, a packaging manufacturer, was $412 million, up 6% on the revenue of the prior year. Operating profit for the year was $38 million. That figure is profit before the resin charge, $47 million, reduced by the resin charge of $9 million. The resin charge is the only item between the two profit figures.</p>
-<p>The resin charge came from the way resin was bought for the year. In January the company bought its resin for the whole year under a single contract. Responsibility for the decision rested with the chief executive, who took it with the procurement director. The contract was unhedged. An unhedged contract has no offsetting arrangement: if prices move after the contract is signed, whether they rise or fall, the buyer bears the movement in full. Resin prices fell in the period after the contract was signed. <mark class="good">Against the prices the company would have paid for resin across the year, the contract cost $9 million</mark>, the excess of the price paid under it over those prices.</p>
+<p>The resin charge came from the way resin was bought for the year. In January the company bought its resin for the whole year under a single contract. <mark class="good">Responsibility for the decision rested with the chief executive, who took it with the procurement director.</mark> The contract was unhedged. An unhedged contract has no offsetting arrangement: if prices move after the contract is signed, whether they rise or fall, the buyer bears the movement in full. Resin prices fell in the period after the contract was signed. Against the prices the company would have paid for resin across the year, the contract cost $9 million, the excess of the price paid under it over those prices.</p>
 <p>Resin buying now runs under contracts of at most one quarter. Any commitment longer than one quarter is reviewed by the board.</p>
 <p>The dividend for the year is held at the level of the prior year's dividend.</p>
 <p>The company thanks its staff for the work they have done during the year. Shareholders are thanked for the support they have given during the year. Every shareholder is invited to the annual meeting of the company.</p>
@@ -328,7 +328,7 @@
 </section>
 <section class="sample">
 <h2>Sample 14 (Business) — Recommendation memo with a displayed equation: insulation upgrade on a steam main</h2>
-<p class="trigger">Package load for the with-skill version: core + business reference + equations reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + business reference + equations reference + textbook reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. An insulation upgrade on a steam main at a chemicals site: installed cost $180,000; heat loss reduction 420 kW over 7,600 operating hours per year, an energy saving of 11,491 GJ per year; at a steam latent heat of 2.1 GJ per tonne, the saving is 5,472 tonnes of steam per year; at a steam price of $22 per tonne, the annual saving is $120,384 per year; payback 1.50 years on P = C/S, where P is the payback period (years), C is the installed cost (dollars), and S is the annual saving (dollars per year). Evidence base: a thermal survey of the steam main over 14 days and the site steam account for 12 months. Limits: the saving stands at the stated operating hours and decreases in proportion at 6,000 hours; the insulation service life of 10 years is a vendor estimate and was not measured on this site. The utilities manager owns the work.</p>
 <div class="pair">
 <div class="col">
@@ -358,7 +358,7 @@
 </section>
 <section class="sample">
 <h2>Sample 15 (Revision) — Technical note before and after revision: online cleaning of a heat exchanger</h2>
-<p class="trigger">Package load for the with-skill version: core + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. A cleaning trial on one shell-and-tube heat exchanger in a crude unit: duty 1.9 MW before cleaning and 2.6 MW after cleaning, against a clean-exchanger design duty of 2.8 MW. Over 9 days, the trial ran online at a feed rate of 210 tonnes per hour, and no production loss was recorded during the cleaning. Tube-side pressure drop after cleaning was 0.41 bar, against 0.38 bar for the clean exchanger. The result is valid for this exchanger and this crude slate; no second exchanger was tested. This pair differs in form from the other samples: a draft written in a promotional register stands against the same content after a revision pass under the package.</p>
 <div class="pair">
 <div class="col">
@@ -379,7 +379,7 @@
 </section>
 <section class="sample">
 <h2>Sample 16 (STEM) — Long report: ethanol dehydration finishing step, two routes compared (1,200 words each version)</h2>
-<p class="trigger">Package load for the with-skill version: core + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. Product specification: water content at most 0.5 wt% in the ethanol product. Distillation alone reaches the ethanol–water azeotrope at 95.6 wt% ethanol. Common basis: feed to the finishing step is 10,000 kg per hour at 92 wt% ethanol; operation is 8,000 hours per year; product rate is about 9,160 kg per hour for both routes. Route A: azeotropic distillation with cyclohexane as entrainer. Route B: distillation to 92 wt%, then a vapour-permeation membrane unit. Method: both routes simulated with the NRTL activity-coefficient model; the membrane unit was modelled from vendor pilot data. Pilot: the membrane was tested at 120 kg per hour for 4,000 hours; water flux declined 11% over the test and recovered to within 3% of the initial value after a cleaning cycle. Specific energy demand at the design point: route A 2.9 MJ per kg of product, route B 1.7 MJ per kg. Steam demand: 1.35 against 0.71 kg per kg; electricity demand: 0.03 against 0.11 kWh per kg. Ethanol recovery: 99.1% measured for both routes, no difference detected within ±0.3 percentage points. Membrane area for route B: 1,850 square metres; membrane service life 3 years, a vendor estimate. Capital cost: $6.8 million against $5.4 million (membrane modules $1.9 million). Operating cost: $4.9 million against $3.6 million per year, including membrane replacement at $0.62 million every 3 years. Derived figure: at a steam emission factor of 0.062 kg of carbon dioxide per MJ, the energy difference corresponds to a saving of about 5,400 tonnes of carbon dioxide per year for route B; the figure is derived, not measured. Untested: contaminant effects on membrane life, membrane behaviour away from 92 wt% feed, energy figures away from the design point.</p>
 <div class="pair">
 <div class="col">
@@ -438,7 +438,7 @@
 </section>
 <section class="sample">
 <h2>Sample 17 (STEM) — Results passage: pilot absorber for carbon dioxide capture (about 300 words each version)</h2>
-<p class="trigger">Package load for the with-skill version: core + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. A pilot absorber captured carbon dioxide from a gas stream with aqueous monoethanolamine (MEA) solvent: packed column 0.30 m in diameter, 3.0 m packing height, operating pressure 110 kPa; feed gas 2.40 mol/s at 313 K with carbon dioxide mole fraction 0.120; outlet gas mole fraction 0.0135; absorbed carbon dioxide 0.259 mol/s (11.4 g/s), a capture fraction of 90.0%; solvent 30 mass % MEA in water at 1.85 kg/s, entering at 313 K; lean loading 0.210 and rich loading 0.239 mol of carbon dioxide per mol of MEA; column temperatures 318 K at the top and 326 K at the bottom; pressure drop 1.8 kPa; reboiler duty 43 kW, giving a specific regeneration energy of 3.8 MJ per kg captured; three repeat runs gave capture fractions from 89.4% to 90.3%; one gas composition and one solvent rate were tested.</p>
 <div class="pair">
 <div class="col">
@@ -449,18 +449,18 @@
 </div>
 <div class="col">
 <h3>With the skill</h3>
-<p>Carbon dioxide was captured from a gas stream in a pilot absorber with an aqueous monoethanolamine (MEA) solvent. A packed column of 0.30 m diameter and 3.0 m packing height was operated at a pressure of 110 kPa. Feed gas entered at 2.40 mol/s, with a carbon dioxide mole fraction of 0.120 and an inlet temperature of 313 K. Solvent at 30 mass % MEA in water circulated at 1.85 kg/s and entered at 313 K. Gas leaving the column had a carbon dioxide mole fraction of 0.0135. Absorbed carbon dioxide amounted to 0.259 mol/s (11.4 g/s). Capture reached 90.0% of the inlet carbon dioxide at the tested feed gas rate and solvent circulation rate, <mark class="good">capture fraction being absorbed carbon dioxide divided by inlet carbon dioxide</mark>. Inlet carbon dioxide, derived from the feed gas rate and the inlet mole fraction, was 0.288 mol/s.</p>
+<p>Carbon dioxide was captured from a gas stream in a pilot absorber with an aqueous monoethanolamine (MEA) solvent. A packed column of 0.30 m diameter and 3.0 m packing height was operated at a pressure of 110 kPa. Feed gas entered at 2.40 mol/s, with a carbon dioxide mole fraction of 0.120 and an inlet temperature of 313 K. Solvent at 30 mass % MEA in water circulated at 1.85 kg/s and entered at 313 K. Gas leaving the column had a carbon dioxide mole fraction of 0.0135. Absorbed carbon dioxide amounted to 0.259 mol/s (11.4 g/s). Capture reached 90.0% of the inlet carbon dioxide at the tested feed gas rate and solvent circulation rate, capture fraction being absorbed carbon dioxide divided by inlet carbon dioxide. Inlet carbon dioxide, derived from the feed gas rate and the inlet mole fraction, was 0.288 mol/s.</p>
 <p>Loading rose from a lean loading of 0.210 mol of carbon dioxide per mol of MEA to a rich loading of 0.239, measured at the column outlet. Column temperatures were 318 K at the top and 326 K at the bottom. The temperature difference between the bottom and the top of the column, from the recorded temperatures, was 8 K. Pressure drop over the packing was 1.8 kPa.</p>
 <p>Regeneration of the solvent took a reboiler duty of 43 kW. Specific regeneration energy, derived from the reboiler duty and the rate of carbon dioxide captured, was 3.8 MJ per kg of carbon dioxide captured. Three repeat runs gave capture fractions from 89.4% to 90.3%.</p>
-<p>One gas composition and one solvent rate were tested, and no other operating condition was varied. Whether capture changes with gas composition or with solvent rate is not established by these runs. Capture of 90.0% is valid at the tested gas composition and solvent rate.</p>
+<p>One gas composition and one solvent rate were tested, and no other operating condition was varied. Whether capture changes with gas composition or with solvent rate is not established by these runs. <mark class="good">Capture of 90.0% is valid at the tested gas composition and solvent rate</mark>.</p>
 </div>
 </div>
-<div class="diff"><p>Differences: the with-skill version defines the capture fraction at its first reported value (absorbed carbon dioxide divided by inlet carbon dioxide), labels each derived quantity with its route (inlet carbon dioxide from the feed rate and the mole fraction; specific regeneration energy from the reboiler duty and the captured rate), and closes with the limit in validity form, the quantity as the subject of the sentence. The without-skill version is a clean narrative: it opens with the headline result and carries its closing limit on a causal “so”. Word counts: with the skill 301 words, without the skill 301 words.</p></div>
+<div class="diff"><p>Differences: the with-skill version defines the capture fraction at its first reported value (absorbed carbon dioxide divided by inlet carbon dioxide), labels each derived quantity with its route (inlet carbon dioxide from the feed rate and the mole fraction; specific regeneration energy from the reboiler duty and the captured rate), and closes with the limit in validity form, the quantity as the subject of the sentence. The without-skill version is a clean narrative: it opens with the headline result and opens its closing limit with a causal “so”. Word counts: with the skill 301 words, without the skill 301 words.</p></div>
 </section>
 
 <section class="sample">
 <h2>Sample 18 (Business) — Executive summary: voice-directed picking in two warehouses (about 300 words each version)</h2>
-<p class="trigger">Package load for the with-skill version: core + business reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + business reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. An industrial-supplies distributor with 2 warehouses processing about 4,200 order lines per day: baseline quarter on-time dispatch 91.2% of orders and picking errors 3.1 per 1,000 order lines; a proposed voice-directed picking system at $380,000 capital plus a licence of $46,000 per year; an eight-week pilot in one warehouse cut errors to 1.4 per 1,000 order lines and raised the picking rate 12%, with on-time dispatch 91.0% in the pilot warehouse against 91.3% in the other warehouse; estimated picking labour saving $121,000 per year at pilot rates, $75,000 per year net of the licence, a simple payback of 5.1 years; the pilot ran outside the November–December peak season, when daily order lines rise about 40%; the summary must recommend extending the pilot through the peak season and deferring the two-warehouse rollout decision.</p>
 <div class="pair">
 <div class="col">
@@ -484,7 +484,7 @@
 
 <section class="sample">
 <h2>Sample 19 (STEM) — Tutorial worked example: pressure drop and pump power for a pipe run (about 300 words each version)</h2>
-<p class="trigger">Package load for the with-skill version: core + textbook reference + equations reference + ai-check reference (revision pass).</p>
+<p class="trigger">Package load for the with-skill version: core + textbook reference + equations reference + ai-check and examples references (revision pass).</p>
 <p class="facts">Shared fact base. A worked example for undergraduate chemical engineers: water at 293 K (density 998 kg/m³, viscosity 1.00 × 10⁻³ Pa·s) pumped at 0.020 m³/s through a pipe run of 60 m length and 0.102 m inside diameter, roughness 0.045 mm, with four elbows (loss coefficient 0.9 each), an entrance (0.5) and an exit (1.0), sum of loss coefficients 5.1, and pump efficiency 0.70; computed results: mean velocity 2.45 m/s, Reynolds number 2.49 × 10⁵, Darcy friction factor 0.0180 by the Haaland equation, friction pressure drop 31.6 kPa, fittings pressure drop 15.2 kPa, total pressure drop 46.9 kPa, pump power 1.34 kW, with the closing check that the fittings contribute about one third of the total.</p>
 <div class="pair">
 <div class="col">
@@ -512,7 +512,7 @@
 <p>Fittings contribute 15.2 kPa of the 46.9 kPa total, about one third. Shortening the run or removing fittings changes the answer more than a small change in the friction factor would.</p>
 </div>
 </div>
-<div class="diff"><p>Differences: the with-skill version states the goal and the outcome, with values, in its opening sentence, defines each symbol at first use, and gives each step as a displayed equation followed by its result. The without-skill version stages the problem (“Imagine water…”), places the outcome mid-passage, and adds an evaluative aside the fact base does not contain (“a fairly large share for a run described as a straight pipe”). Word counts: with the skill 301 words, without the skill 309 words.</p></div>
+<div class="diff"><p>Differences: the with-skill version states the goal and the outcome, with values, in its opening sentence, defines each symbol at first use, and gives its steps as displayed equations followed by their results, the friction factor stated inline. The without-skill version stages the problem (“Imagine water…”), places the outcome mid-passage, and adds an evaluative aside the fact base does not contain (“a fairly large share for a run described as a straight pipe”). Word counts: with the skill 305 words, without the skill 311 words.</p></div>
 </section>
 </div>
 </body>
