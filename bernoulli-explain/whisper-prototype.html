@@ -71,6 +71,32 @@ img,svg,canvas{max-width:100%}
 @media (max-width:600px){ .eq{font-size:.80rem} }
 @media (max-width:380px){ .eq{font-size:.76rem} }
 @media (max-width:340px){ .eq{font-size:.70rem} }
+
+/* ---- study mode (v25) ---- */
+#studyPanel { background:#fff; border:1.5px solid #bbb; border-radius:10px; padding:16px 18px; }
+#studyPanel h2 { font-size:.85rem; text-transform:uppercase; letter-spacing:.05em; color:#666; margin:0 0 12px; font-weight:normal; }
+.srow { display:flex; align-items:stretch; gap:10px; min-height:40px; }
+.srail { display:flex; flex-direction:column; align-items:center; width:16px; flex:none; }
+.sdot { width:9px; height:9px; border-radius:50%; background:#1a1a1a; margin-top:6px; flex:none; }
+.sdot.hollow { background:#fff; border:1.5px dashed #888; width:8px; height:8px; }
+.sline { width:2px; background:#ccc; flex:1; margin:3px 0; }
+.srow:last-child .sline { display:none; }
+.sphrase { font-size:1.02rem; padding-top:1px; }
+.sdetail { font-size:.83rem; color:#3d3d3d; line-height:1.4; padding:2px 0 8px; }
+.sblank { flex:1; border:1.5px dashed #999; border-radius:6px; margin:2px 0 7px; display:flex; align-items:center; padding:0 10px; color:#999; font-size:.84rem; font-style:italic; }
+.studyseg { display:inline-flex; border:1.5px solid #444; border-radius:8px; overflow:hidden; vertical-align:middle; }
+.studyseg button { font:inherit; font-size:.92rem; padding:6px 16px; border:0; background:#fff; color:#1a1a1a; -webkit-appearance:none; appearance:none; cursor:pointer; }
+.studyseg button.on { background:#1a1a1a; color:#fff; }
+body.study-on #mainArea { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); column-gap:16px; align-items:start; }
+body.study-on #mainArea .progressouter, body.study-on #mainArea .counter,
+body.study-on #mainArea #typeArea, body.study-on #mainArea .navrow,
+body.study-on #mainArea > p { grid-column:1 / -1; }
+body.study-on #stage { grid-column:1; }
+body.study-on #studyPanel { grid-column:2; }
+@media (max-width:700px){
+  body.study-on #mainArea { grid-template-columns:minmax(0,1fr); }
+  body.study-on #stage, body.study-on #studyPanel { grid-column:1; }
+}
 </style>
 </head>
 <body>
@@ -118,6 +144,15 @@ img,svg,canvas{max-width:100%}
 <p style="font-size:.95rem;color:#444"><span id="whisperStatus">Whisper is not loaded.</span></p>
 <progress id="whisperProgress" max="100" value="0" style="width:100%" class="hidden"></progress>
 </section>
+<section class="panel" id="studySetup">
+<h2 style="margin-top:0;font-size:1.15rem">Study</h2>
+<p style="font-size:.95rem">Study mode places the key points for each slide beside the slide. Speak the slide twice: Pass 1 with every key point and its detail shown, then Pass 2 with the explanatory key points removed, for you to supply. A pass counts as done when a take in Study mode visits all 13 slides. After a Pass 2 take is transcribed, the end screen lists how many of the removed key points appear in your transcript. Nothing is graded and nothing leaves this device.</p>
+<p><button id="studyToggle" type="button">Study mode: Off</button>
+<span class="studyseg" role="group" aria-label="Study pass">
+<button id="studyP1" type="button">Pass 1</button><button id="studyP2" type="button">Pass 2</button>
+</span></p>
+<p id="studyProgress" style="font-size:.95rem;color:#444">Pass 1 not done yet. Pass 2 not done yet.</p>
+</section>
 <section class="panel" id="recordingsPanel">
 <h2>Recordings</h2>
 <p class="small" id="recEmpty">No recordings yet. A recording exists only in this page&rsquo;s memory while the page stays open &mdash; nothing is uploaded and nothing is written to disk. Closing or reloading the page discards every recording.</p>
@@ -136,6 +171,10 @@ img,svg,canvas{max-width:100%}
 <div id="eqBlock" class="eq hidden"></div>
 <div id="variationBox" class="variation hidden"></div>
 </section>
+<aside id="studyPanel" class="hidden">
+<h2 id="studyHead">Key points</h2>
+<div id="studyRows"></div>
+</aside>
 
 <div id="typeArea" class="panel hidden" style="margin-top:14px">
 <label for="typebox"><strong>Typed explanation &mdash; this slide</strong></label>
@@ -165,6 +204,10 @@ img,svg,canvas{max-width:100%}
 </div>
 <p><button id="buildFinal" type="button" class="hidden">Build final video (slide + face + captions)</button></p>
 <p id="renderStatus" style="font-size:.95rem;color:#444"></p>
+<div id="studyEnd" class="hidden">
+<h3>Study progress</h3>
+<div id="studyEndBody" style="font-size:.95rem"></div>
+</div>
 <h3>Self-check rubric</h3>
 <div class="rubric" id="rubricBox"></div>
 <h3>Transcript</h3>
@@ -294,6 +337,7 @@ function render(){
   if (respVal() === "Type"){ el("typebox").value = typed[current] || ""; }
   el("prevBtn").disabled = (current === 1);
   showLiveTranscript();
+  studyRender();
 }
 
 function saveTyped(){ if (respVal() === "Type"){ typed[current] = el("typebox").value; } }
@@ -533,6 +577,8 @@ function buildSummary(){
   }
   var tr = transcriptText();
   if (tr){ lines.push(""); lines.push("Transcript (Whisper, corrected against the slide glossary):"); lines.push(tr); }
+  var sl = studySummaryLines();
+  for (var si = 0; si < sl.length; si++) lines.push(sl[si]);
   lines.push(""); lines.push("Self-check rubric:");
   RUBRIC.forEach(function(item, i){ lines.push((el("rubric" + i).checked ? "[x] " : "[ ] ") + item); });
   return lines.join("\n");
@@ -554,7 +600,9 @@ function showEnd(){
   el("buildFinal").classList.toggle("hidden", !hasRec);
   el("endTranscript").textContent = transcriptText() || (whisperSegs.length ? "Not transcribed yet. Press 'Transcribe this take with Whisper' above." : (takeStarted ? ((snapshot && snapshot.response === "Type") ? "No typed text was entered." : "No take audio was captured for Whisper (capture unavailable, or the stream had no audio track).") : "No take was recorded in this session. Record a take first \u2014 recordings and transcripts exist only while this page stays open."));
   el("whisperRun").classList.toggle("hidden", !whisperSegs.length);
+  studyMarkPass();
   el("summary").textContent = buildSummary();
+  studyEndUpdate(); studyRender();
   window.scrollTo(0,0);
 }
 function hideEnd(){
@@ -562,6 +610,117 @@ function hideEnd(){
   el("mainArea").classList.remove("hidden");
   current = SLIDES.length; render();
 }
+
+/* ---- study mode (v25) ---- */
+var STUDY_DATA = [{"n": 1, "phrases": ["pressure — speed — height", "one rises, another falls", "between two points", "along the same stream", "derived from an energy balance"], "details": ["The Bernoulli equation relates the pressure <i>P</i>, the average speed <i>V</i>, and the elevation <i>z</i> of a flowing fluid at two points.", "As the average speed <i>V</i> increases along the stream, the pressure <i>P</i> decreases where the elevation <i>z</i> is unchanged, because the sum of the terms in the equation is constant.", "Point 1 denotes the inlet point and point 2 denotes the outlet point. Every term in the equation is evaluated at one of these two points.", "The Bernoulli equation is valid for two points on the same stream, because the derivation follows one differential mass <i>dm</i> of fluid from point 1 to point 2.", "The Bernoulli equation is obtained from the total energy balance on the fluid. No term in the final equation is introduced without a step in the derivation that produces the term."], "blanks": [1, 3], "terms": {"1": ["one", "rises", "another", "falls"], "3": ["along", "stream"]}}, {"n": 2, "phrases": ["a fixed body of fluid", "the total energy it holds", "internal energy throughout", "height and speed contributions", "all changing with time"], "details": ["The system is a fixed body of fluid inside a stated boundary. The balance is written for the energy that this body of fluid holds.", "The total energy of the system is the sum of the internal energy, the potential energy, and the kinetic energy of the fluid in the system.", "The internal energy per unit mass <i>u</i> is carried by every part of the fluid. The slide equation multiplies <i>u</i> by the mass <i>m</i> of fluid in the system.", "Potential energy per unit mass is <i>gz</i>. Kinetic energy per unit mass is <i>V</i><sup>2</sup>/2.", "The left side of the slide equation is the change in the total energy of the system. The system energy changes because fluid, heat, and work cross the boundary in the slides that follow."], "blanks": [1, 2], "terms": {"1": ["total", "energy", "holds"], "2": ["internal", "energy", "throughout"]}}, {"n": 3, "phrases": ["fluid crosses the boundary", "enters at point 1, on <i>dm</i><sub>in</sub>", "leaves at point 2, on <i>dm</i><sub>out</sub>", "each stream carries its energy", "inflow minus outflow remains"], "details": ["Fluid crosses the system boundary at two places only: one inlet and one outlet.", "The differential mass entering at point 1 is denoted <i>dm</i><sub>in</sub>. The entering mass carries internal energy, potential energy, kinetic energy, and flow work into the system.", "The differential mass leaving at point 2 is denoted <i>dm</i><sub>out</sub>. The leaving mass carries the same four contributions out of the system.", "Each stream carries the same four contributions per unit mass: <i>u</i>, <i>Pv</i>, <i>gz</i>, and <i>V</i><sup>2</sup>/2. Each contribution is evaluated at the point where the stream crosses.", "The flow terms enter the balance as the inlet group minus the outlet group, because energy carried in raises the energy of the system and energy carried out lowers the energy of the system."], "blanks": [1, 3], "terms": {"1": ["enters"], "3": ["stream", "carries", "energy"]}}, {"n": 4, "phrases": ["crossing without any flow", "heat in, from the surroundings", "work in, through a shaft", "positive means into the system", "signs follow that choice", "every crossing now counted"], "details": ["Heat and work cross the boundary without a flow of fluid. Heat crosses at the boundary surface, and work crosses through a shaft.", "Heat added to the system over the differential mass is denoted <i>dQ</i>. Heat per unit mass is <i>dQ/dm</i>.", "External work done on the system over the differential mass is denoted <i>dW</i><sub>ext</sub>. A pump or a turbine between the points is the usual source or sink of this work.", "Note that the sign convention takes heat and work as positive when each quantity passes into the system. A quantity that leaves the system carries a negative sign under this convention.", "The heat and work terms thus stand on the right side of the balance with positive signs, because both terms are written as quantities passing into the system.", "The balance now contains every route by which energy crosses the boundary: flow at the inlet, flow at the outlet, heat, and external work."], "blanks": [1, 3, 4], "terms": {"1": ["heat", "surroundings"], "3": ["positive", "means", "system"], "4": ["signs", "follow", "choice"]}}, {"n": 5, "phrases": ["mass inside also changes", "inflow minus outflow accumulates", "steady means no accumulation", "inflow equals outflow", "one <i>dm</i> throughout"], "details": ["A mass balance is written on the same system, because the mass of fluid in the system changes when the inflow and the outflow differ.", "The differential change in the mass of the system, <i>dm</i><sub>sys</sub>, is <i>dm</i><sub>in</sub> minus <i>dm</i><sub>out</sub>. The difference remains in the system as accumulation.", "Steady flow is defined as flow in which no quantity in the system changes with time. At steady flow, <i>dm</i><sub>sys</sub> is therefore zero.", "From <i>dm</i><sub>sys</sub> = 0, the mass balance gives <i>dm</i><sub>in</sub> = <i>dm</i><sub>out</sub>, because no mass remains behind in the system.", "The common value of <i>dm</i><sub>in</sub> and <i>dm</i><sub>out</sub> is denoted <i>dm</i>. This <i>dm</i> is the mass used in every per-unit-mass term from this slide onward."], "blanks": [1, 3], "terms": {"1": ["inflow", "minus", "outflow", "accumulates"], "3": ["inflow", "equals", "outflow"]}}, {"n": 6, "phrases": ["accumulation term now zero", "divide through by <i>dm</i>", "inlet group minus outlet group", "plus heat per unit mass", "plus work per unit mass", "whole balance, nothing dropped"], "details": ["At steady flow the accumulation term in the energy balance is zero, because the total energy of the system does not change.", "Each term of the balance is divided by <i>dm</i>. Every term in the slide equation is thus an energy per unit mass, in joules per kilogram.", "The flow terms stand as the inlet group minus the outlet group. The zero on the left side records that the system energy is unchanged while fluid passes through the system.", "The heat term is <i>dQ/dm</i>: the heat added to the system for each kilogram of fluid that passes.", "The work term is <i>dW</i><sub>ext</sub><i>/dm</i>. The term is positive into the fluid, under the sign convention fixed on Slide 4.", "No term has been neglected at this stage. The slide equation is the full steady-flow energy balance per unit mass, before any assumption about the fluid or the equipment."], "blanks": [1, 3, 4], "terms": {"1": ["divide", "through"], "3": ["heat", "per", "unit", "mass"], "4": ["work", "per", "unit", "mass"]}}, {"n": 7, "phrases": ["flow work at a point", "pressure pushing fluid across", "volume per unit mass, <i>v</i>", "<i>v</i> is one over <i>ρ</i>", "replaced, meaning unchanged"], "details": ["The term <i>Pv</i> in each flow group is the flow work per unit mass at that point. Flow work is the work done by pressure in pushing fluid across the point.", "Pressure <i>P</i> acts on the fluid at the point. The fluid that crosses occupies a volume set by the specific volume of the fluid at the point.", "The specific volume <i>v</i> is the volume occupied by one kilogram of the fluid at the point.", "Density is mass per unit volume, and specific volume is volume per unit mass. The specific volume <i>v</i> is thus the reciprocal of the density <i>ρ</i>, <i>v</i> = 1/<i>ρ</i>.", "Substitution of <i>P/ρ</i> for <i>Pv</i> changes no value in the balance, because the two terms are equal at every point. The balance can thus be written with <i>P/ρ</i> in place of <i>Pv</i>."], "blanks": [1, 3], "terms": {"1": ["pressure", "pushing", "fluid", "across"], "3": ["one", "over", "rho"]}}, {"n": 8, "phrases": ["two terms travel together", "internal energy at a point, <i>u</i>", "flow work at the same point, <i>P/ρ</i>", "grouped as one property", "named enthalpy, <i>h</i>", "depends only on state"], "details": ["The terms <i>u</i> and <i>P/ρ</i> stand together in the flow group at each point, in the inlet group and in the outlet group alike.", "The internal energy per unit mass <i>u</i> is evaluated at the point, from the state of the fluid at that point.", "The flow work per unit mass <i>P/ρ</i> is evaluated at the same point, because the pressure that pushes the fluid across the point is the pressure at that point.", "The sum <i>u</i> + <i>P/ρ</i> is grouped as a single quantity. The grouped quantity replaces the two terms wherever the pair stands in the balance.", "The grouped quantity is called enthalpy and is denoted by <i>h</i>. Enthalpy is measured in joules per kilogram.", "Enthalpy <i>h</i> depends only on the state of the fluid at the point, because <i>u</i>, <i>P</i>, and <i>ρ</i> at the point are each fixed by that state."], "blanks": [1, 2], "terms": {"1": ["internal", "energy"], "2": ["flow", "work"]}}, {"n": 9, "phrases": ["open the enthalpy back up", "density same at both points", "one <i>ρ</i> value throughout", "pressure term stands alone", "internal energy term moves right", "its sign changes on moving"], "details": ["The enthalpy <i>h</i> is replaced by <i>u</i> + <i>P/ρ</i> at each point. The balance thus returns to an expanded form, with the internal energy term separate again.", "The density <i>ρ</i> at point 1 equals the density <i>ρ</i> at point 2. The slide equation is written under this constant-density condition.", "One symbol <i>ρ</i> is used for the density at both points. A fluid whose density changes between the points does not meet this condition.", "The pressure terms combine into (<i>P</i><sub>2</sub> − <i>P</i><sub>1</sub>)/<i>ρ</i>, because the two points share the one density. The pressure contribution thus stands as one term.", "The term (<i>u</i><sub>2</sub> − <i>u</i><sub>1</sub>) is moved to the right side of the balance, with the heat and work terms. The left side then holds the pressure, kinetic, and potential terms only.", "A term that changes sides changes sign. The internal energy term thus stands on the right side with a negative sign in the slide equation."], "blanks": [1, 3, 4], "terms": {"1": ["density"], "3": ["pressure", "term", "stands", "alone"], "4": ["internal", "energy", "term", "moves", "right"]}}, {"n": 10, "phrases": ["internal energy rise, two causes", "part from heat added", "rest turned from motion", "that rest is ℱ, frictional heating", "heat cancels on substitution", "ℱ stays, on the mechanical side"], "details": ["The rise in internal energy per unit mass, <i>u</i><sub>2</sub> − <i>u</i><sub>1</sub>, has two sources: heat added to the fluid and friction within the fluid.", "The heat added per unit mass, <i>dQ/dm</i>, is the part of the rise supplied from outside the fluid.", "The remainder of the rise is mechanical energy of the fluid converted into internal energy by friction. No energy enters from outside the fluid for this part.", "Frictional heating per unit mass is defined as ℱ = (<i>u</i><sub>2</sub> − <i>u</i><sub>1</sub>) − <i>dQ/dm</i>: the rise in internal energy per unit mass less the heat added per unit mass.", "Substitution of <i>u</i><sub>2</sub> − <i>u</i><sub>1</sub> = <i>dQ/dm</i> + ℱ into the expanded form removes <i>dQ/dm</i> from both sides. The heat term thus cancels without any assumption that the heat added is zero.", "In the slide equation ℱ stands on the right side with a negative sign, in the form <i>dW</i><sub>ext</sub><i>/dm</i> − ℱ. The negative sign records that friction removes mechanical energy from the fluid."], "blanks": [1, 2, 4], "terms": {"1": ["part", "heat", "added"], "2": ["rest", "turned", "motion"], "4": ["heat", "cancels", "substitution"]}}, {"n": 11, "phrases": ["steady, incompressible, already in force", "set frictional heating to zero", "set external work to zero", "one sum, same at both points", "pressure trades against speed and height", "fails outside those conditions"], "details": ["Two conditions are already in force from earlier slides: steady flow, from Slide 5, and constant density, from Slide 9. The Bernoulli limit adds two more conditions.", "Frictional heating is set to zero in this limit. Friction can be neglected here because the equation is written for a flow in which no mechanical energy is converted into internal energy.", "External work is set to zero, <i>dW</i><sub>ext</sub><i>/dm</i> = 0, because no pump and no turbine stands between point 1 and point 2 in the flow that the equation describes.", "The remaining terms rearrange to one sum at each point, <i>P/ρ</i> + <i>V</i><sup>2</sup>/2 + <i>gz</i>. The equation states that this sum has the same value at point 1 and at point 2.", "As the average speed <i>V</i> increases between the points, the pressure <i>P</i> decreases where the elevation <i>z</i> is unchanged, because the sum at each point is fixed.", "The Bernoulli equation is valid only under the four conditions named in this chain. Where friction or external work is present, the mechanical form of Slide 10 is used. Where the density changes between the points, the balance of Slide 6 is used, because the flow groups of that balance carry the state at each point separately; where the flow is unsteady, the system balance of Slides 2 to 4 is used, because the balance of Slide 6 is already a steady-flow balance."], "blanks": [1, 2, 4], "terms": {"1": ["frictional", "heating", "set", "zero"], "2": ["external", "work", "set", "zero"], "4": ["pressure", "trades", "against", "speed", "height"]}}, {"n": 12, "phrases": ["look at the narrow gap", "air speeds up through it", "pressure drops where speed rises", "room pressure underneath stays", "pressure difference holds the cardboard"], "details": ["Air leaves the centre of the reel and passes outward through the narrow gap between the reel and the cardboard.", "The speed of the air in the gap is highest near the centre of the reel, where the air has just entered the gap.", "By the Bernoulli equation, the pressure in the gap is lowest where the speed is highest. The pressure in the gap near the centre is thus below room pressure.", "The underside of the cardboard faces the room. Room pressure acts on the underside at its full value.", "Room pressure on the underside exceeds the pressure in the gap on the upper side. The pressure difference thus holds the cardboard against the reel, against the weight of the cardboard."], "blanks": [1, 2], "terms": {"1": ["air", "speeds", "through"], "2": ["pressure", "drops", "speed", "rises"]}}, {"n": 13, "phrases": ["started from an energy balance", "one condition at a time", "enthalpy grouped the flow work", "friction kept, then removed", "the result carries its conditions", "check conditions before use"], "details": ["The derivation started from the total energy balance on a fixed body of fluid, on Slide 2. Every later slide changed that balance by one stated step.", "Each condition — steady flow, constant density, no friction, no external work — was stated on the slide where the condition first changed the equation.", "Enthalpy <i>h</i> grouped the internal energy per unit mass <i>u</i> and the flow work per unit mass <i>P/ρ</i>. The two quantities stand together at each point of the flow.", "Frictional heating ℱ stood in the mechanical form on Slide 10 and was set to zero only in the Bernoulli limit on Slide 11. The fuller equation remains in force where friction is present.", "The Bernoulli equation states a constant sum of pressure, kinetic, and potential terms per unit mass. The statement is complete only with the four conditions attached to the statement.", "Before the Bernoulli equation is used on a flow, each condition is checked for that flow: steady flow, constant density, friction, and external work between the two points."], "blanks": [1, 2, 4], "terms": {"1": ["one", "condition", "time"], "2": ["enthalpy", "grouped", "flow", "work"], "4": ["result", "carries", "conditions"]}}];
+var STUDY = { on: false, pass: 1, done: { 1: null, 2: null } };
+function studySlide(){ return STUDY_DATA[current - 1]; }
+function studyRender(){
+  var panel = el("studyPanel");
+  el("studyToggle").textContent = "Study mode: " + (STUDY.on ? "On" : "Off");
+  el("studyP1").classList.toggle("on", STUDY.pass === 1);
+  el("studyP2").classList.toggle("on", STUDY.pass === 2);
+  var pp = [];
+  for (var p = 1; p <= 2; p++){
+    var d = STUDY.done[p];
+    pp.push("Pass " + p + (d ? (" done (" + fmtTime(d.sec) + ")" +
+      (p === 2 && d.coverage ? ", " + d.coverage.hit + " of " + d.coverage.total + " removed points supplied" : "")) : " not done yet") + ".");
+  }
+  el("studyProgress").textContent = pp.join(" ");
+  if (!STUDY.on){ panel.classList.add("hidden"); document.body.classList.remove("study-on"); return; }
+  panel.classList.remove("hidden");
+  document.body.classList.add("study-on");
+  var vb = el("variationBox"); vb.innerHTML = ""; vb.classList.add("hidden");
+  var s = studySlide();
+  el("studyHead").textContent = STUDY.pass === 1 ? "Key points — all shown" : "Key points — supply the missing ones";
+  el("studyRows").innerHTML = s.phrases.map(function(ph, i){
+    var blank = STUDY.pass === 2 && s.blanks.indexOf(i) >= 0;
+    var cell = blank
+      ? '<div class="sblank">missing point ' + (s.blanks.indexOf(i) + 1) + " of " + s.blanks.length + "</div>"
+      : '<div><div class="sphrase">' + ph + "</div>" +
+        (STUDY.pass === 1 ? '<div class="sdetail">' + s.details[i] + "</div>" : "") + "</div>";
+    var dot = blank ? '<div class="sdot hollow"></div>' : '<div class="sdot"></div>';
+    return '<div class="srow"><div class="srail">' + dot + '<div class="sline"></div></div>' + cell + "</div>";
+  }).join("");
+}
+function studyWordHit(text, w){
+  var re = new RegExp("(^|[^a-z])" + w.replace(/-/g, "\\-") + "(s|es)?([^a-z]|$)");
+  return re.test(text);
+}
+function studyCoverage(){
+  var hit = 0, total = 0, missed = [];
+  for (var k = 1; k <= SLIDES.length; k++){
+    var sd = STUDY_DATA[k - 1];
+    var text = ((transcriptByStep[k] || "") + " " + (typed[k] || "")).toLowerCase().replace(/ρ/g, " rho ");
+    sd.blanks.forEach(function(bi){
+      total++;
+      var words = sd.terms[String(bi)] || [];
+      var need = words.length <= 2 ? words.length : Math.ceil(words.length / 2);
+      var found = 0;
+      words.forEach(function(w){ if (studyWordHit(text, w)) found++; });
+      var saidEnough = text.split(/\s+/).filter(Boolean).length >= 6;
+      if ((words.length && found >= need) || (!words.length && saidEnough)) hit++;
+      else missed.push(k + ": " + sd.phrases[bi].replace(/<[^>]+>/g, ""));
+    });
+  }
+  return { hit: hit, total: total, missed: missed };
+}
+function studyMarkPass(){
+  if (!STUDY.on || !takeStarted) return;
+  var seen = {};
+  visitLog.forEach(function(v){ seen[v.step] = true; });
+  for (var k = 1; k <= SLIDES.length; k++){ if (!seen[k]) return; }
+  var endT = (finalEndT !== null) ? finalEndT : nowSec();
+  var total = (takeFirstLogT !== null) ? (endT - takeFirstLogT) : endT;
+  var prev = STUDY.done[STUDY.pass];
+  STUDY.done[STUDY.pass] = { sec: total, coverage: prev ? prev.coverage : null };
+  if (STUDY.pass === 2 && respVal() === "Type") STUDY.done[2].coverage = studyCoverage();
+}
+function studyAfterTranscript(){
+  if (STUDY.done[2]){ STUDY.done[2].coverage = studyCoverage(); }
+  studyEndUpdate(); studyRender();
+}
+function studyEndUpdate(){
+  var box = el("studyEnd");
+  var any = STUDY.done[1] || STUDY.done[2];
+  box.classList.toggle("hidden", !any);
+  if (!any) return;
+  var lines = [];
+  for (var p = 1; p <= 2; p++){
+    var d = STUDY.done[p];
+    if (!d) continue;
+    var line = "Pass " + p + ": done, " + fmtTime(d.sec) + " speaking.";
+    if (p === 2){
+      if (d.coverage) line += " " + d.coverage.hit + " of " + d.coverage.total + " removed key points appear in the transcript.";
+      else line += " Transcribe the take to check the removed key points against the transcript.";
+    }
+    lines.push("<p>" + line + "</p>");
+  }
+  var cov = STUDY.done[2] && STUDY.done[2].coverage;
+  if (cov && cov.missed.length){
+    lines.push("<p>Not detected in the transcript — check these points on the next run:</p><ul>" +
+      cov.missed.map(function(m){ return "<li>" + m + "</li>"; }).join("") + "</ul>");
+  }
+  el("studyEndBody").innerHTML = lines.join("");
+}
+function studySummaryLines(){
+  if (!STUDY.done[1] && !STUDY.done[2]) return [];
+  var out = ["", "Study mode:"];
+  for (var p = 1; p <= 2; p++){
+    var d = STUDY.done[p];
+    out.push("Pass " + p + ": " + (d ? ("done, " + fmtTime(d.sec)) : "not done"));
+    if (p === 2 && d && d.coverage) out.push("Removed key points in transcript: " + d.coverage.hit + " of " + d.coverage.total);
+  }
+  return out;
+}
+el("studyToggle").addEventListener("click", function(){
+  STUDY.on = !STUDY.on; studyRender();
+});
+function studySetPass(p){ if (taking) return; STUDY.pass = p; studyRender(); }
+el("studyP1").addEventListener("click", function(){ studySetPass(1); });
+el("studyP2").addEventListener("click", function(){ studySetPass(2); });
+studyRender();
+
 el("backToLast").addEventListener("click", hideEnd);
 el("dlSummary").addEventListener("click", function(){
   var blob = new Blob([buildSummary()], {type: "text/plain"});
@@ -767,6 +926,8 @@ function whisperSendNext(){
     whisperBusy = false; whisperProgressShow(false);
     whisperStatus("Whisper transcription complete (" + whisperDevice + ").");
     el("endTranscript").textContent = transcriptText() || "No Whisper transcript was produced.";
+    el("summary").textContent = buildSummary();
+    studyAfterTranscript();
     el("summary").textContent = buildSummary();
     showLiveTranscript();
     if (typeof sealNow === "function") sealNow();
