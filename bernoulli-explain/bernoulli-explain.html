@@ -111,7 +111,7 @@ img,svg,canvas{max-width:100%}
 <h2 style="margin-top:0;font-size:1.15rem">Transcript</h2>
 <p><span id="srStatus" style="font-size:.95rem;color:#444"></span></p>
 <div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your words appear here while you record.</div>
-<p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. This page stores nothing.</p>
+<p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. On Safari, recognition is Apple&rsquo;s: it may pause after each phrase, and it may not run while the camera records &mdash; Type mode, or Chrome, is more reliable for voice commands. This page stores nothing.</p>
 </section>
 <section class="panel" id="recordingsPanel">
 <h2>Recordings</h2>
@@ -246,7 +246,8 @@ var sessionStart = Date.now();
 var takeStart = null;
 var taking = false;
 var visitLog = [];       // {step, t} t = seconds relative to take start (Record take) or session start
-var cmdEvents = [], takeCmds = [];   // voice navigation commands, take-relative times; frozen copy per take
+var cmdEvents = [], takeCmds = [];
+var lastCmdText = "", lastCmdAt = 0;   // voice navigation commands, take-relative times; frozen copy per take
 var typed = {};          // step -> text
 var variation = null;    // variation string or null
 var variationIdx = -1;
@@ -293,7 +294,7 @@ function render(){
 function saveTyped(){ if (respVal() === "Type"){ typed[current] = el("typebox").value; } }
 function goTo(n){
   saveTyped();
-  if (taking && interimText && interimText.trim()){ pendingInterim[current] = correctText(interimText.trim()); }
+  if (taking && interimText && interimText.trim() && !commandDirection(interimText)){ pendingInterim[current] = correctText(interimText.trim()); }
   if (n < 1) n = 1;
   if (n > SLIDES.length){ showEnd(); return; }
   current = n; logVisit(current); render();
@@ -380,6 +381,7 @@ function beginTake(){
   saveTyped();
   takeStart = Date.now(); taking = true; endedAt = null; finalEndT = null; endFrozen = false;
   visitLog = []; cmdEvents = []; current = 1; logVisit(1);
+  transcriptByStep = {}; pendingInterim = {}; interimText = ""; lastCmdText = ""; lastCmdAt = 0;
   takeStarted = true; takeFirstLogT = visitLog[visitLog.length - 1].t;
   variationIdx = Math.floor(Math.random() * VARIATIONS.length);
   variation = VARIATIONS[variationIdx];
@@ -427,6 +429,7 @@ el("startTake").addEventListener("click", function(){
   if (taking) return;
   if (respVal() === "Speak" && !stream){
     el("takeStatus").textContent = "Switching the camera on\u2026";
+    startListening();
     enableCamera(function(ok){
       if (ok) beginTake();
       else el("takeStatus").textContent = "The camera could not be switched on \u2014 the take has not started. Allow camera access, or switch Response to Type.";
@@ -447,7 +450,7 @@ function reconcileTranscript(){
   }
 }
 function stopTakeInternal(){
-  if (interimText && interimText.trim()){ pendingInterim[current] = correctText(interimText.trim()); }
+  if (interimText && interimText.trim() && !commandDirection(interimText)){ pendingInterim[current] = correctText(interimText.trim()); }
   reconcileTranscript();
   if (takeStarted && takeEndSec === null) takeEndSec = nowSec();
   takeCmds = cmdEvents.slice();
@@ -489,7 +492,7 @@ var MISHEAR = [
 function correctText(t){ MISHEAR.forEach(function(p){ t = t.replace(p[0], p[1]); }); return t; }
 function escHtml(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-var recog = null, wantListen = false, interimText = "";
+var recog = null, wantListen = false, interimText = "", recogActive = false;
 var transcriptByStep = {};
 var pendingInterim = {};
 function applyPhrases(){
@@ -500,14 +503,13 @@ function applyPhrases(){
 }
 function showLiveTranscript(){
   var box = el("liveTranscript"); if (!box) return;
-  if (taking){ box.textContent = "Transcript is recorded during the take and shown at the end."; return; }
   var t = transcriptByStep[current] || "";
   if (!t && !interimText){ box.textContent = "Your words appear here as you speak."; return; }
   box.innerHTML = escHtml(t) + (interimText ? " <span style=\"color:#888;font-style:italic\">" + escHtml(interimText) + "</span>" : "");
 }
 function makeRecog(){
   recog = new SR();
-  recog.continuous = true; recog.interimResults = true; recog.lang = "en-US";
+  recog.continuous = !!window.SpeechRecognition; recog.interimResults = true; recog.lang = "en-US";
   if (window.SpeechRecognition && SpeechRecognition.available){
     SpeechRecognition.available({langs:["en-US"], processLocally:true}).then(function(st){
       if (st === "available"){ try { recog.processLocally = true; } catch(e){} }
@@ -520,18 +522,33 @@ function makeRecog(){
       if (r.isFinal){
         var raw = (r[0].transcript || "").trim();
         var dir = taking ? commandDirection(raw) : 0;
+        if (dir && raw.toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim() === lastCmdText && (Date.now() - lastCmdAt) < 3500){ continue; }
         if (dir){ handleVoiceCommand(dir); continue; }
         var seg = correctText(raw);
         if (seg){ transcriptByStep[current] = ((transcriptByStep[current] || "") + " " + seg).trim(); }
       } else { inter += r[0].transcript; }
     }
-    interimText = inter; showLiveTranscript();
+    interimText = inter;
+    if (taking && inter){
+      var idir = commandDirection(inter);
+      if (idir){
+        lastCmdText = inter.toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
+        lastCmdAt = Date.now();
+        interimText = "";
+        handleVoiceCommand(idir);
+        return;
+      }
+    }
+    showLiveTranscript();
   };
-  recog.onend = function(){ if (wantListen){ try { recog.start(); } catch(e){} } };
+  recog.onstart = function(){ recogActive = true; };
+  recog.onend = function(){ recogActive = false; if (wantListen){ setTimeout(function(){ if (wantListen && !recogActive){ try { recog.start(); } catch(e){} } }, 250); } };
   recog.onerror = function(e){
     if (e.error === "not-allowed" || e.error === "service-not-allowed"){
       wantListen = false;
       el("srStatus").textContent = "Speech recognition is not available here (permission or service).";
+    } else if (e.error && e.error !== "no-speech" && e.error !== "aborted") {
+      el("srStatus").textContent = "Speech recognition reported '" + e.error + "'.";
     }
   };
   applyPhrases();
@@ -555,12 +572,13 @@ function startListening(){
   if (!SR) return;
   if (!recog) makeRecog();
   applyPhrases();
+  if (wantListen && recogActive){ el("srStatus").textContent = "Listening."; return; }
   wantListen = true;
   try { recog.start(); } catch(e){}
   el("srStatus").textContent = "Listening.";
 }
 function stopListening(){
-  wantListen = false; interimText = "";
+  wantListen = false; interimText = ""; recogActive = false;
   if (recog){ try { recog.stop(); } catch(e){} }
   if (!taking) el("srStatus").textContent = SR ? "Speech recognition available." : "Speech recognition is not available in this browser.";
   showLiveTranscript();
