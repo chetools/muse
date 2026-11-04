@@ -102,14 +102,21 @@ img,svg,canvas{max-width:100%}
 <button id="stopTake" type="button" disabled>Stop</button>
 <span class="recind" id="recInd">&#9679; RECORDING</span>
 </p>
-<p id="takeStatus" style="font-size:.95rem;color:#444">Press Record to start &mdash; the camera recording and the transcript start together. Work through to 13; the variation appears on 13 while you record.</p>
+<p id="takeStatus" style="font-size:.95rem;color:#444">Press Record to start &mdash; the camera recording starts, and the take&rsquo;s audio is captured for the Whisper transcript. Work through to 13; the variation appears on 13 while you record.</p>
 </section>
 
 <section class="panel" id="transcriptPanel">
 <h2 style="margin-top:0;font-size:1.15rem">Transcript</h2>
-<p><span id="srStatus" style="font-size:.95rem;color:#444"></span></p>
-<div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your words appear here while you record.</div>
-<p style="font-size:.92rem;color:#444">In Chrome, recognition may be processed by Google&rsquo;s speech service. On Safari, recognition is Apple&rsquo;s: it may pause after each phrase, and it may not run while the camera records &mdash; Type mode leaves the microphone to recognition alone. This page stores nothing.</p>
+<div id="liveTranscript" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 12px;min-height:2.2em">Your transcript is made by Whisper after you stop recording.</div>
+<p style="font-size:.92rem;color:#444">Whisper is the only transcription in this app. It runs in this page, from the take&rsquo;s own recorded audio; the model is the same in every browser and no audio leaves the device. Nothing is transcribed while you record: after the take, on the end screen, press &ldquo;Transcribe this take with Whisper&rdquo;. Load Whisper here before the take so the model is ready. The model downloads on first use and is then cached by the browser. On an iPhone the Tiny model and the WebAssembly engine are used: the Base model and the graphics-processor engine can exceed the phone browser&rsquo;s memory limit and close the page. This page stores nothing.</p>
+<p style="font-size:.95rem">Model:
+<select id="whisperModel" style="max-width:100%">
+<option value="base" selected>Base &mdash; better on accents and technical words; larger download</option>
+<option value="tiny">Tiny &mdash; faster; smaller download</option>
+</select>
+<button id="whisperLoad" type="button">Load Whisper</button></p>
+<p style="font-size:.95rem;color:#444"><span id="whisperStatus">Whisper is not loaded.</span></p>
+<progress id="whisperProgress" max="100" value="0" style="width:100%" class="hidden"></progress>
 </section>
 <section class="panel" id="recordingsPanel">
 <h2>Recordings</h2>
@@ -161,6 +168,8 @@ img,svg,canvas{max-width:100%}
 <h3>Self-check rubric</h3>
 <div class="rubric" id="rubricBox"></div>
 <h3>Transcript</h3>
+<p><button id="whisperRun" type="button">Transcribe this take with Whisper</button> <span id="whisperRunStatus" style="font-size:.95rem;color:#444"></span></p>
+<p style="font-size:.92rem;color:#444">Transcribe before building the final video: its captions come from this transcript.</p>
 <pre id="endTranscript" style="white-space:pre-wrap"></pre>
 <h3>Session summary</h3>
 <pre id="summary"></pre>
@@ -284,16 +293,15 @@ function render(){
   el("typeArea").classList.toggle("hidden", respVal() !== "Type");
   if (respVal() === "Type"){ el("typebox").value = typed[current] || ""; }
   el("prevBtn").disabled = (current === 1);
-  applyPhrases(); showLiveTranscript();
+  showLiveTranscript();
 }
 
 function saveTyped(){ if (respVal() === "Type"){ typed[current] = el("typebox").value; } }
 function goTo(n){
   saveTyped();
-  if (taking && interimText && interimText.trim()){ pendingInterim[current] = correctText(interimText.trim()); }
   if (n < 1) n = 1;
   if (n > SLIDES.length){ showEnd(); return; }
-  current = n; logVisit(current); render();
+  current = n; logVisit(current); whisperMark(); render();
 }
 function next(){ goTo(current + 1); }
 function prev(){ goTo(current - 1); }
@@ -377,7 +385,7 @@ function beginTake(){
   saveTyped();
   takeStart = Date.now(); taking = true; endedAt = null; finalEndT = null; endFrozen = false;
   visitLog = []; current = 1; logVisit(1);
-  transcriptByStep = {}; pendingInterim = {}; interimText = "";
+  transcriptByStep = {}; whisperSegs = []; whisperQueue = [];
   takeStarted = true; takeFirstLogT = visitLog[visitLog.length - 1].t;
   variationIdx = Math.floor(Math.random() * VARIATIONS.length);
   variation = VARIATIONS[variationIdx];
@@ -418,14 +426,14 @@ function beginTake(){
   el("recInd").classList.add("on");
   setSettingsDisabled(true);
   el("takeStatus").textContent = "Recording. Work through to " + SLIDES.length + "; the variation is on " + SLIDES.length + ".";
-  startListening();
+  if (respVal() === "Speak"){ whisperStartCapture(stream); }
   render();
 }
 el("startTake").addEventListener("click", function(){
   if (taking) return;
+  whisperPrimeAudio();
   if (respVal() === "Speak" && !stream){
     el("takeStatus").textContent = "Switching the camera on\u2026";
-    startListening();
     enableCamera(function(ok){
       if (ok) beginTake();
       else el("takeStatus").textContent = "The camera could not be switched on \u2014 the take has not started. Allow camera access, or switch Response to Type.";
@@ -435,21 +443,9 @@ el("startTake").addEventListener("click", function(){
   beginTake();
 });
 
-function reconcileTranscript(){
-  for (var k = 1; k <= SLIDES.length; k++){
-    var p = pendingInterim[k];
-    if (p && !transcriptByStep[k]){
-      transcriptByStep[k] = p;
-      var nx = transcriptByStep[k + 1];
-      if (nx && nx.toLowerCase().indexOf(p.toLowerCase()) === 0){ transcriptByStep[k + 1] = nx.slice(p.length).trim(); }
-    }
-  }
-}
 function stopTakeInternal(){
-  if (interimText && interimText.trim()){ pendingInterim[current] = correctText(interimText.trim()); }
-  reconcileTranscript();
+  whisperBuildSegs();
   if (takeStarted && takeEndSec === null) takeEndSec = nowSec();
-  stopListening();
   if (recorder && recorder.state !== "inactive"){ recorderStopPending = true; recorder.stop(); }
   taking = false; takeStart = null;
   el("startTake").disabled = false; el("stopTake").disabled = true;
@@ -462,22 +458,7 @@ el("stopTake").addEventListener("click", function(){
 });
 
 
-/* ---- live transcription (Web Speech API, per-step phrase biasing) ---- */
-var TERMS = {
- 1:["Bernoulli","pressure","speed","energy"],
- 2:["system","internal energy","kinetic energy","potential energy","mass"],
- 3:["inlet","outlet","internal energy","flow work","specific volume","differential mass"],
- 4:["heat added","shaft work","external work","inlet","outlet"],
- 5:["steady flow","steady state","accumulation","differential mass","inlet","outlet"],
- 6:["steady flow","per unit mass","internal energy","specific volume","flow work","heat added","shaft work","external work"],
- 7:["specific volume","density","pressure"],
- 8:["enthalpy","internal energy","pressure","density"],
- 9:["incompressible","constant density","internal energy","shaft work","heat added"],
- 10:["frictional heating","internal energy","heat added","external work","friction"],
- 11:["Bernoulli","steady flow","incompressible","no friction","no shaft work"],
- 12:["Bernoulli","vapour pressure","cardboard","reel","pressure","speed"],
- 13:["summary","conclusion","Bernoulli","frictional heating"]
-};
+/* ---- transcript store: Whisper is the only transcription ---- */
 var MISHEAR = [
  [/burn\s?newl[yi]/gi, "Bernoulli"],
  [/bernou+l[yi]/gi, "Bernoulli"],
@@ -491,70 +472,13 @@ var MISHEAR = [
 ];
 function correctText(t){ MISHEAR.forEach(function(p){ t = t.replace(p[0], p[1]); }); return t; }
 function escHtml(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-var recog = null, wantListen = false, interimText = "", recogActive = false;
 var transcriptByStep = {};
-var pendingInterim = {};
-function applyPhrases(){
-  if (!recog || !window.SpeechRecognitionPhrase) return;
-  try {
-    recog.phrases = (TERMS[current] || []).map(function(t){ return new SpeechRecognitionPhrase(t, 4.0); });
-  } catch(e){}
-}
 function showLiveTranscript(){
   var box = el("liveTranscript"); if (!box) return;
   var t = transcriptByStep[current] || "";
-  if (!t && !interimText){ box.textContent = "Your words appear here as you speak."; return; }
-  box.innerHTML = escHtml(t) + (interimText ? " <span style=\"color:#888;font-style:italic\">" + escHtml(interimText) + "</span>" : "");
+  if (!t){ box.textContent = taking ? "Recording. This slide's words are transcribed by Whisper after you stop." : "Your transcript is made by Whisper after you stop recording."; return; }
+  box.textContent = t;
 }
-function makeRecog(){
-  recog = new SR();
-  recog.continuous = !!window.SpeechRecognition; recog.interimResults = true; recog.lang = "en-US";
-  if (window.SpeechRecognition && SpeechRecognition.available){
-    SpeechRecognition.available({langs:["en-US"], processLocally:true}).then(function(st){
-      if (st === "available"){ try { recog.processLocally = true; } catch(e){} }
-    }).catch(function(){});
-  }
-  recog.onresult = function(e){
-    var inter = "";
-    for (var i = e.resultIndex; i < e.results.length; i++){
-      var r = e.results[i];
-      if (r.isFinal){
-        var raw = (r[0].transcript || "").trim();
-        var seg = correctText(raw);
-        if (seg){ transcriptByStep[current] = ((transcriptByStep[current] || "") + " " + seg).trim(); }
-      } else { inter += r[0].transcript; }
-    }
-    interimText = inter; showLiveTranscript();
-  };
-  recog.onstart = function(){ recogActive = true; };
-  recog.onend = function(){ recogActive = false; if (wantListen){ setTimeout(function(){ if (wantListen && !recogActive){ try { recog.start(); } catch(e){} } }, 250); } };
-  recog.onerror = function(e){
-    if (e.error === "not-allowed" || e.error === "service-not-allowed"){
-      wantListen = false;
-      el("srStatus").textContent = "Speech recognition is not available here (permission or service).";
-    } else if (e.error && e.error !== "no-speech" && e.error !== "aborted") {
-      el("srStatus").textContent = "Speech recognition reported '" + e.error + "'.";
-    }
-  };
-  applyPhrases();
-}
-function startListening(){
-  if (!SR) return;
-  if (!recog) makeRecog();
-  applyPhrases();
-  if (wantListen && recogActive){ el("srStatus").textContent = "Listening."; return; }
-  wantListen = true;
-  try { recog.start(); } catch(e){}
-  el("srStatus").textContent = "Listening.";
-}
-function stopListening(){
-  wantListen = false; interimText = ""; recogActive = false;
-  if (recog){ try { recog.stop(); } catch(e){} }
-  if (!taking) el("srStatus").textContent = SR ? "Speech recognition available." : "Speech recognition is not available in this browser.";
-  showLiveTranscript();
-}
-el("srStatus").textContent = SR ? "Speech recognition available. It starts when you press Record." : "Speech recognition is not available in this browser.";
 function transcriptText(){
   var out = [];
   for (var k = 1; k <= SLIDES.length; k++){ if (transcriptByStep[k]) out.push(k + " (" + SLIDES[k-1].title + "): " + transcriptByStep[k]); }
@@ -608,7 +532,7 @@ function buildSummary(){
     }
   }
   var tr = transcriptText();
-  if (tr){ lines.push(""); lines.push("Transcript (speech recognition, corrected against the slide glossary):"); lines.push(tr); }
+  if (tr){ lines.push(""); lines.push("Transcript (Whisper, corrected against the slide glossary):"); lines.push(tr); }
   lines.push(""); lines.push("Self-check rubric:");
   RUBRIC.forEach(function(item, i){ lines.push((el("rubric" + i).checked ? "[x] " : "[ ] ") + item); });
   return lines.join("\n");
@@ -628,8 +552,8 @@ function showEnd(){
   el("playArea").classList.toggle("hidden", !hasRec);
   el("noRecording").classList.toggle("hidden", hasRec || recorderStopPending);
   el("buildFinal").classList.toggle("hidden", !hasRec);
-  stopListening();
-  el("endTranscript").textContent = transcriptText() || "No transcript was recorded.";
+  el("endTranscript").textContent = transcriptText() || (whisperSegs.length ? "Not transcribed yet. Press 'Transcribe this take with Whisper' above." : (takeStarted ? ((snapshot && snapshot.response === "Type") ? "No typed text was entered." : "No take audio was captured for Whisper (capture unavailable, or the stream had no audio track).") : "No take was recorded in this session. Record a take first \u2014 recordings and transcripts exist only while this page stays open."));
+  el("whisperRun").classList.toggle("hidden", !whisperSegs.length);
   el("summary").textContent = buildSummary();
   window.scrollTo(0,0);
 }
@@ -656,7 +580,7 @@ el("restartBtn").addEventListener("click", function(){
   if (rendering){ el("renderStatus").textContent = "Wait for the final video to finish building."; return; }
   if (taking) stopTakeInternal();
   sessionStart = Date.now(); takeStart = null; taking = false;
-  visitLog = []; typed = {}; transcriptByStep = {}; pendingInterim = {}; interimText = ""; variation = null; variationIdx = -1; endedAt = null; finalEndT = null;
+  visitLog = []; typed = {}; transcriptByStep = {}; whisperSegs = []; whisperQueue = []; variation = null; variationIdx = -1; endedAt = null; finalEndT = null;
   endFrozen = false; takeStarted = false; takeFirstLogT = null; snapshot = null; recorderStopPending = false;
   takeEndSec = null; finalBlob = null; finalUrl = null; el("finalArea").classList.add("hidden"); el("renderStatus").textContent = "";
   recordBlob = null; chunks = [];
@@ -668,6 +592,211 @@ el("restartBtn").addEventListener("click", function(){
   window.scrollTo(0,0);
 });
 
+
+
+/* ---- Whisper: the only transcription, run from the take audio ---- */
+var WHISPER_MODELS = { base: "onnx-community/whisper-base", tiny: "onnx-community/whisper-tiny.en" };
+var whisperWorker = null, whisperReady = false, whisperBusy = false, whisperDevice = "", whisperLoadedModel = "", whisperLoadWaiter = null;
+var whisperSegs = [], whisperQueue = [], whisperDone = 0, whisperTotalCount = 0;
+var whisperCapture = null, whisperCtx = null;
+
+function whisperStatus(t){
+  var a = el("whisperStatus"); if (a) a.textContent = t;
+  var b = el("whisperRunStatus"); if (b) b.textContent = t;
+}
+function whisperProgressShow(show, value){
+  var p = el("whisperProgress"); if (!p) return;
+  p.classList.toggle("hidden", !show);
+  if (typeof value === "number") p.value = value;
+}
+function whisperIsIOS(){
+  var ua = navigator.userAgent || "";
+  return /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+function whisperPrimeAudio(){
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!whisperCtx) whisperCtx = new AC();
+    if (whisperCtx.state === "suspended") whisperCtx.resume();
+  } catch(e){}
+}
+function whisperStartCapture(srcStream){
+  whisperStopCapture();
+  try {
+    if (!srcStream || !srcStream.getAudioTracks || !srcStream.getAudioTracks().length) return;
+    whisperPrimeAudio();
+    if (!whisperCtx) return;
+    var src = whisperCtx.createMediaStreamSource(srcStream);
+    var proc = whisperCtx.createScriptProcessor(4096, 1, 1);
+    var cap = { proc: proc, chunks: [], samples: 0, rate: whisperCtx.sampleRate, marks: [{ step: 1, at: 0 }] };
+    proc.onaudioprocess = function(ev){
+      var data = ev.inputBuffer.getChannelData(0);
+      var copy = new Float32Array(data.length); copy.set(data);
+      cap.chunks.push(copy); cap.samples += data.length;
+      var out = ev.outputBuffer.getChannelData(0);
+      for (var i = 0; i < out.length; i++) out[i] = 0;
+    };
+    src.connect(proc); proc.connect(whisperCtx.destination);
+    whisperCapture = cap;
+  } catch(e){ whisperCapture = null; }
+}
+function whisperMark(){
+  if (whisperCapture && taking){ whisperCapture.marks.push({ step: current, at: whisperCapture.samples }); }
+}
+function whisperStopCapture(){
+  if (!whisperCapture) return;
+  try { whisperCapture.proc.disconnect(); } catch(e){}
+  whisperCapture = null;
+}
+function whisperResample(samples, fromRate){
+  if (fromRate === 16000) return samples;
+  var ratio = fromRate / 16000;
+  var len = Math.floor(samples.length / ratio);
+  var out = new Float32Array(len);
+  for (var i = 0; i < len; i++){
+    var pos = i * ratio; var j = Math.floor(pos); var frac = pos - j;
+    var a = samples[j] || 0; var b = (j + 1 < samples.length) ? samples[j + 1] : a;
+    out[i] = a + (b - a) * frac;
+  }
+  return out;
+}
+function whisperBuildSegs(){
+  whisperSegs = [];
+  var cap = whisperCapture;
+  if (!cap || !cap.samples){ whisperStopCapture(); return; }
+  var all = new Float32Array(cap.samples); var off = 0;
+  cap.chunks.forEach(function(c){ all.set(c, off); off += c.length; });
+  var marks = cap.marks;
+  for (var i = 0; i < marks.length; i++){
+    var start = marks[i].at;
+    var end = (i + 1 < marks.length) ? marks[i + 1].at : cap.samples;
+    if (end > start + cap.rate * 0.4){
+      whisperSegs.push({ step: marks[i].step, audio: whisperResample(all.subarray(start, end), cap.rate) });
+    }
+  }
+  whisperStopCapture();
+}
+function whisperWorkerSource(){
+  var lines = [
+    "var pipe = null;",
+    "self.onmessage = async function(e){",
+    "  var d = e.data;",
+    "  if (d.type === 'load'){",
+    "    try {",
+    "      var m = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm');",
+    "      m.env.allowLocalModels = false;",
+    "      try { m.env.backends.onnx.wasm.numThreads = 1; } catch(err){}",
+    "      var prog = function(p){ if (p && p.status === 'progress' && p.file && String(p.file).indexOf('.onnx') >= 0){ self.postMessage({ type: 'progress', file: p.file, progress: p.progress || 0 }); } };",
+    "      var attempts = d.wasmOnly ? [",
+    "        { device: 'wasm', dtype: 'q8' }",
+    "      ] : [",
+    "        { device: 'webgpu', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' } },",
+    "        { device: 'wasm', dtype: 'q8' }",
+    "      ];",
+    "      var lastErr = null;",
+    "      for (var i = 0; i < attempts.length; i++){",
+    "        try {",
+    "          pipe = await m.pipeline('automatic-speech-recognition', d.model, { device: attempts[i].device, dtype: attempts[i].dtype, progress_callback: prog });",
+    "          self.postMessage({ type: 'ready', device: attempts[i].device });",
+    "          break;",
+    "        } catch(err){ lastErr = err; pipe = null; }",
+    "      }",
+    "      if (!pipe) throw lastErr || new Error('model load failed');",
+    "    } catch(err){ self.postMessage({ type: 'error', message: String((err && err.message) || err) }); }",
+    "  } else if (d.type === 'transcribe'){",
+    "    try {",
+    "      var audio = new Float32Array(d.audio);",
+    "      var out = await pipe(audio, { language: 'en', task: 'transcribe', chunk_length_s: 30, stride_length_s: 5 });",
+    "      self.postMessage({ type: 'result', step: d.step, text: ((out && out.text) || '').trim() });",
+    "    } catch(err){ self.postMessage({ type: 'error', message: String((err && err.message) || err) }); }",
+    "  }",
+    "};"
+  ];
+  return lines.join("\n");
+}
+function whisperGetWorker(){
+  if (whisperWorker) return whisperWorker;
+  var blob = new Blob([whisperWorkerSource()], { type: "text/javascript" });
+  whisperWorker = new Worker(URL.createObjectURL(blob), { type: "module" });
+  whisperWorker.onmessage = whisperOnMessage;
+  whisperWorker.onerror = function(e){
+    whisperBusy = false; whisperProgressShow(false);
+    whisperStatus("Whisper could not start in this browser (" + (e.message || "worker error") + ").");
+    if (whisperLoadWaiter){ var cb = whisperLoadWaiter; whisperLoadWaiter = null; cb(false); }
+  };
+  return whisperWorker;
+}
+function whisperEnsureLoaded(cb){
+  var model = WHISPER_MODELS[el("whisperModel").value] || WHISPER_MODELS.base;
+  if (whisperReady && whisperLoadedModel === model){ cb(true); return; }
+  if (whisperWorker && whisperLoadedModel && whisperLoadedModel !== model){
+    try { whisperWorker.terminate(); } catch(e){}
+    whisperWorker = null; whisperReady = false;
+  }
+  whisperLoadWaiter = cb; whisperLoadedModel = model;
+  whisperProgressShow(true, 0);
+  whisperStatus("Loading Whisper \u2014 the model downloads on first use and is then cached.");
+  whisperGetWorker().postMessage({ type: "load", model: model, wasmOnly: whisperIsIOS() });
+}
+function whisperOnMessage(e){
+  var d = e.data || {};
+  if (d.type === "progress"){
+    whisperProgressShow(true, Math.round(d.progress || 0));
+    whisperStatus("Downloading the Whisper model: " + (d.file || "") + " " + Math.round(d.progress || 0) + "%");
+  } else if (d.type === "ready"){
+    whisperReady = true; whisperDevice = d.device || "";
+    whisperProgressShow(false);
+    whisperStatus("Whisper is loaded (" + whisperDevice + ").");
+    if (whisperLoadWaiter){ var cb = whisperLoadWaiter; whisperLoadWaiter = null; cb(true); }
+  } else if (d.type === "result"){
+    var txt = correctText(d.text || "");
+    if (txt) transcriptByStep[d.step] = ((transcriptByStep[d.step] || "") + " " + txt).trim();
+    whisperDone++;
+    whisperProgressShow(true, Math.round(100 * whisperDone / Math.max(1, whisperTotalCount)));
+    whisperStatus("Transcribed " + whisperDone + " of " + whisperTotalCount + " slides\u2026");
+    whisperSendNext();
+  } else if (d.type === "error"){
+    whisperBusy = false; whisperProgressShow(false);
+    whisperStatus("Whisper reported: " + d.message);
+    if (whisperLoadWaiter){ var cb2 = whisperLoadWaiter; whisperLoadWaiter = null; cb2(false); }
+  }
+}
+function whisperSendNext(){
+  if (!whisperQueue.length){
+    whisperBusy = false; whisperProgressShow(false);
+    whisperStatus("Whisper transcription complete (" + whisperDevice + ").");
+    el("endTranscript").textContent = transcriptText() || "No Whisper transcript was produced.";
+    el("summary").textContent = buildSummary();
+    showLiveTranscript();
+    if (typeof sealNow === "function") sealNow();
+    return;
+  }
+  var seg = whisperQueue.shift();
+  var buf = seg.audio.buffer.slice(seg.audio.byteOffset, seg.audio.byteOffset + seg.audio.byteLength);
+  whisperGetWorker().postMessage({ type: "transcribe", step: seg.step, audio: buf }, [buf]);
+}
+function whisperRunTranscription(){
+  if (whisperBusy) return;
+  if (!whisperSegs.length){ whisperStatus("No take audio was captured for Whisper."); return; }
+  whisperBusy = true;
+  whisperProgressShow(true, 0);
+  whisperEnsureLoaded(function(ok){
+    if (!ok){ whisperBusy = false; whisperProgressShow(false); return; }
+    whisperQueue = whisperSegs.slice(); whisperDone = 0; whisperTotalCount = whisperQueue.length;
+    whisperStatus("Transcribing 0 of " + whisperTotalCount + " slides\u2026");
+    whisperSendNext();
+  });
+}
+el("whisperLoad").addEventListener("click", function(){ whisperEnsureLoaded(function(){}); });
+el("whisperRun").addEventListener("click", whisperRunTranscription);
+el("whisperModel").addEventListener("change", function(){
+  if (whisperReady) whisperStatus("Model changed \u2014 Whisper reloads on next use.");
+});
+if (whisperIsIOS()){
+  el("whisperModel").value = "tiny";
+  whisperStatus("Whisper is not loaded. On an iPhone the Tiny model is selected: the Base model can exceed the browser memory limit and close the page.");
+}
 
 /* ---- final video: slide + face strip + captions, built after the take ---- */
 function stepSegments(){
