@@ -195,7 +195,7 @@ var FLOW_PR = 'u + ' + FR('P','\u03c1') + ' + g z + ' + FR('V<sup>2</sup>','2');
 var FLOW_H = 'h + g z + ' + FR('V<sup>2</sup>','2');
 function eqFromFlow(f, withHW){
   return '<span class="row">' + LHS_SYS + ' = (' + f + ')<sub>in</sub> dm<sub>in</sub></span>'
-    + '<span class="row">\u2212 (' + f + ')<sub>out</sub> dm<sub>in</sub>' + (withHW ? ' + dQ + dW<sub>ext</sub>' : '') + '</span>';
+    + '<span class="row">\u2212 (' + f + ')<sub>out</sub> dm<sub>out</sub>' + (withHW ? ' + dQ + dW<sub>ext</sub>' : '') + '</span>';
 }
 
 function eqSteady(f){
@@ -499,7 +499,12 @@ var MISHEAR = [
  [/burn\s?newl[yi]/gi, "Bernoulli"],
  [/bernou+l[yi]/gi, "Bernoulli"],
  [/in\s?tell\s?p(?:ea|y)/gi, "enthalpy"],
- [/friction\s?all heating/gi, "frictional heating"]
+ [/friction\s?all heating/gi, "frictional heating"],
+ [/fictional heating/gi, "frictional heating"],
+ [/friction heating/gi, "frictional heating"],
+ [/study floor/gi, "steady flow"],
+ [/steady floor/gi, "steady flow"],
+ [/death value/gi, "rho value"]
 ];
 function correctText(t){ MISHEAR.forEach(function(p){ t = t.replace(p[0], p[1]); }); return t; }
 function escHtml(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
