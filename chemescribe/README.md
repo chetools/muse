@@ -1,8 +1,9 @@
-# Parakeet transcription page
+# ChemEScribe page
 
-A static page that runs NVIDIA Parakeet TDT 0.6B v2 (English, int8)
-entirely in the browser on WebAssembly. It is a general transcription
-page for spoken engineering English: audio enters as an uploaded file
+ChemEScribe is a static page that runs NVIDIA Parakeet TDT 0.6B v2
+(English, int8) entirely in the browser on WebAssembly. It transcribes
+spoken engineering English, informed by chemical-engineering
+background knowledge: audio enters as an uploaded file
 or a microphone recording, and the transcript is corrected with a
 chemical-engineering glossary map.
 

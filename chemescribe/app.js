@@ -147,10 +147,10 @@ if (fsSupported) {
 $('autosaveFileBtn').addEventListener('click', async () => {
   try {
     fileHandle = await window.showSaveFilePicker({
-      suggestedName: 'parakeet-transcript.txt',
+      suggestedName: 'chemescribe-transcript.txt',
       types: [{ description: 'Text file', accept: { 'text/plain': ['.txt'] } }],
     });
-    saveStatus.textContent = 'Autosave file chosen: ' + (fileHandle.name || 'parakeet-transcript.txt') +
+    saveStatus.textContent = 'Autosave file chosen: ' + (fileHandle.name || 'chemescribe-transcript.txt') +
       '. The transcript will be written to it after every piece and every 15 s.';
     if (hasTranscript) autosaveNow();
   } catch { /* the file picker was closed without a choice; nothing changes */ }
@@ -162,7 +162,7 @@ downloadBtn.addEventListener('click', () => {
   const blob = new Blob([text], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'parakeet-transcript.txt';
+  a.download = 'chemescribe-transcript.txt';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
