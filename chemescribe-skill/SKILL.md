@@ -1,8 +1,8 @@
-# Transcribe Audio with Parakeet and the Chemical-Engineering Glossary
+# ChemEScribe — transcribe audio with Parakeet and the chemical-engineering glossary
 
 ## Purpose
 
-Transcribe an audio file the user points to or uploads, on this machine, and correct the transcript for technical terms. The recogniser is NVIDIA Parakeet TDT 0.6B v2 in int8 form, run locally through `onnx-asr`. The correction knowledge is the bundled glossary in `glossary/`: `glossary.json` (755 chemical-engineering and general-engineering terms in 17 categories, each with its risk reasons), `vocabulary.txt` (the 744-term vocabulary drawn from it), and the 203 sound-alike correction pairs in two classes — `corrections.json` (145 certain pairs, each marked attested or predicted, replaced outright) and `slash-pairs.json` (58 uncertain pairs, decided by the context rules in `context-rules.json` or rendered in slash form).
+ChemEScribe transcribes an audio file the user points to or uploads, on this machine, and corrects the transcript for technical terms. The recogniser is NVIDIA Parakeet TDT 0.6B v2 in int8 form, run locally through `onnx-asr`. The correction knowledge is the bundled glossary in `glossary/`: `glossary.json` (755 chemical-engineering and general-engineering terms in 17 categories, each with its risk reasons), `vocabulary.txt` (the 744-term vocabulary drawn from it), and the 203 sound-alike correction pairs in two classes — `corrections.json` (145 certain pairs, each marked attested or predicted, replaced outright) and `slash-pairs.json` (58 uncertain pairs, decided by the context rules in `context-rules.json` or rendered in slash form).
 
 The user this skill serves speaks engineering: lectures, spoken explanations, interviews, meetings, dictation. General recognisers render that vocabulary badly (the attested examples in the glossary include fugacity heard as "GASB" and the Antoine equation heard as the "Anaconda equation"), so the transcript is corrected in stages after recognition — a certain-pair map, then context-rules choices among the uncertain pairs — and every correction and choice is listed so the user can check it.
 

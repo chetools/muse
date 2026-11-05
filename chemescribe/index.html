@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: 'sha256-HX3bpACk64sXqsfhdVkgTSYuC6rSA7sXKhilKPrp9G0='; worker-src 'self' blob:; connect-src 'self' blob: data: https://huggingface.co https://*.huggingface.co https://*.hf.co https://*.xethub.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
-<title>Parakeet transcription — spoken engineering English</title>
+<title>ChemEScribe — transcription informed by chemical-engineering knowledge</title>
 <style>
   html { background: #ffffff; }
   body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a;
@@ -34,6 +34,9 @@
   #netlog { font-family: ui-monospace, monospace; font-size: 0.78rem; white-space: pre-wrap;
             word-break: break-all; max-height: 220px; overflow: auto; }
   .note { color: #555; font-size: 0.88rem; }
+  details { margin: 26px 0 8px; }
+  details summary { font-size: 1.05rem; font-weight: 600; cursor: pointer; }
+  details h3 { font-size: 0.98rem; margin: 16px 0 6px; }
   label.check { display: flex; gap: 8px; align-items: center; font-size: 0.95rem; }
   mark.corr { padding: 0 1px; border-radius: 2px; }
   mark.corr-certain { background: #d9ecd2; }
@@ -54,29 +57,15 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Parakeet transcription</h1>
-  <p class="sub">A general transcription page for spoken engineering English. NVIDIA Parakeet
-  TDT 0.6B v2 (English, int8) runs entirely in this page on WebAssembly (WASM), the browser’s
-  sandboxed code format. No server takes part in transcription. Transcripts are corrected with
-  a chemical-engineering glossary map, described below. The page also opens on a phone, where
-  the model load itself is the test: a phone browser gives one page far less memory than a
-  desktop browser, and this model needs roughly 2 GB while it runs.</p>
-
-  <h2>Privacy and network use</h2>
-  <p>This page sends no telemetry and carries no analytics. The speech runtime used here is the
-  WebAssembly build of ONNX Runtime; that build carries no telemetry (the telemetry seen earlier
-  came from the native desktop build). A content security policy in this page’s head limits its
-  network connections to this site and to Hugging Face. Nothing is fetched until you press
-  “Load model”: that press downloads the model files (about 670 MB in total) from the Hugging Face
-  repository <i>ysdede/parakeet-tdt-0.6b-v2-onnx</i>, and your browser caches them on this device
-  for later visits. Your audio is read on this device only and is never uploaded. The network
-  log at the bottom of the page lists every file this page fetches, as it happens.</p>
+  <h1>ChemEScribe</h1>
+  <p class="sub">Transcription informed by chemical-engineering background knowledge: a
+  glossary of 755 chemical-engineering terms, its correction pairs and its context rules
+  correct the transcript as it is produced. The recogniser runs entirely in this browser —
+  no server takes part, and your audio never leaves this device.</p>
 
   <h2>Corrections</h2>
-  <p>The correction map loaded in this page has <span id="pairCount">201</span> pairs, generated
-  from the chemical-engineering glossary correction map (the same source the Muse
-  transcription skill uses). Of the 203 pairs in that source, most are predicted sound-alikes,
-  not attested errors — only 7 are attested. A confident correction replaces the misheard form
+  <p>The correction map loaded in this page has <span id="pairCount">201</span> pairs.
+  A confident correction replaces the misheard form
   outright. An uncertain one — the heard form is an ordinary English word that may have been
   said as itself, or the glossary lists several candidate terms — is written in the transcript
   as the heard form followed by every candidate, separated by slashes with no spaces, for
@@ -94,9 +83,8 @@
     <span class="status" id="loadStatus">Model not loaded.</span>
   </div>
   <progress id="loadProg" value="0" max="1" hidden></progress>
-  <p class="note">Backend: WebAssembly on the CPU, one thread (this site cannot use the extra
-  browser isolation mode that multi-threaded WASM needs). Expect the load to take a few minutes
-  on a first visit and to need roughly 2 GB of memory while transcribing.</p>
+  <p class="note">Nothing is downloaded until you press the button. The first load takes a
+  few minutes; the model then needs roughly 2 GB of memory while transcribing.</p>
 
   <h2>2. Options, then choose an audio file or record one</h2>
   <div class="row">
@@ -166,11 +154,48 @@
     <span class="status" id="saveStatus">Autosave: in-browser save only.</span>
   </div>
 
-  <h2>Network log</h2>
-  <p class="note">Every resource fetched by this page since it opened, from the browser’s own
-  resource records. On first opening, before “Load model” is pressed, every entry is a file from
-  this site.</p>
-  <div class="box" id="netlog">(no resources recorded yet)</div>
+  <details id="techDetails">
+    <summary>Technical details</summary>
+
+    <h3>Recogniser</h3>
+    <p>The recogniser is NVIDIA Parakeet TDT 0.6B v2 (English, int8). Pressing “Load model”
+    downloads its files (about 670 MB in total) from the Hugging Face repository
+    <i>ysdede/parakeet-tdt-0.6b-v2-onnx</i>; the browser caches them on this device for later
+    visits. Your audio is read on this device only and is never uploaded.</p>
+
+    <h3>Runtime</h3>
+    <p>The recogniser runs on WebAssembly (WASM), the browser’s sandboxed code format, through
+    parakeet.js 1.4.4 and ONNX Runtime Web 1.24.1, both vendored on this site. The backend is
+    the CPU on one thread: multi-threaded WASM needs an extra browser isolation mode that this
+    site cannot use. While it runs, the model needs roughly 2 GB of memory; a phone browser
+    gives one page far less memory than a desktop browser, so on a phone the model load itself
+    is the test.</p>
+
+    <h3>Privacy and network audit</h3>
+    <p>This page sends no telemetry and carries no analytics. The speech runtime is the
+    WebAssembly build of ONNX Runtime, and that build carries no telemetry (the telemetry
+    observed earlier came from the native desktop build). A content security policy in this
+    page’s head limits its network connections to this site and to Hugging Face. Before
+    publication the vendored files were string-searched for telemetry and analytics endpoints
+    — among them <i>mobile.events.data.microsoft.com</i> and OneCollector — and none were
+    found; headless test runs recorded requests to this site only on load, and to this site
+    and Hugging Face after “Load model” was pressed. Nothing is fetched until you press
+    “Load model”.</p>
+
+    <h3>Glossary data</h3>
+    <p>The correction map is generated from the chemical-engineering glossary bundle that the
+    ChemEScribe skill in Muse uses as well: a glossary of 755 terms with 203 sound-alike
+    correction pairs. Of the 203 pairs, 7 are attested errors and the rest are predicted
+    sound-alikes. The bundle classes 145 pairs as confident and 58 as uncertain; this page
+    loads 201 of them — 143 confident and 58 uncertain — and 2 pairs are not used on this
+    page.</p>
+
+    <h3>Network log</h3>
+    <p class="note">Every resource fetched by this page since it opened, from the browser’s own
+    resource records. On first opening, before “Load model” is pressed, every entry is a file from
+    this site.</p>
+    <div class="box" id="netlog">(no resources recorded yet)</div>
+  </details>
 </div>
 <script type="module" src="./app.js"></script>
 </body>
