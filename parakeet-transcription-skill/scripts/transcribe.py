@@ -2,7 +2,11 @@
 """Transcribe audio files locally with Parakeet TDT 0.6B v2 (int8, CPU).
 
 Usage:
-    python3 transcribe.py <audio-file> [more files ...]
+    python3 transcribe.py [--timestamps] <audio-file> [more files ...]
+
+With --timestamps, each chunk is printed on its own line prefixed with
+its time range in the recording, [mm:ss-mm:ss] (h:mm:ss past one hour),
+one chunk per line. Without it, one plain transcript line per file.
 
 Accepts WAV, MP3, M4A, WebM, OGG, MP4 and any other format ffmpeg can
 read. Anything that is not already 16 kHz mono 16-bit WAV is converted
@@ -65,6 +69,13 @@ def to_wav(path, tmpdir):
     return out
 
 
+def format_ts(seconds):
+    s = int(round(seconds))
+    if s >= 3600:
+        return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+    return f"{s // 60:02d}:{s % 60:02d}"
+
+
 def read_wav(path):
     import numpy as np
     with wave.open(path, "rb") as w:
@@ -93,8 +104,10 @@ def chunk_bounds(audio, sr):
 
 
 def main(argv):
-    if len(argv) < 2:
-        print("usage: python3 transcribe.py <audio-file> [more files ...]",
+    timestamps = "--timestamps" in argv[1:]
+    files = [a for a in argv[1:] if a != "--timestamps"]
+    if not files:
+        print("usage: python3 transcribe.py [--timestamps] <audio-file> [more files ...]",
               file=sys.stderr)
         return 2
     try:
@@ -114,7 +127,7 @@ def main(argv):
                                 providers=["CPUExecutionProvider"])
     sr = 16000
     with tempfile.TemporaryDirectory() as tmpdir:
-        for path in argv[1:]:
+        for path in files:
             if not os.path.isfile(path):
                 print(f"transcribe.py: no such file: {path}", file=sys.stderr)
                 return 1
@@ -134,7 +147,14 @@ def main(argv):
                 parts.append(text.strip())
                 print(f"{path}: chunk {i + 1} of {len(cuts) - 1} "
                       f"[{cuts[i]:.1f}-{cuts[i + 1]:.1f} s] done", file=sys.stderr)
-            print(" ".join(p for p in parts if p))
+            if timestamps:
+                if len(files) > 1:
+                    print(f"# {path}")
+                for i, part in enumerate(parts):
+                    if part:
+                        print(f"[{format_ts(cuts[i])}-{format_ts(cuts[i + 1])}] {part}")
+            else:
+                print(" ".join(p for p in parts if p))
     return 0
 
 

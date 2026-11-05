@@ -71,6 +71,18 @@ with tempfile.TemporaryDirectory() as td:
 # 4. transcribe.py usage error costs nothing and needs no setup.
 r = run([str(SKILL / "scripts" / "transcribe.py")])
 check("usage exit 2", r.returncode == 2 and "usage" in r.stderr, r.stderr[:120])
+r = run([str(SKILL / "scripts" / "transcribe.py"), "--timestamps"])
+check("usage exit 2 with flag only", r.returncode == 2, f"got {r.returncode}")
+
+# 4b. Timestamp formatting.
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "transcribe", SKILL / "scripts" / "transcribe.py")
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+check("format_ts zero", mod.format_ts(0) == "00:00", mod.format_ts(0))
+check("format_ts minutes", mod.format_ts(65.2) == "01:05", mod.format_ts(65.2))
+check("format_ts hours", mod.format_ts(3661) == "1:01:01", mod.format_ts(3661))
 
 # 5. Live transcription, only when onnx-asr is importable in this python.
 try:
@@ -87,6 +99,14 @@ if have_asr and len(sys.argv) > 1:
         words = r.stdout.split()
         check("live transcription non-empty", len(words) > 20,
               f"got {len(words)} words: {r.stdout[:120]!r} stderr: {r.stderr[-200:]}")
+        r2 = run([str(SKILL / "scripts" / "transcribe.py"), "--timestamps", mp3])
+        import re
+        first = r2.stdout.strip().splitlines()[0] if r2.stdout.strip() else ""
+        check("live timestamps prefix", bool(re.match(r"^\[\d\d:\d\d-\d\d:\d\d\] ", first)),
+              f"first line: {first[:80]!r}")
+        stripped = re.sub(r"\[\d+:\d\d(?::\d\d)?-\d+:\d\d(?::\d\d)?\] ", "", r2.stdout)
+        check("live timestamps same words", stripped.split() == words,
+              "timestamped output changed the words")
 else:
     print("SKIP live transcription (onnx-asr not in this python, or no clip given)")
 
