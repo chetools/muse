@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: 'sha256-HX3bpACk64sXqsfhdVkgTSYuC6rSA7sXKhilKPrp9G0='; worker-src 'self' blob:; connect-src 'self' blob: data: https://huggingface.co https://*.huggingface.co https://*.hf.co https://*.xethub.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
-<title>Parakeet in the browser — prototype</title>
+<title>Parakeet transcription — spoken engineering English</title>
 <style>
   html { background: #ffffff; }
   body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a;
@@ -26,11 +26,15 @@
          padding: 8px 12px; display: none; }
   .box { border: 1px solid #ccc; border-radius: 6px; padding: 12px 14px; background: #fafafa; }
   #transcript { white-space: pre-wrap; font-size: 1rem; }
+  #corrections { white-space: pre-wrap; font-size: 0.92rem; }
+  #restoreBox { border: 1px solid #b98a1c; background: #fff8e1; border-radius: 6px;
+                padding: 10px 14px; display: none; margin: 10px 0; }
   table { border-collapse: collapse; font-size: 0.88rem; }
   td, th { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
   #netlog { font-family: ui-monospace, monospace; font-size: 0.78rem; white-space: pre-wrap;
             word-break: break-all; max-height: 220px; overflow: auto; }
   .note { color: #555; font-size: 0.88rem; }
+  label.check { display: flex; gap: 8px; align-items: center; font-size: 0.95rem; }
 </style>
 <script type="importmap">
 {
@@ -43,14 +47,13 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Parakeet in the browser — prototype</h1>
-  <p class="sub">NVIDIA Parakeet TDT 0.6B v2 (English, int8) running entirely in this page on
-  WebAssembly (WASM), the browser’s sandboxed code format. No server takes part in transcription.</p>
-  <p class="sub">Purpose: measure, on a desktop Chrome browser, whether this model is fast and
-  accurate enough in a static page to be worth using in place of the smaller Whisper model in the
-  Bernoulli explanation app. It also opens on a phone, where the model load itself is the test:
-  a phone browser gives one page far less memory than a desktop browser, and this model needs
-  roughly 2 GB while it runs.</p>
+  <h1>Parakeet transcription</h1>
+  <p class="sub">A general transcription page for spoken engineering English. NVIDIA Parakeet
+  TDT 0.6B v2 (English, int8) runs entirely in this page on WebAssembly (WASM), the browser’s
+  sandboxed code format. No server takes part in transcription. Transcripts are corrected with
+  a chemical-engineering glossary map, described below. The page also opens on a phone, where
+  the model load itself is the test: a phone browser gives one page far less memory than a
+  desktop browser, and this model needs roughly 2 GB while it runs.</p>
 
   <h2>Privacy and network use</h2>
   <p>This page sends no telemetry and carries no analytics. The speech runtime used here is the
@@ -59,8 +62,24 @@
   network connections to this site and to Hugging Face. Nothing is fetched until you press
   “Load model”: that press downloads the model files (about 670 MB in total) from the Hugging Face
   repository <i>ysdede/parakeet-tdt-0.6b-v2-onnx</i>, and your browser caches them on this device
-  for later visits. Your audio file is read on this device only and is never uploaded. The network
+  for later visits. Your audio is read on this device only and is never uploaded. The network
   log at the bottom of the page lists every file this page fetches, as it happens.</p>
+
+  <h2>Corrections</h2>
+  <p>The correction map loaded in this page has <span id="pairCount">199</span> pairs, generated
+  from the chemical-engineering glossary correction map (the same source the Muse
+  transcription skill uses). Of the 203 pairs in that source, most are predicted sound-alikes,
+  not attested errors — only 7 are attested. A confident correction replaces the misheard form
+  outright. An uncertain one — the heard form is an ordinary English word that may have been
+  said as itself, or the glossary lists several candidate terms — is written in the transcript
+  as the heard form followed by every candidate, separated by slashes with no spaces, for
+  example “viral/virial equation/virial coefficient”, so nothing is silently chosen. One
+  exception: where the word next to the mishearing is the last word (or the first word) of
+  exactly one candidate, the context settles the choice — “viral coefficient” becomes
+  “virial coefficient” — and the list below the transcript marks that correction as chosen
+  by context and names the cue word. After every transcription, the page lists each
+  correction it applied and marks the uncertain ones, so any correction can be checked
+  against the recording.</p>
 
   <h2>1. Load the model</h2>
   <div class="row">
@@ -72,14 +91,17 @@
   browser isolation mode that multi-threaded WASM needs). Expect the load to take a few minutes
   on a first visit and to need roughly 2 GB of memory while transcribing.</p>
 
-  <h2>2. Choose an audio file, or record one</h2>
+  <h2>2. Options, then choose an audio file or record one</h2>
+  <div class="row">
+    <label class="check"><input type="checkbox" id="tsCheck"> Include timestamps — prefix each
+    piece of the transcript with its start time in the audio, like [01:05]</label>
+  </div>
   <div class="row">
     <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg">
     <span class="status" id="audioStatus">No file chosen.</span>
   </div>
-  <p class="note">Any recording your browser can play back works. For the intended test, choose
-  the Bernoulli take WAV file (2 min 20 s). Long recordings are cut into windows inside the
-  page before transcription.</p>
+  <p class="note">Any recording your browser can play back works. Long recordings are cut into
+  windows inside the page before transcription.</p>
   <div class="row">
     <button id="recBtn" disabled>Start recording</button>
     <button id="recStopBtn" disabled>Stop recording</button>
@@ -87,10 +109,8 @@
   </div>
   <p class="note">Recording runs from the microphone on this device; nothing is uploaded.
   While you record, the audio is transcribed in pieces of about 12 s as it arrives, and the
-  transcript below grows piece by piece. Known mishearings of Bernoulli-equation terms are
-  corrected as each piece lands (for example “burn newly” becomes “Bernoulli” and
-  “in tell pea” becomes “enthalpy”); the same corrections are applied to a transcribed
-  file. Only non-terms are corrected, so a genuine word is never rewritten.</p>
+  transcript below grows piece by piece. The corrections described above are applied as each
+  piece lands, and to a transcribed file in the same way.</p>
 
   <h2>3. Transcribe a chosen file</h2>
   <div class="row">
@@ -104,7 +124,24 @@
   <div class="box" id="transcript">The transcript will appear here.</div>
   <div class="row">
     <button id="copyBtn" disabled>Copy transcript</button>
+    <button id="downloadBtn" disabled>Download transcript</button>
     <span class="status" id="metrics"></span>
+  </div>
+  <h2>Corrections applied</h2>
+  <div class="box" id="corrections">No transcription yet.</div>
+
+  <h2>Autosave</h2>
+  <p class="note">While a transcript exists, this page saves it inside the browser after every
+  transcribed piece and every 15 s, so a crash loses at most the piece in progress. On a laptop
+  in desktop Chrome, you can also choose a file on disk and the page writes the same text to
+  that file on the same schedule. <span id="fsNote"></span></p>
+  <div id="restoreBox">
+    <span id="restoreInfo"></span>
+    <button id="restoreBtn">Restore autosaved transcript</button>
+  </div>
+  <div class="row">
+    <button id="autosaveFileBtn" disabled>Choose autosave file</button>
+    <span class="status" id="saveStatus">Autosave: in-browser save only.</span>
   </div>
 
   <h2>Network log</h2>
