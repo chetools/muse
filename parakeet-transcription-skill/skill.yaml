@@ -1,0 +1,10 @@
+name: local_parakeet_transcription
+title: Transcribe Audio with Parakeet and the Chemical-Engineering Glossary
+description: "Transcribe an audio file the user points to or uploads, locally with NVIDIA Parakeet TDT 0.6B v2 (int8, CPU, through onnx-asr), then correct the transcript for chemical-engineering and general-engineering terms with the bundled glossary: a 755-entry glossary, a 744-term vocabulary and a 203-pair sound-alike correction map (7 attested pairs, the rest predicted and labelled). Any common audio format is accepted and converted with ffmpeg. The audio never leaves the machine, ONNX Runtime telemetry is disabled in the runner, the raw transcript is kept as the record, and every correction is listed for review. Trigger when the user asks to transcribe a recording, lecture, interview, meeting or explanation, or points Muse at an audio file (WAV, MP3, M4A, WebM, OGG, MP4) and asks what was said."
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
