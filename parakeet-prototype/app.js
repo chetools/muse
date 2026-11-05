@@ -4,7 +4,7 @@
 // library never falls back to its default CDN address for those binaries.
 import * as ort from 'onnxruntime-web';
 import { correctWithLog } from './corrections.js';
-import { assembleSegments } from './segments.js';
+import { assembleSegments, renderMarked, wordCount, formatTimestamp, escapeHtml } from './segments.js';
 import { saveAutosave, loadAutosave, writeAutosaveFile, browserStorage } from './autosave.js';
 
 ort.env.wasm.wasmPaths = new URL('./vendor/ort/', window.location.href).href;
@@ -19,6 +19,8 @@ const loadStatus = $('loadStatus'), runStatus = $('runStatus');
 const audioStatus = $('audioStatus'), metrics = $('metrics');
 const errBox = $('errBox'), transcriptBox = $('transcript'), netlog = $('netlog');
 const correctionsBox = $('corrections'), saveStatus = $('saveStatus');
+const liveProg = $('liveProg'), liveStatus = $('liveStatus'), liveBox = $('liveBox');
+const liveRaw = $('liveRaw'), liveCorrected = $('liveCorrected'), liveMeta = $('liveMeta');
 
 function showError(message, err) {
   errBox.textContent = message;
@@ -165,6 +167,45 @@ downloadBtn.addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
 
+// --- Live progress: the words of each piece are shown as soon as the
+// piece is transcribed, first as transcribed and then after the glossary
+// correction, with corrected words marked. The full transcript below
+// grows the same way, piece by piece, with the same marks. Copy,
+// download and autosave read the transcript box's plain text, so the
+// marks never enter a saved transcript.
+let liveWords = 0;
+function renderTranscript(segments, useTimestamps) {
+  const clean = (segments || []).filter((sg) => sg && sg.text && sg.text.trim());
+  if (!clean.length) { transcriptBox.textContent = ''; return; }
+  transcriptBox.innerHTML = clean.map((sg) => {
+    const body = sg.parts ? renderMarked(sg.parts) : escapeHtml(sg.text.trim());
+    return useTimestamps ? '[' + formatTimestamp(sg.start || 0) + '] ' + body : body;
+  }).join(useTimestamps ? '\n' : ' ');
+}
+function showLivePiece(label, raw, result, progress) {
+  liveBox.hidden = false;
+  liveRaw.textContent = raw;
+  liveCorrected.innerHTML = result.parts ? renderMarked(result.parts) : escapeHtml(result.text);
+  liveWords += wordCount(result.text);
+  const nCorr = (result.applied || []).reduce((a, c) => a + c.count, 0);
+  liveMeta.textContent = label + ' — ' + wordCount(result.text) + ' words in this piece, ' +
+    liveWords + ' words so far' +
+    (nCorr ? '; ' + nCorr + ' glossary correction' + (nCorr === 1 ? '' : 's') + ' in this piece (marked, listed below).'
+           : '; no glossary corrections in this piece.');
+  if (progress && progress.total > 0) {
+    liveProg.hidden = false;
+    liveProg.value = Math.min(1, progress.done / progress.total);
+    liveStatus.textContent = label + ' — ' + Math.round(100 * Math.min(1, progress.done / progress.total)) +
+      '% of the audio transcribed.';
+  } else {
+    liveStatus.textContent = label + '.';
+  }
+}
+function liveBusy(label) {
+  liveProg.hidden = false;
+  liveStatus.textContent = label;
+}
+
 // --- Model loading (only on the explicit button press) ---
 let model = null;
 const fileProgress = new Map();
@@ -273,7 +314,7 @@ $('audioFile').addEventListener('change', async (ev) => {
   }
 });
 
-// --- File transcription, in windows of 60 s of audio. Each window is
+// --- File transcription, in windows of 25 s of audio. Each window is
 // transcribed with transcribeLongAudio (returnTimestamps: true and the
 // window's own timeOffset); the vendored long_audio.js returns chunks
 // of {text, timestamp: [start, end]} built from the model's word times,
@@ -282,16 +323,31 @@ $('audioFile').addEventListener('change', async (ev) => {
 // updated and autosaved, so a crash mid-file loses at most the window
 // in progress. The timestamps option only changes how segments are
 // displayed.
-const FILE_WINDOW_S = 60;
+const FILE_WINDOW_S = 25;
+// One transcription mode at a time. Both handlers set this synchronously
+// at entry, before their first await, and clear it only when they own
+// it: disabling a button cannot stop a handler that has already entered
+// and is suspended at an await, so the guard, not the buttons, is what
+// keeps a file run and a recording from ever interleaving.
+let activeMode = null;
 runBtn.addEventListener('click', async () => {
   if (!model || !pcm) return;
+  if (activeMode) return;
+  activeMode = 'file';
   clearError();
   const useTimestamps = tsCheck.checked;
   lastSource = 'file';
   runBtn.disabled = true;
+  $('recBtn').disabled = true;
+  $('recStopBtn').disabled = true;
+  copyBtn.disabled = true;
+  downloadBtn.disabled = true;
   runProg.hidden = false;
   transcriptBox.textContent = 'Transcribing…';
   hasTranscript = false;
+  liveWords = 0;
+  liveBox.hidden = true;
+  liveBusy('Transcribing — the words of each piece will appear below as they are transcribed and corrected.');
   const t0 = performance.now();
   const timer = setInterval(() => {
     runStatus.textContent = 'Transcribing… ' + ((performance.now() - t0) / 1000).toFixed(0) + ' s elapsed.';
@@ -307,6 +363,7 @@ runBtn.addEventListener('click', async () => {
         Math.min(pcm.length, Math.ceil((wStart + FILE_WINDOW_S) * 16000)));
       if (!slice.length) break;
       runStatus.textContent = 'Transcribing window ' + (w + 1) + ' of ' + nWindows + '…';
+      liveBusy('Transcribing window ' + (w + 1) + ' of ' + nWindows + ' — no new words yet for this window.');
       const result = await model.transcribeLongAudio(slice, 16000, {
         returnTimestamps: true, timeOffset: wStart,
       });
@@ -316,25 +373,31 @@ runBtn.addEventListener('click', async () => {
       for (const chunk of chunks) {
         const raw = (chunk.text || '').trim();
         if (!raw) continue;
-        const { text, applied } = correctWithLog(raw);
+        const result = correctWithLog(raw);
+        const { text, applied } = result;
         aggregateApplied(agg, applied);
         const start = (Array.isArray(chunk.timestamp) && Number.isFinite(chunk.timestamp[0]))
           ? chunk.timestamp[0] : wStart;
-        segments.push({ start, text });
-      }
-      if (segments.length) {
-        transcriptBox.textContent = assembleSegments(segments, { timestamps: useTimestamps });
+        const end = (Array.isArray(chunk.timestamp) && Number.isFinite(chunk.timestamp[1]))
+          ? chunk.timestamp[1] : start;
+        segments.push({ start, text, raw, parts: result.parts });
+        renderTranscript(segments, useTimestamps);
         hasTranscript = true;
         renderApplied(agg);
         copyBtn.disabled = false;
         downloadBtn.disabled = false;
+        showLivePiece('File piece ' + segments.length + ' (window ' + (w + 1) + ' of ' + nWindows + ')',
+          raw, result, { done: end, total: audioSeconds });
         autosaveNow();
       }
     }
     const secs = (performance.now() - t0) / 1000;
-    transcriptBox.textContent = segments.length
-      ? assembleSegments(segments, { timestamps: useTimestamps })
-      : '(The model returned no text for this recording.)';
+    if (segments.length) renderTranscript(segments, useTimestamps);
+    else transcriptBox.textContent = '(The model returned no text for this recording.)';
+    if (segments.length) {
+      liveProg.value = 1;
+      liveStatus.textContent = 'Done — ' + segments.length + ' piece(s), ' + liveWords + ' words, shown above as they arrived.';
+    }
     hasTranscript = segments.length > 0;
     renderApplied(agg);
     let nCorrections = 0;
@@ -348,7 +411,7 @@ runBtn.addEventListener('click', async () => {
     if (hasTranscript) autosaveNow();
   } catch (err) {
     if (segments.length) {
-      transcriptBox.textContent = assembleSegments(segments, { timestamps: useTimestamps });
+      renderTranscript(segments, useTimestamps);
       hasTranscript = true;
       autosaveNow();
       showError('Transcription stopped partway through the file. The pieces already ' +
@@ -362,13 +425,18 @@ runBtn.addEventListener('click', async () => {
   } finally {
     clearInterval(timer);
     runProg.hidden = true;
+    if (activeMode === 'file') activeMode = null;
     runBtn.disabled = false;
+    $('recBtn').disabled = false;
+    $('recStatus').textContent = 'Ready to record.';
   }
   renderNetlog();
 });
 
 copyBtn.addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(transcriptBox.textContent); } catch { /* clipboard may need focus; text stays selectable */ }
+  const text = currentTranscriptText();
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); } catch { /* clipboard may need focus; text stays selectable */ }
 });
 
 // --- Recording with live, segment-by-segment transcription ---
@@ -399,16 +467,19 @@ async function transcribeRecSegment(R, finalPiece) {
     R.doneUpTo = to;
     R.failStreak = 0;
     if (raw) {
-      const { text, applied } = correctWithLog(raw);
+      const result = correctWithLog(raw);
+      const { text, applied } = result;
       aggregateApplied(R.applied, applied);
-      R.segments.push({ start: from / R.rate, text });
+      R.segments.push({ start: from / R.rate, text, raw, parts: result.parts });
       if (rec === R) {
-        transcriptBox.textContent = assembleSegments(R.segments, { timestamps: R.timestamps });
+        renderTranscript(R.segments, R.timestamps);
         hasTranscript = true;
         lastSource = 'recording';
         copyBtn.disabled = false;
         downloadBtn.disabled = false;
         renderApplied(R.applied);
+        showLivePiece('Recording piece ' + R.segments.length, raw, result,
+          { done: to / R.rate, total: Math.max(R.len / R.rate, to / R.rate) });
         autosaveNow();
       }
     }
@@ -436,10 +507,17 @@ async function transcribeRecSegment(R, finalPiece) {
 recBtn.addEventListener('click', async () => {
   clearError();
   if (!model) return;
+  if (activeMode) return;
+  activeMode = 'recording';
+  runBtn.disabled = true;
+  recBtn.disabled = true;
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (err) {
+    if (activeMode === 'recording') activeMode = null;
+    recBtn.disabled = false;
+    updateRunEnabled();
     showError('The microphone could not be opened. Allow microphone access for this page ' +
       'in the browser settings, then try again.', err);
     return;
@@ -476,6 +554,9 @@ recBtn.addEventListener('click', async () => {
     mute.connect(ctx.destination);
   } catch (err) {
     if (rec === R) rec = null;
+    if (activeMode === 'recording') activeMode = null;
+    recBtn.disabled = false;
+    updateRunEnabled();
     stream.getTracks().forEach((t) => t.stop());
     if (ctx) { try { await ctx.close(); } catch { /* ignore */ } }
     showError('The audio recorder could not be started in this browser. ' +
@@ -484,6 +565,9 @@ recBtn.addEventListener('click', async () => {
   }
   transcriptBox.textContent = '';
   hasTranscript = false;
+  liveWords = 0;
+  liveBox.hidden = true;
+  liveBusy('Recording — each piece of about 12 s will appear below as it is transcribed and corrected.');
   correctionsBox.textContent = 'Recording… corrections will be listed here as pieces land.';
   recBtn.disabled = true;
   recStopBtn.disabled = false;
@@ -513,9 +597,12 @@ recStopBtn.addEventListener('click', async () => {
   for (let i = 0; i < 3 && R.len - R.doneUpTo >= Math.floor(0.5 * R.rate); i++) {
     await transcribeRecSegment(R, true);
   }
-  transcriptBox.textContent = R.segments.length
-    ? assembleSegments(R.segments, { timestamps: R.timestamps })
-    : '(The model returned no text for this recording.)';
+  if (R.segments.length) renderTranscript(R.segments, R.timestamps);
+  else transcriptBox.textContent = '(The model returned no text for this recording.)';
+  if (R.segments.length) {
+    liveProg.value = 1;
+    liveStatus.textContent = 'Done — ' + R.segments.length + ' piece(s), ' + liveWords + ' words, shown above as they arrived.';
+  }
   hasTranscript = R.segments.length > 0;
   copyBtn.disabled = !hasTranscript;
   downloadBtn.disabled = !hasTranscript;
@@ -526,6 +613,7 @@ recStopBtn.addEventListener('click', async () => {
     elapsed.toFixed(0) + ' s, transcribed in ' + R.segments.length + ' piece(s).';
   try { await R.ctx.close(); } catch { /* context already closed */ }
   if (rec === R) rec = null;
+  if (activeMode === 'recording') activeMode = null;
   recBtn.disabled = false;
   updateRunEnabled();
   renderNetlog();

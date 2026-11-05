@@ -251,6 +251,7 @@ export function correctWithLog(t) {
     else entries.set(key, { heard: hit.heard, term, count: 1, mode, cue: cue || null });
   }
   let out = '';
+  const parts = [];
   let last = 0;
   let m;
   PATTERN.lastIndex = 0;
@@ -327,13 +328,19 @@ export function correctWithLog(t) {
       if (gap) gap += ' ';
     }
     out += gap + replacement;
+    if (gap) parts.push({ text: gap, kind: 'plain' });
+    parts.push(skipLog
+      ? { text: replacement, kind: 'plain' }
+      : { text: replacement, kind: mode, heard: hit.heard, term });
     last = absorbEnd;
     if (!skipLog) log(hit, mode, term, cue);
   }
   out += src.slice(last);
+  if (src.slice(last)) parts.push({ text: src.slice(last), kind: 'plain' });
   const applied = [...entries.values()];
   return {
     text: out,
+    parts,
     applied,
     appliedCertain: applied.filter((a) => a.mode === 'certain'),
     appliedSlash: applied.filter((a) => a.mode === 'slash'),

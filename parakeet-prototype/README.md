@@ -86,7 +86,7 @@ segment and every 15 s; the in-browser save is written again when
 the page closes, and a last file write is attempted then (a closing
 browser may not let it finish, so the in-browser copy is the
 guaranteed one at close). File transcription runs in windows of
-60 s of audio, each window's segments autosaved as they land, so a
+25 s of audio, each window's segments autosaved as they land, so a
 crash mid-file loses at most the window in progress. On desktop
 Chrome, “Choose autosave file” also writes the same text to a chosen
 file on disk on the same schedule, through the File System Access

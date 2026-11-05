@@ -3,6 +3,12 @@
 
 Usage:
     python3 correct.py <transcriptFile> <correctionsJson>
+    python3 correct.py --text <raw text> <correctionsJson>
+
+The --text form corrects one chunk of text given on the command line, so
+a caller showing intermediate progress can correct each chunk as soon as
+it is transcribed, without writing a file per chunk. Output and the
+stderr JSON list of applied corrections are the same as the file form.
 
 correctionsJson is the skill's glossary/corrections.json: a list of
 {"heard": ..., "term": ...} pairs (a plain {"heard": "term"} object is
@@ -43,12 +49,17 @@ def load_pairs(path):
 
 
 def main(argv):
-    if len(argv) != 3:
-        print("usage: python3 correct.py <transcriptFile> <correctionsJson>", file=sys.stderr)
+    if len(argv) == 4 and argv[1] == "--text":
+        text = argv[2]
+        pairs = load_pairs(argv[3])
+    elif len(argv) == 3:
+        with open(argv[1], encoding="utf-8") as f:
+            text = f.read()
+        pairs = load_pairs(argv[2])
+    else:
+        print("usage: python3 correct.py <transcriptFile> <correctionsJson>\n"
+              "       python3 correct.py --text <raw text> <correctionsJson>", file=sys.stderr)
         return 2
-    with open(argv[1], encoding="utf-8") as f:
-        text = f.read()
-    pairs = load_pairs(argv[2])
     if not pairs:
         sys.stdout.write(text)
         print("[]", file=sys.stderr)

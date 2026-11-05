@@ -2,7 +2,14 @@
 """Transcribe audio files locally with Parakeet TDT 0.6B v2 (int8, CPU).
 
 Usage:
-    python3 transcribe.py [--timestamps] <audio-file> [more files ...]
+    python3 transcribe.py [--timestamps] [--partial <path>] <audio-file> [more files ...]
+
+With --partial <path>, the transcript so far is written to <path> after
+every chunk (atomically, by replacing the file), in the same format the
+final stdout transcript uses, so a caller can show the words as they are
+transcribed and nothing is lost if the run is interrupted. After every
+chunk a line also goes to stderr carrying that chunk's words:
+    WORDS <file>: chunk <i> of <n> [<start>-<end> s]: <text>
 
 With --timestamps, each chunk is printed on its own line prefixed with
 its time range in the recording, [mm:ss-mm:ss] (h:mm:ss past one hour),
@@ -103,11 +110,35 @@ def chunk_bounds(audio, sr):
     return cuts
 
 
+def write_partial(path, lines):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+        if lines:
+            f.write("\n")
+    os.replace(tmp, path)
+
+
 def main(argv):
     timestamps = "--timestamps" in argv[1:]
-    files = [a for a in argv[1:] if a != "--timestamps"]
+    partial = None
+    args = []
+    i = 1
+    while i < len(argv):
+        if argv[i] == "--partial":
+            if i + 1 >= len(argv):
+                print("usage: --partial needs a path", file=sys.stderr)
+                return 2
+            partial = argv[i + 1]
+            i += 2
+        elif argv[i] == "--timestamps":
+            i += 1
+        else:
+            args.append(argv[i])
+            i += 1
+    files = args
     if not files:
-        print("usage: python3 transcribe.py [--timestamps] <audio-file> [more files ...]",
+        print("usage: python3 transcribe.py [--timestamps] [--partial <path>] <audio-file> [more files ...]",
               file=sys.stderr)
         return 2
     try:
@@ -147,6 +178,21 @@ def main(argv):
                 parts.append(text.strip())
                 print(f"{path}: chunk {i + 1} of {len(cuts) - 1} "
                       f"[{cuts[i]:.1f}-{cuts[i + 1]:.1f} s] done", file=sys.stderr)
+                if parts[-1]:
+                    print(f"WORDS {path}: chunk {i + 1} of {len(cuts) - 1} "
+                          f"[{cuts[i]:.1f}-{cuts[i + 1]:.1f} s]: {parts[-1]}",
+                          file=sys.stderr, flush=True)
+                if partial:
+                    if timestamps:
+                        lines = [f"[{format_ts(cuts[j])}-{format_ts(cuts[j + 1])}] {parts[j]}"
+                                 for j in range(len(parts)) if parts[j]]
+                    else:
+                        lines = [" ".join(q for q in parts if q)]
+                    try:
+                        write_partial(partial, lines)
+                    except OSError as e:
+                        print(f"transcribe.py: cannot write partial file {partial}: {e}",
+                              file=sys.stderr)
             if timestamps:
                 if len(files) > 1:
                     print(f"# {path}")
