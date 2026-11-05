@@ -35,6 +35,13 @@
             word-break: break-all; max-height: 220px; overflow: auto; }
   .note { color: #555; font-size: 0.88rem; }
   label.check { display: flex; gap: 8px; align-items: center; font-size: 0.95rem; }
+  mark.corr { padding: 0 1px; border-radius: 2px; }
+  mark.corr-certain { background: #d9ecd2; }
+  mark.corr-slash { background: #fdeec2; }
+  mark.corr-context { background: #d7e6f7; }
+  #liveBox { margin-top: 8px; }
+  #liveBox .lbl { font-weight: 600; font-size: 0.88rem; color: #444; }
+  #liveRaw { color: #555; }
 </style>
 <script type="importmap">
 {
@@ -119,6 +126,21 @@
   </div>
   <progress id="runProg" hidden></progress>
   <div class="err" id="errBox"></div>
+
+  <h2>Live progress</h2>
+  <p class="note">Transcription does not wait for the whole recording. As each piece is
+  transcribed — about 12 s pieces while recording, about 25 s windows from a file — its words
+  appear here at once: first as transcribed, then after the glossary correction, with corrected
+  words marked (green: a confident correction; yellow: an uncertain one, shown in slash form;
+  blue: chosen by the words around it). The result below grows piece by piece in the same way,
+  with the same marks. Copying, downloading and autosaving use the plain text, without marks.</p>
+  <progress id="liveProg" value="0" max="1" hidden></progress>
+  <p class="status" id="liveStatus">No transcription running.</p>
+  <div class="box" id="liveBox" hidden>
+    <div><span class="lbl">Latest piece, as transcribed:</span> <span id="liveRaw"></span></div>
+    <div style="margin-top:6px"><span class="lbl">Latest piece, after glossary correction:</span> <span id="liveCorrected"></span></div>
+    <p class="note" id="liveMeta"></p>
+  </div>
 
   <h2>Result</h2>
   <div class="box" id="transcript">The transcript will appear here.</div>

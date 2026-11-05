@@ -22,3 +22,32 @@ export function assembleSegments(segments, { timestamps = false } = {}) {
   }
   return clean.map((s) => s.text.trim()).join(' ');
 }
+
+// --- Live-progress rendering helpers (pure, node-tested) ---
+// A correction part from correctWithLog carries kind 'certain', 'slash'
+// or 'context'; plain parts carry kind 'plain'. renderMarked turns parts
+// into HTML in which corrected words are visibly marked, so a reader
+// watching the transcript grow can see which words the glossary changed
+// the moment each piece lands. All text is escaped first: transcript
+// text is never interpreted as HTML.
+export function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+export function renderMarked(parts) {
+  return (parts || []).map((p) => {
+    const t = escapeHtml(p.text || '');
+    if (!p.kind || p.kind === 'plain') return t;
+    const title = p.heard
+      ? ' title="as transcribed: ' + escapeHtml(p.heard) + '"'
+      : '';
+    return '<mark class="corr corr-' + escapeHtml(p.kind) + '"' + title + '>' + t + '</mark>';
+  }).join('');
+}
+
+export function wordCount(text) {
+  const m = String(text || '').trim().match(/\S+/g);
+  return m ? m.length : 0;
+}
