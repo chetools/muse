@@ -3,6 +3,7 @@
 // binaries vendored on this site BEFORE parakeet.js is imported, so the
 // library never falls back to its default CDN address for those binaries.
 import * as ort from 'onnxruntime-web';
+import { correctText } from './corrections.js';
 
 ort.env.wasm.wasmPaths = new URL('./vendor/ort/', window.location.href).href;
 ort.env.wasm.numThreads = 1;
@@ -92,6 +93,8 @@ loadBtn.addEventListener('click', async () => {
     loadProg.value = 1;
     loadStatus.textContent = 'Model loaded in ' + s + ' s. Transcription runs on WebAssembly, one thread.';
     updateRunEnabled();
+    $('recBtn').disabled = false;
+    $('recStatus').textContent = 'Ready to record.';
   } catch (err) {
     loadStatus.textContent = 'Model did not load.';
     showError('The model could not be loaded. Check the connection and try again. ' +
@@ -108,6 +111,20 @@ let pcm = null;          // Float32Array, mono, 16 kHz
 let audioSeconds = 0;
 
 function updateRunEnabled() { runBtn.disabled = !(model && pcm); }
+
+// Resample mono PCM to 16 kHz, the sample rate the model was trained for.
+async function resampleTo16k(mono, fromRate) {
+  if (fromRate === 16000) return mono;
+  const off = new OfflineAudioContext(1, Math.ceil((mono.length / fromRate) * 16000), 16000);
+  const srcBuf = off.createBuffer(1, mono.length, fromRate);
+  srcBuf.copyToChannel(mono, 0);
+  const src = off.createBufferSource();
+  src.buffer = srcBuf;
+  src.connect(off.destination);
+  src.start();
+  const rendered = await off.startRendering();
+  return rendered.getChannelData(0).slice();
+}
 
 $('audioFile').addEventListener('change', async (ev) => {
   clearError();
@@ -126,22 +143,8 @@ $('audioFile').addEventListener('change', async (ev) => {
       const data = decoded.getChannelData(ch);
       for (let i = 0; i < data.length; i++) mono[i] += data[i] / decoded.numberOfChannels;
     }
-    // Resample to 16 kHz, the sample rate the model was trained for.
-    const targetRate = 16000;
-    if (decoded.sampleRate === targetRate) {
-      pcm = mono;
-    } else {
-      const off = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
-      const srcBuf = off.createBuffer(1, mono.length, decoded.sampleRate);
-      srcBuf.copyToChannel(mono, 0);
-      const src = off.createBufferSource();
-      src.buffer = srcBuf;
-      src.connect(off.destination);
-      src.start();
-      const rendered = await off.startRendering();
-      pcm = rendered.getChannelData(0).slice();
-    }
-    audioSeconds = pcm.length / targetRate;
+    pcm = await resampleTo16k(mono, decoded.sampleRate);
+    audioSeconds = pcm.length / 16000;
     audioStatus.textContent = file.name + ' — ' + audioSeconds.toFixed(1) +
       ' s of audio, decoded and resampled to 16 kHz on this device.';
     updateRunEnabled();
@@ -166,13 +169,16 @@ runBtn.addEventListener('click', async () => {
   try {
     const result = await model.transcribeLongAudio(pcm, 16000, { returnTimestamps: true });
     const secs = (performance.now() - t0) / 1000;
-    transcriptBox.textContent = result.text && result.text.trim()
-      ? result.text.trim()
+    const rawText = (result.text || '').trim();
+    const fixedText = correctText(rawText);
+    transcriptBox.textContent = fixedText
+      ? fixedText
       : '(The model returned no text for this recording.)';
     metrics.textContent = 'Audio ' + audioSeconds.toFixed(1) + ' s · transcribed in ' +
-      secs.toFixed(1) + ' s · ' + (audioSeconds / secs).toFixed(1) + '× real time.';
+      secs.toFixed(1) + ' s · ' + (audioSeconds / secs).toFixed(1) + '× real time.' +
+      (fixedText !== rawText ? ' Mishearing corrections applied.' : '');
     runStatus.textContent = 'Done.';
-    copyBtn.disabled = !result.text || !result.text.trim();
+    copyBtn.disabled = !fixedText;
   } catch (err) {
     transcriptBox.textContent = 'The transcript will appear here.';
     runStatus.textContent = '';
@@ -188,4 +194,148 @@ runBtn.addEventListener('click', async () => {
 
 copyBtn.addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(transcriptBox.textContent); } catch { /* clipboard may need focus; text stays selectable */ }
+});
+
+// --- Recording with live, segment-by-segment transcription ---
+// The microphone stream is tapped with a ScriptProcessor node; captured
+// samples accumulate in one growing buffer. Every ~12 s of new audio is
+// resampled, transcribed, corrected and appended while recording goes on.
+// All segment work uses a captured session object (R), never the global,
+// so stopping cannot null the state out from under an in-flight piece.
+const recBtn = $('recBtn'), recStopBtn = $('recStopBtn'), recStatus = $('recStatus');
+const SEGMENT_SECONDS = 12;
+let rec = null;
+
+async function transcribeRecSegment(R, finalPiece) {
+  if (R.busy) return;
+  const available = R.len - R.doneUpTo;
+  const minSamples = finalPiece ? Math.floor(0.5 * R.rate) : SEGMENT_SECONDS * R.rate;
+  if (available < minSamples) return;
+  R.busy = true;
+  const from = R.doneUpTo;
+  const to = R.len;
+  try {
+    const seg16 = await resampleTo16k(R.buf.slice(from, to), R.rate);
+    const out = await model.transcribe(seg16, 16000, {});
+    const raw = (out.utterance_text || '').trim();
+    R.doneUpTo = to;
+    R.failStreak = 0;
+    if (raw) {
+      R.segments.push(correctText(raw));
+      if (rec === R) {
+        transcriptBox.textContent = R.segments.join(' ');
+        copyBtn.disabled = false;
+      }
+    }
+    if (rec === R) {
+      metrics.textContent = 'Recorded ' + (R.len / R.rate).toFixed(0) + ' s · ' +
+        R.segments.length + ' piece(s) transcribed.';
+    }
+  } catch (err) {
+    // doneUpTo stays where it was, so the piece is tried again on the next
+    // pass. After two failures in a row it is skipped, and that is said.
+    R.failStreak = (R.failStreak || 0) + 1;
+    if (R.failStreak >= 2) {
+      R.doneUpTo = to;
+      R.failStreak = 0;
+      showError('One piece of the recording could not be transcribed after two tries ' +
+        'and was skipped. The rest of the transcript is unaffected.', err);
+    } else {
+      showError('A piece of the recording could not be transcribed; it will be tried again.', err);
+    }
+  } finally {
+    R.busy = false;
+  }
+}
+
+recBtn.addEventListener('click', async () => {
+  clearError();
+  if (!model) return;
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    showError('The microphone could not be opened. Allow microphone access for this page ' +
+      'in the browser settings, then try again.', err);
+    return;
+  }
+  let ctx = null;
+  let R = null;
+  try {
+    ctx = new AudioContext();
+    await ctx.resume();
+    const source = ctx.createMediaStreamSource(stream);
+    const node = ctx.createScriptProcessor(4096, 1, 1);
+    const mute = ctx.createGain();
+    mute.gain.value = 0;
+    R = {
+      stream, ctx, node, rate: ctx.sampleRate, len: 0, doneUpTo: 0,
+      buf: new Float32Array(1024 * 1024), busy: false, stopped: false,
+      t0: performance.now(), segments: [], timer: null, failStreak: 0,
+    };
+    rec = R;
+    node.onaudioprocess = (e) => {
+      if (rec !== R || R.stopped) return;
+      const data = e.inputBuffer.getChannelData(0);
+      if (R.len + data.length > R.buf.length) {
+        const bigger = new Float32Array(Math.max(R.buf.length * 2, R.len + data.length));
+        bigger.set(R.buf.subarray(0, R.len));
+        R.buf = bigger;
+      }
+      R.buf.set(data, R.len);
+      R.len += data.length;
+    };
+    source.connect(node);
+    node.connect(mute);
+    mute.connect(ctx.destination);
+  } catch (err) {
+    if (rec === R) rec = null;
+    stream.getTracks().forEach((t) => t.stop());
+    if (ctx) { try { await ctx.close(); } catch { /* ignore */ } }
+    showError('The audio recorder could not be started in this browser. ' +
+      'The microphone has been released; try again or use a file instead.', err);
+    return;
+  }
+  transcriptBox.textContent = '';
+  recBtn.disabled = true;
+  recStopBtn.disabled = false;
+  runBtn.disabled = true;
+  recStatus.textContent = 'Recording… 0 s captured.';
+  R.timer = setInterval(() => {
+    if (rec !== R) return;
+    recStatus.textContent = 'Recording… ' + (R.len / R.rate).toFixed(0) + ' s captured' +
+      (R.busy ? ' · transcribing a piece…' : '') + '.';
+    transcribeRecSegment(R, false);
+  }, 1000);
+});
+
+recStopBtn.addEventListener('click', async () => {
+  const R = rec;
+  if (!R) return;
+  R.stopped = true;
+  clearInterval(R.timer);
+  recStopBtn.disabled = true;
+  recStatus.textContent = 'Stopping — finishing the piece in progress…';
+  try { R.node.disconnect(); } catch { /* already disconnected */ }
+  R.stream.getTracks().forEach((t) => t.stop());
+  // Let an in-flight piece finish against its own session object before
+  // the final piece is attempted, so nothing recorded is dropped.
+  while (R.busy) await new Promise((r) => setTimeout(r, 150));
+  recStatus.textContent = 'Stopping — transcribing the last piece…';
+  for (let i = 0; i < 3 && R.len - R.doneUpTo >= Math.floor(0.5 * R.rate); i++) {
+    await transcribeRecSegment(R, true);
+  }
+  transcriptBox.textContent = R.segments.length
+    ? R.segments.join(' ')
+    : '(The model returned no text for this recording.)';
+  copyBtn.disabled = !R.segments.length;
+  const totalSecs = R.len / R.rate;
+  const elapsed = (performance.now() - R.t0) / 1000;
+  recStatus.textContent = 'Recording stopped. ' + totalSecs.toFixed(0) + ' s captured in ' +
+    elapsed.toFixed(0) + ' s, transcribed in ' + R.segments.length + ' piece(s).';
+  try { await R.ctx.close(); } catch { /* context already closed */ }
+  if (rec === R) rec = null;
+  recBtn.disabled = false;
+  updateRunEnabled();
+  renderNetlog();
 });

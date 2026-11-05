@@ -24,6 +24,13 @@ The model files are not in this repository. Pressing “Load model” downloads
 them from the Hugging Face repository `ysdede/parakeet-tdt-0.6b-v2-onnx`
 (about 670 MB, int8) and the browser caches them in IndexedDB.
 
+Audio enters two ways: an uploaded file, transcribed after the fact, or a
+microphone recording, transcribed live in pieces of about 12 s as it is
+captured. Both paths pass the transcript through the mishearing-correction
+map in `corrections.js` — the map built for the Bernoulli explanation app
+from attested mishearings (for example “burn newly” → “Bernoulli”); only
+non-terms are corrected.
+
 ## Telemetry
 
 The telemetry observed on 2026-11-05 (`mobile.events.data.microsoft.com`,
