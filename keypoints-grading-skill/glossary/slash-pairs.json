@@ -1,0 +1,234 @@
+[
+ {
+  "heard": "gives",
+  "replacement": "gives/Gibbs free energy"
+ },
+ {
+  "heard": "ideas",
+  "replacement": "ideas/Gibbs free energy"
+ },
+ {
+  "heard": "viral",
+  "replacement": "viral/virial equation/virial coefficient"
+ },
+ {
+  "heard": "azee-o-trope",
+  "replacement": "azee-o-trope/azeotrope/azeotropic"
+ },
+ {
+  "heard": "easy-o-trope",
+  "replacement": "easy-o-trope/azeotrope/azeotropic"
+ },
+ {
+  "heard": "do point",
+  "replacement": "do point/dew point"
+ },
+ {
+  "heard": "car-no",
+  "replacement": "car-no/Carnot cycle/engine/efficiency"
+ },
+ {
+  "heard": "cannot",
+  "replacement": "cannot/Carnot cycle/engine/efficiency"
+ },
+ {
+  "heard": "laminate",
+  "replacement": "laminate/laminar"
+ },
+ {
+  "heard": "pwah-zoy",
+  "replacement": "pwah-zoy/Hagen–Poiseuille/Poiseuille's law"
+ },
+ {
+  "heard": "moody",
+  "replacement": "moody/Moody chart/diagram"
+ },
+ {
+  "heard": "mock",
+  "replacement": "mock/Mach number"
+ },
+ {
+  "heard": "fraud",
+  "replacement": "fraud/Froude number"
+ },
+ {
+  "heard": "oiler",
+  "replacement": "oiler/Euler number/equation"
+ },
+ {
+  "heard": "euler",
+  "replacement": "euler/Euler number/equation"
+ },
+ {
+  "heard": "dill-a-tant",
+  "replacement": "dill-a-tant/pseudoplastic/dilatant"
+ },
+ {
+  "heard": "rally",
+  "replacement": "rally/Rayleigh number"
+ },
+ {
+  "heard": "fin",
+  "replacement": "fin/fin/finned"
+ },
+ {
+  "heard": "thin",
+  "replacement": "thin/fin/finned"
+ },
+ {
+  "heard": "nuclear",
+  "replacement": "nuclear/nucleate boiling"
+ },
+ {
+  "heard": "co-current",
+  "replacement": "co-current/countercurrent/cocurrent"
+ },
+ {
+  "heard": "rice",
+  "replacement": "rice/Rachford–Rice"
+ },
+ {
+  "heard": "die-loo-ent",
+  "replacement": "die-loo-ent/solvent/solute/diluent"
+ },
+ {
+  "heard": "plate point",
+  "replacement": "plate point/tie line/plait point"
+ },
+ {
+  "heard": "retent-it",
+  "replacement": "retent-it/permeate/retentate"
+ },
+ {
+  "heard": "dam-kurler",
+  "replacement": "dam-kurler/Damköhler number/numbers"
+ },
+ {
+  "heard": "dan kohler",
+  "replacement": "dan kohler/Damköhler number/numbers"
+ },
+ {
+  "heard": "centering",
+  "replacement": "centering/poisoning/deactivation/fouling/sintering"
+ },
+ {
+  "heard": "trans-doo-ser",
+  "replacement": "trans-doo-ser/transmitter/transducer"
+ },
+ {
+  "heard": "pie",
+  "replacement": "pie/dimensionless analysis/Buckingham Pi theorem"
+ },
+ {
+  "heard": "shell",
+  "replacement": "shell/shell balance"
+ },
+ {
+  "heard": "weir",
+  "replacement": "weir/weir"
+ },
+ {
+  "heard": "we're",
+  "replacement": "we're/weir"
+ },
+ {
+  "heard": "weird",
+  "replacement": "weird/weir"
+ },
+ {
+  "heard": "feed",
+  "replacement": "feed/FEED"
+ },
+ {
+  "heard": "benzine",
+  "replacement": "benzine/benzene"
+ },
+ {
+  "heard": "ammonium",
+  "replacement": "ammonium/ammonia"
+ },
+ {
+  "heard": "ketone",
+  "replacement": "ketone/methyl ethyl ketone"
+ },
+ {
+  "heard": "aldehyde",
+  "replacement": "aldehyde/aldehyde"
+ },
+ {
+  "heard": "homo-genius",
+  "replacement": "homo-genius/homogeneous/heterogeneous"
+ },
+ {
+  "heard": "eye-gen-value",
+  "replacement": "eye-gen-value/eigenvalue/eigenvector"
+ },
+ {
+  "heard": "theo-doll-ite",
+  "replacement": "theo-doll-ite/surveying/theodolite"
+ },
+ {
+  "heard": "phaser",
+  "replacement": "phaser/phasor"
+ },
+ {
+  "heard": "balloon",
+  "replacement": "balloon/balun"
+ },
+ {
+  "heard": "smith",
+  "replacement": "smith/Schmidt"
+ },
+ {
+  "heard": "pwah-son",
+  "replacement": "pwah-son/Poisson distribution/equation"
+ },
+ {
+  "heard": "poison",
+  "replacement": "poison/Poisson distribution/equation"
+ },
+ {
+  "heard": "row",
+  "replacement": "row/rho"
+ },
+ {
+  "heard": "roe",
+  "replacement": "roe/rho"
+ },
+ {
+  "heard": "new",
+  "replacement": "new/nu"
+ },
+ {
+  "heard": "tow",
+  "replacement": "tow/tau"
+ },
+ {
+  "heard": "data",
+  "replacement": "data/beta"
+ },
+ {
+  "heard": "jewel",
+  "replacement": "jewel/joule"
+ },
+ {
+  "heard": "what",
+  "replacement": "what/watt"
+ },
+ {
+  "heard": "pwahz",
+  "replacement": "pwahz/poise/centipoise"
+ },
+ {
+  "heard": "poise",
+  "replacement": "poise/poise/centipoise"
+ },
+ {
+  "heard": "sigh",
+  "replacement": "sigh/psi"
+ },
+ {
+  "heard": "rank-in",
+  "replacement": "rank-in/degrees Celsius/Fahrenheit/Rankine"
+ }
+]

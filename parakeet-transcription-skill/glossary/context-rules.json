@@ -1,0 +1,5596 @@
+{
+ "version": "1.1",
+ "scope": "58 uncertain items: the final slash pairs after the Phase 1 cleanup (2026-11-05)",
+ "decision_procedure": {
+  "weights": {
+   "exact_phrase_pattern": 5,
+   "strong_adjacent_cue": 3,
+   "topic_cue": 1,
+   "negative_cue": -4
+  },
+  "cue_filter": "single-word cues that are stopwords are dropped before scoring (calibration finding: they fire everywhere)",
+  "choose_if": "top_score >= 8 and top_score - second_score >= 3",
+  "abstain": "otherwise render the slash form and log 'context did not settle it'",
+  "logging": "record chosen candidate, cue(s) that fired, scores for all candidates",
+  "topic_cap": "topic cues score +1 each, capped at +2 per candidate"
+ },
+ "logging": "For every decided case record: heard form, chosen candidate, cues that fired, all candidate scores, method (adjacent/rules/embed/hybrid/llm). Abstentions render the slash form.",
+ "items": [
+  {
+   "heard": "gives",
+   "slash_form": "gives/Gibbs free energy",
+   "slot_note": "Trap. 'gives' is normally a verb; the technical candidate is a noun phrase. ASR produced 'gives' for spoken 'Gibbs' (attested, Stan). Decisive pattern: 'gives free energy' as a noun-phrase slot occurs where a verb is missing or where the following words are 'free energy' plus a verb (is/equals/reduces). Ordinary 'gives' is followed by an object noun phrase and preceded by a subject noun/pronoun.",
+   "candidates": [
+    {
+     "label": "Gibbs free energy",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "change in",
+      "delta",
+      "minimum"
+     ],
+     "right_cues": [
+      "free energy",
+      "energy is",
+      "energy change",
+      "energy of"
+     ],
+     "phrase_patterns": [
+      "gives free energy",
+      "Gibbs free energy change",
+      "change in Gibbs free energy",
+      "delta G",
+      "G = H - TS"
+     ],
+     "topic_cues": [
+      "thermodynamics",
+      "spontaneity",
+      "equilibrium",
+      "constant temperature and pressure",
+      "chemical potential"
+     ],
+     "negative_cues": [
+      "gives us",
+      "gives you",
+      "gives the result",
+      "gives a value of the (ordinary ditransitive)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Bookshelves/General_Chemistry/Chemistry_2e_(OpenStax)/16%3A_Thermodynamics/16.05%3A_Free_Energy"
+      },
+      {
+       "url": "https://arxiv.org/html/2603.04657v1"
+      }
+     ],
+     "notes": "Attested mishearing (Stan). Source usage: 'Gibbs free energy (G) ... defined as G = H - TS'; 'free energy change may be expressed as delta G = delta H - T delta S'."
+    },
+    {
+     "label": "gives (ordinary verb)",
+     "type": "ordinary",
+     "left_cues": [
+      "it",
+      "this",
+      "which",
+      "that",
+      "he",
+      "she",
+      "equation"
+     ],
+     "right_cues": [
+      "us",
+      "you",
+      "the",
+      "a",
+      "an",
+      "rise"
+     ],
+     "phrase_patterns": [
+      "gives us",
+      "gives rise to",
+      "gives the following",
+      "gives a negative value"
+     ],
+     "topic_cues": [
+      "general narration"
+     ],
+     "negative_cues": [
+      "free energy",
+      "delta G",
+      "spontaneity (as the slot itself)"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: subject + gives + object is the default English verb pattern; choose ordinary when a grammatical subject and object bracket the word."
+    }
+   ]
+  },
+  {
+   "heard": "ideas",
+   "slash_form": "ideas/Gibbs free energy",
+   "slot_note": "Trap, same family as 'gives'. 'ideas' is normally a plural noun; the technical candidate is the noun phrase 'Gibbs free energy'. Decisive pattern is the same as for 'gives': the slot is followed by 'free energy' plus a verb (is/equals/change), leaving no verb for an ordinary 'ideas' reading, or the topic is spontaneity/equilibrium. Ordinary 'ideas' is bracketed by verbs or determiners and followed by ordinary nouns or relative clauses. Phonetically weaker than gives/Gibbs, so strength is medium, not strong.",
+   "candidates": [
+    {
+     "label": "Gibbs free energy",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "change in",
+      "delta",
+      "standard"
+     ],
+     "right_cues": [
+      "free energy",
+      "free energy is",
+      "free energy change",
+      "energy of"
+     ],
+     "phrase_patterns": [
+      "Gibbs free energy change",
+      "change in Gibbs free energy",
+      "delta G",
+      "G = H - TS"
+     ],
+     "topic_cues": [
+      "thermodynamics",
+      "spontaneity",
+      "equilibrium",
+      "constant temperature and pressure"
+     ],
+     "negative_cues": [
+      "ideas for",
+      "ideas about",
+      "new ideas",
+      "these ideas are (ordinary plural noun)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Bookshelves/General_Chemistry/Chemistry_2e_(OpenStax)/16%3A_Thermodynamics/16.05%3A_Free_Energy"
+      }
+     ],
+     "notes": "Source usage: 'Gibbs free energy (G) ... defined as G = H - TS'; 'free energy change is a reliable indicator of the spontaneity of a process'. Phonetic distance ideas/Gibbs is larger than gives/Gibbs, hence medium."
+    },
+    {
+     "label": "ideas (ordinary plural noun)",
+     "type": "ordinary",
+     "left_cues": [
+      "these",
+      "those",
+      "new",
+      "some",
+      "many",
+      "his",
+      "her",
+      "their"
+     ],
+     "right_cues": [
+      "for",
+      "about",
+      "are",
+      "were",
+      "that"
+     ],
+     "phrase_patterns": [
+      "new ideas",
+      "ideas for improving",
+      "these ideas are"
+     ],
+     "topic_cues": [
+      "general discussion",
+      "planning",
+      "brainstorming"
+     ],
+     "negative_cues": [
+      "free energy",
+      "delta G",
+      "spontaneity (as the slot itself)"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: plural count noun after determiner/adjective and before a verb or preposition is the default reading; choose ordinary unless 'free energy' immediately follows."
+    }
+   ]
+  },
+  {
+   "heard": "viral",
+   "slash_form": "viral/virial equation/virial coefficient",
+   "slot_note": "Not true slot alternatives in running text: 'virial coefficient' is a noun phrase naming a constant (B, C); 'virial equation' names the series/equation of state. The word AFTER the slot usually decides: 'coefficient' following means the speaker continued the noun phrase; an 'equation' slot appears where a verb such as 'gives/writes/use' precedes or 'of state' follows.",
+   "candidates": [
+    {
+     "label": "virial equation",
+     "type": "technical",
+     "left_cues": [
+      "use",
+      "using",
+      "write",
+      "expand",
+      "the truncated",
+      "the"
+     ],
+     "right_cues": [
+      "of state"
+     ],
+     "phrase_patterns": [
+      "the virial equation of state",
+      "virial equation of state",
+      "truncated virial equation"
+     ],
+     "topic_cues": [
+      "real gas",
+      "equation of state",
+      "compressibility factor",
+      "PVT"
+     ],
+     "negative_cues": [
+      "coefficient is",
+      "coefficient B",
+      "second virial coefficient value"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Courses/Western_Washington_University/Biophysical_Chemistry_(Smirnov_and_McCarty)/01:_Biochemical_Thermodynamics/1.01:_Thermodynamic_Variables_and_Equations_of_State"
+      },
+      {
+       "url": "https://chem.libretexts.org/Courses/Tusculum_University/Introductory_Chemical_Thermodynamics_(Pearson)/1:_Measurement_energy_and_the_quantites_of_state/1.6:_Another_way_of_dealing_with_real_gases:_the_virial_equation"
+      }
+     ],
+     "notes": "Source usage: 'virial equation of state ... polynomial in density'; coefficients B2, B3 are fit to data."
+    },
+    {
+     "label": "virial coefficient",
+     "type": "technical",
+     "left_cues": [
+      "second",
+      "third",
+      "the second",
+      "the third",
+      "a second"
+     ],
+     "right_cues": [
+      "is",
+      "B",
+      "value",
+      "of",
+      "for"
+     ],
+     "phrase_patterns": [
+      "second virial coefficient",
+      "third virial coefficient",
+      "virial coefficients are typically fit",
+      "virial coefficient is temperature dependent"
+     ],
+     "topic_cues": [
+      "real gas",
+      "PVT data",
+      "temperature dependent",
+      "molecular interactions"
+     ],
+     "negative_cues": [
+      "equation of state is",
+      "use the equation"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Courses/Western_Washington_University/Biophysical_Chemistry_(Smirnov_and_McCarty)/01:_Biochemical_Thermodynamics/1.01:_Thermodynamic_Variables_and_Equations_of_State"
+      },
+      {
+       "url": "https://chem.libretexts.org/Courses/Tusculum_University/Introductory_Chemical_Thermodynamics_(Pearson)/1:_Measurement_energy_and_the_quantites_of_state/1.6:_Another_way_of_dealing_with_real_gases:_the_virial_equation"
+      }
+     ],
+     "notes": "Source usage: 'B2 is called the second virial coefficient'; 'coefficients are typically fit to experimental data and are temperature dependent'."
+    },
+    {
+     "label": "viral (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "a",
+      "this"
+     ],
+     "right_cues": [
+      "infection",
+      "video",
+      "load",
+      "marketing",
+      "spread"
+     ],
+     "phrase_patterns": [
+      "viral infection",
+      "viral load",
+      "goes viral"
+     ],
+     "topic_cues": [
+      "biology",
+      "medicine",
+      "social media"
+     ],
+     "negative_cues": [
+      "virial",
+      "equation of state",
+      "compressibility"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: ordinary adjective for virus-related or rapidly spreading content; no ChemE source needed and none claimed."
+    }
+   ]
+  },
+  {
+   "heard": "azee-o-trope",
+   "slash_form": "azee-o-trope/azeotrope/azeotropic",
+   "slot_note": "Part-of-speech alternatives: 'azeotrope' is a noun (a mixture); 'azeotropic' is an adjective and must be followed by a noun (mixture, distillation, composition, behaviour). The following word decides: a noun after the slot -> azeotropic; a verb or determiner pattern ('an azeotrope forms/is') -> azeotrope.",
+   "candidates": [
+    {
+     "label": "azeotrope",
+     "type": "technical",
+     "left_cues": [
+      "an",
+      "the",
+      "a",
+      "binary",
+      "ternary",
+      "minimum-boiling",
+      "maximum-boiling"
+     ],
+     "right_cues": [
+      "forms",
+      "is",
+      "has",
+      "boils",
+      "exists"
+     ],
+     "phrase_patterns": [
+      "an azeotrope is a mixture",
+      "the azeotrope has a characteristic boiling point",
+      "forms an azeotrope"
+     ],
+     "topic_cues": [
+      "distillation",
+      "vapour composition",
+      "constant boiling point",
+      "ethanol water"
+     ],
+     "negative_cues": [
+      "mixture (directly after, adjective slot)",
+      "distillation (directly after, adjective slot)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Supplemental_Modules_(Physical_and_Theoretical_Chemistry)/Physical_Properties_of_Matter/Solutions_and_Mixtures/Nonideal_Solutions/Azeotropes"
+      },
+      {
+       "url": "https://en.wikipedia.org/wiki/Azeotrope"
+      }
+     ],
+     "notes": "Source usage: 'An azeotrope is a mixture that exhibits the same concentration in the vapor phase and the liquid phase'; 'Each azeotrope has a characteristic boiling point'."
+    },
+    {
+     "label": "azeotropic",
+     "type": "technical",
+     "left_cues": [
+      "an",
+      "the"
+     ],
+     "right_cues": [
+      "mixture",
+      "distillation",
+      "composition",
+      "behaviour",
+      "point"
+     ],
+     "phrase_patterns": [
+      "azeotropic mixture",
+      "azeotropic distillation",
+      "azeotropic composition"
+     ],
+     "topic_cues": [
+      "distillation",
+      "separations"
+     ],
+     "negative_cues": [
+      "is a mixture (noun-phrase predicate after slot)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Azeotrope"
+      }
+     ],
+     "notes": "Structural adjective slot, supported by source collocations 'azeotropic distillation is usually used' (Wikipedia) and 'azeotropic mixture' in dictionary usage derived from the same article family; adjective-before-noun is the decisive structural cue."
+    }
+   ]
+  },
+  {
+   "heard": "easy-o-trope",
+   "slash_form": "easy-o-trope/azeotrope/azeotropic",
+   "slot_note": "Same candidate set as azee-o-trope (identical spoken target, different ASR spelling of the heard form). Coordinator-authored at merge by cloning the azee-o-trope item; cues and sources carry over unchanged.",
+   "candidates": [
+    {
+     "label": "azeotrope",
+     "type": "technical",
+     "left_cues": [
+      "an",
+      "the",
+      "a",
+      "binary",
+      "ternary",
+      "minimum-boiling",
+      "maximum-boiling"
+     ],
+     "right_cues": [
+      "forms",
+      "is",
+      "has",
+      "boils",
+      "exists"
+     ],
+     "phrase_patterns": [
+      "an azeotrope is a mixture",
+      "the azeotrope has a characteristic boiling point",
+      "forms an azeotrope"
+     ],
+     "topic_cues": [
+      "distillation",
+      "vapour composition",
+      "constant boiling point",
+      "ethanol water"
+     ],
+     "negative_cues": [
+      "mixture (directly after, adjective slot)",
+      "distillation (directly after, adjective slot)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Supplemental_Modules_(Physical_and_Theoretical_Chemistry)/Physical_Properties_of_Matter/Solutions_and_Mixtures/Nonideal_Solutions/Azeotropes"
+      },
+      {
+       "url": "https://en.wikipedia.org/wiki/Azeotrope"
+      }
+     ],
+     "notes": "Source usage: 'An azeotrope is a mixture that exhibits the same concentration in the vapor phase and the liquid phase'; 'Each azeotrope has a characteristic boiling point'."
+    },
+    {
+     "label": "azeotropic",
+     "type": "technical",
+     "left_cues": [
+      "an",
+      "the"
+     ],
+     "right_cues": [
+      "mixture",
+      "distillation",
+      "composition",
+      "behaviour",
+      "point"
+     ],
+     "phrase_patterns": [
+      "azeotropic mixture",
+      "azeotropic distillation",
+      "azeotropic composition"
+     ],
+     "topic_cues": [
+      "distillation",
+      "separations"
+     ],
+     "negative_cues": [
+      "is a mixture (noun-phrase predicate after slot)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Azeotrope"
+      }
+     ],
+     "notes": "Structural adjective slot, supported by source collocations 'azeotropic distillation is usually used' (Wikipedia) and 'azeotropic mixture' in dictionary usage derived from the same article family; adjective-before-noun is the decisive structural cue."
+    }
+   ]
+  },
+  {
+   "heard": "do point",
+   "slash_form": "do point/dew point",
+   "slot_note": "Two-word slot. Technical 'dew point' is a noun: a temperature at which vapour condenses / air reaches saturation. It appears after 'the', 'at the', 'reach the', 'below the' and before 'temperature', 'is', 'of the air'. Ordinary 'do point' is not an idiom; an ordinary reading needs 'do' as a verb ('do point out', 'do point to') or a list instruction ('do point 2'). The following word decides: 'point out/to' after the slot rules the technical reading out; 'temperature/is' after it rules the ordinary reading out.",
+   "candidates": [
+    {
+     "label": "dew point",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "at the",
+      "reach the",
+      "below the",
+      "above the"
+     ],
+     "right_cues": [
+      "temperature",
+      "is",
+      "of",
+      "dew point temperature"
+     ],
+     "phrase_patterns": [
+      "the dew point",
+      "dew point temperature",
+      "cooled below the dew point",
+      "temperature at which air reaches saturation"
+     ],
+     "topic_cues": [
+      "humidity",
+      "relative humidity",
+      "condensation",
+      "saturation",
+      "psychrometric",
+      "cooling"
+     ],
+     "negative_cues": [
+      "point out",
+      "point to (verb phrase after slot)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Environmental_Engineering_(Sustainability_and_Conservation)/Energy_Conservation_for_Environmental_Protection_(Pisupati)/09%3A_Home_Cooling/9.01%3A_New_Page"
+      },
+      {
+       "url": "https://phys.libretexts.org/Bookshelves/College_Physics/College_Physics_1e_(OpenStax)/13%3A_Temperature_Kinetic_Theory_and_the_Gas_Laws/13.06%3A_Humidity_Evaporation_and_Boiling"
+      }
+     ],
+     "notes": "Source usage: 'Dew Point is the temperature at which air reaches 100 percent relative humidity. If the air is cooled below dew point, moisture in the air condenses'; 'At the dew point temperature, relative humidity is 100%'."
+    },
+    {
+     "label": "do point (ordinary verb + noun/verb)",
+     "type": "ordinary",
+     "left_cues": [
+      "we",
+      "you",
+      "I",
+      "please",
+      "to"
+     ],
+     "right_cues": [
+      "out",
+      "to",
+      "two",
+      "2"
+     ],
+     "phrase_patterns": [
+      "do point out",
+      "do point to",
+      "do point 2"
+     ],
+     "topic_cues": [
+      "instructions",
+      "general narration"
+     ],
+     "negative_cues": [
+      "temperature",
+      "relative humidity",
+      "condensation",
+      "saturation"
+     ],
+     "strength": "medium",
+     "sources": [],
+     "notes": "Structural: 'do' as emphatic/main verb requires a following base verb or object; 'point out/to' directly after the slot is decisive for ordinary. Weak as a standalone collocation because 'do point' alone is not idiomatic English."
+    }
+   ]
+  },
+  {
+   "heard": "car-no",
+   "slash_form": "car-no/Carnot cycle/engine/efficiency",
+   "slot_note": "Alternatives share the head word Carnot and differ in the following noun: cycle, engine or efficiency. The word AFTER the slot is the decisive cue; do not decide from the head word alone.",
+   "candidates": [
+    {
+     "label": "Carnot cycle",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "reversible",
+      "ideal"
+     ],
+     "right_cues": [
+      "cycle",
+      "cycle comprises",
+      "cycle consists"
+     ],
+     "phrase_patterns": [
+      "Carnot cycle",
+      "the Carnot cycle comprises",
+      "reversible Carnot cycle"
+     ],
+     "topic_cues": [
+      "heat engine",
+      "second law",
+      "isothermal and adiabatic",
+      "reservoirs"
+     ],
+     "negative_cues": [
+      "engine operating between",
+      "efficiency is given by"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Courses/Skyline/Survey_of_Physics/12%3A_Thermodynamics/12.05%3A_Carnots_Perfect_Heat_Engine-_The_Second_Law_of_Thermodynamics_Restated"
+      }
+     ],
+     "notes": "Source usage: 'He devised a theoretical cycle, now called the Carnot cycle'; 'The cycle comprises two isothermal and two adiabatic processes'."
+    },
+    {
+     "label": "Carnot engine",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "perfect",
+      "ideal"
+     ],
+     "right_cues": [
+      "engine",
+      "engine operating",
+      "engine is"
+     ],
+     "phrase_patterns": [
+      "Carnot engine",
+      "a Carnot engine operating between",
+      "perfect heat engine"
+     ],
+     "topic_cues": [
+      "heat engine",
+      "reservoirs",
+      "maximum efficiency"
+     ],
+     "negative_cues": [
+      "cycle comprises",
+      "efficiency is given by"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Courses/Skyline/Survey_of_Physics/12%3A_Thermodynamics/12.05%3A_Carnots_Perfect_Heat_Engine-_The_Second_Law_of_Thermodynamics_Restated"
+      }
+     ],
+     "notes": "Source usage: 'Any heat engine employing the Carnot cycle is called a Carnot engine'; 'A Carnot engine operating between two given temperatures has the greatest possible efficiency'."
+    },
+    {
+     "label": "Carnot efficiency",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "maximum",
+      "this"
+     ],
+     "right_cues": [
+      "efficiency",
+      "efficiency is",
+      "efficiency of"
+     ],
+     "phrase_patterns": [
+      "Carnot efficiency",
+      "maximum or Carnot efficiency",
+      "efficiency of a Carnot engine"
+     ],
+     "topic_cues": [
+      "heat engine",
+      "temperatures of the reservoirs",
+      "kelvin"
+     ],
+     "negative_cues": [
+      "cycle comprises",
+      "engine operating between"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Courses/Skyline/Survey_of_Physics/12%3A_Thermodynamics/12.05%3A_Carnots_Perfect_Heat_Engine-_The_Second_Law_of_Thermodynamics_Restated"
+      }
+     ],
+     "notes": "Source usage: 'the maximum or Carnot efficiency is given by Eff = 1 - Tc/Th', with reservoir temperatures in kelvins."
+    }
+   ]
+  },
+  {
+   "heard": "cannot",
+   "slash_form": "cannot/Carnot cycle/engine/efficiency",
+   "slot_note": "Trap + alternatives sharing a head noun slot: 'Carnot cycle', 'Carnot engine' and 'Carnot efficiency' are variants decided almost entirely by the word AFTER the slot (cycle/engine/efficiency) or by a preceding 'the ...' with heat-engine topic words. Ordinary 'cannot' is a modal verb: the next word is a base verb (be, exceed, do, separate).",
+   "candidates": [
+    {
+     "label": "Carnot cycle",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "reversible",
+      "ideal"
+     ],
+     "right_cues": [
+      "cycle",
+      "cycle is",
+      "cycle consists"
+     ],
+     "phrase_patterns": [
+      "Carnot cycle",
+      "the Carnot cycle comprises",
+      "reversible Carnot cycle"
+     ],
+     "topic_cues": [
+      "heat engine",
+      "second law",
+      "isothermal and adiabatic",
+      "reservoirs"
+     ],
+     "negative_cues": [
+      "cannot be",
+      "cannot exceed (modal + verb)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://openstax.org/books/college-physics/pages/15-4-carnots-perfect-heat-engine-the-second-law-of-thermodynamics-restated"
+      },
+      {
+       "url": "https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Physical_Chemistry_(Fleming)/05%3A_The_Second_Law/5.02%3A_Heat_Engines_and_the_Carnot_Cycle"
+      }
+     ],
+     "notes": "Source usage: 'The cycle comprises two isothermal and two adiabatic processes'; 'He devised a theoretical cycle, now called the Carnot cycle'."
+    },
+    {
+     "label": "Carnot engine",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "perfect",
+      "ideal"
+     ],
+     "right_cues": [
+      "engine",
+      "engine operating",
+      "engine is"
+     ],
+     "phrase_patterns": [
+      "Carnot engine",
+      "a Carnot engine operating between",
+      "perfect heat engine"
+     ],
+     "topic_cues": [
+      "heat engine",
+      "reservoirs",
+      "maximum efficiency"
+     ],
+     "negative_cues": [
+      "cannot (any modal pattern)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://openstax.org/books/college-physics/pages/15-4-carnots-perfect-heat-engine-the-second-law-of-thermodynamics-restated"
+      }
+     ],
+     "notes": "Source usage: 'Any heat engine employing the Carnot cycle is called a Carnot engine'; 'A Carnot engine operating between two given temperatures has the greatest possible efficiency'."
+    },
+    {
+     "label": "Carnot efficiency",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "maximum",
+      "this"
+     ],
+     "right_cues": [
+      "efficiency",
+      "efficiency is",
+      "efficiency of"
+     ],
+     "phrase_patterns": [
+      "Carnot efficiency",
+      "maximum or Carnot efficiency",
+      "efficiency of a Carnot"
+     ],
+     "topic_cues": [
+      "heat engine",
+      "temperatures of the reservoirs",
+      "kelvin"
+     ],
+     "negative_cues": [
+      "cannot (any modal pattern)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://openstax.org/books/college-physics/pages/15-4-carnots-perfect-heat-engine-the-second-law-of-thermodynamics-restated"
+      }
+     ],
+     "notes": "Source usage: 'the maximum or Carnot efficiency is given by Eff = 1 - Tc/Th'."
+    },
+    {
+     "label": "cannot (ordinary modal)",
+     "type": "ordinary",
+     "left_cues": [
+      "we",
+      "it",
+      "you",
+      "this",
+      "that"
+     ],
+     "right_cues": [
+      "be",
+      "exceed",
+      "do",
+      "have",
+      "separate",
+      "distil",
+      "reach"
+     ],
+     "phrase_patterns": [
+      "cannot be",
+      "cannot exceed",
+      "cannot be separated"
+     ],
+     "topic_cues": [
+      "general narration"
+     ],
+     "negative_cues": [
+      "cycle",
+      "engine operating between",
+      "efficiency is given"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: modal + base verb is decisive; a following noun (cycle/engine/efficiency) rules the modal reading out grammatically."
+    }
+   ]
+  },
+  {
+   "heard": "laminate",
+   "slash_form": "laminate/laminar",
+   "slot_note": "Part-of-speech alternatives. Technical 'laminar' is an adjective and must be followed by a noun, almost always 'flow', or by 'or turbulent'. Ordinary 'laminate' is a noun (a layered material, a flooring, an ID card) or a verb (to laminate). The word after the slot decides: 'flow/regime/boundary layer' -> laminar; 'flooring/surface/paper/it' -> laminate.",
+   "candidates": [
+    {
+     "label": "laminar",
+     "type": "technical",
+     "left_cues": [
+      "the flow is",
+      "is",
+      "remains",
+      "fully",
+      "in"
+     ],
+     "right_cues": [
+      "flow",
+      "or turbulent",
+      "regime",
+      "boundary layer"
+     ],
+     "phrase_patterns": [
+      "laminar flow",
+      "flow is laminar",
+      "laminar or turbulent",
+      "remains laminar"
+     ],
+     "topic_cues": [
+      "Reynolds number",
+      "below 2000",
+      "smooth tube",
+      "streamlines",
+      "layers do not mix",
+      "viscous"
+     ],
+     "negative_cues": [
+      "flooring",
+      "the laminate is (material noun)",
+      "laminate it"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Bookshelves/College_Physics/College_Physics_1e_(OpenStax)/12%3A_Fluid_Dynamics_and_Its_Biological_and_Medical_Applications/12.05%3A_The_Onset_of_Turbulence"
+      }
+     ],
+     "notes": "Source usage: 'For NR below about 2000, flow is laminar'; 'flow in a very smooth tube will be laminar at low velocity'; glossary 'laminar: smooth and regular, flowing as though in different layers'."
+    },
+    {
+     "label": "laminate (ordinary material/verb)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "a",
+      "plastic",
+      "this"
+     ],
+     "right_cues": [
+      "flooring",
+      "surface",
+      "countertop",
+      "is made",
+      "it"
+     ],
+     "phrase_patterns": [
+      "laminate flooring",
+      "plastic laminate",
+      "laminate it"
+     ],
+     "topic_cues": [
+      "materials",
+      "flooring",
+      "documents",
+      "coating"
+     ],
+     "negative_cues": [
+      "flow",
+      "Reynolds number",
+      "turbulent"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: noun after determiner with material adjectives, or verb with a direct object; an adjective slot before 'flow' cannot be filled by 'laminate'."
+    }
+   ]
+  },
+  {
+   "heard": "pwah-zoy",
+   "slash_form": "pwah-zoy/Hagen–Poiseuille/Poiseuille's law",
+   "slot_note": "Weak pair: 'Hagen-Poiseuille' and 'Poiseuille's law' name the same law/equation in the sources, so most context fits both. Only two cues separate them: a preceding 'Hagen' (or a following 'equation/flow') points to the compound name, and a following 'law' or 'states/says' points to Poiseuille's law. Otherwise abstain.",
+   "candidates": [
+    {
+     "label": "Hagen–Poiseuille",
+     "type": "technical",
+     "left_cues": [
+      "Hagen",
+      "the Hagen"
+     ],
+     "right_cues": [
+      "equation",
+      "flow",
+      "law"
+     ],
+     "phrase_patterns": [
+      "Hagen-Poiseuille equation",
+      "Hagen-Poiseuille flow",
+      "Hagen-Poiseuille law"
+     ],
+     "topic_cues": [
+      "laminar flow",
+      "pipe",
+      "pressure drop",
+      "Newtonian fluid",
+      "Navier-Stokes"
+     ],
+     "negative_cues": [
+      "law states (with no Hagen before)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Poiseuille_equation"
+      }
+     ],
+     "notes": "Source usage: 'the Hagen-Poiseuille equation, also known as the Hagen-Poiseuille law, Poiseuille law or Poiseuille equation, is a physical law that gives the pressure drop in an incompressible and Newtonian fluid in laminar flow'. The source treats the names as synonyms, hence only moderate."
+    },
+    {
+     "label": "Poiseuille's law",
+     "type": "technical",
+     "left_cues": [
+      "by",
+      "under"
+     ],
+     "right_cues": [
+      "law",
+      "law states",
+      "law gives"
+     ],
+     "phrase_patterns": [
+      "Poiseuille's law",
+      "Poiseuille law",
+      "by Poiseuille's law"
+     ],
+     "topic_cues": [
+      "laminar flow",
+      "pipe",
+      "pressure drop",
+      "volumetric flow rate",
+      "radius to the fourth power"
+     ],
+     "negative_cues": [
+      "Hagen (directly before the slot)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Poiseuille_equation"
+      },
+      {
+       "url": "https://www.wikidoc.org/index.php/Poiseuille's_law"
+      }
+     ],
+     "notes": "Source usage: 'Poiseuille's law is the physical law concerning the voluminal laminar stationary flow of an incompressible uniform viscous liquid through a cylindrical tube'; the same source notes it is 'also sometimes called the Hagen-Poiseuille law'."
+    }
+   ]
+  },
+  {
+   "heard": "moody",
+   "slash_form": "moody/Moody chart/diagram",
+   "slot_note": "Alternatives share the head word Moody and differ in the following noun: chart or diagram, which the sources use as synonyms for the same plot. The word AFTER the slot is the only technical cue. Ordinary 'moody' is an adjective for a person.",
+   "candidates": [
+    {
+     "label": "Moody chart",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "use the",
+      "read the"
+     ],
+     "right_cues": [
+      "chart",
+      "chart shows",
+      "chart to find"
+     ],
+     "phrase_patterns": [
+      "Moody chart",
+      "use the Moody chart",
+      "read the friction factor from the Moody chart"
+     ],
+     "topic_cues": [
+      "pipe flow",
+      "friction factor",
+      "Reynolds number",
+      "relative roughness",
+      "Colebrook"
+     ],
+     "negative_cues": [
+      "diagram (following word instead)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Moody_chart"
+      }
+     ],
+     "notes": "Source usage: 'the Moody chart or Moody diagram (also Stanton diagram) is a graph... that relates the Darcy-Weisbach friction factor, Reynolds number Re, and surface roughness'."
+    },
+    {
+     "label": "Moody diagram",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "on the"
+     ],
+     "right_cues": [
+      "diagram",
+      "diagram shows",
+      "diagram plots"
+     ],
+     "phrase_patterns": [
+      "Moody diagram",
+      "the Moody diagram plots",
+      "on the Moody diagram"
+     ],
+     "topic_cues": [
+      "pipe flow",
+      "friction factor",
+      "Reynolds number",
+      "relative roughness"
+     ],
+     "negative_cues": [
+      "chart (following word instead)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Moody_chart"
+      }
+     ],
+     "notes": "Source usage: 'In 1944, Lewis Ferry Moody plotted the Darcy-Weisbach friction factor against Reynolds number Re for various values of relative roughness. This chart became commonly known as the Moody chart or Moody diagram'."
+    },
+    {
+     "label": "moody (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "feel",
+      "feeling",
+      "so",
+      "very",
+      "a bit"
+     ],
+     "right_cues": [
+      "today",
+      "person",
+      "teenager",
+      "silence"
+     ],
+     "phrase_patterns": [
+      "feeling moody",
+      "so moody today"
+     ],
+     "topic_cues": [
+      "feelings",
+      "people",
+      "everyday narration"
+     ],
+     "negative_cues": [
+      "friction factor",
+      "Reynolds number",
+      "roughness",
+      "pipe"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: ordinary adjective for a person in low or changeable spirits; a following noun chart/diagram rules it out grammatically in this slot."
+    }
+   ]
+  },
+  {
+   "heard": "mock",
+   "slash_form": "mock/Mach number",
+   "slot_note": "Trap. Technical 'Mach number' is a dimensionless ratio (flow velocity / speed of sound); the word after the slot is normally 'number', or a numeral/value, or 'one' in 'Mach one'. Ordinary 'mock' is an adjective (mock exam/test/trial) or a verb (to mock). 'Number' or a flow-regime word (subsonic, supersonic) after the slot decides for Mach; 'exam/test/interview' after it decides for ordinary.",
+   "candidates": [
+    {
+     "label": "Mach number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "at a",
+      "the local"
+     ],
+     "right_cues": [
+      "number",
+      "number is",
+      "one",
+      "0.3",
+      "2"
+     ],
+     "phrase_patterns": [
+      "Mach number",
+      "the Mach number is",
+      "Mach number M = U/a",
+      "at Mach one"
+     ],
+     "topic_cues": [
+      "compressible flow",
+      "speed of sound",
+      "subsonic",
+      "supersonic",
+      "sonic",
+      "nozzle",
+      "shock"
+     ],
+     "negative_cues": [
+      "exam",
+      "test",
+      "trial",
+      "interview (adjective slot before assessment nouns)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://bryanwweber.com/propulsion-notes/compressible-flow/3-the-mach-number.html"
+      }
+     ],
+     "notes": "Source usage: 'the Mach number is defined as the ratio of the current speed to the speed of sound'; flows are called subsonic, supersonic, sonic, transonic, hypersonic by Mach number range."
+    },
+    {
+     "label": "mock (ordinary adjective/verb)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "a practice"
+     ],
+     "right_cues": [
+      "exam",
+      "test",
+      "trial",
+      "interview",
+      "up"
+     ],
+     "phrase_patterns": [
+      "mock exam",
+      "mock test",
+      "mock trial"
+     ],
+     "topic_cues": [
+      "assessment practice",
+      "imitation",
+      "teasing"
+     ],
+     "negative_cues": [
+      "number",
+      "speed of sound",
+      "subsonic",
+      "supersonic"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: adjective before assessment/imitation nouns, or verb with an object; neither can take 'number' as the following noun in the dimensionless-ratio sense."
+    }
+   ]
+  },
+  {
+   "heard": "fraud",
+   "slash_form": "fraud/Froude number",
+   "slot_note": "Trap. Technical 'Froude number' is a dimensionless ratio (inertia force / gravity force) for free-surface and open-channel flow; the word after the slot is 'number', or the slot stands before 'is less than 1 / greater than 1' with subcritical/supercritical nearby. Ordinary 'fraud' is a noun for deception, bracketed by articles and legal verbs. 'Number' after the slot is decisive for Froude.",
+   "candidates": [
+    {
+     "label": "Froude number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "the upstream"
+     ],
+     "right_cues": [
+      "number",
+      "number is",
+      "number of"
+     ],
+     "phrase_patterns": [
+      "Froude number",
+      "the Froude number is",
+      "Froude number of 1",
+      "Froude number less than 0.5"
+     ],
+     "topic_cues": [
+      "open channel",
+      "free surface",
+      "subcritical",
+      "supercritical",
+      "critical flow",
+      "hydraulic jump",
+      "wave propagation"
+     ],
+     "negative_cues": [
+      "case",
+      "charges",
+      "committed (legal pattern)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://www.usbr.gov/tsc/techreferences/mands/wmm/chap02_12.html"
+      }
+     ],
+     "notes": "Source usage: 'the Froude number is the ratio of inertia force to gravity force'; 'When the Froude number is 1, the velocity is equal to the velocity of wave propagation'; approach-flow Froude number 'less than 0.5' for measurement."
+    },
+    {
+     "label": "fraud (ordinary noun)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "insurance",
+      "bank",
+      "electoral"
+     ],
+     "right_cues": [
+      "case",
+      "charges",
+      "is",
+      "was committed"
+     ],
+     "phrase_patterns": [
+      "fraud case",
+      "insurance fraud",
+      "committed fraud"
+     ],
+     "topic_cues": [
+      "crime",
+      "deception",
+      "law",
+      "finance wrongdoing"
+     ],
+     "negative_cues": [
+      "number",
+      "open channel",
+      "subcritical",
+      "supercritical"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: deception noun with legal/financial modifiers and verbs (commit, detect, charge); a following 'number' rules this reading out."
+    }
+   ]
+  },
+  {
+   "heard": "oiler",
+   "slash_form": "oiler/Euler number/equation",
+   "slot_note": "Alternatives share the head word Euler and differ in the following noun: number or equation. The word AFTER the slot is the decisive cue. A third reading, ordinary 'oiler', is a person or device that oils machinery, or an oil tanker.",
+   "candidates": [
+    {
+     "label": "Euler number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "dimensionless"
+     ],
+     "right_cues": [
+      "number",
+      "number Eu",
+      "number is"
+     ],
+     "phrase_patterns": [
+      "Euler number",
+      "the Euler number is defined as",
+      "dimensionless number"
+     ],
+     "topic_cues": [
+      "fluid flow",
+      "pressure drop",
+      "pressure forces",
+      "inertial forces",
+      "cavitation"
+     ],
+     "negative_cues": [
+      "equation governs",
+      "inviscid flow",
+      "Navier-Stokes with zero viscosity"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Euler_number_(physics)"
+      }
+     ],
+     "notes": "Source usage: 'The Euler number (Eu) is a dimensionless number used in fluid flow calculations. It expresses the relationship between a local pressure drop... and the kinetic energy per volume'."
+    },
+    {
+     "label": "Euler equation",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "using",
+      "solve"
+     ],
+     "right_cues": [
+      "equation",
+      "equations",
+      "equation governs",
+      "of motion"
+     ],
+     "phrase_patterns": [
+      "Euler equations",
+      "the Euler equations govern inviscid flow",
+      "Euler equation of motion"
+     ],
+     "topic_cues": [
+      "inviscid flow",
+      "fluid dynamics",
+      "conservation of mass momentum and energy",
+      "Navier-Stokes"
+     ],
+     "negative_cues": [
+      "number Eu",
+      "dimensionless number",
+      "pressure drop"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Euler_equations_(fluid_dynamics)"
+      }
+     ],
+     "notes": "Source usage (plural in the source): 'the Euler equations are a set of partial differential equations governing adiabatic and inviscid flow... correspond to the Navier-Stokes equations with zero viscosity'."
+    },
+    {
+     "label": "oiler (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "an",
+      "a"
+     ],
+     "right_cues": [
+      "can",
+      "cup",
+      "machine",
+      "ship",
+      "tanker"
+     ],
+     "phrase_patterns": [
+      "oiler can",
+      "oil can oiler"
+     ],
+     "topic_cues": [
+      "mechanical maintenance",
+      "shipping"
+     ],
+     "negative_cues": [
+      "Eu",
+      "dimensionless",
+      "inviscid",
+      "pressure drop"
+     ],
+     "strength": "medium",
+     "sources": [],
+     "notes": "Structural: ordinary noun for a device/person that applies oil, or a tanker ship; no ChemE source needed and none claimed."
+    }
+   ]
+  },
+  {
+   "heard": "euler",
+   "slash_form": "euler/Euler number/equation",
+   "slot_note": "Same pair as 'oiler', heard here in a form closer to the name itself. Alternatives share the head word Euler and differ in the following noun: number or equation. The word AFTER the slot is the decisive cue.",
+   "candidates": [
+    {
+     "label": "Euler number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "dimensionless"
+     ],
+     "right_cues": [
+      "number",
+      "number Eu",
+      "number is"
+     ],
+     "phrase_patterns": [
+      "Euler number",
+      "the Euler number is defined as",
+      "dimensionless number"
+     ],
+     "topic_cues": [
+      "fluid flow",
+      "pressure drop",
+      "pressure forces",
+      "inertial forces",
+      "cavitation"
+     ],
+     "negative_cues": [
+      "equation governs",
+      "inviscid flow"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Euler_number_(physics)"
+      }
+     ],
+     "notes": "Source usage: 'The Euler number (Eu) is a dimensionless number... relationship between a local pressure drop... and the kinetic energy per volume of the flow'."
+    },
+    {
+     "label": "Euler equation",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "using",
+      "solve"
+     ],
+     "right_cues": [
+      "equation",
+      "equations",
+      "equation governs",
+      "of motion"
+     ],
+     "phrase_patterns": [
+      "Euler equations",
+      "the Euler equations govern inviscid flow",
+      "Euler equation of motion"
+     ],
+     "topic_cues": [
+      "inviscid flow",
+      "fluid dynamics",
+      "conservation of mass momentum and energy",
+      "Navier-Stokes"
+     ],
+     "negative_cues": [
+      "number Eu",
+      "dimensionless number",
+      "pressure drop"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Euler_equations_(fluid_dynamics)"
+      }
+     ],
+     "notes": "Source usage (plural in the source): 'the Euler equations are a set of partial differential equations governing adiabatic and inviscid flow'."
+    }
+   ]
+  },
+  {
+   "heard": "dill-a-tant",
+   "slash_form": "dill-a-tant/pseudoplastic/dilatant",
+   "slot_note": "Opposite rheology classes: pseudoplastic is shear-thinning and dilatant is shear-thickening. The direction of the viscosity change with shear rate, stated on either side of the slot, is decisive; the fluid name alone is not.",
+   "candidates": [
+    {
+     "label": "pseudoplastic",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "shear-thinning"
+     ],
+     "right_cues": [
+      "fluid",
+      "flow",
+      "viscosity decreases",
+      "behaviour"
+     ],
+     "phrase_patterns": [
+      "pseudoplastic fluid",
+      "shear-thinning (pseudoplastic)",
+      "viscosity decreases with increasing shear rate"
+     ],
+     "topic_cues": [
+      "non-Newtonian",
+      "rheology",
+      "power law",
+      "polymer solution",
+      "paint",
+      "ketchup"
+     ],
+     "negative_cues": [
+      "shear-thickening",
+      "viscosity increases with shear"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://mail.myengineeringtools.com/references/pages/classification_of_non-newtonian_fluid_behavior.html"
+      },
+      {
+       "url": "https://blog.fluidflowinfo.com/non-newtonian-fluid-flow?hs_amp=true"
+      }
+     ],
+     "notes": "Source usage: 'Shear-thinning (pseudoplastic): Viscosity decreases as shear rate increases'; 'Pseudoplastic fluids such as paint and ketchup exhibit shear thinning'."
+    },
+    {
+     "label": "dilatant",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "shear-thickening"
+     ],
+     "right_cues": [
+      "fluid",
+      "flow",
+      "viscosity increases",
+      "behaviour"
+     ],
+     "phrase_patterns": [
+      "dilatant fluid",
+      "shear-thickening (dilatant)",
+      "viscosity increases with increasing shear rate"
+     ],
+     "topic_cues": [
+      "non-Newtonian",
+      "rheology",
+      "cornstarch and water",
+      "deflocculated suspension"
+     ],
+     "negative_cues": [
+      "shear-thinning",
+      "viscosity decreases with shear"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://mail.myengineeringtools.com/references/pages/classification_of_non-newtonian_fluid_behavior.html"
+      },
+      {
+       "url": "https://blog.fluidflowinfo.com/non-newtonian-fluid-flow?hs_amp=true"
+      }
+     ],
+     "notes": "Source usage: 'Shear-thickening (dilatant): Viscosity increases with rising shear rate'; 'Dilatant fluids exhibit shear thickening properties... A mixture of cornstarch and water'."
+    }
+   ]
+  },
+  {
+   "heard": "rally",
+   "slash_form": "rally/Rayleigh number",
+   "slot_note": "Trap. Technical 'Rayleigh number' is a dimensionless group for buoyancy-driven (natural/free) convection, Ra = Gr x Pr; the word after the slot is 'number', often with 'critical' before it or a large power-of-ten value after it. Ordinary 'rally' is a noun (a gathering, a market recovery) or a verb (to rally). 'Number' after the slot is decisive for Rayleigh.",
+   "candidates": [
+    {
+     "label": "Rayleigh number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "critical",
+      "the critical"
+     ],
+     "right_cues": [
+      "number",
+      "number is",
+      "number Ra"
+     ],
+     "phrase_patterns": [
+      "Rayleigh number",
+      "critical Rayleigh number",
+      "Rayleigh number is the product of Grashof and Prandtl"
+     ],
+     "topic_cues": [
+      "natural convection",
+      "free convection",
+      "buoyancy-driven flow",
+      "Grashof number",
+      "Prandtl number",
+      "conduction rather than convection"
+     ],
+     "negative_cues": [
+      "in the market",
+      "a rally of (gathering pattern)",
+      "rally around"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Rayleigh_number"
+      }
+     ],
+     "notes": "Source usage: 'Rayleigh number (Ra) ... dimensionless number associated with buoyancy-driven flow, also known as free (or natural) convection'; 'defined as the product of the Grashof number (Gr) and the Prandtl number (Pr)'; below a critical value 'heat transfer is purely by conduction'."
+    },
+    {
+     "label": "rally (ordinary noun/verb)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "a stock market",
+      "a protest"
+     ],
+     "right_cues": [
+      "in",
+      "of supporters",
+      "around",
+      "against"
+     ],
+     "phrase_patterns": [
+      "a rally in the market",
+      "protest rally",
+      "rally around"
+     ],
+     "topic_cues": [
+      "politics",
+      "markets",
+      "sport",
+      "gatherings"
+     ],
+     "negative_cues": [
+      "number",
+      "Grashof",
+      "buoyancy",
+      "natural convection"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: gathering/recovery noun with place or supporter phrases, or verb with around/behind/against; a following 'number' rules this reading out."
+    }
+   ]
+  },
+  {
+   "heard": "fin",
+   "slash_form": "fin/fin/finned",
+   "slot_note": "Same-word alternatives plus an adjective form. Technical 'fin' (heat transfer) is an extended surface: it takes 'efficiency', 'effectiveness', 'tip', 'base', 'length' nearby and verbs such as 'attach/add'. 'finned' is the adjective form and must precede a noun (surface, tube, exchanger). Ordinary 'fin' is the fish/shark appendage, or a verb in finance slang is not in play here. Topic decides when grammar does not: radiator/heat sink/exchanger versus shark/dorsal.",
+   "candidates": [
+    {
+     "label": "fin (heat-transfer extended surface)",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "an annular",
+      "a straight",
+      "the longitudinal"
+     ],
+     "right_cues": [
+      "efficiency",
+      "effectiveness",
+      "tip",
+      "base",
+      "length",
+      "surface"
+     ],
+     "phrase_patterns": [
+      "fin efficiency",
+      "fin effectiveness",
+      "fin tip",
+      "base of the fin",
+      "temperature distribution in the fin"
+     ],
+     "topic_cues": [
+      "extended surface",
+      "heat transfer rate",
+      "surface area",
+      "heat sink",
+      "radiator",
+      "base temperature"
+     ],
+     "negative_cues": [
+      "dorsal",
+      "shark",
+      "the fish (animal pattern)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://msubbu.in/ln/ht/HT-Lecture-05-Fins.pdf"
+      }
+     ],
+     "notes": "Source usage (ChemE lecture): 'increase in surface area by attaching extended surfaces called fins'; 'Fin efficiency ... actual heat transfer rate from the fin / ideal ... if the entire fin were at base temperature'; examples 'thin rods on condenser', 'car radiator'."
+    },
+    {
+     "label": "finned",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "a highly"
+     ],
+     "right_cues": [
+      "surface",
+      "tube",
+      "exchanger",
+      "coil"
+     ],
+     "phrase_patterns": [
+      "finned surface",
+      "finned tube",
+      "finned surfaces are commonly used to enhance heat transfer"
+     ],
+     "topic_cues": [
+      "heat exchanger",
+      "enhance heat transfer",
+      "convection coefficient is low",
+      "air or gas side"
+     ],
+     "negative_cues": [
+      "dorsal",
+      "shark"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://msubbu.in/ln/ht/HT-Lecture-05-Fins.pdf"
+      }
+     ],
+     "notes": "Source usage: 'Finned surfaces are commonly used in practice to enhance heat transfer'; adjective slot directly before surface/tube/exchanger is decisive."
+    },
+    {
+     "label": "fin (ordinary animal appendage)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "a",
+      "the dorsal",
+      "the shark's"
+     ],
+     "right_cues": [
+      "of the fish",
+      "of the shark",
+      "is visible"
+     ],
+     "phrase_patterns": [
+      "dorsal fin",
+      "pectoral fin",
+      "the shark's fin"
+     ],
+     "topic_cues": [
+      "fish",
+      "shark",
+      "swimming",
+      "biology"
+     ],
+     "negative_cues": [
+      "efficiency",
+      "effectiveness",
+      "extended surface",
+      "heat sink"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural/ordinary usage: animal anatomy noun with dorsal/pectoral modifiers; no heat-transfer source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "thin",
+   "slash_form": "thin/fin/finned",
+   "slot_note": "Trap in the opposite direction to 'fin': here the heard word is the ordinary adjective 'thin', and the technical candidates are 'fin' (noun) and 'finned' (adjective). A technical reading requires the slot to sit where 'thin' is ungrammatical: before 'efficiency/effectiveness' (fin) or where a following noun is surface/tube and 'thin' would need a second adjective. In most running text 'thin film/layer/shell/wall' is correct as heard and must not be changed; strength for the technical candidates is therefore weak-to-medium and topic-gated.",
+   "candidates": [
+    {
+     "label": "fin (heat-transfer extended surface)",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "of the"
+     ],
+     "right_cues": [
+      "efficiency",
+      "effectiveness",
+      "tip"
+     ],
+     "phrase_patterns": [
+      "fin efficiency",
+      "fin effectiveness"
+     ],
+     "topic_cues": [
+      "extended surface",
+      "heat sink",
+      "radiator",
+      "base temperature"
+     ],
+     "negative_cues": [
+      "film",
+      "layer",
+      "wall",
+      "shell (ordinary adjective + noun after slot)"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://msubbu.in/ln/ht/HT-Lecture-05-Fins.pdf"
+      }
+     ],
+     "notes": "Source usage as for 'fin' item. Weak here because the collocation must override a grammatical, very common adjective reading of the heard word; require 'efficiency/effectiveness' directly after the slot plus extended-surface topic words."
+    },
+    {
+     "label": "finned",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the"
+     ],
+     "right_cues": [
+      "surface",
+      "tube",
+      "exchanger"
+     ],
+     "phrase_patterns": [
+      "finned surface",
+      "finned tube"
+     ],
+     "topic_cues": [
+      "heat exchanger",
+      "enhance heat transfer"
+     ],
+     "negative_cues": [
+      "film boiling",
+      "thin film (established technical phrase as heard)"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://msubbu.in/ln/ht/HT-Lecture-05-Fins.pdf"
+      }
+     ],
+     "notes": "Mis-targeting risk is high: 'thin film' is itself a standard phrase (thin-film boiling/evaporation), so a following 'film' is a strong negative cue, not support. Use only when 'thin' + surface/tube is ungrammatical in context and fin topic words are present."
+    },
+    {
+     "label": "thin (ordinary adjective, as heard)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "very",
+      "a very"
+     ],
+     "right_cues": [
+      "film",
+      "layer",
+      "wall",
+      "shell",
+      "sheet",
+      "slice"
+     ],
+     "phrase_patterns": [
+      "thin film",
+      "thin layer",
+      "thin wall",
+      "thin shell"
+     ],
+     "topic_cues": [
+      "general description",
+      "film boiling",
+      "coatings",
+      "membranes"
+     ],
+     "negative_cues": [
+      "efficiency (directly after slot)",
+      "effectiveness (directly after slot)"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: adjective directly before a noun is the default reading and several of those phrases (thin film, thin shell) are themselves technical; do not replace without the fin-specific right cues."
+    }
+   ]
+  },
+  {
+   "heard": "nuclear",
+   "slash_form": "nuclear/nucleate boiling",
+   "slot_note": "Trap. Technical candidate is 'nucleate boiling' — spoken 'nucleate' (noo-klee-ayt) misheard as 'nuclear'. The slot is followed by 'boiling' and sits on the boiling curve: bubbles forming at nucleation sites, before transition/film boiling, up to the critical heat flux. Ordinary 'nuclear' is followed by power/energy/weapons/reactor/family and never by 'boiling' in its ordinary sense. 'Boiling' directly after the slot plus boiling-curve topic words is decisive.",
+   "candidates": [
+    {
+     "label": "nucleate boiling",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "the onset of",
+      "onset of",
+      "pool"
+     ],
+     "right_cues": [
+      "boiling",
+      "boiling regime",
+      "boiling occurs"
+     ],
+     "phrase_patterns": [
+      "nucleate boiling",
+      "onset of nucleate boiling",
+      "nucleate pool boiling",
+      "transition from natural convection to nucleate boiling"
+     ],
+     "topic_cues": [
+      "boiling curve",
+      "bubbles form",
+      "nucleation sites",
+      "critical heat flux",
+      "pool boiling",
+      "film boiling (contrasting regime)",
+      "Rohsenow"
+     ],
+     "negative_cues": [
+      "power",
+      "reactor",
+      "weapons",
+      "energy (ordinary adjective + noun after slot)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://archive.nptel.ac.in/content/storage2/courses/112104159/module8/Lec29.pdf"
+      }
+     ],
+     "notes": "Source usage (NPTEL boiling lecture): 'Nucleate Boiling: it commences with the increased difference... bubbles grow, separate from the heated surface'; 'transition from natural convection to nucleate boiling'; 'correlations in pool boiling: nucleate saturated pool boiling'."
+    },
+    {
+     "label": "nuclear (ordinary adjective)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "commercial"
+     ],
+     "right_cues": [
+      "power",
+      "energy",
+      "reactor",
+      "weapons",
+      "plant",
+      "family"
+     ],
+     "phrase_patterns": [
+      "nuclear power",
+      "nuclear reactor",
+      "nuclear energy"
+     ],
+     "topic_cues": [
+      "power generation",
+      "fission",
+      "policy",
+      "weapons"
+     ],
+     "negative_cues": [
+      "boiling",
+      "boiling curve",
+      "nucleation sites",
+      "critical heat flux"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: adjective before energy/power/reactor nouns; a following 'boiling' rules this reading out in a heat-transfer talk."
+    }
+   ]
+  },
+  {
+   "heard": "co-current",
+   "slash_form": "co-current/countercurrent/cocurrent",
+   "slot_note": "Flow-arrangement pair for two streams (usually in a heat exchanger or contactor). The heard form is ambiguous between the two spoken words; the arrangement described around the slot decides: same direction/same end is cocurrent, opposite directions/opposite ends is countercurrent.",
+   "candidates": [
+    {
+     "label": "countercurrent",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "operate in",
+      "with"
+     ],
+     "right_cues": [
+      "flow",
+      "operation",
+      "arrangement"
+     ],
+     "phrase_patterns": [
+      "countercurrent flow",
+      "countercurrent operation",
+      "fluids enter at opposite ends and flow in opposite directions"
+     ],
+     "topic_cues": [
+      "heat exchanger",
+      "log mean temperature difference",
+      "mass transfer",
+      "extraction column"
+     ],
+     "negative_cues": [
+      "same direction",
+      "enter at the same end",
+      "parallel flow (as the described arrangement)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Countercurrent_exchange"
+      },
+      {
+       "url": "https://unitops.chem-eng.utoronto.ca/heat-exchanger-concepts/"
+      }
+     ],
+     "notes": "Source usage: 'In countercurrent flow, the two flows move in opposite directions'; for exchangers, 'the LMTD of a countercurrent flow arrangement shows to be much higher than in a cocurrent arrangement'."
+    },
+    {
+     "label": "cocurrent",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "operate in",
+      "with"
+     ],
+     "right_cues": [
+      "flow",
+      "operation",
+      "arrangement"
+     ],
+     "phrase_patterns": [
+      "cocurrent flow",
+      "co-current flow",
+      "fluids flow in the same direction",
+      "parallel flow"
+     ],
+     "topic_cues": [
+      "heat exchanger",
+      "same end",
+      "temperature approach"
+     ],
+     "negative_cues": [
+      "opposite directions",
+      "enter at opposite ends"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Countercurrent_exchange"
+      },
+      {
+       "url": "https://unitops.chem-eng.utoronto.ca/heat-exchanger-concepts/"
+      }
+     ],
+     "notes": "Source usage: 'In the cocurrent flow exchange mechanism, the two fluids flow in the same direction'; 'one set up is where the fluids are both flowing in the same direction (co-current)'."
+    }
+   ]
+  },
+  {
+   "heard": "rice",
+   "slash_form": "rice/Rachford–Rice",
+   "slot_note": "Trap. Technical use is a two-name method: spoken 'Rachford rice' surfaces in ASR as e.g. 'ratchford rice' or a lone 'rice' when the first name is garbled. Local cues are flash/VLE words on either side; ordinary 'rice' is food/agriculture with cooking verbs and measures.",
+   "candidates": [
+    {
+     "label": "Rachford–Rice",
+     "type": "technical",
+     "left_cues": [
+      "Rachford",
+      "the",
+      "solve",
+      "solving",
+      "use"
+     ],
+     "right_cues": [
+      "equation",
+      "flash equation",
+      "method",
+      "function"
+     ],
+     "phrase_patterns": [
+      "Rachford-Rice equation",
+      "solve the Rachford-Rice equation",
+      "Rachford-Rice flash equation"
+     ],
+     "topic_cues": [
+      "flash calculation",
+      "vapour-liquid equilibrium",
+      "VLE",
+      "K-values",
+      "vapour fraction",
+      "two-phase flash"
+     ],
+     "negative_cues": [
+      "cooked",
+      "grain",
+      "cup of",
+      "fried (food pattern)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://vbn.aau.dk/ws/files/485887410/Simulation_Train_Design_and_Optimization_in_Offshore_Oil_and_Gas_Production_Facilities.pdf"
+      },
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Chemical_Engineering/Chemical_Engineering_Separations:_A_Handbook_for_Students_(Lamm_and_Jarboe)/01:_Chapters/1.05:_Distillation"
+      }
+     ],
+     "notes": "Source usage: 'the value of V can be calculated by the solution of the non-linear Rachford-Rice equation'; 'flash calculations are applied for processes involving vapour/liquid equilibrium (VLE)'."
+    },
+    {
+     "label": "rice (ordinary food)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "cooked",
+      "a cup of"
+     ],
+     "right_cues": [
+      "grain",
+      "grains",
+      "is cooked",
+      "flour",
+      "pudding"
+     ],
+     "phrase_patterns": [
+      "rice grain",
+      "cooked rice",
+      "rice flour"
+     ],
+     "topic_cues": [
+      "cooking",
+      "agriculture",
+      "food"
+     ],
+     "negative_cues": [
+      "flash",
+      "VLE",
+      "K-values",
+      "vapour fraction"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural/ordinary usage: food noun with cooking and quantity collocations; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "die-loo-ent",
+   "slash_form": "die-loo-ent/solvent/solute/diluent",
+   "slot_note": "Three roles in liquid-liquid extraction, not three names for one thing. The role described around the slot decides: the liquid added to extract is the solvent, the component transferred/recovered is the solute, and the original carrier liquid in the feed is the diluent.",
+   "candidates": [
+    {
+     "label": "solvent",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "add the",
+      "extracting",
+      "fresh"
+     ],
+     "right_cues": [
+      "solvent",
+      "is added",
+      "extracts",
+      "rich phase"
+     ],
+     "phrase_patterns": [
+      "extracting solvent",
+      "solvent is added",
+      "solvent-rich phase",
+      "the solvent extracts the solute"
+     ],
+     "topic_cues": [
+      "liquid-liquid extraction",
+      "extract phase",
+      "immiscible",
+      "solvent recovery"
+     ],
+     "negative_cues": [
+      "carrier",
+      "original solution",
+      "component being extracted"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://www.osti.gov/servlets/purl/1776874"
+      },
+      {
+       "url": "https://app.jove.com/nl/v/10426/liquid-liquid-extraction-and-york-scheibel-column-operation"
+      }
+     ],
+     "notes": "Source usage: 'solvent is the immiscible liquid we add to create a new liquid phase'; 'the solute-rich solvent is called the extract'."
+    },
+    {
+     "label": "solute",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "extract the",
+      "recover the"
+     ],
+     "right_cues": [
+      "solute",
+      "is extracted",
+      "transfers",
+      "dissolved"
+     ],
+     "phrase_patterns": [
+      "the solute transfers",
+      "solute is extracted from",
+      "dissolved solute"
+     ],
+     "topic_cues": [
+      "liquid-liquid extraction",
+      "feed",
+      "distribution",
+      "recovery"
+     ],
+     "negative_cues": [
+      "added liquid",
+      "carrier liquid",
+      "raffinate phase name"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://www.osti.gov/servlets/purl/1776874"
+      },
+      {
+       "url": "https://app.jove.com/nl/v/10426/liquid-liquid-extraction-and-york-scheibel-column-operation"
+      }
+     ],
+     "notes": "Source usage: 'Solute is the component that we are interested in extracting'; 'allowing the solute to transfer from the feed to the solvent'."
+    },
+    {
+     "label": "diluent",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "original",
+      "feed"
+     ],
+     "right_cues": [
+      "diluent",
+      "carrier",
+      "in the feed",
+      "phase"
+     ],
+     "phrase_patterns": [
+      "the diluent is the liquid in the original solution",
+      "diluent is the carrier of solute in the feed stream",
+      "raffinate, consisting of the solute and the diluent"
+     ],
+     "topic_cues": [
+      "liquid-liquid extraction",
+      "feed stream",
+      "raffinate"
+     ],
+     "negative_cues": [
+      "added to extract",
+      "extracting liquid"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://www.osti.gov/servlets/purl/1776874"
+      }
+     ],
+     "notes": "Source usage: 'diluent is the carrier of solute in the feed stream'; 'The diluent is the liquid in the original solution other than the solute', from the extraction text reproduced in the search result."
+    }
+   ]
+  },
+  {
+   "heard": "plate point",
+   "slash_form": "plate point/tie line/plait point",
+   "slot_note": "Two features of the same ternary/tie-line diagram talk. A tie line is a line (it connects, slopes, has endpoints); a plait point is a point (curves meet there, tie lines shrink to it, the two phase compositions become identical there). The noun/verb pattern around the slot decides.",
+   "candidates": [
+    {
+     "label": "tie line",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "draw the",
+      "along a"
+     ],
+     "right_cues": [
+      "line",
+      "lines",
+      "line connects",
+      "line slopes"
+     ],
+     "phrase_patterns": [
+      "tie line",
+      "tie lines connect",
+      "along a tie line",
+      "endpoints of the tie line"
+     ],
+     "topic_cues": [
+      "ternary diagram",
+      "liquid-liquid equilibrium",
+      "binodal curve",
+      "extract and raffinate",
+      "lever rule"
+     ],
+     "negative_cues": [
+      "point where phases become identical",
+      "curves meet at"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Chemical_Engineering/Phase_Relations_in_Reservoir_Engineering_(Adewumi)/05:_Phase_Diagrams_IV/5.04:_Ternary_Systems"
+      }
+     ],
+     "notes": "Source usage: 'the tie lines are straight lines that connect the compositions of the vapor and liquid phase in equilibrium'; 'any mixture on a tie line has the same liquid and vapor compositions'."
+    },
+    {
+     "label": "plait point",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "at the",
+      "reach the"
+     ],
+     "right_cues": [
+      "point",
+      "point is",
+      "point where"
+     ],
+     "phrase_patterns": [
+      "plait point",
+      "at the plait point",
+      "the plait point is the point at which"
+     ],
+     "topic_cues": [
+      "ternary diagram",
+      "binodal curve",
+      "two-phase region",
+      "critical point"
+     ],
+     "negative_cues": [
+      "line connects",
+      "draw a line"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Chemical_Engineering/Phase_Relations_in_Reservoir_Engineering_(Adewumi)/05:_Phase_Diagrams_IV/5.04:_Ternary_Systems"
+      }
+     ],
+     "notes": "Source usage: 'the bubble point curve and the dew point curve, both of which meet at the plait point. This is the point at which the liquid and vapor composition are identical'."
+    }
+   ]
+  },
+  {
+   "heard": "retent-it",
+   "slash_form": "retent-it/permeate/retentate",
+   "slot_note": "Two outlet streams of a membrane unit. What the stream does at the membrane decides: passes through is permeate; does not pass / is retained, concentrated or recycled is retentate. The heard form favours retentate, but a 'passes through' clause overrides it.",
+   "candidates": [
+    {
+     "label": "permeate",
+     "type": "technical",
+     "left_cues": [
+      "the"
+     ],
+     "right_cues": [
+      "permeate",
+      "passes through",
+      "is collected",
+      "stream"
+     ],
+     "phrase_patterns": [
+      "the permeate passes through the membrane",
+      "permeate stream",
+      "permeate is collected"
+     ],
+     "topic_cues": [
+      "membrane filtration",
+      "reverse osmosis",
+      "ultrafiltration",
+      "flux",
+      "filtrate"
+     ],
+     "negative_cues": [
+      "retained by",
+      "does not pass",
+      "concentrate stream"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://ecampusontario.pressbooks.pub/biotech2ec3labmanual/wp-json/pressbooks/v2/chapters/38"
+      }
+     ],
+     "notes": "Source usage: 'The portion of the suspension that passes through the membrane is called the permeate while the portion that does not is called the retentate'; 'permeate is collected'."
+    },
+    {
+     "label": "retentate",
+     "type": "technical",
+     "left_cues": [
+      "the"
+     ],
+     "right_cues": [
+      "retentate",
+      "is retained",
+      "is returned",
+      "concentrate"
+     ],
+     "phrase_patterns": [
+      "the retentate is returned to the tank",
+      "retentate stream",
+      "retained by the membrane"
+     ],
+     "topic_cues": [
+      "membrane filtration",
+      "cross-flow",
+      "concentrate",
+      "rejected solutes"
+     ],
+     "negative_cues": [
+      "passes through the membrane (as the stream's own action)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://ecampusontario.pressbooks.pub/biotech2ec3labmanual/wp-json/pressbooks/v2/chapters/38"
+      },
+      {
+       "url": "https://engineerfix.com/what-is-the-difference-between-retentate-and-permeate/"
+      }
+     ],
+     "notes": "Source usage: 'The retentate is returned to the tank holding the solution'; 'the retentate, sometimes called the concentrate, is the liquid that is blocked and remains on the upstream side of the membrane'."
+    }
+   ]
+  },
+  {
+   "heard": "dam-kurler",
+   "slash_form": "dam-kurler/Damköhler number/numbers",
+   "slot_note": "Singular/plural pair for the same dimensionless group (symbol Da, defined as a ratio of reaction rate to transport rate). 'number' (singular) is the generic definition slot; 'numbers' (plural) appears when more than one is in play, typically the first and second, DaI and DaII. Verb agreement and a preceding 'two/these/first and second' decide.",
+   "candidates": [
+    {
+     "label": "Damköhler number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "this"
+     ],
+     "right_cues": [
+      "number",
+      "number is",
+      "number Da"
+     ],
+     "phrase_patterns": [
+      "the Damköhler number",
+      "Damköhler number is the ratio",
+      "Da is"
+     ],
+     "topic_cues": [
+      "reaction engineering",
+      "reaction rate",
+      "transport rate",
+      "residence time",
+      "conversion"
+     ],
+     "negative_cues": [
+      "numbers are",
+      "first and second (as the slot's own frame)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://www.sciencedirect.com/topics/chemistry/damkohler-number"
+      },
+      {
+       "url": "https://en.wikipedia.org/wiki/Damk%C3%B6hler_numbers"
+      }
+     ],
+     "notes": "Source usage: 'The Damköhler number (Da) is defined as the dimensionless ratio of the reaction rate to the rate of mass transfer'; 'The Damköhler numbers (Da) are dimensionless numbers that relate the chemical reaction timescale to the transport phenomena rate'."
+    },
+    {
+     "label": "Damköhler numbers",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "two",
+      "these",
+      "first and second"
+     ],
+     "right_cues": [
+      "numbers",
+      "numbers are",
+      "numbers DaI and DaII"
+     ],
+     "phrase_patterns": [
+      "Damköhler numbers",
+      "first and second Damköhler numbers",
+      "two Damköhler numbers"
+     ],
+     "topic_cues": [
+      "reaction engineering",
+      "convective transport",
+      "diffusion",
+      "DaI",
+      "DaII"
+     ],
+     "negative_cues": [
+      "number is (singular definition frame)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Damk%C3%B6hler_numbers"
+      },
+      {
+       "url": "https://www.mdpi.com/1420-3049/16/10/8368/xml"
+      }
+     ],
+     "notes": "Source usage: 'the first Damköhler number (DaI) considers the relative rates of reaction and convective transport, whereas the second Damköhler number (DaII) considers the relative rates of reaction and diffusion'. Plural talk is less frequent than the singular definition, hence moderate."
+    }
+   ]
+  },
+  {
+   "heard": "dan kohler",
+   "slash_form": "dan kohler/Damköhler number/numbers",
+   "slot_note": "Same singular/plural pair as 'dam-kurler', heard here as two words. 'number' (singular) is the generic definition slot; 'numbers' (plural) appears when the first and second numbers, DaI and DaII, are both in play. Verb agreement and a preceding 'two/these/first and second' decide.",
+   "candidates": [
+    {
+     "label": "Damköhler number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "this"
+     ],
+     "right_cues": [
+      "number",
+      "number is",
+      "number Da"
+     ],
+     "phrase_patterns": [
+      "the Damköhler number",
+      "Damköhler number is the ratio",
+      "Da is"
+     ],
+     "topic_cues": [
+      "reaction engineering",
+      "reaction rate",
+      "transport rate",
+      "residence time",
+      "conversion"
+     ],
+     "negative_cues": [
+      "numbers are",
+      "first and second (as the slot's own frame)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://www.sciencedirect.com/topics/chemistry/damkohler-number"
+      },
+      {
+       "url": "https://en.wikipedia.org/wiki/Damk%C3%B6hler_numbers"
+      }
+     ],
+     "notes": "Source usage: 'The Damköhler number (Da) is defined as the dimensionless ratio of the reaction rate to the rate of mass transfer, indicating whether a reaction is limited by reaction kinetics or mass transport'."
+    },
+    {
+     "label": "Damköhler numbers",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "two",
+      "these",
+      "first and second"
+     ],
+     "right_cues": [
+      "numbers",
+      "numbers are",
+      "numbers DaI and DaII"
+     ],
+     "phrase_patterns": [
+      "Damköhler numbers",
+      "first and second Damköhler numbers",
+      "two Damköhler numbers"
+     ],
+     "topic_cues": [
+      "reaction engineering",
+      "convective transport",
+      "diffusion",
+      "DaI",
+      "DaII"
+     ],
+     "negative_cues": [
+      "number is (singular definition frame)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Damk%C3%B6hler_numbers"
+      },
+      {
+       "url": "https://www.mdpi.com/1420-3049/16/10/8368/xml"
+      }
+     ],
+     "notes": "Source usage: 'the first Damköhler number (DaI) considers the relative rates of reaction and convective transport, whereas the second Damköhler number (DaII) considers the relative rates of reaction and diffusion'."
+    }
+   ]
+  },
+  {
+   "heard": "centering",
+   "slash_form": "centering/poisoning/deactivation/fouling/sintering",
+   "slot_note": "Review-list item, approved as a slash pair waiving the length limit. All four technical candidates are ways a catalyst loses activity; 'deactivation' is the umbrella noun and the other three are its named mechanisms, so a mechanism word nearby (sulfur, coke, high temperature) selects the mechanism, while a bare 'loss of activity over time' selects deactivation. Only 'sintering' is phonetically close to the heard form; the other three rely on topic cues alone and are weak. Ordinary 'centering' is positioning something at a centre.",
+   "candidates": [
+    {
+     "label": "poisoning",
+     "type": "technical",
+     "left_cues": [
+      "catalyst",
+      "by",
+      "sulfur"
+     ],
+     "right_cues": [
+      "of the catalyst",
+      "by sulfur",
+      "blocks active sites"
+     ],
+     "phrase_patterns": [
+      "catalyst poisoning",
+      "poisoning of the catalyst",
+      "sulfur poisoning"
+     ],
+     "topic_cues": [
+      "catalyst",
+      "active sites",
+      "sulfur compounds",
+      "impurities in the feed"
+     ],
+     "negative_cues": [
+      "coke deposits (fouling pattern)",
+      "high temperature particles merge (sintering pattern)",
+      "at the centre (ordinary pattern)"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://fiveable.me/key-terms/introduction-chemical-engineering/poisoning"
+      },
+      {
+       "url": "https://learn.chemwarden.com/t/catalyst-deactivation/"
+      }
+     ],
+     "notes": "Source usage: 'Poisoning: impurities in the feed (e.g., sulfur compounds) bind irreversibly to active sites, blocking them'; 'Poisons, such as sulfur compounds, stick permanently to the active sites'. Weak: phonetically distant from 'centering'; topic cues only."
+    },
+    {
+     "label": "deactivation",
+     "type": "technical",
+     "left_cues": [
+      "catalyst",
+      "the",
+      "activity loss and"
+     ],
+     "right_cues": [
+      "of the catalyst",
+      "over time",
+      "mechanisms"
+     ],
+     "phrase_patterns": [
+      "catalyst deactivation",
+      "deactivation of the catalyst",
+      "deactivation mechanisms"
+     ],
+     "topic_cues": [
+      "catalyst",
+      "loss of activity",
+      "activity over time"
+     ],
+     "negative_cues": [
+      "sulfur binds (poisoning pattern)",
+      "coke deposits (fouling pattern)",
+      "particles merge (sintering pattern)"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://fiveable.me/key-terms/introduction-chemical-engineering/poisoning"
+      },
+      {
+       "url": "https://learn.chemwarden.com/t/catalyst-deactivation/"
+      }
+     ],
+     "notes": "Source usage: 'catalysts lose their effectiveness through several deactivation mechanisms' followed by the poisoning/fouling/sintering list; 'Main mechanisms: poisoning, coking/fouling, sintering'. Weak: as the umbrella term it overlaps every mechanism cue."
+    },
+    {
+     "label": "fouling",
+     "type": "technical",
+     "left_cues": [
+      "catalyst",
+      "by",
+      "surface"
+     ],
+     "right_cues": [
+      "of the catalyst",
+      "by coke",
+      "blocks pores"
+     ],
+     "phrase_patterns": [
+      "catalyst fouling",
+      "fouling by coke",
+      "carbon deposits fouling"
+     ],
+     "topic_cues": [
+      "catalyst",
+      "carbon deposits",
+      "coke",
+      "coats the surface"
+     ],
+     "negative_cues": [
+      "sulfur binds to active sites (poisoning pattern)",
+      "particles merge (sintering pattern)",
+      "at the centre (ordinary pattern)"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://fiveable.me/key-terms/introduction-chemical-engineering/poisoning"
+      },
+      {
+       "url": "https://learn.chemwarden.com/t/catalyst-deactivation/"
+      }
+     ],
+     "notes": "Source usage: 'Fouling: carbon deposits or other material physically coat the catalyst surface'; 'Coke covers sites and blocks pore mouths'. Weak: phonetically distant from 'centering'; topic cues only."
+    },
+    {
+     "label": "sintering",
+     "type": "technical",
+     "left_cues": [
+      "catalyst",
+      "by",
+      "thermal"
+     ],
+     "right_cues": [
+      "of the catalyst",
+      "at high temperature",
+      "reduces surface area"
+     ],
+     "phrase_patterns": [
+      "catalyst sintering",
+      "sintering at high temperatures",
+      "thermal sintering"
+     ],
+     "topic_cues": [
+      "catalyst",
+      "high temperature",
+      "particles merge",
+      "surface area loss"
+     ],
+     "negative_cues": [
+      "sulfur in the feed (poisoning pattern)",
+      "coke deposits (fouling pattern)",
+      "at the centre (ordinary pattern)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://fiveable.me/key-terms/introduction-chemical-engineering/poisoning"
+      },
+      {
+       "url": "https://learn.chemwarden.com/t/catalyst-deactivation/"
+      }
+     ],
+     "notes": "Source usage: 'Sintering: at high temperatures, small catalyst particles merge into larger ones, reducing the total surface area'; review list names sintering 'the phonetic near-spelling among the four', hence medium where the other three are weak."
+    },
+    {
+     "label": "centering (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "by",
+      "after"
+     ],
+     "right_cues": [
+      "the",
+      "of",
+      "on the page"
+     ],
+     "phrase_patterns": [
+      "centering the",
+      "centering of",
+      "centering on the page"
+     ],
+     "topic_cues": [
+      "layout",
+      "alignment",
+      "positioning",
+      "general narration"
+     ],
+     "negative_cues": [
+      "catalyst",
+      "active sites",
+      "coke",
+      "sulfur"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: gerund + object noun ('centering the text/image') is the default ordinary pattern; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "trans-doo-ser",
+   "slash_form": "trans-doo-ser/transmitter/transducer",
+   "slot_note": "Overlapping instrument terms: sources note vendors use them interchangeably, so strength is moderate. The deciding context is the signal: a standardised 4-20 mA (or 1-5 V) signal sent to a controller over distance points to transmitter; conversion of one form of energy into another, or a millivolt/voltage output, points to transducer. The heard form favours transducer.",
+   "candidates": [
+    {
+     "label": "transmitter",
+     "type": "technical",
+     "left_cues": [
+      "pressure",
+      "temperature",
+      "level",
+      "flow"
+     ],
+     "right_cues": [
+      "transmitter",
+      "sends",
+      "transmits",
+      "output"
+     ],
+     "phrase_patterns": [
+      "pressure transmitter",
+      "transmitter sends a 4-20 mA signal",
+      "transmits a standard signal"
+     ],
+     "topic_cues": [
+      "process control",
+      "4-20 mA",
+      "current loop",
+      "PLC",
+      "DCS",
+      "long distance"
+     ],
+     "negative_cues": [
+      "converts energy",
+      "millivolt output"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.realpars.com/blog/transducer-vs-transmitter"
+      },
+      {
+       "url": "https://my.avnet.com/abacus/solutions/technologies/sensors/pressure-sensors/output-signals/"
+      }
+     ],
+     "notes": "Source usage: 'a Transmitter is a device that transmits a standard instrumentation signal... The standard electrical signals are 1-5 V or 4-20 mA'; 'pressure transmitter has a low-impedance current output, most commonly designed to transmit analogue 4-20mA signals'."
+    },
+    {
+     "label": "transducer",
+     "type": "technical",
+     "left_cues": [
+      "pressure",
+      "a",
+      "the"
+     ],
+     "right_cues": [
+      "transducer",
+      "converts",
+      "output"
+     ],
+     "phrase_patterns": [
+      "pressure transducer",
+      "transducer converts one form of energy into another",
+      "transducer output"
+     ],
+     "topic_cues": [
+      "instrumentation",
+      "sensor",
+      "millivolt output",
+      "voltage output",
+      "microphone",
+      "loudspeaker"
+     ],
+     "negative_cues": [
+      "4-20 mA",
+      "standard signal to the controller"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.realpars.com/blog/transducer-vs-transmitter"
+      },
+      {
+       "url": "https://eepowerschool.com/control-systems/control-systems-introduction-ii-sensors-and-transducers/"
+      }
+     ],
+     "notes": "Source usage: 'A transducer is a device that converts one form of energy to another... converts the reading into an electrical or electronic signal'; 'A transducer is a device that converts one form of energy into another form so it can be used for further processing'."
+    }
+   ]
+  },
+  {
+   "heard": "pie",
+   "slash_form": "pie/dimensionless analysis/Buckingham Pi theorem",
+   "slot_note": "Review-list item, approved as a slash pair waiving the length limit. Spoken 'pie' is the pi in the theorem name and in 'pi groups/terms'. The two technical candidates differ in scope: 'Buckingham Pi theorem' is the named result (n variables, m dimensions, n-m groups); 'dimensionless analysis' (source texts more often 'dimensional analysis') is the broader procedure around it. A 'theorem/groups = n minus m' pattern selects the theorem; a 'method/procedure/reduce the variables' pattern selects the analysis. Ordinary 'pie' is food.",
+   "candidates": [
+    {
+     "label": "dimensionless analysis",
+     "type": "technical",
+     "left_cues": [
+      "using",
+      "by",
+      "do"
+     ],
+     "right_cues": [
+      "to reduce",
+      "of the problem",
+      "gives"
+     ],
+     "phrase_patterns": [
+      "dimensional analysis reduces",
+      "using dimensional analysis",
+      "dimensionless groups from dimensional analysis"
+     ],
+     "topic_cues": [
+      "dimensionless groups",
+      "variables",
+      "dimensions",
+      "similarity",
+      "experiments"
+     ],
+     "negative_cues": [
+      "theorem states (theorem pattern)",
+      "n minus m groups (theorem pattern)",
+      "apple pie (food pattern)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Industrial_and_Systems_Engineering/The_Art_of_Insight_in_Science_and_Engineering_(Mahajan)/02%3A_Part_II-_Discarding_Complexity_Without_Losing_Information/05%3A_Dimensions/5.01%3A_Dimensionless_groups"
+      },
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Civil_Engineering/Book%3A_Fluid_Mechanics_(Bar-Meir)/09%3A_Dimensional_Analysis/9.2%3A_Buckingham%E2%80%93%CF%80%E2%80%93Theorem"
+      }
+     ],
+     "notes": "Source usage: 'dimensional analysis, as this procedure is called'; 'Because any equation describing the world can be written in dimensionless form ... using dimensionless groups'. Label kept as in the review list ('dimensionless analysis'); sources use 'dimensional analysis' for the same procedure."
+    },
+    {
+     "label": "Buckingham Pi theorem",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "by",
+      "using the"
+     ],
+     "right_cues": [
+      "theorem",
+      "states",
+      "gives"
+     ],
+     "phrase_patterns": [
+      "Buckingham Pi theorem",
+      "the Buckingham Pi theorem",
+      "pi theorem",
+      "pi groups"
+     ],
+     "topic_cues": [
+      "dimensionless groups",
+      "n variables",
+      "m primary dimensions",
+      "n minus m"
+     ],
+     "negative_cues": [
+      "apple pie (food pattern)",
+      "pie chart (ordinary pattern)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Civil_Engineering/Book%3A_Fluid_Mechanics_(Bar-Meir)/09%3A_Dimensional_Analysis/9.2%3A_Buckingham%E2%80%93%CF%80%E2%80%93Theorem"
+      },
+      {
+       "url": "https://eng.libretexts.org/Bookshelves/Industrial_and_Systems_Engineering/The_Art_of_Insight_in_Science_and_Engineering_(Mahajan)/02%3A_Part_II-_Discarding_Complexity_Without_Losing_Information/05%3A_Dimensions/5.01%3A_Dimensionless_groups"
+      }
+     ],
+     "notes": "Source usage: 'If there are n variables in a problem and these variables contain m primary dimensions ... the equation relating all the variables will have (n-m) dimensionless groups'; 'This shortcut, known as the Buckingham Pi theorem, is named after Edgar Buckingham and his uppercase Pi notation for dimensionless groups'."
+    },
+    {
+     "label": "pie (ordinary food)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "apple"
+     ],
+     "right_cues": [
+      "chart",
+      "crust",
+      "slice"
+     ],
+     "phrase_patterns": [
+      "apple pie",
+      "pie chart",
+      "a slice of pie"
+     ],
+     "topic_cues": [
+      "food",
+      "cooking",
+      "charts",
+      "general narration"
+     ],
+     "negative_cues": [
+      "dimensionless groups",
+      "theorem",
+      "variables and dimensions"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: food/chart collocates are decisive ordinary patterns; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "shell",
+   "slash_form": "shell/shell balance",
+   "slot_note": "Trap with a same-word technical phrase. 'Shell balance' is a method phrase: a momentum (or energy/mass) balance over a thin differential shell, used to derive a velocity profile. It appears with 'momentum balance', 'differential', 'set up/do a', and boundary-condition talk. Ordinary and other-technical 'shell' uses are far more frequent in ChemE speech: shell-and-tube exchanger, tube shell, seashell, shell company. Only the balance/momentum collocation supports the slash candidate; 'and tube' directly after the slot is a strong negative cue for it.",
+   "candidates": [
+    {
+     "label": "shell balance",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "do a",
+      "set up a",
+      "using a"
+     ],
+     "right_cues": [
+      "balance",
+      "momentum balance",
+      "balance on",
+      "balance gives"
+     ],
+     "phrase_patterns": [
+      "shell balance",
+      "shell momentum balance",
+      "rate of momentum in minus out (shell balance form)",
+      "a shell is a differential element"
+     ],
+     "topic_cues": [
+      "velocity profile",
+      "differential element",
+      "shear stress",
+      "laminar flow in a pipe",
+      "boundary conditions",
+      "transport phenomena"
+     ],
+     "negative_cues": [
+      "and tube",
+      "side (shell side of an exchanger)",
+      "company"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Shell_balance"
+      },
+      {
+       "url": "https://people.clarkson.edu/projects/subramanian/ch330/notes/Shell%20Balances%20in%20Fluid%20Mechanics.pdf"
+      }
+     ],
+     "notes": "Source usage: 'a shell balance can be used to determine the velocity profile'; '(Rate of momentum in) - (rate of momentum out) + (sum of all forces) = 0'; Clarkson notes: 'shell balances are useful devices for applying the principle of conservation of momentum... incompressible laminar flow in a straight circular pipe'."
+    },
+    {
+     "label": "shell (ordinary / other technical, as heard)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "a",
+      "tube",
+      "outer"
+     ],
+     "right_cues": [
+      "and tube",
+      "side",
+      "of the exchanger",
+      "company"
+     ],
+     "phrase_patterns": [
+      "shell and tube",
+      "shell side",
+      "shell company",
+      "sea shell"
+     ],
+     "topic_cues": [
+      "heat exchanger",
+      "equipment",
+      "business",
+      "biology"
+     ],
+     "negative_cues": [
+      "balance",
+      "momentum balance",
+      "velocity profile derivation"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural/ordinary usage: in ChemE speech 'shell and tube' and 'shell side' are the dominant collocations; keep the heard word unless 'balance' follows."
+    }
+   ]
+  },
+  {
+   "heard": "weir",
+   "slash_form": "weir/weir",
+   "slot_note": "MIS-TARGETED slash candidate — assessed against sources. A tray weir is itself the correct technical term: sources state liquid 'flows across a tray and then over a weir to enter into the downcomer' and 'the function of a weir is to maintain a desired liquid level on the tray', with 'weir height' and 'weir length' as design variables. 'Trays, downcomer' are neighbouring parts, not synonyms or expansions of 'weir', so replacing a correctly heard 'weir' with them loses the term and produces no grammatical phrase. The tray/downcomer cues below therefore support KEEPING 'weir', not the slash replacement; the slash candidate is scored weak and should normally abstain. A second, older technical sense of 'weir' (river/flow-measurement barrier, V-notch) is also correct as heard. Phase 1 adjudication (2026-11-05): the 'trays, downcomer' candidate is removed; the only candidate is 'weir' itself — the heard form is already the correct tray term, and the item remains in the rules set only because 'weir' is also an ordinary word, so the stage may confirm it from tray context or abstain to the weir/weir form.",
+   "candidates": [
+    {
+     "label": "weir",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "over the",
+      "outlet",
+      "inlet",
+      "the outlet",
+      "a",
+      "a V-notch"
+     ],
+     "right_cues": [
+      "height",
+      "length",
+      "on the tray",
+      "into the downcomer",
+      "crest",
+      "in the river",
+      "measures the flow"
+     ],
+     "phrase_patterns": [
+      "outlet weir",
+      "over the weir into the downcomer",
+      "weir height",
+      "weir length",
+      "liquid flows over the weir",
+      "V-notch weir",
+      "flow over the weir",
+      "weir crest",
+      "depth behind the weir"
+     ],
+     "topic_cues": [
+      "distillation tray",
+      "downcomer",
+      "liquid holdup on tray",
+      "clear liquid depth",
+      "sieve tray",
+      "bubble cap tray",
+      "river",
+      "stream",
+      "flow measurement",
+      "discharge",
+      "open channel"
+     ],
+     "negative_cues": [
+      "river",
+      "V-notch",
+      "crest (river/measurement context)",
+      "tray",
+      "downcomer",
+      "distillation column"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://www.wermac.org/equipment/distillation_part2.html"
+      },
+      {
+       "url": "https://archive.nptel.ac.in/content/storage2/courses/103103027/module7/lec3/2.html"
+      }
+     ],
+     "notes": "Source usage: 'Liquid falls through the downcomers... A weir on the tray ensures that there is always some liquid (holdup) on the tray'; 'liquid flows across a tray and then over a weir to enter into the downcomer'; NPTEL tray design lists 'weir height, weir length, downcomer area' as separate layout quantities — proof weir is distinct from downcomer. (Merged with the duplicate 'weir' candidate at Phase 1: both readings keep the word as heard.)"
+    }
+   ]
+  },
+  {
+   "heard": "we're",
+   "slash_form": "we're/weir",
+   "slot_note": "Trap plus the same mis-targeting as 'weir'. Ordinary 'we're' is the contraction we+are and is followed by a verb-ing, adjective, or noun phrase — the default in running speech. The plausible technical target when 'we're' is misheard in a tray talk is the single word 'weir' (tray outlet weir), not the slash phrase 'trays, downcomer', which cannot occupy this slot grammatically. Tray/downcomer topic words with an ungrammatical contraction reading (e.g. 'the liquid goes over we're into...') point to 'weir'; the 'trays, downcomer' candidate was removed at Phase 1; 'weir' is the only technical candidate.",
+   "candidates": [
+    {
+     "label": "weir",
+     "type": "technical",
+     "left_cues": [
+      "over the",
+      "the outlet",
+      "the"
+     ],
+     "right_cues": [
+      "height",
+      "into the downcomer",
+      "on the tray"
+     ],
+     "phrase_patterns": [
+      "over the weir into the downcomer",
+      "outlet weir",
+      "weir height"
+     ],
+     "topic_cues": [
+      "distillation tray",
+      "downcomer",
+      "liquid holdup",
+      "sieve tray"
+     ],
+     "negative_cues": [
+      "going to",
+      "now going",
+      "here (grammatical contraction readings)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.wermac.org/equipment/distillation_part2.html"
+      },
+      {
+       "url": "https://archive.nptel.ac.in/content/storage2/courses/103103027/module7/lec3/2.html"
+      }
+     ],
+     "notes": "Source usage as for 'weir' item: liquid 'flows over a weir to enter into the downcomer'; weir height/length are tray design variables. Medium, not strong, because the contraction reading is usually correct and needs a broken grammar signal to override."
+    },
+    {
+     "label": "we're (ordinary contraction)",
+     "type": "ordinary",
+     "left_cues": [
+      "now",
+      "so",
+      "and",
+      "here"
+     ],
+     "right_cues": [
+      "going to",
+      "looking at",
+      "now",
+      "going to look at",
+      "interested in"
+     ],
+     "phrase_patterns": [
+      "we're going to",
+      "we're looking at",
+      "now we're"
+     ],
+     "topic_cues": [
+      "lecture narration",
+      "general speech"
+     ],
+     "negative_cues": [
+      "downcomer",
+      "weir height",
+      "liquid holdup on the tray"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: we + are + verb-ing/adjective is the default spoken pattern and dominates transcripts; choose ordinary whenever the contraction reading is grammatical."
+    }
+   ]
+  },
+  {
+   "heard": "weird",
+   "slash_form": "weird/weir",
+   "slot_note": "Trap plus the same mis-targeting as 'weir'. Ordinary 'weird' is an adjective (strange) before nouns like result/behaviour/thing, or after 'is/looks'. The plausible technical target in a tray talk is 'weir' (one syllable, near-homophone), not the slash phrase 'trays, downcomer', which cannot fill an adjective slot. A tray/downcomer context where 'weird' is followed by height/length or 'into the downcomer' points to 'weir'; the 'trays, downcomer' candidate was removed at Phase 1; 'weir' is the only technical candidate.",
+   "candidates": [
+    {
+     "label": "weir",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "over the",
+      "outlet"
+     ],
+     "right_cues": [
+      "height",
+      "length",
+      "into the downcomer"
+     ],
+     "phrase_patterns": [
+      "weir height",
+      "weir length",
+      "over the weir"
+     ],
+     "topic_cues": [
+      "distillation tray",
+      "downcomer",
+      "liquid holdup",
+      "tray layout"
+     ],
+     "negative_cues": [
+      "result",
+      "looks",
+      "is (adjective predicate readings)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.wermac.org/equipment/distillation_part2.html"
+      },
+      {
+       "url": "https://archive.nptel.ac.in/content/storage2/courses/103103027/module7/lec3/2.html"
+      }
+     ],
+     "notes": "Source usage as for 'weir' item. Medium because 'weird' as an adjective is grammatical in far more slots than the contraction case; require weir-specific right cues (height/length/downcomer)."
+    },
+    {
+     "label": "weird (ordinary adjective)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "is",
+      "looks",
+      "really"
+     ],
+     "right_cues": [
+      "result",
+      "thing",
+      "behaviour",
+      "noise"
+     ],
+     "phrase_patterns": [
+      "a weird result",
+      "that's weird",
+      "weird behaviour"
+     ],
+     "topic_cues": [
+      "general narration",
+      "informal comment"
+     ],
+     "negative_cues": [
+      "height",
+      "downcomer",
+      "tray layout"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: adjective in determiner+adjective+noun or copula+adjective slots is the default reading."
+    }
+   ]
+  },
+  {
+   "heard": "feed",
+   "slash_form": "feed/FEED",
+   "slot_note": "Trap, case-sensitive in writing but not in speech. Technical 'FEED' is the all-caps acronym Front-End Engineering Design: a project phase, always in project-execution contexts (study, package, stage, cost estimate, EPC bid, final investment decision). In ChemE process speech the heard word 'feed' is overwhelmingly the process stream (feed rate, feed tray, feed composition) and must be kept. Only project-phase collocations support FEED; any stream/rate/tray/composition cue is a strong negative for it.",
+   "candidates": [
+    {
+     "label": "FEED (Front-End Engineering Design)",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "during",
+      "complete the",
+      "a"
+     ],
+     "right_cues": [
+      "study",
+      "package",
+      "stage",
+      "phase",
+      "is complete",
+      "deliverables"
+     ],
+     "phrase_patterns": [
+      "FEED study",
+      "FEED package",
+      "front-end engineering design",
+      "FEED phase",
+      "basis for bidding for EPC contracts"
+     ],
+     "topic_cues": [
+      "project execution",
+      "conceptual design first",
+      "detailed design after",
+      "cost estimate",
+      "final investment decision",
+      "EPC"
+     ],
+     "negative_cues": [
+      "rate",
+      "stream",
+      "tray",
+      "composition",
+      "tank (process-stream readings)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Front-end_engineering"
+      }
+     ],
+     "notes": "Source usage: 'Front-End Engineering Design (FEED) ... comes after the Conceptual design or Feasibility study'; 'The FEED package is used as the basis for bidding for Engineering, Procurement and Construction contracts (EPC)'; 'typically followed by Detailed Design'. Medium because speech carries no capitalisation; require explicit project-phase words."
+    },
+    {
+     "label": "feed (process stream, as heard)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "a",
+      "fresh",
+      "the column"
+     ],
+     "right_cues": [
+      "rate",
+      "stream",
+      "tray",
+      "composition",
+      "stage",
+      "enters",
+      "is heated"
+     ],
+     "phrase_patterns": [
+      "feed rate",
+      "feed stream",
+      "feed tray",
+      "feed composition",
+      "the feed enters"
+     ],
+     "topic_cues": [
+      "distillation",
+      "material balance",
+      "unit operation inlet",
+      "flow sheet"
+     ],
+     "negative_cues": [
+      "study",
+      "package",
+      "front-end engineering",
+      "EPC bid"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural/domain usage: 'feed' as the inlet stream noun with rate/stream/tray/composition modifiers is the standard ChemE collocation set; labelled ordinary here because it is the heard word used correctly, not the slash expansion."
+    }
+   ]
+  },
+  {
+   "heard": "benzine",
+   "slash_form": "benzine/benzene",
+   "slot_note": "Trap and partly mis-targeted. 'Benzine' is itself a real substance name — petroleum benzine / petroleum ether, a mixture of light alkanes used as a nonpolar solvent — and sources warn explicitly that it 'should not be confused with benzene': benzene is the single cyclic aromatic compound C6H6. The slash candidate 'benzene' is justified only with aromatic/ring/C6H6/carcinogen collocations; solvent-mixture collocations (petroleum ether, naphtha, boiling range, alkanes) support keeping 'benzine'.",
+   "candidates": [
+    {
+     "label": "benzene",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "pure",
+      "liquid"
+     ],
+     "right_cues": [
+      "ring",
+      "is a carcinogen",
+      "content",
+      "in gasoline",
+      "production"
+     ],
+     "phrase_patterns": [
+      "benzene ring",
+      "benzene, C6H6",
+      "benzene is a known carcinogen",
+      "benzene content"
+     ],
+     "topic_cues": [
+      "aromatic hydrocarbon",
+      "C6H6",
+      "petrochemicals",
+      "ethylbenzene",
+      "styrene",
+      "gasoline additive limits"
+     ],
+     "negative_cues": [
+      "petroleum ether",
+      "solvent mixture",
+      "boiling range (benzine readings)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Bookshelves/General_Chemistry/Map:_General_Chemistry_(Petrucci_et_al.)/26:_Structure_of_Organic_Compounds/26.6:_Aromatic_Hydrocarbons"
+      },
+      {
+       "url": "https://en.wikipedia.org/wiki/Hydrocarbon_mixtures"
+      }
+     ],
+     "notes": "Source usage: 'Benzene (C6H6) is of great commercial importance... a known carcinogen, its use as an additive in gasoline is now limited'; contrast source: 'benzene is a cyclic, aromatic hydrocarbon' versus benzine as an alkane mixture."
+    },
+    {
+     "label": "benzine (petroleum benzine, as heard)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "petroleum",
+      "use"
+     ],
+     "right_cues": [
+      "as a solvent",
+      "boiling range",
+      "mixture"
+     ],
+     "phrase_patterns": [
+      "petroleum benzine",
+      "benzine is a mixture of alkanes",
+      "petroleum ether, also known as benzine"
+     ],
+     "topic_cues": [
+      "solvent",
+      "petroleum ether",
+      "naphtha",
+      "pentane hexane heptane",
+      "cleaning solvent"
+     ],
+     "negative_cues": [
+      "ring",
+      "C6H6",
+      "aromatic compound (single-compound readings)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Hydrocarbon_mixtures"
+      },
+      {
+       "url": "https://en.wikipedia.org/wiki/Benzine"
+      }
+     ],
+     "notes": "Source usage: 'going under its alternative name of benzine, it should not be confused with benzene. (Benzine is a mixture of alkanes, such as pentane, hexane, and heptane...)'; 'Petroleum benzine is a hydrocarbon-based solvent mixture... classified by its physical properties (e.g. boiling point)'. Labelled ordinary as the heard word used correctly."
+    }
+   ]
+  },
+  {
+   "heard": "ammonium",
+   "slash_form": "ammonium/ammonia",
+   "slot_note": "Trap and often mis-targeted in the reverse direction. 'Ammonium' (NH4+, the ion) and 'ammonia' (NH3, the neutral molecule/gas) differ by one proton and are both correct technical words; sources stress students 'commonly confuse ammonia with ammonium'. The slash candidate 'ammonia' is justified only with NH3/gas/synthesis collocations (ammonia synthesis, Haber, anhydrous, refrigeration, accepts a proton). Salt and ion collocations — ammonium chloride/sulfate/nitrate, ammonium ion, NH4+ — support keeping 'ammonium' and are strong negative cues for the slash candidate.",
+   "candidates": [
+    {
+     "label": "ammonia",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "liquid",
+      "anhydrous",
+      "produce"
+     ],
+     "right_cues": [
+      "synthesis",
+      "gas",
+      "is a base",
+      "reacts with water",
+      "production"
+     ],
+     "phrase_patterns": [
+      "ammonia synthesis",
+      "ammonia gas",
+      "ammonia reacts with water",
+      "ammonia accepts a proton"
+     ],
+     "topic_cues": [
+      "Haber process",
+      "NH3",
+      "fertiliser feedstock",
+      "refrigerant",
+      "proton acceptor",
+      "conjugate base"
+     ],
+     "negative_cues": [
+      "ion",
+      "chloride",
+      "sulfate",
+      "nitrate",
+      "NH4+ (salt/ion readings keep ammonium)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Courses/Anoka-Ramsey_Community_College/Introduction_to_Chemistry/15:_Acids_and_Bases/15.04:_Acids_and_Bases_Defined"
+      }
+     ],
+     "notes": "Source usage: 'Ammonia and water molecules are reactants, while the ammonium ion and the hydroxide ion are products: NH3 + H2O -> NH4+ + OH-'; 'ammonia acts as a base... a proton acceptor'. Medium because the heard word is itself usually correct."
+    },
+    {
+     "label": "ammonium (ion/salts, as heard)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "an"
+     ],
+     "right_cues": [
+      "ion",
+      "chloride",
+      "sulfate",
+      "nitrate",
+      "cation"
+     ],
+     "phrase_patterns": [
+      "ammonium ion",
+      "ammonium chloride",
+      "ammonium sulfate",
+      "the ammonium cation, NH4+"
+     ],
+     "topic_cues": [
+      "acid-base conjugate pair",
+      "salts",
+      "fertiliser salts",
+      "NH4+",
+      "conjugate acid of ammonia"
+     ],
+     "negative_cues": [
+      "synthesis",
+      "gas",
+      "Haber",
+      "anhydrous"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Courses/Anoka-Ramsey_Community_College/Introduction_to_Chemistry/15:_Acids_and_Bases/15.04:_Acids_and_Bases_Defined"
+      }
+     ],
+     "notes": "Source usage: 'the ammonium ion, NH4+, donates a proton'; 'ammonia reacts with water to produce the ammonium cation'; 'species ammonia and ammonium differ by only a hydrogen ion... a conjugate pair'. Labelled ordinary as the heard word used correctly."
+    }
+   ]
+  },
+  {
+   "heard": "ketone",
+   "slash_form": "ketone/methyl ethyl ketone",
+   "slot_note": "Narrowing, not a synonym: 'ketone' is a class (carbonyl carbon bonded to two carbons); 'methyl ethyl ketone' (MEK, butanone) is one member. The specific candidate is justified only when the talk names MEK's own collocations — solvent use with resins/coatings, butanone, MEK, acetone comparison. Generic ketone talk (acetone, cyclohexanone, class properties, naming) keeps 'ketone'. LibreTexts lists 'acetone, methylethyl ketone, and cyclohexanone' as the most important ketones, so an unqualified slot is genuinely ambiguous; strength medium.",
+   "candidates": [
+    {
+     "label": "methyl ethyl ketone",
+     "type": "technical",
+     "left_cues": [
+      "the solvent",
+      "use",
+      "in"
+     ],
+     "right_cues": [
+      "solvent",
+      "MEK",
+      "is used as a solvent",
+      "oxime"
+     ],
+     "phrase_patterns": [
+      "methyl ethyl ketone (MEK)",
+      "methyl ethyl ketone solvent",
+      "butanone, also known as methyl ethyl ketone"
+     ],
+     "topic_cues": [
+      "industrial solvent",
+      "resins",
+      "cellulose acetate coatings",
+      "nitrocellulose",
+      "lacquer",
+      "paint remover",
+      "butanone",
+      "2-butanol oxidation"
+     ],
+     "negative_cues": [
+      "acetone is the simplest",
+      "a ketone is (class definition)",
+      "cyclohexanone (a different named ketone)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Butanone"
+      },
+      {
+       "url": "https://chem.libretexts.org/Courses/De_Anza_College/CHEM_10:_Introduction_to_Chemistry_(Parajon_Puenzo)/10:_Organic_Chemistry/10.07:_Aldehydes_and_Ketones"
+      }
+     ],
+     "notes": "Source usage: 'Butanone, also known as methyl ethyl ketone (MEK)... commonly used as an industrial solvent... used in processes involving gums, resins, cellulose acetate and nitrocellulose coatings'; LibreTexts: 'the most important ketones are acetone, methylethyl ketone, and cyclohexanone'."
+    },
+    {
+     "label": "ketone (class name, as heard)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "this",
+      "a simple"
+     ],
+     "right_cues": [
+      "is",
+      "group",
+      "has a carbonyl",
+      "bodies"
+     ],
+     "phrase_patterns": [
+      "a ketone is",
+      "ketone group",
+      "the carbonyl carbon of a ketone",
+      "ketone bodies"
+     ],
+     "topic_cues": [
+      "functional groups",
+      "carbonyl",
+      "nomenclature",
+      "acetone",
+      "organic chemistry class talk"
+     ],
+     "negative_cues": [
+      "MEK",
+      "butanone",
+      "methyl ethyl (specific-name readings)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Courses/De_Anza_College/CHEM_10:_Introduction_to_Chemistry_(Parajon_Puenzo)/10:_Organic_Chemistry/10.07:_Aldehydes_and_Ketones"
+      }
+     ],
+     "notes": "Source usage: 'In a ketone, the carbon atom of a carbonyl is bonded to two other carbons'; common names are 'substituent groups listed alphabetically + ketone'. Labelled ordinary as the heard word used correctly (class-level talk)."
+    }
+   ]
+  },
+  {
+   "heard": "aldehyde",
+   "slash_form": "aldehyde/aldehyde",
+   "slot_note": "MIS-TARGETED slash candidate. An aldehyde and methyl ethyl ketone are different functional classes: sources define an aldehyde by a carbonyl carbon bonded to a hydrogen, a ketone by a carbonyl carbon bonded to two carbons, and MEK (butanone) is explicitly a ketone — 'this colorless liquid ketone'. No collocation makes 'aldehyde' a mishearing of 'methyl ethyl ketone' (no phonetic or semantic path). The slash candidate is scored weak with no supporting phrase patterns; the correct action in aldehyde contexts is to keep 'aldehyde' (or a named aldehyde such as formaldehyde, acetaldehyde, benzaldehyde). Phase 1 fix 8 (2026-11-05): the methyl ethyl ketone candidate is removed; the only candidate is 'aldehyde' itself, so the stage may confirm the word as heard from aldehyde-class context or abstain to the aldehyde/aldehyde form.",
+   "candidates": [
+    {
+     "label": "aldehyde",
+     "type": "ordinary",
+     "left_cues": [
+      "an",
+      "the",
+      "this",
+      "a simple"
+     ],
+     "right_cues": [
+      "is",
+      "group",
+      "oxidation",
+      "such as formaldehyde"
+     ],
+     "phrase_patterns": [
+      "an aldehyde is",
+      "aldehyde group",
+      "formaldehyde is an aldehyde",
+      "aldehydes and ketones"
+     ],
+     "topic_cues": [
+      "functional groups",
+      "carbonyl",
+      "formaldehyde",
+      "acetaldehyde",
+      "benzaldehyde",
+      "oxidation to carboxylic acid"
+     ],
+     "negative_cues": [
+      "MEK",
+      "butanone",
+      "methyl ethyl ketone"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Bookshelves/Introductory_Chemistry/The_Basics_of_General_Organic_and_Biological_Chemistry_(Ball_et_al.)/14%3A_Organic_Compounds_of_Oxygen/14.09%3A_Aldehydes_and_Ketones-_Structure_and_Names"
+      }
+     ],
+     "notes": "Source usage: 'Carbonyl groups define two related families: the aldehydes and the ketones... In an aldehyde, at least one of the attached groups must be a hydrogen atom'; examples formaldehyde, benzaldehyde (flavouring). Labelled ordinary as the heard word used correctly."
+    }
+   ]
+  },
+  {
+   "heard": "homo-genius",
+   "slash_form": "homo-genius/homogeneous/heterogeneous",
+   "slot_note": "Adjective pair: both must be followed by a noun (mixture, catalyst, catalysis, reaction, phase). The phase relation described around the slot decides: same phase/uniform throughout is homogeneous; different phases/non-uniform is heterogeneous.",
+   "candidates": [
+    {
+     "label": "homogeneous",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the"
+     ],
+     "right_cues": [
+      "mixture",
+      "catalyst",
+      "catalysis",
+      "reaction",
+      "solution"
+     ],
+     "phrase_patterns": [
+      "homogeneous mixture",
+      "homogeneous catalyst",
+      "same phase as the reactants",
+      "uniform throughout"
+     ],
+     "topic_cues": [
+      "mixtures",
+      "solutions",
+      "catalysis",
+      "single phase",
+      "dissolved"
+     ],
+     "negative_cues": [
+      "different phase",
+      "two phases",
+      "solid catalyst with gas"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Courses/Saint_Marys_College_Notre_Dame_IN/CHEM_118_(Under_Construction)/CHEM_118_Textbook/01%3A_Matter_and_Measurements/1.03%3A_Classification_of_Matter"
+      },
+      {
+       "url": "https://chem.libretexts.org/Core/Inorganic_Chemistry/Catalysis/Examples/Examples_of_Catalysis/1._An_Introduction_to_Types_of_Catalysis"
+      }
+     ],
+     "notes": "Source usage: 'If its composition is uniform throughout, it is a homogeneous mixture'; 'In a homogeneous reaction, the catalyst is in the same phase as the reactants'."
+    },
+    {
+     "label": "heterogeneous",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the"
+     ],
+     "right_cues": [
+      "mixture",
+      "catalyst",
+      "catalysis",
+      "reaction"
+     ],
+     "phrase_patterns": [
+      "heterogeneous mixture",
+      "heterogeneous catalyst",
+      "different phase from the reactants",
+      "on the surface of the catalyst"
+     ],
+     "topic_cues": [
+      "mixtures",
+      "catalysis",
+      "solid catalyst",
+      "gas or liquid reactants",
+      "samples differ"
+     ],
+     "negative_cues": [
+      "same phase",
+      "uniform throughout",
+      "single solution"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://chem.libretexts.org/Courses/Saint_Marys_College_Notre_Dame_IN/CHEM_118_(Under_Construction)/CHEM_118_Textbook/01%3A_Matter_and_Measurements/1.03%3A_Classification_of_Matter"
+      },
+      {
+       "url": "https://chem.libretexts.org/Core/Inorganic_Chemistry/Catalysis/Examples/Examples_of_Catalysis/1._An_Introduction_to_Types_of_Catalysis"
+      }
+     ],
+     "notes": "Source usage: 'a heterogeneous mixture is distinguished by the fact that different samples of the mixture may have a different composition'; 'In a heterogeneous reaction, the catalyst is in a different phase from the reactants... a solid catalyst with the reactants as either liquids or gases'."
+    }
+   ]
+  },
+  {
+   "heard": "eye-gen-value",
+   "slash_form": "eye-gen-value/eigenvalue/eigenvector",
+   "slot_note": "Pair from one equation, A v = lambda v: the eigenvalue is the scalar (lambda, found from the characteristic polynomial/determinant), the eigenvector is the non-zero vector (direction unchanged, found by solving). Words for scalar/values/roots point one way; words for vector/direction/solution point the other.",
+   "candidates": [
+    {
+     "label": "eigenvalue",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "find the",
+      "largest",
+      "each"
+     ],
+     "right_cues": [
+      "value",
+      "values",
+      "of the matrix",
+      "is",
+      "lambda"
+     ],
+     "phrase_patterns": [
+      "eigenvalue",
+      "eigenvalues of the matrix",
+      "find the eigenvalues",
+      "characteristic polynomial"
+     ],
+     "topic_cues": [
+      "linear algebra",
+      "matrix",
+      "determinant",
+      "lambda",
+      "stability"
+     ],
+     "negative_cues": [
+      "vector (as the slot's own following noun)",
+      "nonzero vector"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://math.libretexts.org/Bookshelves/Linear_Algebra/Interactive_Linear_Algebra_(Margalit_and_Rabinoff)/05%3A_Eigenvalues_and_Eigenvectors/5.01%3A_Eigenvalues_and_Eigenvectors"
+      }
+     ],
+     "notes": "Source usage: 'An eigenvalue of A is a scalar lambda such that the equation Av = lambda v has a nontrivial solution'; 'Eigenvalues and eigenvectors are only for square matrices'."
+    },
+    {
+     "label": "eigenvector",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "corresponding",
+      "associated"
+     ],
+     "right_cues": [
+      "vector",
+      "vectors",
+      "corresponding to",
+      "direction"
+     ],
+     "phrase_patterns": [
+      "eigenvector",
+      "eigenvectors associated with",
+      "corresponding eigenvector",
+      "nonzero vector"
+     ],
+     "topic_cues": [
+      "linear algebra",
+      "matrix",
+      "direction unchanged",
+      "Av = lambda v"
+     ],
+     "negative_cues": [
+      "values of the matrix (as the slot's frame)",
+      "characteristic polynomial roots"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://math.libretexts.org/Bookshelves/Linear_Algebra/Interactive_Linear_Algebra_(Margalit_and_Rabinoff)/05%3A_Eigenvalues_and_Eigenvectors/5.01%3A_Eigenvalues_and_Eigenvectors"
+      }
+     ],
+     "notes": "Source usage: 'An eigenvector of A is a nonzero vector v in R^n such that Av = lambda v, for some scalar lambda'; 'Av and v lie on the same line through the origin'."
+    }
+   ]
+  },
+  {
+   "heard": "theo-doll-ite",
+   "slash_form": "theo-doll-ite/surveying/theodolite",
+   "slot_note": "Activity versus instrument: 'surveying' is the field/activity (a gerund: in/for surveying, land surveying) and cannot take an article or a plural; 'theodolite' is a countable instrument noun (a/the theodolite, set up, telescope, measures angles). Article or instrument verbs around the slot decide.",
+   "candidates": [
+    {
+     "label": "surveying",
+     "type": "technical",
+     "left_cues": [
+      "land",
+      "in",
+      "for"
+     ],
+     "right_cues": [
+      "surveying",
+      "is",
+      "work",
+      "instrument"
+     ],
+     "phrase_patterns": [
+      "land surveying",
+      "in surveying",
+      "surveying instrument",
+      "used for surveying"
+     ],
+     "topic_cues": [
+      "land",
+      "maps",
+      "boundaries",
+      "positions of points",
+      "distances and angles"
+     ],
+     "negative_cues": [
+      "a the (article directly before the slot, instrument slot)",
+      "telescope"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Surveying"
+      }
+     ],
+     "notes": "Source usage: 'Surveying or land surveying is the technique, profession, art, and science of determining the terrestrial positions of points based on the distances and angles between them... used to establish maps and boundaries'."
+    },
+    {
+     "label": "theodolite",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "using a",
+      "set up the"
+     ],
+     "right_cues": [
+      "theodolite",
+      "measures",
+      "is used",
+      "telescope"
+     ],
+     "phrase_patterns": [
+      "a theodolite",
+      "the theodolite measures",
+      "using a theodolite"
+     ],
+     "topic_cues": [
+      "surveying",
+      "horizontal and vertical angles",
+      "telescope",
+      "construction layout"
+     ],
+     "negative_cues": [
+      "land surveying is (activity definition frame)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Theodolite"
+      }
+     ],
+     "notes": "Source usage: 'A theodolite is a precision optical instrument for measuring angles between designated visible points in the horizontal and vertical planes. The traditional use has been for land surveying'; 'It consists of a movable telescope'."
+    }
+   ]
+  },
+  {
+   "heard": "phaser",
+   "slash_form": "phaser/phasor",
+   "slot_note": "Trap, cross-domain. Technical 'phasor' is a complex number representing a sinusoid (amplitude and phase) for AC steady-state analysis; its collocations are phasor diagram/domain/representation, impedance, voltage/current phasors, RLC circuits. Ordinary 'phaser' is a fictional weapon or an audio phase-shifting effect. Note the phasor article itself carries 'Not to be confused with phaser'. In ChemE speech phasor arises only in instrumentation/AC-circuit asides, so require electrical collocations; strength medium.",
+   "candidates": [
+    {
+     "label": "phasor",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "as a",
+      "the voltage"
+     ],
+     "right_cues": [
+      "diagram",
+      "domain",
+      "representation",
+      "notation"
+     ],
+     "phrase_patterns": [
+      "phasor diagram",
+      "phasor representation",
+      "phasor domain",
+      "complex amplitude (phasor)"
+     ],
+     "topic_cues": [
+      "sinusoidal steady state",
+      "AC circuit",
+      "impedance",
+      "RLC circuit",
+      "amplitude and phase",
+      "complex number"
+     ],
+     "negative_cues": [
+      "set to stun",
+      "pedal",
+      "guitar (fiction/audio readings)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "http://en.wikipedia.org/wiki/phasor"
+      }
+     ],
+     "notes": "Source usage: 'a phasor... is a complex number representing a sinusoidal function whose amplitude and initial phase are time-invariant'; 'phasor transform allows the analysis of the AC steady state of RLC circuits'; the complex constant 'is known as a phasor, or complex amplitude'."
+    },
+    {
+     "label": "phaser (ordinary fiction/audio)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "set the"
+     ],
+     "right_cues": [
+      "to stun",
+      "pedal",
+      "effect",
+      "on the guitar"
+     ],
+     "phrase_patterns": [
+      "set phasers to stun",
+      "phaser pedal",
+      "phaser effect"
+     ],
+     "topic_cues": [
+      "science fiction",
+      "music effects",
+      "audio processing"
+     ],
+     "negative_cues": [
+      "diagram",
+      "impedance",
+      "sinusoidal",
+      "RLC"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural/ordinary usage: fiction weapon with 'set to stun', or audio effect with pedal/effect/sweep collocations; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "balloon",
+   "slash_form": "balloon/balun",
+   "slot_note": "Trap, cross-domain and rare in ChemE speech. Technical 'balun' (balanced-to-unbalanced) is an electrical device interfacing balanced and unbalanced transmission lines, at antenna feed points, coax to twin-lead/dipole. Ordinary 'balloon' is the inflatable object (also weather balloon, balloon payment, to balloon = swell). Only antenna/coax/balanced-line collocations support balun; strength weak-to-medium because the base rate in chemical-engineering lectures is very low.",
+   "candidates": [
+    {
+     "label": "balun",
+     "type": "technical",
+     "left_cues": [
+      "a",
+      "the",
+      "a current",
+      "use a"
+     ],
+     "right_cues": [
+      "at the feed point",
+      "between the cable and the antenna",
+      "transformer"
+     ],
+     "phrase_patterns": [
+      "current balun",
+      "balun at the antenna feed point",
+      "fed with a balun",
+      "balun between the cable and the antenna feed"
+     ],
+     "topic_cues": [
+      "balanced and unbalanced lines",
+      "coaxial cable",
+      "dipole antenna",
+      "twin-lead",
+      "common-mode choke",
+      "impedance matching",
+      "feedline"
+     ],
+     "negative_cues": [
+      "inflated",
+      "helium",
+      "weather (inflatable readings)"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Balun"
+      }
+     ],
+     "notes": "Source usage: 'a balun (from balanced to unbalanced) is an electrical device that allows balanced and unbalanced lines to be interfaced'; 'baluns are typically used as a form of common mode choke attached at the antenna feed point'; conversion of '300-ohm twin-lead (balanced) to 75-ohm coaxial cable (unbalanced)'. Weak for this corpus: electrical-antenna context must be explicit."
+    },
+    {
+     "label": "balloon (ordinary noun/verb)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "a weather",
+      "the"
+     ],
+     "right_cues": [
+      "is inflated",
+      "payment",
+      "rose",
+      "out"
+     ],
+     "phrase_patterns": [
+      "weather balloon",
+      "balloon payment",
+      "hot-air balloon"
+     ],
+     "topic_cues": [
+      "parties",
+      "weather observation",
+      "finance",
+      "swelling"
+     ],
+     "negative_cues": [
+      "antenna",
+      "coaxial",
+      "balanced line",
+      "feed point"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural/ordinary usage: inflatable noun with inflate/helium/rise collocations, or finance/weather compounds; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "smith",
+   "slash_form": "smith/Schmidt",
+   "slot_note": "Trap. The slash form gives only 'Schmidt'; in ChemE usage the technical candidate is almost always the 'Schmidt number' (Sc = momentum diffusivity / mass diffusivity), the mass-transfer analogue of the Prandtl number. It is decided by 'number' after the slot or by Sc/mass-transfer topic words. Ordinary 'Smith' is a surname — an author or person reference ('Smith and Van Ness', 'Smith et al.') — and is followed by 'and', 'et al.', or a verb, never by 'number' in the dimensionless sense.",
+   "candidates": [
+    {
+     "label": "Schmidt number",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "the turbulent"
+     ],
+     "right_cues": [
+      "number",
+      "number Sc",
+      "number is"
+     ],
+     "phrase_patterns": [
+      "Schmidt number",
+      "Schmidt number Sc",
+      "turbulent Schmidt number",
+      "Schmidt number is the mass-transfer analogue of Prandtl number"
+     ],
+     "topic_cues": [
+      "mass transfer",
+      "mass diffusivity",
+      "momentum diffusivity",
+      "kinematic viscosity",
+      "boundary layer thickness",
+      "Sherwood number",
+      "Prandtl number (analogy)"
+     ],
+     "negative_cues": [
+      "and Van Ness",
+      "et al.",
+      "said (surname readings)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://en.wikipedia.org/wiki/Schmidt_number"
+      }
+     ],
+     "notes": "Source usage: 'the Schmidt number (Sc)... is a dimensionless number defined as the ratio of momentum diffusivity (kinematic viscosity) and mass diffusivity'; 'physically relates the relative thickness of the hydrodynamic layer and mass-transfer boundary layer'; 'the heat transfer analog of the Schmidt number is the Prandtl number'."
+    },
+    {
+     "label": "Smith (ordinary surname)",
+     "type": "ordinary",
+     "left_cues": [
+      "Professor",
+      "Dr",
+      "in",
+      "by"
+     ],
+     "right_cues": [
+      "and",
+      "et al.",
+      "said",
+      "writes",
+      "'s"
+     ],
+     "phrase_patterns": [
+      "Smith and Van Ness",
+      "Smith et al.",
+      "Smith's book"
+     ],
+     "topic_cues": [
+      "textbook authors",
+      "citations",
+      "people"
+     ],
+     "negative_cues": [
+      "number",
+      "Sc",
+      "mass diffusivity",
+      "mass transfer"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: surname in author-pair and citation patterns (Smith is a standard ChemE thermodynamics textbook author name); a following 'number' rules this reading out."
+    }
+   ]
+  },
+  {
+   "heard": "pwah-son",
+   "slash_form": "pwah-son/Poisson distribution/equation",
+   "slot_note": "Alternatives share the head word Poisson and differ in the following noun: distribution or equation. The word AFTER the slot is the decisive cue; do not decide from the head word alone. The two topics do not overlap: counting events/probability versus a partial differential equation for a potential.",
+   "candidates": [
+    {
+     "label": "Poisson distribution",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "follows a"
+     ],
+     "right_cues": [
+      "distribution",
+      "distribution gives",
+      "distribution with"
+     ],
+     "phrase_patterns": [
+      "Poisson distribution",
+      "the Poisson distribution gives the probability",
+      "follows a Poisson distribution"
+     ],
+     "topic_cues": [
+      "probability",
+      "number of events",
+      "fixed interval",
+      "average rate",
+      "lambda",
+      "mean and variance"
+     ],
+     "negative_cues": [
+      "equation (following word instead)",
+      "Laplacian",
+      "potential",
+      "boundary conditions"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://stats.libretexts.org/Bookshelves/Introductory_Statistics/Mostly_Harmless_Statistics_(Webb)/05%3A_Discrete_Probability_Distributions/5.06%3A_Poisson_Distribution"
+      }
+     ],
+     "notes": "Source usage: 'The Poisson discrete probability distribution finds the probability of an event over some unit of time or space'; formula 'P(X = x) = e^-mu mu^x / x!'; 'the expected number of successes, and the variance are equal'."
+    },
+    {
+     "label": "Poisson equation",
+     "type": "technical",
+     "left_cues": [
+      "the"
+     ],
+     "right_cues": [
+      "equation",
+      "equation states",
+      "equation is"
+     ],
+     "phrase_patterns": [
+      "Poisson equation",
+      "Poisson's equation",
+      "the Poisson equation states"
+     ],
+     "topic_cues": [
+      "electrostatics",
+      "potential",
+      "Laplacian",
+      "charge density",
+      "boundary conditions",
+      "partial differential equation"
+     ],
+     "negative_cues": [
+      "distribution (following word instead)",
+      "probability of events",
+      "mean and variance"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Bookshelves/Electricity_and_Magnetism/Electromagnetics_I_(Ellingson)/05%3A_Electrostatics/5.15%3A_Poissons_and_Laplaces_Equations"
+      }
+     ],
+     "notes": "Source usage: 'Poisson's Equation states that the Laplacian of the electric potential field is equal to the volume charge density divided by the permittivity'; 'Poisson's Equation is a partial differential equation'."
+    }
+   ]
+  },
+  {
+   "heard": "poison",
+   "slash_form": "poison/Poisson distribution/equation",
+   "slot_note": "Same Poisson pair as 'pwah-son', plus the ordinary word. Alternatives share the head word Poisson and differ in the following noun (distribution/equation), which decides between them. Ordinary 'poison' is decided by grammar and topic: it takes verbs and objects (poison the catalyst, a poison for, poisoned by) and toxicity/catalyst-deactivation words, and is never followed by distribution/equation in the Poisson frame.",
+   "candidates": [
+    {
+     "label": "Poisson distribution",
+     "type": "technical",
+     "left_cues": [
+      "the",
+      "a",
+      "follows a"
+     ],
+     "right_cues": [
+      "distribution",
+      "distribution gives",
+      "distribution with"
+     ],
+     "phrase_patterns": [
+      "Poisson distribution",
+      "the Poisson distribution gives the probability",
+      "follows a Poisson distribution"
+     ],
+     "topic_cues": [
+      "probability",
+      "number of events",
+      "fixed interval",
+      "average rate",
+      "lambda",
+      "mean and variance"
+     ],
+     "negative_cues": [
+      "catalyst",
+      "sulfur",
+      "toxic",
+      "food"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://stats.libretexts.org/Bookshelves/Introductory_Statistics/Mostly_Harmless_Statistics_(Webb)/05%3A_Discrete_Probability_Distributions/5.06%3A_Poisson_Distribution"
+      }
+     ],
+     "notes": "Source usage: 'The Poisson discrete probability distribution finds the probability of an event over some unit of time or space'; 'Events occur independently'."
+    },
+    {
+     "label": "Poisson equation",
+     "type": "technical",
+     "left_cues": [
+      "the"
+     ],
+     "right_cues": [
+      "equation",
+      "equation states",
+      "equation is"
+     ],
+     "phrase_patterns": [
+      "Poisson equation",
+      "Poisson's equation",
+      "the Poisson equation states"
+     ],
+     "topic_cues": [
+      "electrostatics",
+      "potential",
+      "Laplacian",
+      "charge density",
+      "boundary conditions",
+      "partial differential equation"
+     ],
+     "negative_cues": [
+      "catalyst",
+      "sulfur",
+      "toxic",
+      "food"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Bookshelves/Electricity_and_Magnetism/Electromagnetics_I_(Ellingson)/05%3A_Electrostatics/5.15%3A_Poissons_and_Laplaces_Equations"
+      }
+     ],
+     "notes": "Source usage: 'Poisson's Equation states that the Laplacian of the electric potential field is equal to the volume charge density divided by the permittivity, with a change of sign'."
+    },
+    {
+     "label": "poison (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "catalyst"
+     ],
+     "right_cues": [
+      "poison",
+      "for the catalyst",
+      "in the feed",
+      "ing"
+     ],
+     "phrase_patterns": [
+      "catalyst poison",
+      "poison the catalyst",
+      "sulfur is a poison",
+      "food poisoning"
+     ],
+     "topic_cues": [
+      "toxicity",
+      "catalyst deactivation",
+      "sulfur",
+      "active sites",
+      "safety",
+      "antidote"
+     ],
+     "negative_cues": [
+      "distribution",
+      "equation",
+      "probability of events",
+      "Laplacian"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural/ordinary usage: noun or verb for a toxic substance, including its ChemE use for a substance that deactivates a catalyst; no Poisson source claimed for this candidate."
+    }
+   ]
+  },
+  {
+   "heard": "row",
+   "slash_form": "row/rho",
+   "slot_note": "Spoken Greek letter name in a symbol slot: 'rho' names the density symbol, usually said while naming symbols in an equation ('rho times ...', 'rho is ...'). Ordinary 'row' is a noun (a line of objects/seats, a row in a table) or a verb (propel a boat). A following verb of being/equals or an equation context decides for rho; a following noun or 'in a row' decides ordinary.",
+   "candidates": [
+    {
+     "label": "rho",
+     "type": "technical",
+     "left_cues": [
+      "where",
+      "and",
+      "with",
+      "density",
+      "the density"
+     ],
+     "right_cues": [
+      "is",
+      "equals",
+      "times",
+      "g",
+      "v"
+     ],
+     "phrase_patterns": [
+      "rho is the density",
+      "rho times",
+      "nu equals mu over rho",
+      "Re equals rho v L over mu"
+     ],
+     "topic_cues": [
+      "density",
+      "fluid mechanics",
+      "Reynolds number",
+      "kinematic viscosity",
+      "Greek alphabet"
+     ],
+     "negative_cues": [
+      "in a row",
+      "row of",
+      "row in the table",
+      "row the boat"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Bookshelves/Classical_Mechanics/Variational_Principles_in_Classical_Mechanics_(Cline)/16%3A_Analytical_Formulations_for_Continuous_Systems/16.08%3A_Viscous_Fluid_Dynamics"
+      },
+      {
+       "url": "https://phys.libretexts.org/Courses/Prince_Georges_Community_College/General_Physics_I%3A_Classical_Mechanics/02%3A_The_Greek_Alphabet"
+      },
+      {
+       "url": "https://www.engineeringtoolbox.com/greek-alphabet-d_5.html"
+      }
+     ],
+     "notes": "Source usage: 'where rho is the fluid density'; 'Re = rho v L / mu'; Greek alphabet table lists P rho, 'r trilled or flipped'; Engineering Toolbox lists rho typically used for density."
+    },
+    {
+     "label": "row (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "first",
+      "top",
+      "in a"
+     ],
+     "right_cues": [
+      "of",
+      "in",
+      "seats",
+      "houses"
+     ],
+     "phrase_patterns": [
+      "in a row",
+      "a row of",
+      "row in the table",
+      "front row"
+     ],
+     "topic_cues": [
+      "tables",
+      "seating",
+      "boating",
+      "general narration"
+     ],
+     "negative_cues": [
+      "density is",
+      "Reynolds number",
+      "mu over"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: determiner + row + of/in phrase is the default ordinary noun pattern; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "roe",
+   "slash_form": "roe/rho",
+   "slot_note": "Same spoken Greek letter as 'row', reached through the rarer spelling 'roe'. Technical slot is identical: rho naming density in an equation. Ordinary 'roe' is fish eggs, almost only in food/biology contexts, so in a ChemE transcript rho is the default unless food words surround the slot.",
+   "candidates": [
+    {
+     "label": "rho",
+     "type": "technical",
+     "left_cues": [
+      "where",
+      "and",
+      "with",
+      "density"
+     ],
+     "right_cues": [
+      "is",
+      "equals",
+      "times",
+      "g"
+     ],
+     "phrase_patterns": [
+      "rho is the density",
+      "rho times",
+      "mu over rho"
+     ],
+     "topic_cues": [
+      "density",
+      "fluid mechanics",
+      "Reynolds number",
+      "Greek alphabet"
+     ],
+     "negative_cues": [
+      "fish",
+      "eggs",
+      "caviar",
+      "salmon"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Bookshelves/Classical_Mechanics/Variational_Principles_in_Classical_Mechanics_(Cline)/16%3A_Analytical_Formulations_for_Continuous_Systems/16.08%3A_Viscous_Fluid_Dynamics"
+      },
+      {
+       "url": "https://www.engineeringtoolbox.com/greek-alphabet-d_5.html"
+      }
+     ],
+     "notes": "Source usage as for 'row': rho is the fluid density in the Reynolds-number definition; rho listed as typically used for density. Medium, not strong: nothing in the heard spelling itself separates roe from row."
+    },
+    {
+     "label": "roe (ordinary food)",
+     "type": "ordinary",
+     "left_cues": [
+      "fish",
+      "salmon",
+      "the"
+     ],
+     "right_cues": [
+      "eggs",
+      "and milt"
+     ],
+     "phrase_patterns": [
+      "fish roe",
+      "salmon roe",
+      "roe eggs"
+     ],
+     "topic_cues": [
+      "food",
+      "fish biology",
+      "cooking"
+     ],
+     "negative_cues": [
+      "density",
+      "viscosity",
+      "equation"
+     ],
+     "strength": "medium",
+     "sources": [],
+     "notes": "Structural/ordinary usage: roe occurs with fish/food collocates only; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "new",
+   "slash_form": "new/nu",
+   "slot_note": "Weak trap. Spoken 'new' is the natural pronunciation of the Greek letter nu (the kinematic viscosity, nu = mu/rho); mu is usually 'myoo/moo' and was removed from this candidate set at Phase 1 — the research rated new -> mu weak and probably mis-aimed. Choose nu only on explicit symbol-equation cues; on ordinary adjective cues choose 'new'; otherwise abstain.",
+   "candidates": [
+    {
+     "label": "nu",
+     "type": "technical",
+     "left_cues": [
+      "kinematic viscosity",
+      "the kinematic viscosity",
+      "where"
+     ],
+     "right_cues": [
+      "equals",
+      "is the kinematic viscosity",
+      "is"
+     ],
+     "phrase_patterns": [
+      "nu equals mu over rho",
+      "nu is the kinematic viscosity"
+     ],
+     "topic_cues": [
+      "kinematic viscosity",
+      "Reynolds number",
+      "fluid mechanics",
+      "Greek alphabet"
+     ],
+     "negative_cues": [
+      "new method",
+      "new value",
+      "brand new",
+      "a new (any following noun)"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Bookshelves/Classical_Mechanics/Variational_Principles_in_Classical_Mechanics_(Cline)/16%3A_Analytical_Formulations_for_Continuous_Systems/16.08%3A_Viscous_Fluid_Dynamics"
+      },
+      {
+       "url": "https://phys.libretexts.org/Courses/Prince_Georges_Community_College/General_Physics_I%3A_Classical_Mechanics/52%3A_Fluid_Dynamics/52.06%3A_Viscosity"
+      },
+      {
+       "url": "https://www.engineeringtoolbox.com/greek-alphabet-d_5.html"
+      }
+     ],
+     "notes": "Phase 1 fix 9 (2026-11-05): replaces the mu candidate. Spoken 'new' is the natural pronunciation of nu, the kinematic viscosity, nu = mu/rho — the relation the removed mu candidate's own phrase patterns already quoted ('nu equals mu over rho'). Cues adapted from the item's existing source-grounded patterns (same sources); strength stays weak, matching the research rating: abstain unless the symbol-equation context is explicit."
+    },
+    {
+     "label": "new (ordinary adjective)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "this",
+      "brand"
+     ],
+     "right_cues": [
+      "method",
+      "value",
+      "data",
+      "equation",
+      "term"
+     ],
+     "phrase_patterns": [
+      "a new",
+      "the new",
+      "brand new"
+     ],
+     "topic_cues": [
+      "general narration"
+     ],
+     "negative_cues": [
+      "dynamic viscosity",
+      "over rho",
+      "pascal-seconds"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: adjective + noun is the default pattern and is far more frequent than a spoken symbol name; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "tow",
+   "slash_form": "tow/tau",
+   "slot_note": "Spoken Greek letter name in a symbol slot: tau names shear stress (and, outside this course, a time constant). It is said while naming symbols in an equation ('tau equals mu times ...'). Ordinary 'tow' is a verb/noun about pulling a vehicle or boat. A shear/stress topic or an equals-pattern decides for tau.",
+   "candidates": [
+    {
+     "label": "tau",
+     "type": "technical",
+     "left_cues": [
+      "where",
+      "and",
+      "shear stress",
+      "the shear stress"
+     ],
+     "right_cues": [
+      "is",
+      "equals",
+      "yx",
+      "at the wall"
+     ],
+     "phrase_patterns": [
+      "tau is the shear stress",
+      "tau equals mu",
+      "wall shear stress tau",
+      "shear stress tau"
+     ],
+     "topic_cues": [
+      "shear stress",
+      "fluid mechanics",
+      "momentum transfer",
+      "Greek alphabet"
+     ],
+     "negative_cues": [
+      "tow truck",
+      "in tow",
+      "tow the"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.engineeringtoolbox.com/greek-alphabet-d_5.html"
+      },
+      {
+       "url": "https://phys.libretexts.org/Courses/Prince_Georges_Community_College/General_Physics_I%3A_Classical_Mechanics/02%3A_The_Greek_Alphabet"
+      }
+     ],
+     "notes": "Source usage: Engineering Toolbox lists Greek small letter tau typically used for shear stress; Greek alphabet table lists T tau, 't as in tank'. Medium: the Toolbox/alphabet sources name the use but give no running tau-equals phrase."
+    },
+    {
+     "label": "tow (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "to"
+     ],
+     "right_cues": [
+      "truck",
+      "rope",
+      "the car",
+      "the boat"
+     ],
+     "phrase_patterns": [
+      "tow truck",
+      "in tow",
+      "tow the car"
+     ],
+     "topic_cues": [
+      "vehicles",
+      "boating",
+      "general narration"
+     ],
+     "negative_cues": [
+      "shear stress",
+      "viscosity",
+      "momentum"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: tow + vehicle/boat object, or the fixed phrases 'tow truck'/'in tow', are decisive ordinary patterns; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "data",
+   "slash_form": "data/beta",
+   "slot_note": "Weak trap. Spoken beta (US 'bay-ta') is close to 'data' in running speech, but 'data' is one of the commonest ordinary words in a lecture ('the data show ...'). Choose beta only in a symbol-naming slot: beta listed among Greek letters, beta as an angle or a coefficient in an equation. Any verb such as show/fit/collect after the slot decides for ordinary data.",
+   "candidates": [
+    {
+     "label": "beta",
+     "type": "technical",
+     "left_cues": [
+      "alpha",
+      "and",
+      "angle",
+      "coefficient"
+     ],
+     "right_cues": [
+      "is",
+      "equals",
+      "gamma",
+      "coefficient"
+     ],
+     "phrase_patterns": [
+      "alpha beta gamma",
+      "angle beta",
+      "beta coefficient",
+      "beta weight"
+     ],
+     "topic_cues": [
+      "Greek alphabet",
+      "angles",
+      "regression coefficient",
+      "coefficients"
+     ],
+     "negative_cues": [
+      "the data show",
+      "data points",
+      "fit the data",
+      "experimental data"
+     ],
+     "strength": "weak",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Courses/Prince_Georges_Community_College/General_Physics_I%3A_Classical_Mechanics/02%3A_The_Greek_Alphabet"
+      },
+      {
+       "url": "https://math.libretexts.org/Courses/Cosumnes_River_College/Math_384%3A_Foundations_for_Calculus/04%3A_Triangles_and_Circles/4.01%3A_Angles_and_Basic_Geometry"
+      },
+      {
+       "url": "https://stats.libretexts.org/Bookshelves/Introductory_Statistics/Introductory_Statistics_(Lane)/14%3A_Regression/14.08%3A_Introduction_to_Multiple_Regression"
+      }
+     ],
+     "notes": "Source usage: Greek alphabet table lists B beta, 'b as in boy'; trigonometry text uses 'the Greek letters alpha and beta as representations of the unknown angle measures'; statistics text: 'a regression weight for standardized variables is called a beta weight and is designated by the Greek letter beta'. Weak: no ChemE-specific beta collocation was found; cues are symbol-list and equation contexts only."
+    },
+    {
+     "label": "data (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "the",
+      "this",
+      "experimental",
+      "these"
+     ],
+     "right_cues": [
+      "show",
+      "points",
+      "set",
+      "were",
+      "are"
+     ],
+     "phrase_patterns": [
+      "the data show",
+      "data points",
+      "experimental data",
+      "fit the data"
+     ],
+     "topic_cues": [
+      "experiments",
+      "fitting",
+      "general narration"
+     ],
+     "negative_cues": [
+      "alpha beta gamma",
+      "angle beta",
+      "Greek letter"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: determiner + data + plural verb (show/are/were) is the default ordinary pattern in lecture narration; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "jewel",
+   "slash_form": "jewel/joule",
+   "slot_note": "Unit slot after a number: spoken 'joule' names the SI unit of energy and almost always follows a quantity ('100 joules', 'per joule') or a unit phrase (kilojoules per mole). Ordinary 'jewel' is a gem noun with jewellery/treasure collocates. A preceding number or 'per mole/per kilogram' decides for joule.",
+   "candidates": [
+    {
+     "label": "joule",
+     "type": "technical",
+     "left_cues": [
+      "kilojoules",
+      "in",
+      "per",
+      "of"
+     ],
+     "right_cues": [
+      "per mole",
+      "per kilogram",
+      "per second",
+      "of energy"
+     ],
+     "phrase_patterns": [
+      "joules per mole",
+      "kilojoules per mole",
+      "100 joules",
+      "joule is the SI unit for energy"
+     ],
+     "topic_cues": [
+      "energy",
+      "work",
+      "heat",
+      "enthalpy",
+      "SI unit"
+     ],
+     "negative_cues": [
+      "gem",
+      "crown",
+      "ring",
+      "jewellery"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://openstax.org/books/university-physics-volume-2/pages/9-summary"
+      },
+      {
+       "url": "https://openstax.org/books/physics/pages/a-reference-tables"
+      },
+      {
+       "url": "http://openstax.org/books/astronomy-2e/pages/16-1-sources-of-sunshine-thermal-and-gravitational-energy"
+      }
+     ],
+     "notes": "Source usage: 'The SI unit for electric power is the watt and the SI unit for electric energy is the joule'; reference table lists derived unit Energy, J, joule; 'a 100-watt bulb uses 100 joules (J) of energy every second'."
+    },
+    {
+     "label": "jewel (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "a",
+      "the",
+      "crown"
+     ],
+     "right_cues": [
+      "in",
+      "of",
+      "ring",
+      "thief"
+     ],
+     "phrase_patterns": [
+      "crown jewel",
+      "a jewel in",
+      "jewel thief"
+     ],
+     "topic_cues": [
+      "jewellery",
+      "treasure",
+      "general narration"
+     ],
+     "negative_cues": [
+      "per mole",
+      "per second",
+      "SI unit"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: gem noun with crown/jewellery collocates; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "what",
+   "slash_form": "what/watt",
+   "slot_note": "Unit slot after a number: spoken 'watt' names the SI unit of power and follows a quantity ('100 watts', 'watts per square metre'). Ordinary 'what' is a question word and opens or embeds a clause ('what is', 'what happens'). A preceding number decides for watt; a following verb in a question decides for ordinary what.",
+   "candidates": [
+    {
+     "label": "watt",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "per",
+      "kilowatts",
+      "megawatts"
+     ],
+     "right_cues": [
+      "per square metre",
+      "per second",
+      "of power",
+      "bulb"
+     ],
+     "phrase_patterns": [
+      "100 watts",
+      "watts per square metre",
+      "a watt is a unit of power",
+      "100-watt bulb"
+     ],
+     "topic_cues": [
+      "power",
+      "energy rate",
+      "heat transfer",
+      "SI unit",
+      "joules per second"
+     ],
+     "negative_cues": [
+      "what is",
+      "what happens",
+      "what if (question patterns)"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "http://openstax.org/books/astronomy-2e/pages/16-1-sources-of-sunshine-thermal-and-gravitational-energy"
+      },
+      {
+       "url": "https://openstax.org/books/college-physics-ap-courses/pages/20-4-electric-power-and-energy"
+      },
+      {
+       "url": "https://openstax.org/books/physics/pages/a-reference-tables"
+      }
+     ],
+     "notes": "Source usage: 'A watt (W) is a unit of power ... measured in joules per second (J/s)'; 'a 100-watt bulb uses 100 joules of energy every second'; 'power has units of joules per second, or watts'; table lists Power, W, watt."
+    },
+    {
+     "label": "what (ordinary question word)",
+     "type": "ordinary",
+     "left_cues": [
+      "so",
+      "now",
+      "and"
+     ],
+     "right_cues": [
+      "is",
+      "happens",
+      "if",
+      "does",
+      "about"
+     ],
+     "phrase_patterns": [
+      "what is",
+      "what happens",
+      "what if",
+      "what about"
+     ],
+     "topic_cues": [
+      "questions",
+      "general narration"
+     ],
+     "negative_cues": [
+      "watts per",
+      "100-watt",
+      "unit of power"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: what + verb opens a question clause; a number directly before the slot rules the question reading out."
+    }
+   ]
+  },
+  {
+   "heard": "pwahz",
+   "slash_form": "pwahz/poise/centipoise",
+   "slot_note": "Unit pair for dynamic viscosity, differing by a factor of 100 (1 poise = 100 centipoise); the prefix centi- is easily lost in speech, so the decisive cues are magnitude and reference values around the slot: water at about 20 degrees is about 1 centipoise (0.01 poise), and an explicit 'cP' or a conversion statement settles it. A bare 'viscosity is X [slot]' with no magnitude or reference gives no reliable pattern.",
+   "candidates": [
+    {
+     "label": "poise",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "of",
+      "viscosity in"
+     ],
+     "right_cues": [
+      "poise",
+      "P",
+      "is 100 centipoise"
+     ],
+     "phrase_patterns": [
+      "poise",
+      "1 poise = 100 centipoise",
+      "viscosity in poise"
+     ],
+     "topic_cues": [
+      "dynamic viscosity",
+      "CGS unit",
+      "dyne second per square centimetre",
+      "unit conversion"
+     ],
+     "negative_cues": [
+      "centipoise (as the stated unit)",
+      "cP",
+      "water is about 1"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.engineeringtoolbox.com/amp/viscosity-converter-d_594.html"
+      },
+      {
+       "url": "https://www.omnicalculator.com/physics/poise-stokes-converter"
+      }
+     ],
+     "notes": "Source usage (conversion tables): 'Poise (dyne s/cm2) ... centipoise (cP)' with 'Poise = 1, centipoise = 100' in the same row, i.e. 1 poise = 100 centipoise; 'A poise (P)... has a value equivalent to 0.1 pascal-seconds'."
+    },
+    {
+     "label": "centipoise",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "of",
+      "viscosity in"
+     ],
+     "right_cues": [
+      "centipoise",
+      "cP",
+      "is about 1"
+     ],
+     "phrase_patterns": [
+      "centipoise",
+      "in centipoise",
+      "viscosity of water is 1 centipoise",
+      "cP"
+     ],
+     "topic_cues": [
+      "dynamic viscosity",
+      "water at room temperature",
+      "millipascal second"
+     ],
+     "negative_cues": [
+      "poise (as the stated unit, without centi- context)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.engineeringtoolbox.com/amp/viscosity-converter-d_594.html"
+      },
+      {
+       "url": "https://www.omnicalculator.com/physics/poise-stokes-converter"
+      }
+     ],
+     "notes": "Source usage: 'for practical reasons, we usually use centipoise... for dynamic viscosity'; conversion table row 'centipoise (cP) = 0.01 poise'; water at 20 C is 1 centipoise in the poise source result."
+    }
+   ]
+  },
+  {
+   "heard": "poise",
+   "slash_form": "poise/poise/centipoise",
+   "slot_note": "Same unit alternatives as pwahz, but the heard form is the exact spelling of the first unit, and \"poise\" is also an ordinary noun/verb (composure; to balance or be ready). Coordinator-authored at merge from the pwahz item plus a structural ordinary candidate. Unit pair for dynamic viscosity, differing by a factor of 100 (1 poise = 100 centipoise); the prefix centi- is easily lost in speech, so the decisive cues are magnitude and reference values around the slot: water at about 20 degrees is about 1 centipoise (0.01 poise), and an explicit 'cP' or a conversion statement settles it. A bare 'viscosity is X [slot]' with no magnitude or reference gives no reliable pattern.",
+   "candidates": [
+    {
+     "label": "poise",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "of",
+      "viscosity in"
+     ],
+     "right_cues": [
+      "poise",
+      "P",
+      "is 100 centipoise"
+     ],
+     "phrase_patterns": [
+      "poise",
+      "1 poise = 100 centipoise",
+      "viscosity in poise"
+     ],
+     "topic_cues": [
+      "dynamic viscosity",
+      "CGS unit",
+      "dyne second per square centimetre",
+      "unit conversion"
+     ],
+     "negative_cues": [
+      "centipoise (as the stated unit)",
+      "cP",
+      "water is about 1"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.engineeringtoolbox.com/amp/viscosity-converter-d_594.html"
+      },
+      {
+       "url": "https://www.omnicalculator.com/physics/poise-stokes-converter"
+      }
+     ],
+     "notes": "Source usage (conversion tables): 'Poise (dyne s/cm2) ... centipoise (cP)' with 'Poise = 1, centipoise = 100' in the same row, i.e. 1 poise = 100 centipoise; 'A poise (P)... has a value equivalent to 0.1 pascal-seconds'."
+    },
+    {
+     "label": "centipoise",
+     "type": "technical",
+     "left_cues": [
+      "in",
+      "of",
+      "viscosity in"
+     ],
+     "right_cues": [
+      "centipoise",
+      "cP",
+      "is about 1"
+     ],
+     "phrase_patterns": [
+      "centipoise",
+      "in centipoise",
+      "viscosity of water is 1 centipoise",
+      "cP"
+     ],
+     "topic_cues": [
+      "dynamic viscosity",
+      "water at room temperature",
+      "millipascal second"
+     ],
+     "negative_cues": [
+      "poise (as the stated unit, without centi- context)"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://www.engineeringtoolbox.com/amp/viscosity-converter-d_594.html"
+      },
+      {
+       "url": "https://www.omnicalculator.com/physics/poise-stokes-converter"
+      }
+     ],
+     "notes": "Source usage: 'for practical reasons, we usually use centipoise... for dynamic viscosity'; conversion table row 'centipoise (cP) = 0.01 poise'; water at 20 C is 1 centipoise in the poise source result."
+    },
+    {
+     "label": "poise (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "her",
+      "his",
+      "with",
+      "great"
+     ],
+     "right_cues": [
+      "and confidence",
+      "under pressure",
+      "to",
+      "for the next step"
+     ],
+     "phrase_patterns": [
+      "poise and confidence",
+      "poised to",
+      "with great poise"
+     ],
+     "topic_cues": [
+      "public speaking",
+      "performance"
+     ],
+     "negative_cues": [
+      "viscosity",
+      "centipoise",
+      "cP",
+      "poise is the unit"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: ordinary noun (composure) and verb uses are frequent in general speech; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "sigh",
+   "slash_form": "sigh/psi",
+   "slot_note": "One spelling, two technical senses plus an ordinary word. As a pressure unit, psi follows a number or a pressure word ('at 100 psi', 'psig/psia'). As a Greek letter, psi is named in symbol lists or symbol-naming slots. Ordinary 'sigh' is a verb/noun of breathing with human subjects. A preceding number decides for the unit sense; a Greek/symbol topic decides for the letter sense.",
+   "candidates": [
+    {
+     "label": "psi (pressure unit)",
+     "type": "technical",
+     "left_cues": [
+      "at",
+      "of",
+      "pressure of",
+      "in"
+     ],
+     "right_cues": [
+      "gauge",
+      "absolute",
+      "psia",
+      "psig"
+     ],
+     "phrase_patterns": [
+      "100 psi",
+      "pressure in psi",
+      "psi gauge",
+      "14.7 psi"
+     ],
+     "topic_cues": [
+      "pressure",
+      "pressure units",
+      "gauge pressure",
+      "absolute pressure"
+     ],
+     "negative_cues": [
+      "Greek letter",
+      "alpha beta (symbol list)",
+      "he sighed"
+     ],
+     "strength": "strong",
+     "sources": [
+      {
+       "url": "https://citizendium.org/wiki/Psi_(unit)"
+      },
+      {
+       "url": "https://www.thermal-engineering.org/what-is-pound-per-square-inch-psi-definition/"
+      }
+     ],
+     "notes": "Source usage: 'The pound per square inch ... (symbol: psi ...) is a unit of pressure'; 'gauge pressure and absolute pressure are very commonly abbreviated as psig and psia'; 'atmospheric pressure at sea level is around 14.7 psi'."
+    },
+    {
+     "label": "psi (Greek letter)",
+     "type": "technical",
+     "left_cues": [
+      "Greek letter",
+      "the letter",
+      "chi and"
+     ],
+     "right_cues": [
+      "is",
+      "omega (in a list)"
+     ],
+     "phrase_patterns": [
+      "Greek letter psi",
+      "chi psi omega",
+      "the letter psi"
+     ],
+     "topic_cues": [
+      "Greek alphabet",
+      "symbols",
+      "notation"
+     ],
+     "negative_cues": [
+      "gauge",
+      "psia",
+      "pounds per square inch"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://phys.libretexts.org/Courses/Prince_Georges_Community_College/General_Physics_I%3A_Classical_Mechanics/02%3A_The_Greek_Alphabet"
+      }
+     ],
+     "notes": "Source usage: Greek alphabet table lists Psi psi, 'ps as in oops'. Medium: the letter sense is rare in ChemE narration compared with the pressure-unit sense."
+    },
+    {
+     "label": "sigh (ordinary)",
+     "type": "ordinary",
+     "left_cues": [
+      "he",
+      "she",
+      "a",
+      "with a"
+     ],
+     "right_cues": [
+      "of relief",
+      "and said",
+      "s"
+     ],
+     "phrase_patterns": [
+      "sigh of relief",
+      "with a sigh",
+      "he sighed"
+     ],
+     "topic_cues": [
+      "people",
+      "emotion",
+      "general narration"
+     ],
+     "negative_cues": [
+      "pressure",
+      "gauge",
+      "Greek alphabet"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: human subject + sigh, or 'a sigh of relief', is decisive; no technical source claimed."
+    }
+   ]
+  },
+  {
+   "heard": "rank-in",
+   "slash_form": "rank-in/degrees Celsius/Fahrenheit/Rankine",
+   "slot_note": "Unit-name slot after a number and usually after 'degrees': the three candidates are temperature scales, decided by the numbers and offsets in the surrounding sentence, not by the slot word alone. Rankine patterns carry absolute-zero and +459.67 / 491.67 cues; Celsius carries 0/100 freezing-boiling and +273.15 to kelvin; Fahrenheit carries 32/212. Ordinary 'rank in' is a position phrase ('rank in the top ten').",
+   "candidates": [
+    {
+     "label": "Rankine",
+     "type": "technical",
+     "left_cues": [
+      "degrees",
+      "in",
+      "absolute",
+      "temperature in"
+     ],
+     "right_cues": [
+      "scale",
+      "is",
+      "cycle (as scale context)"
+     ],
+     "phrase_patterns": [
+      "degrees Rankine",
+      "Rankine scale",
+      "Fahrenheit to Rankine",
+      "T in degrees Rankine"
+     ],
+     "topic_cues": [
+      "absolute temperature",
+      "absolute zero",
+      "459.67",
+      "491.67",
+      "heat computations using degrees Fahrenheit"
+     ],
+     "negative_cues": [
+      "freezing is 0 degrees (Celsius pattern)",
+      "freezing is 32 degrees (Fahrenheit pattern)",
+      "rank in the top"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://pressbooks.bccampus.ca/chbe220/chapter/temperature/"
+      },
+      {
+       "url": "https://en.wikipedia.org/wiki/Rankine_scale"
+      }
+     ],
+     "notes": "Source usage: BCcampus lists 'Rankine (degree R) - same size of a degree as Fahrenheit' with 'Fahrenheit to Rankine: T (degree R) = T (degree F) + 459.67' and 'Kelvin to Rankine: T (degree R) = 1.8 T (K)'; Wikipedia: 'The Rankine scale is used in engineering systems where heat computations are done using degrees Fahrenheit'. Medium: without a numeric/offset cue the three scales cannot be separated."
+    },
+    {
+     "label": "degrees Celsius",
+     "type": "technical",
+     "left_cues": [
+      "degrees",
+      "in",
+      "temperature in"
+     ],
+     "right_cues": [
+      "scale",
+      "is",
+      "and kelvin"
+     ],
+     "phrase_patterns": [
+      "degrees Celsius",
+      "Celsius to Fahrenheit",
+      "Celsius to Kelvin"
+     ],
+     "topic_cues": [
+      "freezing 0 and boiling 100",
+      "273.15",
+      "atmospheric pressure"
+     ],
+     "negative_cues": [
+      "459.67 (Rankine offset)",
+      "491.67 (Rankine freezing point)",
+      "rank in the top"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://pressbooks.bccampus.ca/chbe220/chapter/temperature/"
+      }
+     ],
+     "notes": "Source usage: BCcampus: 'Celsius (degree C) - based on water freezing (0 degree C) and boiling (100 degree C) at atmospheric pressure'; 'Celsius to Kelvin: T (K) = T (degree C) + 273.15'; 'Celsius to Fahrenheit: T (degree F) = 1.8 T (degree C) + 32'."
+    },
+    {
+     "label": "degrees Fahrenheit",
+     "type": "technical",
+     "left_cues": [
+      "degrees",
+      "in",
+      "temperature in"
+     ],
+     "right_cues": [
+      "scale",
+      "is",
+      "to Rankine"
+     ],
+     "phrase_patterns": [
+      "degrees Fahrenheit",
+      "Fahrenheit to Rankine",
+      "Fahrenheit to Celsius"
+     ],
+     "topic_cues": [
+      "freezing 32 and boiling 212",
+      "459.67 to Rankine",
+      "absolute zero -459.67"
+     ],
+     "negative_cues": [
+      "freezing 0 (Celsius pattern)",
+      "491.67 degrees Rankine",
+      "rank in the top"
+     ],
+     "strength": "medium",
+     "sources": [
+      {
+       "url": "https://pressbooks.bccampus.ca/chbe220/chapter/temperature/"
+      }
+     ],
+     "notes": "Source usage: BCcampus: 'Fahrenheit (degree F) - based on water freezing (32 degree F) and boiling (212 degree F) at atmospheric pressure. Absolute zero at -459.67 degree F'; 'Fahrenheit to Rankine: T (degree R) = T (degree F) + 459.67'."
+    },
+    {
+     "label": "rank in (ordinary position phrase)",
+     "type": "ordinary",
+     "left_cues": [
+      "his",
+      "her",
+      "its",
+      "they"
+     ],
+     "right_cues": [
+      "the top",
+      "the class",
+      "first",
+      "among"
+     ],
+     "phrase_patterns": [
+      "rank in the top",
+      "rank in the class",
+      "rank in first place"
+     ],
+     "topic_cues": [
+      "class standing",
+      "competition",
+      "general narration"
+     ],
+     "negative_cues": [
+      "degrees",
+      "absolute zero",
+      "temperature scale"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Structural: rank as a verb + 'in the ...' position phrase; a preceding 'degrees' rules this reading out."
+    }
+   ]
+  }
+ ],
+ "adjustments": [
+  "Phase 1/2 adjustment 2026-11-05 (adjust_rules.py): removed buckingham, thermo-siphon, single-effect evaporator, stoy-kee-o-metric (became certain pairs); weir family candidates repaired (fix 7); aldehyde MEK candidate removed (fix 8); new: mu candidate replaced by nu (fix 9); decision procedure set to the calibrated thresholds (top >= 8, margin >= 3, stopword-filtered cues)."
+ ]
+}

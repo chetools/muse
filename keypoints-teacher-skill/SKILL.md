@@ -20,7 +20,7 @@ If the server address or exam ID is missing, ask for it.
 
 ## Procedure
 
-The helper script is `scripts/kp.mjs` in this skill's folder (Node, no dependencies). The transcription and correction helpers are `scripts/transcribe.py` and `scripts/correct.py`. The glossary lives in `glossary/`: `corrections.json` (heard form → term), `vocabulary.txt` (the term list for your contextual pass), and `glossary.json` (the full term record).
+The helper script is `scripts/kp.mjs` in this skill's folder (Node, no dependencies). The transcription and correction helpers are `scripts/transcribe.py` and `scripts/correct.py`. The glossary lives in `glossary/`: `corrections.json` (the 145 certain pairs, heard form → term), `slash-pairs.json` (the 58 uncertain pairs — never applied outright by the map; decided by context or rendered in slash form), `context-rules.json` (the typical before/after words for those uncertain pairs), `vocabulary.txt` (the term list for your contextual pass), and `glossary.json` (the full term record).
 
 ### Phase A — the page
 
@@ -55,7 +55,7 @@ The helper script is `scripts/kp.mjs` in this skill's folder (Node, no dependenc
 4. Apply the glossary correction map:
    `python3 scripts/correct.py <transcriptFile> glossary/corrections.json`
    The corrected transcript goes to stdout; the corrections applied (`{heard, term, count}`) go to stderr as JSON.
-5. Make a contextual pass over the corrected transcript against `glossary/vocabulary.txt` and the assignment page: change only clear sound-alike errors of listed terms, where the surrounding words settle which term was meant. Do not reword, complete unfinished statements, or repair content — a term correction is the only change allowed, and every change must be listable.
+5. Make a contextual pass over the corrected transcript against `glossary/vocabulary.txt` and the assignment page: change only clear sound-alike errors of listed terms, where the surrounding words settle which term was meant. For a word matching an uncertain pair in `glossary/slash-pairs.json`, judge it by the before/after cues in `glossary/context-rules.json`; where the context does not settle it, render the pair's slash form (heard word first, then the possibilities) in the transcript you show the teacher rather than substituting a possibility. Do not reword, complete unfinished statements, or repair content — a term correction is the only change allowed, and every change must be listable.
 6. Show the teacher the corrected transcript with **every** correction listed — the mechanical ones from step 4 and your own from step 5, marked as yours.
 7. Draft the answer key from the corrected transcript: the key points in the order the teacher made them, each point one or two sentences, each with its **connection** (the earlier points or quantities it rests on, or empty) and anchored to the page block it belongs to.
 8. The teacher corrects the draft and sets the points weights, in conversation: points may be reworded, merged, dropped, or added; weights are positive numbers. Half credit (a point present but wrong — a broken connection is what makes a present point a half) is the standing scoring rule; the weights are the only numbers to settle.

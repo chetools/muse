@@ -5,6 +5,9 @@ Usage:
     python3 correct.py <transcriptFile> <correctionsJson>
 
 correctionsJson is a list of {"heard": "...", "term": "..."} pairs.
+Entries carrying a "replacement" instead of a "term" are slash-class
+(uncertain) pairs and are skipped: an uncertain pair is never replaced
+outright — it is decided by context or rendered in slash form.
 Matching is case-insensitive, whole-phrase (a match may not be preceded
 or followed by a letter or digit), and longest heard-form first. The
 whole map is applied in a single pass over the original text, so text
@@ -24,6 +27,8 @@ def load_pairs(path):
         entries = json.load(f)
     pairs = {}
     for e in entries:
+        if "replacement" in e:
+            continue  # slash-class pair: never applied outright
         heard = str(e.get("heard") or "").strip()
         term = str(e.get("term") or "").strip()
         if heard and term and heard.lower() not in pairs:

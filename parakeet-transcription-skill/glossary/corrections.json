@@ -10,16 +10,6 @@
   "status": "attested"
  },
  {
-  "heard": "gives",
-  "term": "Gibbs free energy",
-  "status": "attested"
- },
- {
-  "heard": "ideas",
-  "term": "Gibbs free energy",
-  "status": "attested"
- },
- {
   "heard": "compulse",
   "term": "Helmholtz free energy",
   "status": "attested"
@@ -27,8 +17,7 @@
  {
   "heard": "time-robinson",
   "term": "Peng–Robinson",
-  "status": "attested",
-  "full_term": "Peng–Robinson (equation of state)"
+  "status": "attested"
  },
  {
   "heard": "swah-veh red-lick kwong",
@@ -38,12 +27,6 @@
  {
   "heard": "vander walls",
   "term": "van der Waals",
-  "status": "predicted",
-  "full_term": "van der Waals (equation / forces)"
- },
- {
-  "heard": "viral",
-  "term": "virial equation / virial coefficient",
   "status": "predicted"
  },
  {
@@ -67,45 +50,18 @@
   "status": "predicted"
  },
  {
-  "heard": "azee-o-trope",
-  "term": "azeotrope / azeotropic",
-  "status": "predicted"
- },
- {
-  "heard": "easy-o-trope",
-  "term": "azeotrope / azeotropic",
-  "status": "predicted"
- },
- {
-  "heard": "do point",
-  "term": "dew point",
-  "status": "predicted"
- },
- {
   "heard": "super heated",
   "term": "superheated",
-  "status": "predicted",
-  "full_term": "superheated (vapour/steam)"
+  "status": "predicted"
  },
  {
   "heard": "sub cooled",
   "term": "subcooled",
-  "status": "predicted",
-  "full_term": "subcooled (liquid)"
+  "status": "predicted"
  },
  {
   "heard": "add-ee-uh-batic",
   "term": "adiabatic",
-  "status": "predicted"
- },
- {
-  "heard": "car-no",
-  "term": "Carnot cycle/engine/efficiency",
-  "status": "predicted"
- },
- {
-  "heard": "cannot",
-  "term": "Carnot cycle/engine/efficiency",
   "status": "predicted"
  },
  {
@@ -116,14 +72,12 @@
  {
   "heard": "bernewly",
   "term": "Bernoulli",
-  "status": "predicted",
-  "full_term": "Bernoulli (equation/principle)"
+  "status": "predicted"
  },
  {
   "heard": "bernouilli",
   "term": "Bernoulli",
-  "status": "predicted",
-  "full_term": "Bernoulli (equation/principle)"
+  "status": "predicted"
  },
  {
   "heard": "ree-ology",
@@ -132,11 +86,6 @@
  },
  {
   "heard": "laminar",
-  "term": "laminar",
-  "status": "predicted"
- },
- {
-  "heard": "laminate",
   "term": "laminar",
   "status": "predicted"
  },
@@ -163,14 +112,12 @@
  {
   "heard": "ventury",
   "term": "Venturi",
-  "status": "predicted",
-  "full_term": "Venturi (meter/effect)"
+  "status": "predicted"
  },
  {
   "heard": "or-if-iss",
   "term": "orifice",
-  "status": "predicted",
-  "full_term": "orifice (meter/plate)"
+  "status": "predicted"
  },
  {
   "heard": "man-o-meter",
@@ -180,21 +127,6 @@
  {
   "heard": "navy-er stokes",
   "term": "Navier–Stokes equations",
-  "status": "predicted"
- },
- {
-  "heard": "pwah-zoy",
-  "term": "Hagen–Poiseuille / Poiseuille's law",
-  "status": "predicted"
- },
- {
-  "heard": "moody",
-  "term": "Moody chart/diagram",
-  "status": "predicted"
- },
- {
-  "heard": "mock",
-  "term": "Mach number",
   "status": "predicted"
  },
  {
@@ -208,21 +140,6 @@
   "status": "predicted"
  },
  {
-  "heard": "fraud",
-  "term": "Froude number",
-  "status": "predicted"
- },
- {
-  "heard": "oiler",
-  "term": "Euler number/equation",
-  "status": "predicted"
- },
- {
-  "heard": "euler",
-  "term": "Euler number/equation",
-  "status": "predicted"
- },
- {
   "heard": "coo-ett",
   "term": "Couette flow",
   "status": "predicted"
@@ -233,39 +150,29 @@
   "status": "predicted"
  },
  {
-  "heard": "dill-a-tant",
-  "term": "pseudoplastic / dilatant",
-  "status": "predicted"
- },
- {
   "heard": "en-pee-ess-aitch",
   "term": "NPSH",
-  "status": "predicted",
-  "full_term": "NPSH (net positive suction head)"
+  "status": "predicted"
  },
  {
   "heard": "four-ee-ay",
   "term": "Fourier's law",
-  "status": "predicted",
-  "full_term": "Fourier's law (of heat conduction)"
+  "status": "predicted"
  },
  {
   "heard": "fourier",
   "term": "Fourier's law",
-  "status": "predicted",
-  "full_term": "Fourier's law (of heat conduction)"
+  "status": "predicted"
  },
  {
   "heard": "fourrier",
   "term": "Fourier's law",
-  "status": "predicted",
-  "full_term": "Fourier's law (of heat conduction)"
+  "status": "predicted"
  },
  {
   "heard": "fore-ay",
   "term": "Fourier's law",
-  "status": "predicted",
-  "full_term": "Fourier's law (of heat conduction)"
+  "status": "predicted"
  },
  {
   "heard": "nuss-elt",
@@ -303,11 +210,6 @@
   "status": "predicted"
  },
  {
-  "heard": "rally",
-  "term": "Rayleigh number",
-  "status": "predicted"
- },
- {
   "heard": "ray-lay",
   "term": "Rayleigh number",
   "status": "predicted"
@@ -315,32 +217,17 @@
  {
   "heard": "el-em-tee-dee",
   "term": "log mean temperature difference",
-  "status": "predicted",
-  "full_term": "log mean temperature difference (LMTD)"
+  "status": "predicted"
  },
  {
   "heard": "log mean…",
   "term": "log mean temperature difference",
-  "status": "predicted",
-  "full_term": "log mean temperature difference (LMTD)"
+  "status": "predicted"
  },
  {
   "heard": "fowling",
   "term": "fouling",
-  "status": "predicted",
-  "full_term": "fouling (factor/resistance)"
- },
- {
-  "heard": "fin",
-  "term": "fin / finned",
-  "status": "predicted",
-  "full_term": "fin / finned (tube/surface)"
- },
- {
-  "heard": "thin",
-  "term": "fin / finned",
-  "status": "predicted",
-  "full_term": "fin / finned (tube/surface)"
+  "status": "predicted"
  },
  {
   "heard": "hice-ler",
@@ -349,37 +236,23 @@
  },
  {
   "heard": "nucleat",
-  "term": "boiling regimes: nucleate boiling",
+  "term": "nucleate boiling",
   "status": "predicted"
- },
- {
-  "heard": "nuclear",
-  "term": "boiling regimes: nucleate boiling",
-  "status": "predicted"
- },
- {
-  "heard": "co-current",
-  "term": "countercurrent / cocurrent",
-  "status": "predicted",
-  "full_term": "countercurrent / cocurrent (flow arrangement)"
  },
  {
   "heard": "fix laws",
   "term": "Fick's laws",
-  "status": "predicted",
-  "full_term": "Fick's laws (first/second)"
+  "status": "predicted"
  },
  {
   "heard": "flux",
   "term": "flux",
-  "status": "predicted",
-  "full_term": "flux (molar/mass)"
+  "status": "predicted"
  },
  {
   "heard": "flucks",
   "term": "flux",
-  "status": "predicted",
-  "full_term": "flux (molar/mass)"
+  "status": "predicted"
  },
  {
   "heard": "rectifying",
@@ -394,8 +267,7 @@
  {
   "heard": "boil up",
   "term": "boilup",
-  "status": "predicted",
-  "full_term": "boilup (ratio)"
+  "status": "predicted"
  },
  {
   "heard": "re-boiler",
@@ -425,20 +297,17 @@
  {
   "heard": "het-pee",
   "term": "HETP",
-  "status": "predicted",
-  "full_term": "HETP (height equivalent to a theoretical plate)"
+  "status": "predicted"
  },
  {
   "heard": "mccabe teal",
   "term": "McCabe–Thiele",
-  "status": "predicted",
-  "full_term": "McCabe–Thiele (method/diagram)"
+  "status": "predicted"
  },
  {
   "heard": "mccabe–teel",
   "term": "McCabe–Thiele",
-  "status": "predicted",
-  "full_term": "McCabe–Thiele (method/diagram)"
+  "status": "predicted"
  },
  {
   "heard": "queue line",
@@ -457,38 +326,28 @@
  },
  {
   "heard": "fug",
-  "term": "Fenske–Underwood–Gilliland (FUG) shortcut",
+  "term": "Fenske–Underwood–Gilliland shortcut",
   "status": "predicted"
  },
  {
   "heard": "ponchon savoury",
   "term": "Ponchon–Savarit",
-  "status": "predicted",
-  "full_term": "Ponchon–Savarit (method/diagram)"
+  "status": "predicted"
  },
  {
   "heard": "ratchford rice",
   "term": "Rachford–Rice",
-  "status": "predicted",
-  "full_term": "Rachford–Rice (procedure/equation)"
- },
- {
-  "heard": "rice",
-  "term": "Rachford–Rice",
-  "status": "predicted",
-  "full_term": "Rachford–Rice (procedure/equation)"
+  "status": "predicted"
  },
  {
   "heard": "kremser",
   "term": "Kremser",
-  "status": "predicted",
-  "full_term": "Kremser (analysis/equation)"
+  "status": "predicted"
  },
  {
   "heard": "cremser",
   "term": "Kremser",
-  "status": "predicted",
-  "full_term": "Kremser (analysis/equation)"
+  "status": "predicted"
  },
  {
   "heard": "leeching",
@@ -506,25 +365,9 @@
   "status": "predicted"
  },
  {
-  "heard": "die-loo-ent",
-  "term": "solvent / solute / diluent",
-  "status": "predicted"
- },
- {
-  "heard": "plate point",
-  "term": "tie line / plait point",
-  "status": "predicted"
- },
- {
-  "heard": "retent-it",
-  "term": "permeate / retentate",
-  "status": "predicted"
- },
- {
   "heard": "psycho-metric",
   "term": "psychrometric",
-  "status": "predicted",
-  "full_term": "psychrometric (chart)"
+  "status": "predicted"
  },
  {
   "heard": "de-priest-er",
@@ -549,23 +392,11 @@
  {
   "heard": "see-star",
   "term": "CSTR",
-  "status": "predicted",
-  "full_term": "CSTR (continuous stirred-tank reactor)"
+  "status": "predicted"
  },
  {
   "heard": "pee-eff-arr",
   "term": "plug-flow reactor",
-  "status": "predicted",
-  "full_term": "plug-flow reactor (PFR)"
- },
- {
-  "heard": "dam-kurler",
-  "term": "Damköhler number/numbers",
-  "status": "predicted"
- },
- {
-  "heard": "dan kohler",
-  "term": "Damköhler number/numbers",
   "status": "predicted"
  },
  {
@@ -584,27 +415,19 @@
   "status": "predicted"
  },
  {
-  "heard": "centering",
-  "term": "poisoning (catalyst) / deactivation / fouling / sintering",
-  "status": "predicted"
- },
- {
   "heard": "feed forward",
   "term": "feedforward",
-  "status": "predicted",
-  "full_term": "feedforward (control)"
+  "status": "predicted"
  },
  {
   "heard": "pee-eye-dee",
   "term": "PID",
-  "status": "predicted",
-  "full_term": "PID (proportional–integral–derivative)"
+  "status": "predicted"
  },
  {
   "heard": "set-point",
   "term": "set point",
-  "status": "predicted",
-  "full_term": "set point (also set-point, setpoint)"
+  "status": "predicted"
  },
  {
   "heard": "la-plass",
@@ -619,17 +442,11 @@
  {
   "heard": "night-quist",
   "term": "Nyquist",
-  "status": "predicted",
-  "full_term": "Nyquist (plot/criterion)"
- },
- {
-  "heard": "root locust",
-  "term": "root locus `M,Latin`",
   "status": "predicted"
  },
  {
-  "heard": "trans-doo-ser",
-  "term": "transmitter / transducer",
+  "heard": "root locust",
+  "term": "root locus",
   "status": "predicted"
  },
  {
@@ -640,8 +457,7 @@
  {
   "heard": "resistance temperature devices",
   "term": "RTD",
-  "status": "predicted",
-  "full_term": "RTD (resistance temperature detector/device)"
+  "status": "predicted"
  },
  {
   "heard": "skah-dah",
@@ -651,24 +467,12 @@
  {
   "heard": "constitutive property models",
   "term": "constitutive",
-  "status": "predicted",
-  "full_term": "constitutive (equation/relation/model)"
- },
- {
-  "heard": "pie",
-  "term": "dimensionless analysis / Buckingham Pi theorem",
   "status": "predicted"
  },
  {
   "heard": "buckingham",
-  "term": "dimensionless analysis / Buckingham Pi theorem",
+  "term": "Buckingham Pi theorem",
   "status": "predicted"
- },
- {
-  "heard": "shell",
-  "term": "shell balance",
-  "status": "predicted",
-  "full_term": "shell balance (momentum/energy/mass)"
  },
  {
   "heard": "impellor",
@@ -677,40 +481,18 @@
  },
  {
   "heard": "thermo-siphon",
-  "term": "reboiler (kettle / thermosiphon",
+  "term": "thermosiphon",
   "status": "predicted"
  },
  {
   "heard": "single-effect evaporator",
-  "term": "evaporator: single-effect / double-effect / triple-effect / multiple-effect",
-  "status": "predicted"
- },
- {
-  "heard": "weir",
-  "term": "distillation column internals: trays, downcomer `N,Hy` — predicted: “down comer”, weir",
-  "status": "predicted"
- },
- {
-  "heard": "we're",
-  "term": "distillation column internals: trays, downcomer `N,Hy` — predicted: “down comer”, weir",
-  "status": "predicted"
- },
- {
-  "heard": "weird",
-  "term": "distillation column internals: trays, downcomer `N,Hy` — predicted: “down comer”, weir",
+  "term": "single-effect evaporator",
   "status": "predicted"
  },
  {
   "heard": "pee-an-eye-dee",
   "term": "piping & instrumentation diagram",
-  "status": "predicted",
-  "full_term": "piping & instrumentation diagram (P&ID)"
- },
- {
-  "heard": "feed",
-  "term": "FEED",
-  "status": "predicted",
-  "full_term": "FEED (front-end engineering design)"
+  "status": "predicted"
  },
  {
   "heard": "marshall & swift",
@@ -720,29 +502,21 @@
  {
   "heard": "chemical engineering plant cost index",
   "term": "Chemical Engineering Plant Cost Index",
-  "status": "predicted",
-  "full_term": "Chemical Engineering Plant Cost Index (CEPCI)"
+  "status": "predicted"
  },
  {
   "heard": "layer of protection analysis (lopa)",
   "term": "layer of protection analysis",
-  "status": "predicted",
-  "full_term": "layer of protection analysis (LOPA)"
+  "status": "predicted"
  },
  {
   "heard": "management of change [moc]",
   "term": "management of change",
-  "status": "predicted",
-  "full_term": "management of change (MOC)"
- },
- {
-  "heard": "benzeen",
-  "term": "Species (from S12 benzene–toluene example, S16 hydrocarbons, S11 methanol–water, n-hexane/n-octane and acetone–water–MIBK systems in LearnChemE quiz list, plus BCcampus/LibreTexts usage): benzene",
   "status": "predicted"
  },
  {
-  "heard": "benzine",
-  "term": "Species (from S12 benzene–toluene example, S16 hydrocarbons, S11 methanol–water, n-hexane/n-octane and acetone–water–MIBK systems in LearnChemE quiz list, plus BCcampus/LibreTexts usage): benzene",
+  "heard": "benzeen",
+  "term": "benzene",
   "status": "predicted"
  },
  {
@@ -757,30 +531,13 @@
  },
  {
   "heard": "zylene",
-  "term": "xylene (o-/m-/p-xylene) `S,G-adjacent`",
-  "status": "predicted"
- },
- {
-  "heard": "ammonium",
-  "term": "ammonia",
+  "term": "xylene",
   "status": "predicted"
  },
  {
   "heard": "assa-tone",
   "term": "acetone",
   "status": "predicted"
- },
- {
-  "heard": "ketone",
-  "term": "methyl ethyl ketone",
-  "status": "predicted",
-  "full_term": "methyl ethyl ketone (MEK)"
- },
- {
-  "heard": "aldehyde",
-  "term": "methyl ethyl ketone",
-  "status": "predicted",
-  "full_term": "methyl ethyl ketone (MEK)"
  },
  {
   "heard": "a-settle-een",
@@ -794,12 +551,7 @@
  },
  {
   "heard": "stoy-kee-o-metric",
-  "term": "urea / fertiliser names (ammonia, urea in GATE-type lists — not opened, so treat as general knowledge, not sourced) — flagged unsourced, exclude if strict. Chemistry concepts: stoichiometry/stoichiometric",
-  "status": "predicted"
- },
- {
-  "heard": "homo-genius",
-  "term": "homogeneous / heterogeneous",
+  "term": "stoichiometric",
   "status": "predicted"
  },
  {
@@ -813,18 +565,8 @@
   "status": "predicted"
  },
  {
-  "heard": "eye-gen-value",
-  "term": "eigenvalue / eigenvector",
-  "status": "predicted"
- },
- {
   "heard": "tork",
   "term": "torque",
-  "status": "predicted"
- },
- {
-  "heard": "theo-doll-ite",
-  "term": "surveying / theodolite",
   "status": "predicted"
  },
  {
@@ -835,52 +577,31 @@
  {
   "heard": "tay-veh-nan",
   "term": "Thévenin",
-  "status": "predicted",
-  "full_term": "Thévenin (equivalent)"
- },
- {
-  "heard": "phaser",
-  "term": "phasor",
-  "status": "predicted"
- },
- {
-  "heard": "balloon",
-  "term": "balun",
   "status": "predicted"
  },
  {
   "heard": "schmidt",
   "term": "Schmidt",
-  "status": "predicted",
-  "full_term": "Schmidt (Sc)"
- },
- {
-  "heard": "smith",
-  "term": "Schmidt",
-  "status": "predicted",
-  "full_term": "Schmidt (Sc)"
+  "status": "predicted"
  },
  {
   "heard": "peck-let",
   "term": "Péclet",
-  "status": "predicted",
-  "full_term": "Péclet (Pe)"
+  "status": "predicted"
  },
  {
   "heard": "kuh-nud-sen",
   "term": "Knudsen",
-  "status": "predicted",
-  "full_term": "Knudsen (Kn)"
+  "status": "predicted"
  },
  {
   "heard": "strow-hal",
   "term": "Strouhal",
-  "status": "predicted",
-  "full_term": "Strouhal (St)"
+  "status": "predicted"
  },
  {
   "heard": "beer lambert",
-  "term": "Beer–Lambert (Beer–Lambert–Bouguer) law",
+  "term": "Beer–Lambert law",
   "status": "predicted"
  },
  {
@@ -889,139 +610,84 @@
   "status": "predicted"
  },
  {
-  "heard": "pwah-son",
-  "term": "Poisson distribution/equation",
-  "status": "predicted"
- },
- {
-  "heard": "poison",
-  "term": "Poisson distribution/equation",
-  "status": "predicted"
- },
- {
   "heard": "henderson-hasselbalch equation",
   "term": "Henderson–Hasselbalch equation",
   "status": "predicted"
  },
  {
-  "heard": "row",
-  "term": "Source: S17 (all 24 letters, with pronunciations). ChemE-heavy subset first: rho",
-  "status": "predicted",
-  "full_term": "Source: S17 (all 24 letters, with pronunciations). ChemE-heavy subset first: rho (ρ, density/resistivity)"
- },
- {
-  "heard": "roe",
-  "term": "Source: S17 (all 24 letters, with pronunciations). ChemE-heavy subset first: rho",
-  "status": "predicted",
-  "full_term": "Source: S17 (all 24 letters, with pronunciations). ChemE-heavy subset first: rho (ρ, density/resistivity)"
- },
- {
   "heard": "myoo",
   "term": "mu",
-  "status": "predicted",
-  "full_term": "mu (μ, viscosity; also micro- prefix)"
+  "status": "predicted"
  },
  {
   "heard": "mew",
   "term": "mu",
-  "status": "predicted",
-  "full_term": "mu (μ, viscosity; also micro- prefix)"
- },
- {
-  "heard": "new",
-  "term": "mu",
-  "status": "predicted",
-  "full_term": "mu (μ, viscosity; also micro- prefix)"
+  "status": "predicted"
  },
  {
   "heard": "noo",
   "term": "nu",
-  "status": "predicted",
-  "full_term": "nu (ν, kinematic viscosity; frequency)"
+  "status": "predicted"
  },
  {
   "heard": "ay as in hay",
   "term": "eta",
-  "status": "predicted",
-  "full_term": "eta (η, efficiency; viscosity)"
+  "status": "predicted"
  },
  {
   "heard": "lamda",
   "term": "lambda",
-  "status": "predicted",
-  "full_term": "lambda (λ, wavelength; eigenvalue; thermal conductivity in some texts)"
+  "status": "predicted"
  },
  {
   "heard": "taw",
   "term": "tau",
-  "status": "predicted",
-  "full_term": "tau (τ, shear stress; time constant; torque)"
- },
- {
-  "heard": "tow",
-  "term": "tau",
-  "status": "predicted",
-  "full_term": "tau (τ, shear stress; time constant; torque)"
+  "status": "predicted"
  },
  {
   "heard": "fugacity coefficient (ϕ)",
   "term": "phi",
-  "status": "predicted",
-  "full_term": "phi (φ, fugacity coefficient!; volume fraction)"
+  "status": "predicted"
  },
  {
   "heard": "ps as in oops",
   "term": "psi",
-  "status": "predicted",
-  "full_term": "psi (ψ)"
+  "status": "predicted"
  },
  {
   "heard": "beta",
   "term": "beta",
-  "status": "predicted",
-  "full_term": "beta (β, volume expansion coefficient)"
+  "status": "predicted"
  },
  {
   "heard": "bait-a",
   "term": "beta",
-  "status": "predicted",
-  "full_term": "beta (β, volume expansion coefficient)"
- },
- {
-  "heard": "data",
-  "term": "beta",
-  "status": "predicted",
-  "full_term": "beta (β, volume expansion coefficient)"
+  "status": "predicted"
  },
  {
   "heard": "not one iota",
   "term": "iota",
-  "status": "predicted",
-  "full_term": "iota (ι)"
+  "status": "predicted"
  },
  {
   "heard": "x or ks, as in box",
   "term": "xi",
-  "status": "predicted",
-  "full_term": "xi (ξ)"
+  "status": "predicted"
  },
  {
   "heard": "xi",
   "term": "xi",
-  "status": "predicted",
-  "full_term": "xi (ξ)"
+  "status": "predicted"
  },
  {
   "heard": "zee",
   "term": "xi",
-  "status": "predicted",
-  "full_term": "xi (ξ)"
+  "status": "predicted"
  },
  {
   "heard": "ksai",
   "term": "xi",
-  "status": "predicted",
-  "full_term": "xi (ξ)"
+  "status": "predicted"
  },
  {
   "heard": "chee",
@@ -1034,66 +700,28 @@
   "status": "predicted"
  },
  {
-  "heard": "jewel",
-  "term": "joule",
-  "status": "predicted",
-  "full_term": "joule (J)"
- },
- {
-  "heard": "what",
-  "term": "watt",
-  "status": "predicted",
-  "full_term": "watt (W)"
- },
- {
   "heard": "om",
   "term": "ohm",
-  "status": "predicted",
-  "full_term": "ohm (Ω)"
+  "status": "predicted"
  },
  {
   "heard": "tesla",
   "term": "tesla",
-  "status": "predicted",
-  "full_term": "tesla (T)"
- },
- {
-  "heard": "pwahz",
-  "term": "candela `F,N`. Non-SI / field units: poise (P) / centipoise",
-  "status": "predicted",
-  "full_term": "candela `F,N`. Non-SI / field units: poise (P) / centipoise (cP)"
- },
- {
-  "heard": "poise",
-  "term": "candela `F,N`. Non-SI / field units: poise (P) / centipoise",
-  "status": "predicted",
-  "full_term": "candela `F,N`. Non-SI / field units: poise (P) / centipoise (cP)"
- },
- {
-  "heard": "pee-ess-eye",
-  "term": "psi (pounds per square inch) `A,G-name`",
   "status": "predicted"
  },
  {
-  "heard": "sigh",
-  "term": "psi (pounds per square inch) `A,G-name`",
+  "heard": "pee-ess-eye",
+  "term": "psi",
   "status": "predicted"
  },
  {
   "heard": "bee-tee-you",
   "term": "BTU",
-  "status": "predicted",
-  "full_term": "BTU (British thermal unit)"
+  "status": "predicted"
  },
  {
   "heard": "420 microns",
   "term": "micron",
-  "status": "predicted",
-  "full_term": "micron (for micrometre)"
- },
- {
-  "heard": "rank-in",
-  "term": "degrees Celsius/Fahrenheit/Rankine",
   "status": "predicted"
  }
 ]

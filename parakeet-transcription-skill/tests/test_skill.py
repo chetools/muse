@@ -149,6 +149,27 @@ r = run([CC[0], "--text",
          "The liquid flows over the weird into the downcomer."] + CC[1:])
 check("rules choose weir for a misheard contraction slot",
       "flows over the weir into the downcomer" in r.stdout, r.stdout)
+# Ordinary candidates must be reachable on their own phrase evidence:
+# the phrase search uses the qualifier-stripped label (the heard word
+# itself for ordinary candidates), never "viral (ordinary)".
+r = run([CC[0], "--text", "The patient has a viral infection."] + CC[1:])
+log = json.loads(r.stderr.strip().splitlines()[-1])
+check("rules keep ordinary viral on its phrase evidence",
+      r.stdout.strip() == "The patient has a viral infection."
+      and log[0]["outcome"] == "kept", f"{r.stdout} {log}")
+r = run([CC[0], "--text",
+         "This equation gives us the following result."] + CC[1:])
+log = json.loads(r.stderr.strip().splitlines()[-1])
+check("rules keep ordinary gives on its phrase evidence",
+      r.stdout.strip() == "This equation gives us the following result."
+      and log[0]["outcome"] == "kept", f"{r.stdout} {log}")
+# An abstention with non-zero scores must still log the cues that fired.
+r = run([CC[0], "--text",
+         "The viral equation of state is used for a real gas."] + CC[1:])
+log = json.loads(r.stderr.strip().splitlines()[-1])
+check("abstention log carries the fired cues",
+      log[0]["outcome"] == "abstained" and len(log[0]["cues"]) > 0
+      and max(log[0]["scores"].values()) > 0, f"got {log}")
 r = run([CC[0]])
 check("context_choice usage exit 2", r.returncode == 2,
       f"got {r.returncode}")

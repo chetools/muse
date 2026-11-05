@@ -6,7 +6,10 @@ Usage:
 
 correctionsJson is the skill's glossary/corrections.json: a list of
 {"heard": ..., "term": ...} pairs (a plain {"heard": "term"} object is
-also accepted). Replacements are case-insensitive and whole-phrase: a
+also accepted). Entries carrying a "replacement" instead of a "term"
+are slash-class (uncertain) pairs and are skipped: an uncertain pair
+is never replaced outright — it is decided by context or rendered in
+slash form. Replacements are case-insensitive and whole-phrase: a
 heard form matches only at word boundaries, never inside a longer word.
 
 All pairs are applied in a single pass over the original text, longest
@@ -31,7 +34,8 @@ def load_pairs(path):
         pairs = [(h, t) for h, t in data.items()]
     else:
         pairs = [(e["heard"], e["term"]) for e in data
-                 if isinstance(e, dict) and e.get("heard") and e.get("term")]
+                 if isinstance(e, dict) and e.get("heard") and e.get("term")
+                 and "replacement" not in e]
     # Longest heard form first; drop duplicate heard forms (first wins).
     pairs.sort(key=lambda p: len(p[0]), reverse=True)
     seen, out = set(), []

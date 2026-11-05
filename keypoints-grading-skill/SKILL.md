@@ -30,7 +30,7 @@ The first transcription run also downloads the Parakeet model (about 670 MB) to 
 
 ## Procedure
 
-Helpers: `scripts/kpgrade.mjs` (Node, no dependencies), `scripts/transcribe.py`, and `scripts/correct.py`, all in this skill's folder. The bundled glossary lives in `glossary/`: `corrections.json` (the sound-alike correction map), `vocabulary.txt` (the chemical-engineering terms list), and `glossary.json` (the full glossary the vocabulary is drawn from).
+Helpers: `scripts/kpgrade.mjs` (Node, no dependencies), `scripts/transcribe.py`, and `scripts/correct.py`, all in this skill's folder. The bundled glossary lives in `glossary/`: `corrections.json` (the sound-alike correction map — the 145 certain pairs), `slash-pairs.json` (the 58 uncertain pairs, never applied outright), `context-rules.json` (the typical before/after words for those uncertain pairs), `vocabulary.txt` (the chemical-engineering terms list), and `glossary.json` (the full glossary the vocabulary is drawn from).
 
 1. **Fetch the grading packet.**
    `node scripts/kpgrade.mjs packet <server> <sessionCode>`
@@ -42,8 +42,8 @@ Helpers: `scripts/kpgrade.mjs` (Node, no dependencies), `scripts/transcribe.py`,
    `python3 scripts/transcribe.py <outDir>/slide-1.wav [<outDir>/slide-2.wav ...]`
    It prints one transcript per file, in argument order; save the output as the raw transcript, one line per segment, and assemble it in the packet's format: `<n> (<segment title>): <what was said in that segment>`, using the titles from the packet. If the setup is missing, follow the Setup section and stop.
 4. **Correct the transcript for technical terms.** Two passes, in this order:
-   a. The correction map: `python3 scripts/correct.py <rawTranscriptFile> glossary/corrections.json > <correctedFile>`. It replaces known sound-alike mishearings with the listed terms (case-insensitive, whole phrases, longest first) and reports on stderr which corrections it applied.
-   b. A contextual pass by you, against `glossary/vocabulary.txt`: read the mapped transcript and change **only** clear sound-alike errors of terms in the vocabulary — a word the transcription produced that makes no sense in context where a listed term sounds like it. Do not correct the student's own wrong terms, wrong statements, or grammar: a student who said the wrong term is graded on having said it. When in doubt, leave the word as transcribed.
+   a. The correction map: `python3 scripts/correct.py <rawTranscriptFile> glossary/corrections.json > <correctedFile>`. It replaces known sound-alike mishearings with the listed terms (case-insensitive, whole phrases, longest first) and reports on stderr which corrections it applied. The map file holds certain pairs only; uncertain pairs are not in it and are never replaced outright.
+   b. A contextual pass by you, against `glossary/vocabulary.txt`: read the mapped transcript and change **only** clear sound-alike errors of terms in the vocabulary — a word the transcription produced that makes no sense in context where a listed term sounds like it. For a word matching an uncertain pair in `glossary/slash-pairs.json`, judge it by the before/after cues in `glossary/context-rules.json` and change it only when those words settle the term; otherwise leave it as transcribed. Do not correct the student's own wrong terms, wrong statements, or grammar: a student who said the wrong term is graded on having said it. When in doubt, leave the word as transcribed.
    The corrected transcript replaces the raw one: delete the raw transcript file, and keep and upload only the corrected transcript. (The sealed audio itself stays on the server; that is the record.)
 5. **Fetch the answer key.**
    `node scripts/kpgrade.mjs key <server> <sessionCode>`
