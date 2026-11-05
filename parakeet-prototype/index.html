@@ -48,7 +48,9 @@
   WebAssembly (WASM), the browser’s sandboxed code format. No server takes part in transcription.</p>
   <p class="sub">Purpose: measure, on a desktop Chrome browser, whether this model is fast and
   accurate enough in a static page to be worth using in place of the smaller Whisper model in the
-  Bernoulli explanation app.</p>
+  Bernoulli explanation app. It also opens on a phone, where the model load itself is the test:
+  a phone browser gives one page far less memory than a desktop browser, and this model needs
+  roughly 2 GB while it runs.</p>
 
   <h2>Privacy and network use</h2>
   <p>This page sends no telemetry and carries no analytics. The speech runtime used here is the
@@ -70,7 +72,7 @@
   browser isolation mode that multi-threaded WASM needs). Expect the load to take a few minutes
   on a first visit and to need roughly 2 GB of memory while transcribing.</p>
 
-  <h2>2. Choose an audio file</h2>
+  <h2>2. Choose an audio file, or record one</h2>
   <div class="row">
     <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg">
     <span class="status" id="audioStatus">No file chosen.</span>
@@ -78,8 +80,19 @@
   <p class="note">Any recording your browser can play back works. For the intended test, choose
   the Bernoulli take WAV file (2 min 20 s). Long recordings are cut into windows inside the
   page before transcription.</p>
+  <div class="row">
+    <button id="recBtn" disabled>Start recording</button>
+    <button id="recStopBtn" disabled>Stop recording</button>
+    <span class="status" id="recStatus">Recording needs the model loaded (step 1).</span>
+  </div>
+  <p class="note">Recording runs from the microphone on this device; nothing is uploaded.
+  While you record, the audio is transcribed in pieces of about 12 s as it arrives, and the
+  transcript below grows piece by piece. Known mishearings of Bernoulli-equation terms are
+  corrected as each piece lands (for example “burn newly” becomes “Bernoulli” and
+  “in tell pea” becomes “enthalpy”); the same corrections are applied to a transcribed
+  file. Only non-terms are corrected, so a genuine word is never rewritten.</p>
 
-  <h2>3. Transcribe</h2>
+  <h2>3. Transcribe a chosen file</h2>
   <div class="row">
     <button id="runBtn" class="primary" disabled>Transcribe</button>
     <span class="status" id="runStatus"></span>
