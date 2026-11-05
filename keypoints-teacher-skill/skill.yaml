@@ -1,0 +1,10 @@
+name: local_keypoints_teacher
+title: Build a Keypoints Assignment (Teacher)
+description: "Build an explain-the-page (keypoints) assignment on the course server: turn the teacher's photographs of a handwritten equation page into the typeset student page (LaTeX source plus an HTML fragment containing only what the photographs contain) and upload it; enrol the teacher as the model-take identity and direct the model take in the recording app; then fetch the sealed model take, transcribe it locally with Parakeet, correct the transcript for chemical-engineering terms with the bundled glossary, draft the answer key (key points and connections) for the teacher to correct and weight, and upload the approved key — which opens the assignment. The server holds audio and the key in custody only and never transcribes; the audit token comes from the environment and is never printed or stored. Trigger when a teacher asks to create or set up a keypoints assignment, convert handwriting photographs into an assignment page, or make the answer key from their model take."
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

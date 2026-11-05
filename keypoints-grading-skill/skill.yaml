@@ -1,0 +1,10 @@
+name: local_keypoints_grading
+title: Grade a Keypoints Explanation (Sealed Audio Take)
+description: "Grade a sealed spoken explanation of a teacher's handwritten page against the teacher's answer key, for a keypoints assignment. Download the sealed audio from the course server under the student's session code, transcribe it locally with Parakeet, correct the transcript for chemical-engineering terms with the bundled glossary, score each key point full, half, or zero, and upload the corrected transcript, the feedback, and the point grades. Every upload is an attempt; the standing grade is the best attempt's, and the student may re-record and be graded again. The answer key reaches this skill only after the take is sealed and is never shown to the student. Trigger when a student pastes the grading block for a keypoints assignment — course server address, assignment, and sealed session code — or asks to grade their explanation take."
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
