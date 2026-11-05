@@ -3,7 +3,7 @@
 ## Contents
 
 - `SKILL.md`: the core rules (rules 1–35), loaded for all writing under the package. It states which reference file loads under which condition.
-- `references/`: `textbook.md` (detail sentences), `equations.md` (displayed equations), `figures.md` (figures and tables), `business.md` (business documents), `ste100.md` (the Simplified Technical English dial, on request only), `ai-check.md` (the revision and check passes, the AI-writing patterns, and the house word list), `examples.md` (rejected and accepted forms for the rules most often broken), and `evidence.md` (evidence and limits; not loaded for writing).
+- `references/`: `textbook.md` (detail sentences), `equations.md` (displayed equations), `figures.md` (figures and tables), `business.md` (business documents), `structure.md` (reorganizing existing text by importance and dependency, and sizing the opening and closing to the body length), `ste100.md` (the Simplified Technical English dial, on request only), `ai-check.md` (the revision and check passes, the AI-writing patterns, and the house word list), `examples.md` (rejected and accepted forms for the rules most often broken), and `evidence.md` (evidence and limits; not loaded for writing).
 - `tools/`: `lint_prose.py` (mechanical scan of a draft, used in the revision pass), `check_package.py` (cross-reference check of the package), and `sync_skill.py` (installs or compares the package in another repository).
 - `APPENDIX.md`: two chief executive officer letter patterns held out of the main rules because they rest on one corpus.
 
@@ -15,7 +15,7 @@ Paired samples, with and without the rules, are rendered on a published page wit
 
 ## Use with an AI assistant
 
-Install the folder as a skill (for Claude Code, `.claude/skills/writing-skills/`), or give the assistant `SKILL.md` as a standing instruction file, and name the document type in each request: a paper, a report, a tutorial, an executive summary, a recommendation memo. Ask for the revision pass in `references/ai-check.md` before delivery: "Revise this draft under writing-skills as a STEM report, and run the revision pass." For a document of consequence, ask a separate session, one that did not write the draft, to run the independent check pass against the source material, and adjudicate its findings before delivery.
+Install the folder as a skill (for Claude Code, `.claude/skills/writing-skills/`), or give the assistant `SKILL.md` as a standing instruction file, and name the document type in each request: a paper, a report, a tutorial, an executive summary, a recommendation memo. Ask for the revision pass in `references/ai-check.md` before delivery: "Revise this draft under writing-skills as a STEM report, and run the revision pass." To reorder an existing essay without rewriting it: "Reorganize this essay under writing-skills; keep the body wording and give the move list." For a document of consequence, ask a separate session, one that did not write the draft, to run the independent check pass against the source material, and adjudicate its findings before delivery.
 
 ## Use without an assistant
 

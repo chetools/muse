@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Writing rules for scientific, engineering, instructional and business text in English (papers, reports, tutorials, theory text on pages, notebook prose, captions, memos, executive summaries, slide storylines, covering messages, commit messages), measured from highly cited Nature and Science papers, AI-lab instructional writing, chemical-engineering textbooks and consulting documents. Load before drafting or revising such text, and at a check pass.
+description: Writing rules for scientific, engineering, instructional and business text in English (papers, reports, tutorials, theory text on pages, notebook prose, captions, memos, executive summaries, slide storylines, covering messages, commit messages), measured from highly cited Nature and Science papers, AI-lab instructional writing, chemical-engineering textbooks and consulting documents. Load before drafting, revising, or reorganizing such text (reordering an essay or report by importance and logical order, and sizing its opening and closing to its length), and at a check pass.
 ---
 
 # Writing skills
@@ -12,6 +12,7 @@ This core governs all writing under the package. A reference file is loaded only
 - `references/textbook.md`: detail sentences (a derivation, definition, assumption, procedure step, caveat, or worked calculation).
 - `references/equations.md`: a document with displayed equations; `textbook.md` is loaded with it.
 - `references/figures.md`: a document with figures, plots, or tables.
+- `references/structure.md`: a request to reorganize, reorder, or restructure existing text, or the outline of a new document whose body exceeds about 300 words.
 - `references/business.md`: a business document (recommendation memo or report, executive summary, slide storyline).
 - `references/ste100.md`: only when a percentage of technical style, or STE100, is requested.
 - `references/ai-check.md`: a revision or check pass.

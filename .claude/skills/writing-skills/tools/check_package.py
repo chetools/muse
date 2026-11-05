@@ -1,6 +1,6 @@
 """Consistency check for the writing-skills package. Exit 1 on any failure.
 
-Checks: every cited core rule number exists; every cited prefixed rule (T, E, B, F, C) exists in its
+Checks: every cited core rule number exists; every cited prefixed rule (T, E, B, F, S, C) exists in its
 file; every referenced file exists (any *.md name, backticked or not, except CLAUDE.md, which is the host repository's; and tools/*.py); no "Brief X" reference (the package defines no briefs); the front-matter
 description keeps its load-bearing phrases ("theory text on pages", "measured from"); no stale
 names (CHECKLIST, What not to do, writing-style, old rule ranges); SKILL.md front matter has name
@@ -15,7 +15,7 @@ core_rules = {int(n) for n in re.findall(r"^(\d+)\. ", text["SKILL.md"], re.M)}
 if core_rules != set(range(1, max(core_rules) + 1)):
     errors.append(f"core rules not contiguous: {sorted(core_rules)}")
 defined = {p: set(re.findall(rf"^({p}\d+)\. ", text[f], re.M))
-           for p, f in [("T", "textbook.md"), ("E", "equations.md"), ("B", "business.md"), ("F", "figures.md")]}
+           for p, f in [("T", "textbook.md"), ("E", "equations.md"), ("B", "business.md"), ("F", "figures.md"), ("S", "structure.md")]}
 defined["C"] = set(re.findall(r"^(C\d+)\. ", text["ai-check.md"], re.M))
 for name, t in text.items():
     for m in re.finditer(r"\b(?:core )?rules? (\d+)(?:[–-](\d+))?((?:, (?:and )?\d+)*)", t):
@@ -25,7 +25,7 @@ for name, t in text.items():
         for n in nums:
             if n not in core_rules:
                 errors.append(f"{name}: cites missing core rule {n}: '{m.group(0)}'")
-    for ref in re.findall(r"\b([TEBFC]\d+)\b", t):
+    for ref in re.findall(r"\b([TEBFCS]\d+)\b", t):
         p = ref[0]
         if p in defined and ref not in defined[p]:
             errors.append(f"{name}: cites missing {ref}")
