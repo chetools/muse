@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Watch-grading poll hook. Template: at setup, copy this file to
+# ~/hooks/scripts/watch-grading-poll.sh with __CONFIG_PATH__ replaced by the
+# absolute path of watch-config.json in the local-watch-grading skill
+# folder, then register it with the hooks tools (see the skill's SKILL.md).
+#
+# The script asks the course server one cheap question — is a sealed take
+# waiting? — with the low-privilege poll key. It ends with exactly one
+# silent or wake call, as the hook protocol requires:
+#   pending 0       -> silent (nothing to grade)
+#   pending > 0     -> wake, payload {"pending": n}
+#   401             -> silent; the refusal is logged once per revocation
+#                      (a flag file under ~/hooks/state/), not every minute
+#   fetch failure   -> silent; the failure is logged
+# State writes are skipped on dry runs (HATCH_HOOK_DRY_RUN=1), so a dry run
+# never consumes the one-time 401 log.
+set -euo pipefail
+source "$HATCH_HOOK_RUNTIME"
+
+CONFIG="__CONFIG_PATH__"
+STATE_DIR="$HOME/hooks/state"
+FLAG_401="$STATE_DIR/watch-grading-401.flag"
+
+state_write() {
+  # state_write <command...>: run a state-changing command unless dry run.
+  if [ "${HATCH_HOOK_DRY_RUN:-0}" != "1" ]; then "$@"; fi
+}
+
+if [ ! -f "$CONFIG" ]; then
+  log "watch-grading poll: config missing" "{\"config\":\"$CONFIG\"}"
+  silent "watch-config.json not found; watch setup is incomplete" '{}'
+  exit 0
+fi
+
+SERVER="$(jq -r '.server // ""' "$CONFIG")"
+POLL_KEY="$(jq -r '.pollKey // ""' "$CONFIG")"
+if [ -z "$SERVER" ] || [ -z "$POLL_KEY" ]; then
+  log "watch-grading poll: config incomplete" '{}'
+  silent "watch-config.json lacks server or pollKey" '{}'
+  exit 0
+fi
+SERVER="${SERVER%/}"
+
+BODY="$(mktemp)"
+trap 'rm -f "$BODY"' EXIT
+CODE="$(curl --silent --max-time 10 -o "$BODY" -w '%{http_code}' \
+  -H "X-Poll-Key: $POLL_KEY" "$SERVER/w/poll" || echo 000)"
+
+if [ "$CODE" = "401" ]; then
+  if [ ! -f "$FLAG_401" ]; then
+    log "watch-grading poll: poll key refused (401); revoked or regenerated" '{}'
+    state_write mkdir -p "$STATE_DIR"
+    state_write touch "$FLAG_401"
+  fi
+  silent "poll key refused (401)" '{}'
+  exit 0
+fi
+
+if [ "$CODE" != "200" ]; then
+  log "watch-grading poll: fetch failed" "{\"http\":\"$CODE\"}"
+  silent "poll fetch failed (HTTP $CODE)" '{}'
+  exit 0
+fi
+
+# A working poll clears any earlier 401 flag, so a later revocation is
+# logged once again.
+state_write rm -f "$FLAG_401"
+
+PENDING="$(jq -r '.pending // 0' "$BODY")"
+if [ "$PENDING" -gt 0 ] 2>/dev/null; then
+  wake "sealed take waiting to be graded" "{\"pending\": $PENDING}"
+else
+  silent "no pending takes" '{"pending": 0}'
+fi

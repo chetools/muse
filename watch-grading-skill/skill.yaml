@@ -1,0 +1,10 @@
+name: local_watch_grading
+title: Watch for Sealed Takes and Grade Them
+description: "Set up a watch on the course server so sealed spoken-explanation takes are transcribed and graded without the student pasting a session code each time. One-time setup from the teacher's emailed block (course server address, grading token, poll key): store the credentials in watch-config.json, install a 60-second poll hook that wakes Muse only when a take is waiting, and grade each pending take with the transcript-grading or keypoints-grading skill according to its flow. Also trigger when the student says 'check now', 'check for my take', 'grade my take', or 'grade my take now' — run the pending check at once and grade what it finds."
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true
