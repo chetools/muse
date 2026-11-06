@@ -116342,3 +116342,20 @@ zyrtec
 zyrtec's
 zyuganov
 zyuganov's
+# Supplement (2026-11-05): weekday and month names absent from the SCOWL union (may, march, august already present as ordinary words); added as data so the dictionary pass does not flag them.
+monday
+tuesday
+wednesday
+thursday
+friday
+saturday
+sunday
+january
+february
+april
+june
+july
+september
+october
+november
+december

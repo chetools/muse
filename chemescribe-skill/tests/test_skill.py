@@ -40,23 +40,23 @@ def run(args, **kw):
 # slash-pairs.json (context rules or slash form). The extension of
 # 2026-11-05 added 2 certain Nabier pairs (one attested by the user's
 # own test recording) and the term "Gibbs–Duhem equation": certain
-# 147, total 205, 8 attested across both classes (6 in the certain
+# 152, total 212, 9 attested across both classes (7 in the certain
 # class, plus the traps "gives" and "ideas" in the slash class).
 glossary = json.loads((SKILL / "glossary" / "glossary.json").read_text())
 corrections = json.loads((SKILL / "glossary" / "corrections.json").read_text())
 slash_pairs = json.loads((SKILL / "glossary" / "slash-pairs.json").read_text())
 vocab = (SKILL / "glossary" / "vocabulary.txt").read_text().strip().splitlines()
 check("glossary has 756 entries", len(glossary) == 756, f"got {len(glossary)}")
-check("corrections has 147 certain pairs", len(corrections) == 147,
+check("corrections has 152 certain pairs", len(corrections) == 152,
       f"got {len(corrections)}")
-check("slash-pairs has 58 uncertain pairs", len(slash_pairs) == 58,
+check("slash-pairs has 60 uncertain pairs", len(slash_pairs) == 60,
       f"got {len(slash_pairs)}")
-check("classes total 205 and are disjoint",
-      len(corrections) + len(slash_pairs) == 205
+check("classes total 212 and are disjoint",
+      len(corrections) + len(slash_pairs) == 212
       and not ({c["heard"].lower() for c in corrections}
                & {s["heard"].lower() for s in slash_pairs}))
 attested = [c for c in corrections if c.get("status") == "attested"]
-check("6 attested pairs in the certain class", len(attested) == 6,
+check("7 attested pairs in the certain class", len(attested) == 7,
       f"got {len(attested)}")
 check("attested traps gives/ideas are slash class",
       {s["heard"] for s in slash_pairs} >= {"gives", "ideas"})
@@ -265,6 +265,35 @@ check("no malformed candidate terms (unbalanced parens or notes)",
       all(t.count("(") == t.count(")") and " — " not in t for t, _ in _dd.terms),
       f"{len(_dd.terms)} terms")
 
+
+# 3e2. 2026-11-05 user-test extension: Ponchon, Bode, Routh-Hurwitz,
+# the dictionary guard, and the weekday/month supplement.
+check("poinch savarit certain", cmap.get("poinch savarit") == "Ponchon–Savarit")
+check("ponchon savarit certain", cmap.get("ponchon savarit") == "Ponchon–Savarit")
+check("berwitz certain", cmap.get("berwitz") == "Hurwitz")
+check("rude berwitz certain", cmap.get("rude berwitz") == "Routh–Hurwitz")
+check("berlouse certain (attested, skill only)",
+      cmap_all.get("berlouse", {}).get("term") == "Bernoulli"
+      and cmap_all["berlouse"].get("status") == "attested")
+check("poinch slash pair", smap.get("poinch") == "poinch/pinch/Ponchon")
+check("boday slash pair", smap.get("boday") == "boday/Bode")
+check("weekday and month names are in the wordlist",
+      all(w in words for w in ["monday", "friday", "sunday", "january", "december"]))
+r = run([DC[0], "--text", "the poinch and savarit method is graphical"] + DC[1:])
+check("dictionary guard: poinch and savarit is never silently pinch",
+      "pinch" not in r.stdout.replace("poinch/pinch/Ponchon–Savarit", "")
+      and r.stdout.strip() == "the poinch/pinch/Ponchon–Savarit and savarit method is graphical",
+      r.stdout)
+r = run([CC[0], "--text", "The poinch point analysis is standard."] + CC[1:])
+check("rules choose pinch on pinch collocations", r.stdout.strip() == "The pinch point analysis is standard.", r.stdout)
+r = run([CC[0], "--text", "The boday plot shows the margin."] + CC[1:])
+check("rules choose Bode for the boday plot", r.stdout.strip() == "The Bode plot shows the margin.", r.stdout)
+r = run([CC[0], "--text", "Mr Boday spoke first."] + CC[1:])
+check("bare surname Boday stays slash", "Boday/Bode" in r.stdout, r.stdout)
+r = run([str(SKILL / "scripts" / "correct.py"), "--text",
+         "the Rude-Berwitz criterion", str(SKILL / "glossary" / "corrections.json")])
+check("hyphen form matches rude berwitz pair", r.stdout.strip() == "the Routh–Hurwitz criterion", r.stdout)
+
 # 3f. Tidy stage: mechanical edits only, all logged.
 TD = [str(SKILL / "scripts" / "tidy.py")]
 r = run(TD + ["--text", "um the the pressure , rises"])
@@ -281,6 +310,31 @@ check("tidy keeps the timestamp prefix intact",
       r.stdout.strip() == "[00:00-00:25] The gasb rises.", r.stdout)
 r = run(TD + ["--text"])
 check("tidy usage exit 2", r.returncode == 2, f"got {r.returncode}")
+
+
+# 3g2. Full pipeline on the user's second test paragraph (2026-11-05):
+# the skill version, with Bernoulli restored by the berlouse pair.
+USER_PARA = ("The Navier-Stokes equation works on Monday, Tuesday, Wednesday, "
+             "Thursday, Friday, Saturday, and Sunday, every day of the week. "
+             "Conjunction with the Berlouse equation, POINCH and Savarit, and "
+             "the RUDE-BERWITZ criterion in determining stability for transfer "
+             "functions. The BODAY stability diagram, or also sometimes called "
+             "Bode diagram, can be a bit confusing for some users.")
+USER_PARA_SKILL = USER_PARA.replace("Berlouse equation", "Bernoulli equation") \
+    .replace("POINCH and Savarit", "Ponchon and Savarit") \
+    .replace("RUDE-BERWITZ criterion", "Routh–Hurwitz criterion") \
+    .replace("BODAY stability diagram", "Bode stability diagram")
+with tempfile.TemporaryDirectory() as td:
+    src = Path(td) / "raw.txt"; src.write_text(USER_PARA)
+    r1 = run([str(SKILL / "scripts" / "correct.py"), str(src), str(SKILL / "glossary" / "corrections.json")])
+    f2 = Path(td) / "s2.txt"; f2.write_text(r1.stdout)
+    r2 = run([CC[0], str(f2)] + CC[1:])
+    f3 = Path(td) / "s3.txt"; f3.write_text(r2.stdout)
+    r3 = run([DC[0], str(f3)] + DC[1:])
+    f4 = Path(td) / "s4.txt"; f4.write_text(r3.stdout)
+    r4 = run(TD + [str(f4), "--final"])
+    check("full pipeline on the user's second test paragraph",
+          r4.stdout.strip() == USER_PARA_SKILL, r4.stdout)
 
 # 3g. Full pipeline regression fixture: the user's own test sentence
 # (2026-11-05) through map -> rules -> dictionary -> tidy (final).

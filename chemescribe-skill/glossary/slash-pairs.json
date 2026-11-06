@@ -230,5 +230,13 @@
  {
   "heard": "rank-in",
   "replacement": "rank-in/degrees Celsius/Fahrenheit/Rankine"
+ },
+ {
+  "heard": "poinch",
+  "replacement": "poinch/pinch/Ponchon"
+ },
+ {
+  "heard": "boday",
+  "replacement": "boday/Bode"
  }
 ]

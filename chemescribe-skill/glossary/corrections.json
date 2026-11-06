@@ -733,5 +733,30 @@
   "heard": "nabier",
   "term": "Navier",
   "status": "predicted"
+ },
+ {
+  "heard": "poinch savarit",
+  "term": "Ponchon–Savarit",
+  "status": "predicted"
+ },
+ {
+  "heard": "ponchon savarit",
+  "term": "Ponchon–Savarit",
+  "status": "predicted"
+ },
+ {
+  "heard": "berwitz",
+  "term": "Hurwitz",
+  "status": "predicted"
+ },
+ {
+  "heard": "rude berwitz",
+  "term": "Routh–Hurwitz",
+  "status": "predicted"
+ },
+ {
+  "heard": "berlouse",
+  "term": "Bernoulli",
+  "status": "attested"
  }
 ]

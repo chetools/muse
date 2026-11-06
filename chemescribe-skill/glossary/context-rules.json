@@ -1,6 +1,6 @@
 {
  "version": "1.1",
- "scope": "58 uncertain items: the final slash pairs after the Phase 1 cleanup (2026-11-05)",
+ "scope": "60 uncertain items: the final slash pairs after the Phase 1 cleanup (2026-11-05), plus poinch and boday (2026-11-05 user test)",
  "decision_procedure": {
   "weights": {
    "exact_phrase_pattern": 5,
@@ -5586,6 +5586,104 @@
      "strength": "strong",
      "sources": [],
      "notes": "Structural: rank as a verb + 'in the ...' position phrase; a preceding 'degrees' rules this reading out."
+    }
+   ]
+  },
+  {
+   "heard": "poinch",
+   "slash_form": "poinch/pinch/Ponchon",
+   "slot_note": "ASR garble: 'poinch' may be pinch (heat integration) or the head of Ponchon–Savarit. The following words decide: 'Savarit' within a few words (allowing 'and') means Ponchon; pinch collocations (point, analysis, temperature, technology) mean pinch.",
+   "candidates": [
+    {
+     "label": "pinch",
+     "type": "technical",
+     "left_cues": [],
+     "right_cues": [
+      "point",
+      "analysis",
+      "temperature",
+      "technology"
+     ],
+     "phrase_patterns": [
+      "pinch point",
+      "pinch analysis",
+      "pinch temperature",
+      "pinch technology"
+     ],
+     "topic_cues": [
+      "heat integration",
+      "heat exchanger network"
+     ],
+     "negative_cues": [
+      "Savarit"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Standard pinch-analysis collocations."
+    },
+    {
+     "label": "Ponchon",
+     "type": "technical",
+     "left_cues": [],
+     "right_cues": [
+      "Savarit",
+      "and Savarit"
+     ],
+     "phrase_patterns": [
+      "Ponchon Savarit",
+      "Ponchon and Savarit",
+      "Ponchon–Savarit"
+     ],
+     "topic_cues": [
+      "distillation",
+      "enthalpy–composition",
+      "enthalpy composition"
+     ],
+     "negative_cues": [
+      "point",
+      "analysis"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "Ponchon–Savarit is the standard enthalpy–composition diagram method for binary distillation; right cue 'Savarit' is decisive."
+    }
+   ]
+  },
+  {
+   "heard": "boday",
+   "slash_form": "boday/Bode",
+   "slot_note": "'Boday' may be the surname Boday or a garble of Bode. Only the attested collocations (Bode stability diagram, Bode diagram, Bode plot, Bode stability) settle it; a bare surname use stays slash.",
+   "candidates": [
+    {
+     "label": "Bode",
+     "type": "technical",
+     "left_cues": [],
+     "right_cues": [
+      "stability",
+      "diagram",
+      "plot",
+      "magnitude",
+      "phase"
+     ],
+     "phrase_patterns": [
+      "Bode stability diagram",
+      "Bode stability",
+      "Bode diagram",
+      "Bode plot"
+     ],
+     "topic_cues": [
+      "transfer function",
+      "stability",
+      "frequency response"
+     ],
+     "negative_cues": [
+      "spoke",
+      "said",
+      "mr"
+     ],
+     "strength": "strong",
+     "sources": [],
+     "notes": "'Bode stability diagram' is attested verbatim in the literature; Bode diagrams are the standard stability-margin tool."
     }
    ]
   }

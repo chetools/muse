@@ -287,6 +287,37 @@ def group_options(data, toks, i, size):
     return opts
 
 
+def multiword_competitor(data, toks, i, chosen_repl):
+    """Guard against a silent replacement that is probably the head
+    of a multiword term: if some multiword vocabulary term's head is
+    within edit distance 3 of the heard word AND the following words
+    (allowing one intervening 'and') match that term's continuation,
+    the phrase match outranks the single-word replacement chosen
+    alone. Returns the competing term's display, or None. A chosen
+    replacement that IS that term (its continuation absorbed) is not
+    a competitor."""
+    w = toks[i]["low"]
+    j = i + 1
+    if j < len(toks) and toks[j]["low"] == "and":
+        j += 1
+    following = [t["low"] for t in toks[j:j + 3]]
+    if not following:
+        return None
+    best = None
+    for display, tw in data.terms:
+        if len(tw) < 2 or display == chosen_repl:
+            continue
+        if lev(w, tw[0], cap=3) > 3:
+            continue
+        k = 0
+        while k < len(tw) - 1 and k < len(following) \
+                and following[k] == tw[1 + k]:
+            k += 1
+        if k >= 1 and (best is None or k > best[1]):
+            best = (display, k)
+    return best[0] if best else None
+
+
 def decide(opts, capitalised_risk, never_silent=False):
     """Apply the decision bar. Returns (outcome, replacement, ranked)
     with ranked = [(repl, lev, phon, span_end), ...] best first,
@@ -398,6 +429,11 @@ def process_line(data, line):
         opts = candidate_options(data, toks, i)
         outcome, best, ranked = decide(
             opts, cap_risk, never_silent=t["low"] in data.traps)
+        if outcome == "replaced":
+            competitor = multiword_competitor(data, toks, i, best[0])
+            if competitor:
+                outcome = "slash"
+                ranked = [best] + [(competitor, 3, False, i)]
         if outcome == "uncertain":
             log.append({
                 "heard": t["text"], "outcome": "uncertain",

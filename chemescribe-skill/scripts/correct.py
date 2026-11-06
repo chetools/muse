@@ -65,13 +65,17 @@ def main(argv):
         print("[]", file=sys.stderr)
         return 0
     lookup = {heard.lower(): (heard, term) for heard, term in pairs}
+    # A space inside a heard form also matches a hyphen: ASR writes
+    # "Rude-Berwitz" for the spoken phrase the pair lists as
+    # "rude berwitz".
     pattern = re.compile(
-        r"\b(?:" + "|".join(re.escape(heard) for heard, _ in pairs) + r")\b",
+        r"\b(?:" + "|".join(re.escape(heard).replace(r"\ ", r"[\s\-]")
+                            for heard, _ in pairs) + r")\b",
         re.IGNORECASE)
     counts = {}
 
     def repl(m):
-        heard, term = lookup[m.group(0).lower()]
+        heard, term = lookup[m.group(0).lower().replace("-", " ")]
         counts[heard] = counts.get(heard, 0) + 1
         return term
 
