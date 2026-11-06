@@ -7,7 +7,7 @@
 //       script asks it every minute and wakes Muse only when n > 0.
 //   node watch.mjs pending
 //       Print the pending list from GET /w/pending (sent with the grading
-//       token): {"takes": [{examId, title, sessionCode, status, flow,
+//       token): {"takes": [{examId, title, sessionCode, status,
 //       sealedAt}]}. Fetching the list claims each take for 15 minutes, so
 //       a take listed here is not listed again until the claim expires or
 //       a grading upload clears it — grade what it returns, do not fetch

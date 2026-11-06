@@ -15,10 +15,10 @@ const configUrl = new URL("watch-config.json", skillDir);
 const watchUrl = new URL("scripts/watch.mjs", skillDir);
 
 const TAKES = [
-  { examId: "exam-1", title: "Bernoulli explanation", sessionCode: "SEAL-AAA",
-    status: "audio_sealed", flow: "transcript", sealedAt: "2026-11-06T11:00:00Z" },
-  { examId: "exam-2", title: "Rachford-Rice page", sessionCode: "SEAL-BBB",
-    status: "sealed", flow: "keypoints", sealedAt: "2026-11-06T11:05:00Z" },
+  { examId: "exam-1", title: "Rachford-Rice page", sessionCode: "SEAL-AAA",
+    status: "audio_sealed", sealedAt: "2026-11-06T11:00:00Z" },
+  { examId: "exam-2", title: "Ponchon-Savarit page", sessionCode: "SEAL-BBB",
+    status: "sealed", sealedAt: "2026-11-06T11:05:00Z" },
 ];
 
 const stub = createServer((req, res) => {
@@ -79,9 +79,9 @@ try {
   try { pendingData = JSON.parse(pending.stdout); } catch { /* counted below */ }
   check("pending prints the takes list", !!pendingData && Array.isArray(pendingData.takes) &&
     pendingData.takes.length === 2, "stdout: " + pending.stdout);
-  check("pending takes carry session codes and flow fields", !!pendingData &&
-    pendingData.takes[0].sessionCode === "SEAL-AAA" && pendingData.takes[0].flow === "transcript" &&
-    pendingData.takes[1].sessionCode === "SEAL-BBB" && pendingData.takes[1].flow === "keypoints");
+  check("pending takes carry session codes and statuses", !!pendingData &&
+    pendingData.takes[0].sessionCode === "SEAL-AAA" && pendingData.takes[0].status === "audio_sealed" &&
+    pendingData.takes[1].sessionCode === "SEAL-BBB" && pendingData.takes[1].status === "sealed");
 
   writeConfig({ server, token: "wrong-token", pollKey: "wrong-key" });
   const badPoll = await runWatch("poll");
