@@ -376,7 +376,7 @@ el("stopTake").addEventListener("click", function(){
 });
 
 
-/* ---- transcript store (server transcription for sealed takes) ---- */
+/* ---- escaping helper ---- */
 function escHtml(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 /* ---- student sign-in and transcript sealing (server holds the master copy) ---- */
 var sealState = { sessionCode: null, sent: {}, result: null, opening: false, sealed: false, inflight: [], auth: null, audioSent: {}, audioBusy: false };
@@ -546,7 +546,7 @@ async function audioUploadAndSeal(){
     sealState.result = sd; sealState.sealed = true;
     el("endTranscript").textContent = "Your audio is sealed on the course server. No transcript is made on the server; your Muse transcribes the sealed audio \u2014 use the block above. The session code is " + sd.sessionCode + ".";
     fillPasteBlock();
-    el("sealInfo").textContent = "Session: " + sd.sessionCode + "\nSealed at: " + sd.sealedAt + "\nAudio fingerprint: " + sd.audioFingerprint + "\nTranscript fingerprint: " + (sd.transcriptFingerprint || "(pending transcription)") + "\nReceipt: " + sd.receipt;
+    el("sealInfo").textContent = "Session: " + sd.sessionCode + "\nSealed at: " + sd.sealedAt + "\nAudio fingerprint: " + sd.audioFingerprint + "\nTranscript fingerprint: " + (sd.transcriptFingerprint || "none (this take is sealed by its audio fingerprint)") + "\nReceipt: " + sd.receipt;
     sealNote("Sealed. The server holds the sealed audio; the session code is in your summary and in the block above.");
     if (!el("endScreen").classList.contains("hidden")) el("summary").textContent = buildSummary();
     return true;
@@ -587,7 +587,7 @@ function buildSummary(){
   if (sealState.result){
     lines.push("Sealed session: " + sealState.result.sessionCode);
     if (sealState.result.audioFingerprint) lines.push("Audio fingerprint: " + sealState.result.audioFingerprint);
-    lines.push("Transcript fingerprint: " + (sealState.result.transcriptFingerprint || "(pending transcription)"));
+    lines.push("Transcript fingerprint: " + (sealState.result.transcriptFingerprint || "none (this take is sealed by its audio fingerprint)"));
     lines.push("Seal receipt: " + sealState.result.receipt);
     lines.push("Sealed at: " + sealState.result.sealedAt);
   }
