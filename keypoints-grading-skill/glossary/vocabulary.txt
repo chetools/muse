@@ -86,6 +86,7 @@ Froude number
 Galilei (Ga)
 Gay-Lussac's law
 Gibbs free energy
+Gibbs–Duhem equation
 Gibbs–Duhem relation
 Gibbs–Helmholtz equation
 Gilliland correlation

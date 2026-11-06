@@ -723,5 +723,15 @@
   "heard": "420 microns",
   "term": "micron",
   "status": "predicted"
+ },
+ {
+  "heard": "nabier stokes",
+  "term": "Navier–Stokes equations",
+  "status": "attested"
+ },
+ {
+  "heard": "nabier",
+  "term": "Navier",
+  "status": "predicted"
  }
 ]

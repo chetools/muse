@@ -35,30 +35,57 @@ def run(args, **kw):
 
 
 # 1. Glossary bundle counts and status split. Since the Phase 1 cleanup
-# (2026-11-05) the 203 pairs are two classes: 145 certain pairs in
+# (2026-11-05) the pairs are two classes: certain pairs in
 # corrections.json (replace outright) and 58 uncertain pairs in
-# slash-pairs.json (context rules or slash form). 7 pairs are attested:
-# 5 in the certain class, plus the traps "gives" and "ideas" in the
-# slash class.
+# slash-pairs.json (context rules or slash form). The extension of
+# 2026-11-05 added 2 certain Nabier pairs (one attested by the user's
+# own test recording) and the term "Gibbs–Duhem equation": certain
+# 147, total 205, 8 attested across both classes (6 in the certain
+# class, plus the traps "gives" and "ideas" in the slash class).
 glossary = json.loads((SKILL / "glossary" / "glossary.json").read_text())
 corrections = json.loads((SKILL / "glossary" / "corrections.json").read_text())
 slash_pairs = json.loads((SKILL / "glossary" / "slash-pairs.json").read_text())
 vocab = (SKILL / "glossary" / "vocabulary.txt").read_text().strip().splitlines()
-check("glossary has 755 entries", len(glossary) == 755, f"got {len(glossary)}")
-check("corrections has 145 certain pairs", len(corrections) == 145,
+check("glossary has 756 entries", len(glossary) == 756, f"got {len(glossary)}")
+check("corrections has 147 certain pairs", len(corrections) == 147,
       f"got {len(corrections)}")
 check("slash-pairs has 58 uncertain pairs", len(slash_pairs) == 58,
       f"got {len(slash_pairs)}")
-check("classes total 203 and are disjoint",
-      len(corrections) + len(slash_pairs) == 203
+check("classes total 205 and are disjoint",
+      len(corrections) + len(slash_pairs) == 205
       and not ({c["heard"].lower() for c in corrections}
                & {s["heard"].lower() for s in slash_pairs}))
 attested = [c for c in corrections if c.get("status") == "attested"]
-check("5 attested pairs in the certain class", len(attested) == 5,
+check("6 attested pairs in the certain class", len(attested) == 6,
       f"got {len(attested)}")
 check("attested traps gives/ideas are slash class",
       {s["heard"] for s in slash_pairs} >= {"gives", "ideas"})
-check("vocabulary has 744 terms", len(vocab) == 744, f"got {len(vocab)}")
+check("vocabulary has 745 terms", len(vocab) == 745, f"got {len(vocab)}")
+# Extension data: the Nabier pairs, the Gibbs–Duhem term, the
+# wordlist and the traps list.
+cmap_all = {c["heard"]: c for c in corrections}
+check("nabier stokes is a certain attested pair",
+      cmap_all.get("nabier stokes", {}).get("term") == "Navier–Stokes equations"
+      and cmap_all["nabier stokes"].get("status") == "attested")
+check("nabier is a certain predicted pair",
+      cmap_all.get("nabier", {}).get("term") == "Navier"
+      and cmap_all["nabier"].get("status") == "predicted")
+check("Gibbs–Duhem equation is a glossary term and in the vocabulary",
+      any(e["term"] == "Gibbs–Duhem equation" for e in glossary)
+      and "Gibbs–Duhem equation" in vocab)
+check("no correction pair for Gibbs–Duhem (term only)",
+      not any("duhem" in c["heard"] for c in corrections))
+words = [l for l in (SKILL / "glossary" / "words.txt").read_text().splitlines()
+         if l and not l.startswith("#")]
+check("wordlist is large (SCOWL, >100k words)", len(words) > 100000,
+      f"got {len(words)}")
+check("wordlist has ordinary academic words, not mishearings",
+      "committee" in words and "photosynthesis" in words
+      and "nabier" not in words and "gasb" not in words)
+traps = [l for l in (SKILL / "glossary" / "traps.txt").read_text().splitlines()
+         if l and not l.startswith("#")]
+check("traps list carries phaser but not nabier",
+      "phaser" in traps and "nabier" not in traps, f"{len(traps)} traps")
 
 # 1b. The Phase 1 fixes are in the shipped data.
 cmap = {c["heard"]: c["term"] for c in corrections}
@@ -173,6 +200,108 @@ check("abstention log carries the fired cues",
 r = run([CC[0]])
 check("context_choice usage exit 2", r.returncode == 2,
       f"got {r.returncode}")
+
+# 3e. Dictionary pass: the general net for unpredicted mishearings.
+DC = [str(SKILL / "scripts" / "dict_check.py"),
+      str(SKILL / "glossary" / "words.txt"),
+      str(SKILL / "glossary" / "vocabulary.txt"),
+      str(SKILL / "glossary" / "glossary.json"),
+      str(SKILL / "glossary" / "traps.txt")]
+USER_SENTENCE = ("I am testing how well this thing works if the Gibbs-Duhem "
+                 "equation, the Maxwell relations. And the various chemical "
+                 "engineering terms are actually corrected properly. If the "
+                 "Nabier Stokes Darcy friction factor Fanning friction "
+                 "factor Optimally corrected.")
+r = run([DC[0], "--text", USER_SENTENCE] + DC[1:])
+check("dictionary pass alone catches Nabier Stokes",
+      "Navier–Stokes equations" in r.stdout, r.stdout)
+log = json.loads(r.stderr.strip().splitlines()[-1])
+check("dictionary catch is logged as a replacement with scores",
+      any(l["outcome"] == "replaced" and l["candidate"] == "Navier–Stokes equations"
+          for l in log), f"got {log}")
+r = run([DC[0], "--text", "The entahlpy balance closes."] + DC[1:])
+check("dictionary pass replaces a near-spelling garble",
+      r.stdout.strip() == "The enthalpy balance closes.", r.stdout)
+r = run([DC[0], "--text",
+         "The guitarist ran the solo through a phaser pedal."] + DC[1:])
+log = json.loads(r.stderr.strip().splitlines()[-1])
+check("a trap word is never replaced silently",
+      all(l["outcome"] != "replaced" for l in log)
+      and "phasor pedal" not in r.stdout.replace("phaser/phasor", ""),
+      f"{r.stdout} {log}")
+r = run([DC[0], "--text",
+         "The committee reviewed the results and the analysis was significant."] + DC[1:])
+check("ordinary academic prose is untouched and unflagged",
+      r.stdout.strip()
+      == "The committee reviewed the results and the analysis was significant."
+      and json.loads(r.stderr.strip().splitlines()[-1]) == [], r.stdout)
+r = run([DC[0], "--text", "[00:00-00:25] The entahlpy balance closes."] + DC[1:])
+check("dictionary pass leaves the timestamp prefix untouched",
+      r.stdout.strip() == "[00:00-00:25] The enthalpy balance closes.", r.stdout)
+r = run([DC[0], "--text"])
+check("dict_check usage exit 2", r.returncode == 2, f"got {r.returncode}")
+# Independent-review regressions (Brief A findings 1-3, 2026-11-05):
+# units, digit-adjacent letter runs and malformed candidate fragments.
+r = run([DC[0], "--text",
+         "the pressure is 101 kpa and the amount is 3 mol"] + DC[1:])
+check("dictionary pass never touches unit symbols",
+      r.stdout.strip() == "the pressure is 101 kpa and the amount is 3 mol"
+      and json.loads(r.stderr.strip().splitlines()[-1]) == [], r.stdout)
+r = run([DC[0], "--text", "entahlpy300 and 300entahlpy and h2o"] + DC[1:])
+check("dictionary pass never touches letter runs touching digits",
+      r.stdout.strip() == "entahlpy300 and 300entahlpy and h2o"
+      and json.loads(r.stderr.strip().splitlines()[-1]) == [], r.stdout)
+r = run([DC[0], "--text", "The absorbtion column removes the solvent."] + DC[1:])
+log = json.loads(r.stderr.strip().splitlines()[-1])
+check("annotated-line term is reachable (absorption salvaged)",
+      any(l["candidate"] == "absorption" for l in log), f"{r.stdout} {log}")
+r = run([DC[0], "--text", "The seperation factor determines the purity."] + DC[1:])
+check("a non-head component alone is not offered (seperation missed, as on the page)",
+      r.stdout.strip() == "The seperation factor determines the purity.", r.stdout)
+sys.path.insert(0, str(SKILL / "scripts"))
+from dict_check import DictData as _DD
+_dd = _DD(DC[1], DC[2], DC[3], DC[4])
+check("no malformed candidate terms (unbalanced parens or notes)",
+      all(t.count("(") == t.count(")") and " — " not in t for t, _ in _dd.terms),
+      f"{len(_dd.terms)} terms")
+
+# 3f. Tidy stage: mechanical edits only, all logged.
+TD = [str(SKILL / "scripts" / "tidy.py")]
+r = run(TD + ["--text", "um the the pressure , rises"])
+check("tidy removes fillers, duplicates and space before punctuation",
+      r.stdout.strip() == "the pressure, rises", r.stdout)
+log = json.loads(r.stderr.strip().splitlines()[-1])
+check("tidy logs its edit classes",
+      {e["edit"] for e in log} >= {"filler", "duplicate", "spacing"}, f"got {log}")
+r = run(TD + ["--text", "the value is stable", "--final"])
+check("tidy final adds initial capital and terminal full stop",
+      r.stdout.strip() == "The value is stable.", r.stdout)
+r = run(TD + ["--text", "[00:00-00:25] um the gasb rises", "--final"])
+check("tidy keeps the timestamp prefix intact",
+      r.stdout.strip() == "[00:00-00:25] The gasb rises.", r.stdout)
+r = run(TD + ["--text"])
+check("tidy usage exit 2", r.returncode == 2, f"got {r.returncode}")
+
+# 3g. Full pipeline regression fixture: the user's own test sentence
+# (2026-11-05) through map -> rules -> dictionary -> tidy (final).
+with tempfile.TemporaryDirectory() as td:
+    src = Path(td) / "raw.txt"
+    src.write_text(USER_SENTENCE)
+    r1 = run([str(SKILL / "scripts" / "correct.py"), str(src),
+              str(SKILL / "glossary" / "corrections.json")])
+    f2 = Path(td) / "s2.txt"; f2.write_text(r1.stdout)
+    r2 = run([CC[0], str(f2)] + CC[1:])
+    f3 = Path(td) / "s3.txt"; f3.write_text(r2.stdout)
+    r3 = run([DC[0], str(f3)] + DC[1:])
+    f4 = Path(td) / "s4.txt"; f4.write_text(r3.stdout)
+    r4 = run(TD + [str(f4), "--final"])
+    expected = ("I am testing how well this thing works if the Gibbs-Duhem "
+                "equation, the Maxwell relations. And the various chemical "
+                "engineering terms are actually corrected properly. If the "
+                "Navier–Stokes equations Darcy friction factor Fanning "
+                "friction factor Optimally corrected.")
+    check("full pipeline on the user's test sentence",
+          r4.stdout.strip() == expected, r4.stdout)
 
 # Pipeline: certain map first, then the rules stage; a timestamp
 # prefix passes through both untouched.
