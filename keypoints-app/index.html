@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Explain the page</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#f7f5f0;color:#1c1c1c;font-family:Georgia,'Times New Roman',serif;line-height:1.45}
+.wrap{max-width:880px;margin:0 auto;padding:20px 18px 48px}
+header.top{border-bottom:3px double #444;padding-bottom:12px;margin-bottom:16px}
+h1{font-size:1.9rem;margin:0 0 4px}
+.purpose{font-size:1.02rem;color:#333;margin:0 0 12px}
+.panel{background:#fff;border:1px solid #c9c4b8;border-radius:8px;padding:14px 16px;margin-bottom:14px}
+fieldset{border:1px solid #ddd6c6;border-radius:6px;margin:0 0 10px;padding:8px 12px}
+legend{font-weight:bold;font-size:.92rem;padding:0 4px}
+label.choice{display:inline-block;margin:4px 14px 4px 0;font-size:1rem;cursor:pointer}
+select{font-size:1rem;padding:6px}
+button{font-family:inherit;font-size:1rem;padding:12px 18px;border-radius:6px;border:1px solid #555;background:#fff;color:#1c1c1c;cursor:pointer;min-height:48px}
+button.primary{background:#1f4d6e;color:#fff;border-color:#1f4d6e}
+button:disabled{opacity:.45;cursor:default}
+video#preview{width:100%;max-width:420px;background:#000;border-radius:6px;display:block;margin-top:10px}
+.err{color:#8b1a1a;font-weight:bold}
+.okmsg{color:#1e5c2e}
+.stage{background:#fff;border:1px solid #c9c4b8;border-radius:8px;padding:22px 22px 16px;position:relative;min-height:340px}
+.steptag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:.9rem;color:#555;margin-bottom:6px}
+.leveltag{background:#e8e2d2;border-radius:4px;padding:2px 8px;font-weight:bold;color:#333}
+h2.steptitle{font-size:1.45rem;margin:2px 0 10px}
+.prompt{font-size:2.1rem;line-height:1.25;font-weight:bold;margin:10px 0 16px;word-wrap:break-word}
+.stage.centered{display:flex;flex-direction:column}
+.stage.centered .prompt{text-align:center;margin-top:auto;margin-bottom:auto;white-space:pre-line;font-size:2.6rem;line-height:1.5}
+.eq.fixed{text-align:left;padding-left:26px}
+.symbols{background:#f3efe4;border-left:4px solid #1f4d6e;padding:8px 12px;font-size:.95rem;margin:10px 0}
+.eq{background:#faf8f2;border:1px solid #ddd6c6;border-radius:6px;padding:14px 12px;font-size:1.28rem;text-align:center;overflow-x:auto;margin:10px 0;line-height:2}
+.eq .row{display:block;white-space:nowrap}
+.frac{display:inline-block;vertical-align:middle;text-align:center;margin:0 .12em}
+.frac>span{display:block;padding:0 .18em;font-size:.82em;line-height:1.25}
+.frac>span:first-child{border-bottom:1.5px solid currentColor}
+sub,sup{font-size:.68em}
+.cover{margin:12px 0 4px}
+.cover h3{margin:0 0 4px;font-size:1rem}
+.cover ul{margin:0;padding-left:22px}
+.cover li{margin:3px 0}
+.sugg{font-size:.92rem;color:#555;margin-top:10px}
+.navrow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0}
+.edgebtn{font-size:1.5rem;padding:10px 16px}
+.progressouter{background:#e3ded0;border-radius:5px;height:14px;overflow:hidden;margin:8px 0}
+.progressinner{background:#1f4d6e;height:100%;width:0%}
+.counter{font-size:.95rem;color:#444;text-align:center}
+.recind{display:none;color:#8b1a1a;font-weight:bold}
+.recind.on{display:inline}
+pre#summary{white-space:pre-wrap;word-wrap:break-word;background:#faf8f2;border:1px solid #ddd6c6;border-radius:6px;padding:12px;font-size:.88rem}
+.diagram{text-align:center;margin:8px 0}
+.diagram svg{max-width:100%;height:auto}
+.hidden{display:none}
+a.dl{display:inline-block;margin:8px 10px 8px 0;padding:12px 18px;border:1px solid #1f4d6e;border-radius:6px;color:#1f4d6e;text-decoration:none;background:#fff}
+video#playback{width:100%;max-width:560px;display:block;background:#000;border-radius:6px;margin:10px 0}
+html,body{max-width:100%;overflow-x:hidden}
+img,svg,canvas{max-width:100%}
+.stage,.panel,.eq{max-width:100%;box-sizing:border-box}
+.recItem{border-top:1px solid #ddd;padding:10px 0}
+@media (max-width:520px){
+ .stage{padding:16px 14px}
+ .wrap{padding:14px 10px 40px}
+}
+@media (max-width:600px){ .eq{font-size:.80rem} }
+@media (max-width:380px){ .eq{font-size:.76rem} }
+@media (max-width:340px){ .eq{font-size:.70rem} }
+
+.tpage{background:#fffdf5;border:1px solid #e4dfc8;border-radius:8px;padding:14px 16px}
+.tblock{display:flex;gap:14px;padding:10px 0;border-bottom:1px dashed #e0dac2}
+.tblock:last-child{border-bottom:none}
+.teq{flex:1 1 auto;min-width:0;font-size:1.12rem;line-height:1.7}
+.tnote{flex:0 0 168px;border-left:2px solid #e8dfae;padding-left:10px;color:#6d5f1e;font-size:.92rem}
+@media (max-width:560px){ .tblock{flex-direction:column;gap:4px} .tnote{flex:none;border-left:none;border-top:2px solid #e8dfae;padding:6px 0 0} }
+#assignPage{max-height:70vh;overflow-y:auto}
+.modelbanner{background:#fdf3d7;border:2px solid #b58900;border-radius:6px;padding:10px 12px;font-weight:bold;margin:0 0 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<h1 id="examTitle">Explain the page</h1>
+<p class="purpose">Explain the assignment page aloud, in one recording.</p>
+<div>
+<fieldset><legend>Response</legend>
+<label class="choice"><input type="radio" name="response" value="Speak" checked> Speak (camera recording)</label>
+<label class="choice"><input type="radio" name="response" value="Audio"> Audio only (microphone, no camera)</label>
+</fieldset>
+</div>
+</header>
+
+<section class="panel" id="setupPanel">
+<h2 style="margin-top:0;font-size:1.15rem">Camera</h2>
+<div id="cameraArea">
+<video id="preview" autoplay muted playsinline></video>
+<p id="camStatus">The camera switches on when you press Record. Audio only mode works without it.</p>
+</div>
+<p style="font-size:.92rem;color:#444">The recording stays on this device until you download it.</p>
+</section>
+
+<section class="panel" id="recordPanel">
+<h2 style="margin-top:0;font-size:1.15rem">Record</h2>
+<p>
+<button id="startTake" class="primary" type="button" disabled>&#9679; Record</button>
+<button id="stopTake" type="button" disabled>Stop</button>
+<span class="recind" id="recInd">&#9679; RECORDING</span>
+</p>
+<p id="takeStatus" style="font-size:.95rem;color:#444">Press Record to start. Explain the whole assignment page below in one recording, scrolling as you go; press End take under the page when you finish.</p>
+<p id="assignNote" style="font-size:.95rem;color:#8b1a1a;font-weight:bold"></p>
+</section>
+
+<section class="panel" id="sealPanel">
+<h2 style="margin-top:0;font-size:1.15rem">Sign in and transcript sealing</h2>
+<p style="font-size:.95rem;color:#444">For a graded take, sign in first: fill in the course server and the assignment code from your course page, enter your school email, and open the sign-in link that is emailed to you (on this device). Then record as usual. Sealing sends your audio &mdash; not the video &mdash; to the course server at the end of the take, as a single recording of the whole explanation. The server seals the audio and holds it: it cannot be changed afterwards, and nothing is transcribed on the server. Keep the sealed session code from your summary; the block on the end screen carries it to your Muse, which transcribes the sealed audio and compares your explanation against the standard for the assignment.</p>
+<p><label>Course server<br><input type="text" id="sealServer" placeholder="https://your-course-server.example" style="width:min(520px,100%);font-size:1rem;padding:8px"></label></p>
+<p><label>Exam code<br><input type="text" id="sealExam" placeholder="from your course page" style="width:min(520px,100%);font-size:1rem;padding:8px"></label></p>
+<p><label>School email<br><input type="text" id="sealEmail" placeholder="you@school.edu" style="width:min(520px,100%);font-size:1rem;padding:8px"></label>
+<button type="button" id="sealLoginBtn" style="font-size:1rem;padding:8px 14px;margin-left:8px">Email me a sign-in link</button></p>
+<p id="sealStatus" style="font-size:.95rem;color:#444">Not signed in. This take will not be sealed until you sign in.</p>
+</section>
+
+<section class="panel" id="recordingsPanel">
+<h2>Recordings</h2>
+<p class="small" id="recEmpty">No recordings yet. A recording exists only in this page&rsquo;s memory while the page stays open &mdash; nothing is uploaded and nothing is written to disk. Closing or reloading the page discards every recording.</p>
+<div id="recList"></div>
+</section>
+
+<main id="mainArea">
+<section class="panel" id="pagePanel">
+<h2 style="margin-top:0;font-size:1.15rem">The assignment page</h2>
+<p id="roleBanner" class="modelbanner hidden">Model take &mdash; this recording sets the standard for the assignment.</p>
+<p id="pageStatus" style="font-size:.95rem;color:#444">Sign in, and the assignment page loads here.</p>
+<div id="assignPage" class="tpage"></div>
+</section>
+<div class="navrow">
+<span style="font-size:.9rem;color:#555">When you have explained the whole page, end the take.</span>
+<button id="endTakeBtn" class="primary" type="button">End take</button>
+</div>
+</main>
+
+<section id="endScreen" class="panel hidden">
+<h2 style="margin-top:0">End of the explanation</h2>
+<div id="playArea" class="hidden">
+<h3>Your recording</h3>
+<video id="playback" controls playsinline></video>
+<p><a class="dl" id="dlRecording" download="explanation-recording.webm">Download recording</a></p>
+<p><a class="dl hidden" id="dlAudio" download="explanation-audio.wav">Download audio only (WAV)</a></p>
+</div>
+<p id="noRecording">No recording was made in this session.</p>
+<h3>Sealed take</h3>
+<pre id="sealInfo" style="white-space:pre-wrap">Not sealed. Sign in before recording to seal a take.</pre>
+<h3>Hand this take to your Muse</h3>
+<pre id="pasteBlock" style="white-space:pre-wrap;word-wrap:break-word;background:#faf8f2;border:1px solid #ddd6c6;border-radius:6px;padding:12px;font-size:.92rem"></pre>
+<p><button id="copyPaste" type="button">Copy the block</button> <span id="copyNote" style="font-size:.95rem;color:#444"></span></p>
+<h3>Take audio</h3>
+<p><button id="audioUploadRun" type="button" class="hidden">Send this take&rsquo;s audio to the course server</button> <span id="segStatus" style="font-size:.95rem;color:#444"></span></p>
+<progress id="segProgress" max="100" value="0" style="width:100%" class="hidden"></progress>
+<p style="font-size:.92rem;color:#444">On a signed-in take the audio is sent automatically at the end of the take and sealed on the course server. No transcript is made on the server: your Muse transcribes the sealed audio &mdash; use the block above.</p>
+<pre id="endTranscript" style="white-space:pre-wrap"></pre>
+<h3>Session summary</h3>
+<pre id="summary"></pre>
+<p>
+<button id="dlSummary" type="button">Download summary (.txt)</button>
+<button id="backToLast" type="button">Back to the page</button>
+<button id="restartBtn" class="primary" type="button">Restart</button>
+</p>
+</section>
+</div>
+
+<script>
+"use strict";
+function el(id){ return document.getElementById(id); }
+function respVal(){ var r=document.querySelectorAll('input[name="response"]'); for(var i=0;i<r.length;i++){ if(r[i].checked) return r[i].value; } return "Speak"; }
+
+var current = 1;
+var sessionStart = Date.now();
+var takeStart = null;
+var taking = false;
+var visitLog = [];       // {step, t} t = seconds relative to take start (Record take) or session start
+var endedAt = null;
+var finalEndT = null;
+var endFrozen = false;
+var takeStarted = false;
+var takeFirstLogT = null;
+var snapshot = null;       // settings snapshot taken at take start (F7)
+var recorderStopPending = false;
+
+function nowSec(){ return (Date.now() - sessionStart) / 1000; }
+function logVisit(step){ visitLog.push({step: step, t: nowSec()}); }
+function fmtTime(s){ s = Math.max(0, Math.floor(s)); var m = Math.floor(s/60), r = s%60; return m + ":" + (r<10?"0":"") + r; }
+
+/* ---- camera and recording ---- */
+var stream = null, recorder = null, chunks = [], recordBlob = null, recordUrl = null;
+var hasRecorder = (typeof MediaRecorder !== "undefined");
+var takeEndSec = null;
+var recordings = [], recSeq = 0;
+function fmtSize(b){ return b >= 104858 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+function registerRecording(kind, blob){
+  if (!blob || !blob.size) return;
+  recordings.push({ id: ++recSeq, kind: kind, blob: blob, url: URL.createObjectURL(blob), when: new Date() });
+  renderRecordings();
+}
+function renderRecordings(){
+  var list = el("recList"); if (!list) return;
+  list.innerHTML = "";
+  el("recEmpty").style.display = recordings.length ? "none" : "";
+  recordings.forEach(function(e){
+    var d = document.createElement("div"); d.className = "recItem";
+    var head = document.createElement("p");
+    head.innerHTML = "<strong>" + e.kind + " " + e.id + "</strong> &middot; " + fmtSize(e.blob.size) + " &middot; " + e.when.toLocaleTimeString();
+    var v = document.createElement("video");
+    v.controls = true; v.src = e.url; v.setAttribute("playsinline", "");
+    v.style.cssText = "width:100%;max-width:560px;max-height:220px;background:#000;border-radius:6px;display:block";
+    var rowp = document.createElement("p");
+    var a = document.createElement("a");
+    a.href = e.url; a.className = "dl";
+    a.download = "explanation-" + e.kind.toLowerCase().replace(/ /g, "-") + "-" + e.id + ".webm";
+    a.textContent = "Download";
+    var del = document.createElement("button");
+    del.type = "button"; del.textContent = "Delete";
+    del.addEventListener("click", function(){ deleteRecording(e.id); });
+    rowp.appendChild(a); rowp.appendChild(del);
+    d.appendChild(head); d.appendChild(v); d.appendChild(rowp);
+    list.appendChild(d);
+  });
+}
+function deleteRecording(id){
+  for (var i = 0; i < recordings.length; i++){
+    if (recordings[i].id !== id) continue;
+    var e = recordings[i];
+    URL.revokeObjectURL(e.url);
+    if (e.blob === recordBlob){
+      recordBlob = null;
+      if (recordUrl){ URL.revokeObjectURL(recordUrl); recordUrl = null; }
+      el("playback").removeAttribute("src");
+      el("playArea").classList.add("hidden");
+      el("noRecording").classList.remove("hidden");
+    }
+    recordings.splice(i, 1);
+    break;
+  }
+  renderRecordings();
+}
+function camError(msg){ el("camStatus").innerHTML = '<span class="err">Camera error: ' + msg + '</span> Audio only mode remains fully available.'; }
+
+function enableCamera(cb){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    camError("this browser does not provide camera access (navigator.mediaDevices.getUserMedia is unavailable)."); cb(false); return;
+  }
+  navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(function(st){
+    stream = st; el("preview").srcObject = st;
+    el("camStatus").innerHTML = '<span class="okmsg">Camera and microphone on.</span>' + (hasRecorder ? "" : " Note: MediaRecorder is not available in this browser, so a video take cannot be recorded here.");
+    cb(true);
+  }).catch(function(e){ camError("camera/microphone access was denied or failed (" + e.name + ")."); cb(false); });
+}
+
+function setSettingsDisabled(dis){
+  document.querySelectorAll('input[name="response"]').forEach(function(r){ r.disabled = dis; });
+  ["sealServer","sealExam","sealEmail"].forEach(function(id){ var n = el(id); if (n) n.disabled = dis; });
+  var lb = el("sealLoginBtn"); if (lb) lb.disabled = dis;
+}
+function beginTake(){
+  takeStart = Date.now(); taking = true; endedAt = null; finalEndT = null; endFrozen = false;
+  visitLog = []; current = 1; logVisit(1);
+  audioSegs = []; takeAudioRegistered = false;
+  takeStarted = true; takeFirstLogT = visitLog[visitLog.length - 1].t;
+  snapshot = { response: respVal() };
+  recordBlob = null; chunks = []; recorderStopPending = false;
+  if (respVal() === "Speak"){
+    if (stream && hasRecorder){
+      try {
+        recorder = new MediaRecorder(stream, {mimeType: "video/webm"});
+      } catch(e1){
+        try { recorder = new MediaRecorder(stream); } catch(e2){ recorder = null; }
+      }
+      if (recorder){
+        recorder.ondataavailable = function(ev){ if (ev.data && ev.data.size) chunks.push(ev.data); };
+        recorder.onstop = function(){
+          recorderStopPending = false;
+          recordBlob = new Blob(chunks, {type: "video/webm"});
+          if (recordUrl) URL.revokeObjectURL(recordUrl);
+          recordUrl = URL.createObjectURL(recordBlob);
+          el("playback").src = recordUrl;
+          el("dlRecording").href = recordUrl;
+          el("playArea").classList.remove("hidden");
+          el("noRecording").classList.add("hidden");
+          el("playback").classList.remove("hidden");
+          el("dlRecording").classList.remove("hidden");
+          registerRecording("Take recording", recordBlob);
+        };
+        recorder.start(1000);
+      } else {
+        camError("MediaRecorder could not be started in this browser.");
+      }
+    } else if (!stream){
+      camError("the camera could not be switched on. Allow camera access, or switch Response to Audio only and restart the take.");
+    } else {
+      camError("MediaRecorder is unavailable in this browser.");
+    }
+  }
+  el("startTake").disabled = true; el("stopTake").disabled = false;
+  el("recInd").classList.add("on");
+  setSettingsDisabled(true);
+  el("takeStatus").textContent = "Recording. Explain the whole page; press End take under the page when you finish.";
+  if (respVal() === "Speak"){ startAudioCapture(stream); }
+  else if (respVal() === "Audio"){ startAudioCapture(micStream); }
+}
+el("startTake").addEventListener("click", async function(){
+  if (taking || sealState.opening) return;
+  sealState.opening = true;
+  try {
+    if (respVal() === "Speak" && !stream){
+      el("takeStatus").textContent = "Switching the camera on\u2026";
+      primeAudioCapture();
+      var okCam = await new Promise(function(res){ enableCamera(res); });
+      if (!okCam){
+        el("takeStatus").textContent = "The camera could not be switched on \u2014 the take has not started. Allow camera access, or switch Response to Audio only.";
+        return;
+      }
+    }
+    if (respVal() === "Audio" && !micStream){
+      el("takeStatus").textContent = "Switching the microphone on\u2026";
+      primeAudioCapture();
+      try { micStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+      catch(e){
+        el("takeStatus").textContent = "The microphone could not be switched on \u2014 the take has not started. Allow microphone access, or switch Response.";
+        return;
+      }
+    }
+    await openSealSession();
+    beginTake();
+  } finally { sealState.opening = false; }
+});
+
+
+var micStream = null;
+var takeAudioUrl = null, takeAudioRegistered = false;
+function takeAudioBlob(){
+  if (!audioSegs.length) return null;
+  var total = 0;
+  audioSegs.forEach(function(s){ total += s.audio.length; });
+  var all = new Float32Array(total); var off = 0;
+  audioSegs.forEach(function(s){ all.set(s.audio, off); off += s.audio.length; });
+  return encodeWAV(all);
+}
+function offerTakeAudio(){
+  var blob = takeAudioBlob();
+  var link = el("dlAudio");
+  if (!blob){ if (link) link.classList.add("hidden"); return; }
+  if (takeAudioUrl) URL.revokeObjectURL(takeAudioUrl);
+  takeAudioUrl = URL.createObjectURL(blob);
+  if (link){ link.href = takeAudioUrl; link.classList.remove("hidden"); }
+  el("playArea").classList.remove("hidden");
+  el("noRecording").classList.add("hidden");
+  if (!takeAudioRegistered){ takeAudioRegistered = true; registerRecording("Take audio (WAV)", blob); }
+}
+window.addEventListener("beforeunload", function(e){
+  if (taking || (takeStarted && !sealState.sealed)){ e.preventDefault(); e.returnValue = ""; }
+});
+
+function stopTakeInternal(){
+  buildAudioSegs();
+  if (takeStarted && takeEndSec === null) takeEndSec = nowSec();
+  if (recorder && recorder.state !== "inactive"){ recorderStopPending = true; recorder.stop(); }
+  taking = false; takeStart = null;
+  kpGate(); el("stopTake").disabled = true;
+  el("recInd").classList.remove("on");
+  setSettingsDisabled(false);
+}
+el("stopTake").addEventListener("click", function(){
+  stopTakeInternal();
+  el("takeStatus").textContent = "Take stopped. Press End take under the page to finish and see your summary.";
+});
+
+
+/* ---- transcript store (server transcription for sealed takes) ---- */
+function escHtml(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+/* ---- student sign-in and transcript sealing (server holds the master copy) ---- */
+var sealState = { sessionCode: null, sent: {}, result: null, opening: false, sealed: false, inflight: [], auth: null, audioSent: {}, audioBusy: false };
+function sealUrl(){ return el("sealServer").value.trim().replace(/\/+$/, ""); }
+function sealExamId(){ return el("sealExam").value.trim(); }
+function sealOn(){ return !!(sealUrl() && sealState.auth && sealState.auth.examId === sealExamId()); }
+function sealNote(msg){ el("sealStatus").textContent = msg; }
+async function sealPost(path, body, withAuth){
+  var headers = { "Content-Type": "application/json" };
+  if (withAuth && sealState.auth) headers["X-Student-Session"] = sealState.auth.value;
+  var res = await fetch(sealUrl() + path, { method: "POST", headers: headers, body: JSON.stringify(body) });
+  var data = null;
+  try { data = await res.json(); } catch(e){}
+  if (!res.ok) throw new Error((data && data.error) ? data.error : ("HTTP " + res.status));
+  return data;
+}
+function sealSignedInNote(){
+  sealNote("Signed in as " + (sealState.auth.name || sealState.auth.email) + " (" + sealState.auth.email + "). Takes are sealed to the course server.");
+}
+async function sealVerifyLogin(token){
+  try {
+    var d = await sealPost("/t/login/verify", { examId: sealExamId(), token: token }, false);
+    sealState.auth = { value: d.session, examId: sealExamId(), email: d.email, name: d.name };
+    try { sessionStorage.setItem("tAuth", JSON.stringify(sealState.auth)); } catch(e){}
+    try { sessionStorage.setItem("tCfg", JSON.stringify({ server: sealUrl(), exam: sealExamId() })); } catch(e){}
+    sealSignedInNote();
+    loadAssignment();
+  } catch(e){
+    sealNote("Sign-in failed (" + e.message + "). Request a new link.");
+  }
+}
+el("sealLoginBtn").addEventListener("click", async function(){
+  if (!sealUrl() || !sealExamId()){ sealNote("Fill in the course server and the exam code first."); return; }
+  var email = el("sealEmail").value.trim();
+  if (!email){ sealNote("Enter your school email first."); return; }
+  sealNote("Sending a sign-in link\u2026");
+  try {
+    var d = await sealPost("/t/login/request", { examId: sealExamId(), email: email }, false);
+    sealNote(d.message || "If this address is on the class roster, a sign-in link has been sent. Open it on this device.");
+  } catch(e){ sealNote("Could not send the link (" + e.message + ")."); }
+});
+(function sealInit(){
+  var q = new URLSearchParams(location.search);
+  try {
+    var cfg = JSON.parse(sessionStorage.getItem("tCfg") || "null");
+    if (cfg && cfg.server) el("sealServer").value = cfg.server;
+    if (cfg && cfg.exam) el("sealExam").value = cfg.exam;
+  } catch(e){}
+  if (q.get("server")) el("sealServer").value = q.get("server");
+  if (q.get("exam")) el("sealExam").value = q.get("exam");
+  try {
+    var saved = JSON.parse(sessionStorage.getItem("tAuth") || "null");
+    if (saved && saved.value && saved.examId === el("sealExam").value) sealState.auth = saved;
+  } catch(e){}
+  if (q.get("login")){
+    if (!sealUrl() || !sealExamId()){ sealNote("This sign-in link is missing the server or exam code. Open the full link from your course page."); return; }
+    sealVerifyLogin(q.get("login"));
+    try { history.replaceState(null, "", location.pathname); } catch(e){}
+  } else if (sealState.auth){
+    sealSignedInNote();
+    loadAssignment();
+  }
+})();
+
+var kpRole = null, kpPage = null, kpOpen = false, kpTitle = "";
+function kpGate(){
+  var can = !!kpPage && (kpRole === "model" || kpOpen);
+  el("startTake").disabled = !can || taking;
+  if (kpPage && kpRole !== "model" && !kpOpen) el("assignNote").textContent = "This assignment is not open yet.";
+  else el("assignNote").textContent = "";
+}
+async function loadAssignment(){
+  if (!sealUrl() || !sealExamId()) return;
+  el("pageStatus").textContent = "Loading the assignment page\u2026";
+  try {
+    var res = await fetch(sealUrl() + "/k/page?exam=" + encodeURIComponent(sealExamId()));
+    var d = null;
+    try { d = await res.json(); } catch(e){}
+    if (!res.ok) throw new Error((d && d.error) ? d.error : ("HTTP " + res.status));
+    kpPage = d; kpOpen = !!d.open; kpTitle = (d.exam && d.exam.title) || "";
+    if (kpTitle) el("examTitle").textContent = kpTitle;
+    el("assignPage").innerHTML = d.pageHtml || "";
+    el("pageStatus").textContent = "";
+  } catch(e){
+    kpPage = null; kpOpen = false;
+    el("pageStatus").innerHTML = '<span class="err">The assignment page could not be loaded (' + escHtml(e.message) + '). Recording stays disabled until the page loads.</span>';
+  }
+  if (sealState.auth){
+    try {
+      var rres = await fetch(sealUrl() + "/k/role?exam=" + encodeURIComponent(sealExamId()), { headers: { "X-Student-Session": sealState.auth.value } });
+      var rd = null;
+      try { rd = await rres.json(); } catch(e){}
+      if (rres.ok && rd && rd.role) kpRole = rd.role;
+    } catch(e){}
+  }
+  el("roleBanner").classList.toggle("hidden", kpRole !== "model");
+  kpGate();
+}
+function fillPasteBlock(){
+  var code = sealState.sessionCode;
+  var t;
+  if (!code){
+    t = "This take was not sealed, so there is no session code. Sign in before recording to seal a take.";
+  } else if (kpRole === "model"){
+    t = "Build the answer key from my model take.\nCourse server: " + sealUrl() + "\nAssignment: " + sealExamId() + "\nModel session code: " + code + "\nSkill: https://github.com/chetools/muse/tree/main/keypoints-teacher-skill\nIf that skill is not installed, install it from the link, then continue.";
+  } else {
+    t = "Grade my sealed explanation.\nCourse server: " + sealUrl() + "\nAssignment: " + sealExamId() + "\nSession code: " + code + "\nSkill: https://github.com/chetools/muse/tree/main/keypoints-grading-skill\nIf that skill is not installed, install it from the link, then continue.";
+  }
+  el("pasteBlock").textContent = t;
+}
+
+async function openSealSession(){
+  sealState.sessionCode = null; sealState.sent = {}; sealState.result = null; sealState.sealed = false; sealState.inflight = []; sealState.audioSent = {}; sealState.audioBusy = false;
+  if (!sealOn()){
+    sealNote("Sealing is off: you are not signed in for this exam. This take will not be sealed.");
+    return;
+  }
+  try {
+    var d = await sealPost("/t/session", { examId: sealExamId() }, true);
+    sealState.sessionCode = d.sessionCode;
+    sealNote("Sealing on. A session is open on the server. At the end of the take your audio is sent to the server and sealed there; your Muse transcribes the sealed audio afterwards.");
+  } catch(e){
+    sealNote("Sealing could not start (" + e.message + "). This take will not be sealed.");
+  }
+}
+/* ---- audio sealing: upload the take audio; the server transcribes it ---- */
+function encodeWAV(samples){
+  var buf = new ArrayBuffer(44 + samples.length * 2);
+  var v = new DataView(buf);
+  function wstr(off, str){ for (var i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i)); }
+  wstr(0, "RIFF"); v.setUint32(4, 36 + samples.length * 2, true); wstr(8, "WAVE");
+  wstr(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  wstr(36, "data"); v.setUint32(40, samples.length * 2, true);
+  for (var i = 0; i < samples.length; i++){
+    var x = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(44 + i * 2, x < 0 ? x * 32768 : x * 32767, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+async function audioUploadAndSeal(){
+  if (sealState.sealed || sealState.audioBusy || !sealState.sessionCode) return sealState.sealed;
+  sealState.audioBusy = true;
+  el("audioUploadRun").classList.add("hidden");
+  try {
+    var total = audioSegs.length, done = 0;
+    for (var i = 0; i < audioSegs.length; i++){
+      var seg = audioSegs[i];
+      if (!sealState.audioSent[seg.step]){
+        var title = kpTitle || "";
+        var q = "?examId=" + encodeURIComponent(sealExamId()) + "&slide=" + seg.step + "&title=" + encodeURIComponent(title);
+        var res = await fetch(sealUrl() + "/t/audio-segment" + q, { method: "POST",
+          headers: { "Content-Type": "audio/wav", "X-Student-Session": sealState.auth.value },
+          body: encodeWAV(seg.audio) });
+        var d = null;
+        try { d = await res.json(); } catch(e){}
+        if (!res.ok) throw new Error((d && d.error) || ("audio upload failed (" + res.status + ")"));
+        sealState.audioSent[seg.step] = d.segmentFingerprint;
+      }
+      done++;
+      segProgressShow(true, Math.round(100 * done / Math.max(1, total)));
+      segStatus("Sent the take's audio to the course server (" + done + " of " + total + " parts).");
+      sealNote("Sealing: audio for slide " + seg.step + " is held by the server.");
+    }
+    segProgressShow(false);
+    var sd = await sealPost("/t/seal", { examId: sealExamId() }, true);
+    sealState.result = sd; sealState.sealed = true;
+    el("endTranscript").textContent = "Your audio is sealed on the course server. No transcript is made on the server; your Muse transcribes the sealed audio \u2014 use the block above. The session code is " + sd.sessionCode + ".";
+    fillPasteBlock();
+    el("sealInfo").textContent = "Session: " + sd.sessionCode + "\nSealed at: " + sd.sealedAt + "\nAudio fingerprint: " + sd.audioFingerprint + "\nTranscript fingerprint: " + (sd.transcriptFingerprint || "(pending transcription)") + "\nReceipt: " + sd.receipt;
+    sealNote("Sealed. The server holds the sealed audio; the session code is in your summary and in the block above.");
+    if (!el("endScreen").classList.contains("hidden")) el("summary").textContent = buildSummary();
+    return true;
+  } catch(e){
+    segProgressShow(false);
+    el("sealInfo").textContent = "Audio sealing failed (" + e.message + "). Press 'Send this take's audio to the course server' to retry.";
+    sealNote("Audio sealing failed (" + e.message + ").");
+    el("audioUploadRun").classList.remove("hidden");
+    return false;
+  } finally { sealState.audioBusy = false; }
+}
+el("audioUploadRun").addEventListener("click", function(){ audioUploadAndSeal(); });
+
+
+/* ---- navigation events ---- */
+el("endTakeBtn").addEventListener("click", function(){ showEnd(); });
+el("copyPaste").addEventListener("click", async function(){
+  var t = el("pasteBlock").textContent;
+  try { await navigator.clipboard.writeText(t); el("copyNote").textContent = "Copied."; }
+  catch(e){
+    var r = document.createRange(); r.selectNodeContents(el("pasteBlock"));
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    el("copyNote").textContent = "The block is selected \u2014 copy it now.";
+  }
+});
+
+/* ---- end screen ---- */
+
+function buildSummary(){
+  var endT = (finalEndT !== null) ? finalEndT : nowSec();
+  var total = (takeStarted && takeFirstLogT !== null) ? (endT - takeFirstLogT) : endT;
+  var hdrResp = snapshot ? snapshot.response : respVal();
+  var lines = [];
+  lines.push((kpTitle || "Assignment") + " \u2014 session summary");
+  lines.push("Response: " + hdrResp);
+  if (kpRole === "model") lines.push("Take: Model");
+  lines.push("Total time: " + fmtTime(total) + " (" + Math.round(total) + " s)");
+  if (sealState.result){
+    lines.push("Sealed session: " + sealState.result.sessionCode);
+    if (sealState.result.audioFingerprint) lines.push("Audio fingerprint: " + sealState.result.audioFingerprint);
+    lines.push("Transcript fingerprint: " + (sealState.result.transcriptFingerprint || "(pending transcription)"));
+    lines.push("Seal receipt: " + sealState.result.receipt);
+    lines.push("Sealed at: " + sealState.result.sealedAt);
+  }
+  return lines.join("\n");
+}
+
+function showEnd(){
+  if (!endFrozen){
+    finalEndT = nowSec();
+    endedAt = finalEndT;
+    endFrozen = true;
+    if (taking) stopTakeInternal();
+  }
+  el("mainArea").classList.add("hidden");
+  el("endScreen").classList.remove("hidden");
+  var hasRec = !!recordBlob;
+  var hasAudio = audioSegs.length > 0;
+  el("playArea").classList.toggle("hidden", !(hasRec || hasAudio));
+  el("noRecording").classList.toggle("hidden", hasRec || hasAudio || recorderStopPending);
+  el("playback").classList.toggle("hidden", !hasRec);
+  el("dlRecording").classList.toggle("hidden", !hasRec);
+  offerTakeAudio();
+  el("endTranscript").textContent = takeStarted
+    ? (sealState.sessionCode
+      ? "Your audio is being sent to the course server. When it is sealed, paste the block above into your Muse app \u2014 your transcript is made there from the sealed audio."
+      : "This take was not signed in, so it is not sealed and no transcript will be made from it.")
+    : "No take was recorded in this session. Record a take first \u2014 recordings exist only while this page stays open.";
+  fillPasteBlock();
+  el("summary").textContent = buildSummary();
+  if (sealState.sessionCode && audioSegs.length && !sealState.sealed && !sealState.audioBusy){
+    el("sealInfo").textContent = "Not sealed yet. Sending this take's audio to the course server\u2026";
+    sealNote("Take finished. Sending the audio to the course server for sealing.");
+    audioUploadAndSeal();
+  } else if (sealState.sessionCode && !audioSegs.length){
+    el("sealInfo").textContent = "Not sealed: no audio was captured in this take.";
+  }
+  window.scrollTo(0,0);
+}
+function hideEnd(){
+  el("endScreen").classList.add("hidden");
+  el("mainArea").classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+el("backToLast").addEventListener("click", hideEnd);
+el("dlSummary").addEventListener("click", function(){
+  var blob = new Blob([buildSummary()], {type: "text/plain"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "session-summary.txt";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+});
+el("restartBtn").addEventListener("click", function(){
+  if (taking) stopTakeInternal();
+  sessionStart = Date.now(); takeStart = null; taking = false;
+  visitLog = []; audioSegs = []; endedAt = null; finalEndT = null;
+  endFrozen = false; takeStarted = false; takeFirstLogT = null; snapshot = null; recorderStopPending = false;
+  sealState.sessionCode = null; sealState.sent = {}; sealState.result = null; sealState.sealed = false; sealState.inflight = []; sealState.audioSent = {}; sealState.audioBusy = false;
+  el("sealInfo").textContent = "Not sealed. Sign in before recording to seal a take.";
+  if (sealState.auth) sealSignedInNote(); else sealNote("Not signed in. This take will not be sealed until you sign in.");
+  takeEndSec = null;
+  recordBlob = null; chunks = [];
+  el("endScreen").classList.add("hidden");
+  el("mainArea").classList.remove("hidden");
+  current = 1; logVisit(1); kpGate();
+  el("takeStatus").textContent = "Restarted. Press Record to begin a new take.";
+  window.scrollTo(0,0);
+});
+
+
+
+/* ---- take audio capture: one segment per slide, uploaded to the course server ---- */
+var audioSegs = [];
+var audioCapture = null, audioCtx = null;
+
+function segStatus(t){
+  var a = el("segStatus"); if (a) a.textContent = t;
+}
+function segProgressShow(show, value){
+  var p = el("segProgress"); if (!p) return;
+  p.classList.toggle("hidden", !show);
+  if (typeof value === "number") p.value = value;
+}
+function primeAudioCapture(){
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch(e){}
+}
+function startAudioCapture(srcStream){
+  stopAudioCapture();
+  try {
+    if (!srcStream || !srcStream.getAudioTracks || !srcStream.getAudioTracks().length) return;
+    primeAudioCapture();
+    if (!audioCtx) return;
+    var src = audioCtx.createMediaStreamSource(srcStream);
+    var proc = audioCtx.createScriptProcessor(4096, 1, 1);
+    var cap = { proc: proc, chunks: [], samples: 0, rate: audioCtx.sampleRate, marks: [{ step: 1, at: 0 }] };
+    proc.onaudioprocess = function(ev){
+      var data = ev.inputBuffer.getChannelData(0);
+      var copy = new Float32Array(data.length); copy.set(data);
+      cap.chunks.push(copy); cap.samples += data.length;
+      var out = ev.outputBuffer.getChannelData(0);
+      for (var i = 0; i < out.length; i++) out[i] = 0;
+    };
+    src.connect(proc); proc.connect(audioCtx.destination);
+    audioCapture = cap;
+  } catch(e){ audioCapture = null; }
+}
+function audioMark(){
+  if (audioCapture && taking){ audioCapture.marks.push({ step: current, at: audioCapture.samples }); }
+}
+function stopAudioCapture(){
+  if (!audioCapture) return;
+  try { audioCapture.proc.disconnect(); } catch(e){}
+  audioCapture = null;
+}
+function resample16k(samples, fromRate){
+  if (fromRate === 16000) return samples;
+  var ratio = fromRate / 16000;
+  var len = Math.floor(samples.length / ratio);
+  var out = new Float32Array(len);
+  for (var i = 0; i < len; i++){
+    var pos = i * ratio; var j = Math.floor(pos); var frac = pos - j;
+    var a = samples[j] || 0; var b = (j + 1 < samples.length) ? samples[j + 1] : a;
+    out[i] = a + (b - a) * frac;
+  }
+  return out;
+}
+function buildAudioSegs(){
+  audioSegs = [];
+  var cap = audioCapture;
+  if (!cap || !cap.samples){ stopAudioCapture(); return; }
+  var all = new Float32Array(cap.samples); var off = 0;
+  cap.chunks.forEach(function(c){ all.set(c, off); off += c.length; });
+  var marks = cap.marks;
+  for (var i = 0; i < marks.length; i++){
+    var start = marks[i].at;
+    var end = (i + 1 < marks.length) ? marks[i + 1].at : cap.samples;
+    if (end > start + cap.rate * 0.4){
+      audioSegs.push({ step: marks[i].step, audio: resample16k(all.subarray(start, end), cap.rate) });
+    }
+  }
+  stopAudioCapture();
+}
+/* ---- init ---- */
+logVisit(1);
+el("startTake").disabled = true;
+window.SELFTEST = { keypoints: true, hasRecorder: hasRecorder };
+</script>
+</body>
+</html>
