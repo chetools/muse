@@ -42,6 +42,7 @@
   mark.corr-certain { background: #d9ecd2; }
   mark.corr-slash { background: #fdeec2; }
   mark.corr-context { background: #d7e6f7; }
+  mark.corr-dictionary { background: #e3d7f7; }
   #liveBox { margin-top: 8px; }
   #liveBox .lbl { font-weight: 600; font-size: 0.88rem; color: #444; }
   #liveRaw { color: #555; }
@@ -59,12 +60,12 @@
 <div class="wrap">
   <h1>ChemEScribe</h1>
   <p class="sub">Transcription informed by chemical-engineering background knowledge: a
-  glossary of 755 chemical-engineering terms, its correction pairs and its context rules
+  glossary of 756 chemical-engineering terms, its correction pairs and its context rules
   correct the transcript as it is produced. The recogniser runs entirely in this browser —
   no server takes part, and your audio never leaves this device.</p>
 
   <h2>Corrections</h2>
-  <p>The correction map loaded in this page has <span id="pairCount">201</span> pairs.
+  <p>The correction map loaded in this page has <span id="pairCount">203</span> pairs.
   A confident correction replaces the misheard form
   outright. An uncertain one — the heard form is an ordinary English word that may have been
   said as itself, or the glossary lists several candidate terms — is written in the transcript
@@ -73,9 +74,14 @@
   exception: where the word next to the mishearing is the last word (or the first word) of
   exactly one candidate, the context settles the choice — “viral coefficient” becomes
   “virial coefficient” — and the list below the transcript marks that correction as chosen
-  by context and names the cue word. After every transcription, the page lists each
-  correction it applied and marks the uncertain ones, so any correction can be checked
-  against the recording.</p>
+  by context and names the cue word. A further check then looks for words that appear in no
+  English dictionary list and no glossary list: each is matched against the glossary terms
+  by sound and by spelling, replaced only when one term matches closely and clearly,
+  written in slash form when two or more terms match closely, and left as heard otherwise.
+  Last, a tidy-up removes filler words (um, uh), collapses a doubled word such as “the
+  the”, and normalises spacing and capitalisation; it changes nothing about grammar or
+  tense. After every transcription, the page lists each correction it applied and marks
+  the uncertain ones, so any correction can be checked against the recording.</p>
 
   <h2>1. Load the model</h2>
   <div class="row">
@@ -120,7 +126,8 @@
   transcribed — about 12 s pieces while recording, about 25 s windows from a file — its words
   appear here at once: first as transcribed, then after the glossary correction, with corrected
   words marked (green: a confident correction; yellow: an uncertain one, shown in slash form;
-  blue: chosen by the words around it). The result below grows piece by piece in the same way,
+  blue: chosen by the words around it; purple: found by the dictionary check). The result
+  below grows piece by piece in the same way,
   with the same marks. Copying, downloading and autosaving use the plain text, without marks.</p>
   <progress id="liveProg" value="0" max="1" hidden></progress>
   <p class="status" id="liveStatus">No transcription running.</p>
@@ -184,11 +191,21 @@
 
     <h3>Glossary data</h3>
     <p>The correction map is generated from the chemical-engineering glossary bundle that the
-    ChemEScribe skill in Muse uses as well: a glossary of 755 terms with 203 sound-alike
-    correction pairs. Of the 203 pairs, 7 are attested errors and the rest are predicted
-    sound-alikes. The bundle classes 145 pairs as confident and 58 as uncertain; this page
-    loads 201 of them — 143 confident and 58 uncertain — and 2 pairs are not used on this
+    ChemEScribe skill in Muse uses as well: a glossary of 756 terms with 205 sound-alike
+    correction pairs. Of the 205 pairs, 8 are attested errors and the rest are predicted
+    sound-alikes. The bundle classes 147 pairs as confident and 58 as uncertain; this page
+    loads 203 of them — 145 confident and 58 uncertain — and 2 pairs are not used on this
     page.</p>
+    <p>The dictionary check uses a bundled English wordlist (SCOWL, the Spell Checker
+    Oriented Word Lists, 116,333 words at the levels ordinary academic writing needs,
+    permissively licensed) together with the glossary’s terms. A word in neither list is
+    compared with the glossary terms on sound (Soundex) first and spelling (edit distance)
+    second; it is replaced only when the sound codes are equal, the distance is at most 2
+    and the margin over the next candidate is clear — a bar measured to make no false
+    replacement on test corpora of ordinary and textbook sentences. A real English word
+    that merely sounds technical is never replaced by this check, only slashed or left.
+    The tidy-up is mechanical only — fillers, doubled words, spacing, capitalisation — and
+    does not correct grammar or tense; the speaker’s grammar is transcribed as spoken.</p>
 
     <h3>Network log</h3>
     <p class="note">Every resource fetched by this page since it opened, from the browser’s own
