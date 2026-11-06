@@ -97,9 +97,17 @@ def main(argv):
     print("loading Parakeet TDT 0.6B v2 (int8, CPU); the first run "
           "downloads the model (about 600 MB) — nothing else leaves "
           "this machine", file=sys.stderr)
+    # One thread, measured on a 4-core machine (2026-11-06): ONNX Runtime's
+    # default threading made recognition about 25% slower for this model,
+    # whose decoding loop is sequential; a single thread was faster in
+    # repeated interleaved runs.
+    sess_options = ort.SessionOptions()
+    sess_options.intra_op_num_threads = 1
+    sess_options.inter_op_num_threads = 1
     model = onnx_asr.load_model("nemo-parakeet-tdt-0.6b-v2",
                                 quantization="int8",
-                                providers=["CPUExecutionProvider"])
+                                providers=["CPUExecutionProvider"],
+                                sess_options=sess_options)
     transcripts = []
     for path in argv[1:]:
         try:
