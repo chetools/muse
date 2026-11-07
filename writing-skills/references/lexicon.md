@@ -22,6 +22,8 @@ L6. Sense, for two words on the check list in `ai-check.md`.
 - "robust", where it grades a result, a method, an estimate, or an effect, takes its ground in the form the corpus uses — the perturbation or the check named with "to", "under", or "against" ("robust to publication bias", "robust under cross-validation", "robust against small variations in twist angle") — in the same sentence or the one before, as `textbook.md` T11 states for grading words. A property of an organism or a material, and any proper name, are outside this rule.
 - "landscape" names a distribution mapped over a space (a genomic landscape, a p-value landscape). As a metaphor for a field, a situation, or a state of knowledge ("the evolving landscape of"), it is not used. A proper name is not a use under this rule.
 
+L7. "Together" does not open a sentence to bundle its items. A statement that several quantities are reported, measured, or held jointly names them as its subject in plain form ("Flux, selectivity and stability are seldom reported for the same membrane"), with no bundling opener.
+
 ## Completion check
 
-No closing is announced (L1); no frame sentence carries "therefore" or a causal "so" (L2); each reporting verb matches the relation its sentence asserts and no inference is stated with a presenting verb (L4, L5); every grading "robust" names its perturbation or check and every "landscape" names its space (L6).
+No closing is announced (L1); no frame sentence carries "therefore" or a causal "so" (L2); each reporting verb matches the relation its sentence asserts and no inference is stated with a presenting verb (L4, L5); every grading "robust" names its perturbation or check and every "landscape" names its space (L6); no sentence opens with "Together" to bundle its items (L7).
