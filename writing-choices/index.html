@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Writing choices</title>
+<style>
+* { box-sizing: border-box; }
+html { background: #ffffff; }
+body { margin: 0; background: #ffffff; color: #1a1a1a;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 17px; line-height: 1.5; }
+.wrap { max-width: 44rem; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
+header.wrap { padding-bottom: 0; }
+h1 { font-size: 1.55rem; line-height: 1.25; margin: 0.6rem 0 0.5rem; }
+h2 { font-size: 1.15rem; margin: 1.4rem 0 0.4rem; }
+p { margin: 0.5rem 0; }
+.progress-outer { background: #e8e8e8; border-radius: 6px; height: 12px;
+  overflow: hidden; margin: 0.8rem 0 0.3rem; }
+.progress-inner { background: #205c40; height: 100%; width: 0%;
+  transition: width 0.25s ease; }
+.progress-label { font-size: 0.9rem; color: #444; }
+.context { background: #f2f4f3; border: 1px solid #d5dbd8;
+  border-radius: 8px; padding: 0.7rem 0.9rem; font-size: 0.95rem; }
+.pair { display: grid; grid-template-columns: 1fr; gap: 0.8rem; margin: 1rem 0; }
+@media (min-width: 640px) { .pair { grid-template-columns: 1fr 1fr; } }
+.textbox { border: 1px solid #b9c2be; border-radius: 8px;
+  padding: 0.9rem 1rem; background: #ffffff; }
+.textbox .side { font-size: 0.8rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #666; margin-bottom: 0.4rem; }
+.choices { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }
+@media (min-width: 640px) { .choices { grid-template-columns: 1fr 1fr 1fr; } }
+button { font: inherit; cursor: pointer; border-radius: 8px;
+  border: 1px solid #205c40; background: #205c40; color: #ffffff;
+  padding: 0.75rem 0.8rem; }
+button.secondary { background: #ffffff; color: #205c40; }
+button.neutral { background: #f2f4f3; color: #1a1a1a; border-color: #9aa5a0; }
+button:disabled { opacity: 0.45; cursor: default; }
+button.selected { outline: 3px solid #e0a800; outline-offset: 1px; }
+.navrow { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
+textarea { width: 100%; font: inherit; font-size: 0.9rem;
+  border: 1px solid #b9c2be; border-radius: 8px; padding: 0.7rem; }
+.note { font-size: 0.9rem; color: #444; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <h1>Writing choices</h1>
+  <p>Each card shows two versions of the same text. They state the same
+  facts and differ in one feature of the writing. Read the context line,
+  then choose the version you consider better, or choose
+  &ldquo;No significant difference&rdquo; where the difference does not
+  matter to you. That answer is used: a feature with mostly
+  &ldquo;no significant difference&rdquo; answers stays optional.</p>
+  <p>There are 38 cards. Two of them check that the questions are
+  working; they are not identified. Four texts appear twice, in reverse
+  order, as a check on the answers. Nothing is labelled with where
+  either version came from.</p>
+  <p>Your answers are saved in this browser as you go. If you close the
+  page, reopening this same link in the same browser resumes where you
+  left off. At the end, a results screen gives a short coded summary:
+  copy it and paste it into the chat, or download it as a file and
+  attach the file.</p>
+  <div class="progress-outer"><div class="progress-inner" id="bar"></div></div>
+  <p class="progress-label" id="barlabel"></p>
+</header>
+<main class="wrap">
+  <section id="cardview">
+    <div class="context" id="context"></div>
+    <div class="pair">
+      <div class="textbox"><div class="side">Left text</div><div id="lefttext"></div></div>
+      <div class="textbox"><div class="side">Right text</div><div id="righttext"></div></div>
+    </div>
+    <div class="choices">
+      <button type="button" id="chooseleft">Left is better</button>
+      <button type="button" id="choosenone" class="neutral">No significant difference</button>
+      <button type="button" id="chooseright">Right is better</button>
+    </div>
+    <div class="navrow">
+      <button type="button" id="back" class="secondary">Back</button>
+    </div>
+  </section>
+  <section id="resultview" class="hidden">
+    <h2>Results</h2>
+    <p id="resultcount"></p>
+    <p>Tap <strong>Copy results</strong>, then paste the copied text
+    into the chat and send it. If the copy does not work, select the
+    text in the box and copy it by hand, or use
+    <strong>Download results</strong> and attach the downloaded file
+    in the chat.</p>
+    <div class="navrow">
+      <button type="button" id="copybtn">Copy results</button>
+      <button type="button" id="downloadbtn" class="secondary">Download results</button>
+    </div>
+    <p class="note" id="copymsg"></p>
+    <textarea id="summarybox" rows="8" readonly></textarea>
+    <div class="navrow">
+      <button type="button" id="reviewbtn" class="secondary">Review or change answers</button>
+      <button type="button" id="resetbtn" class="neutral">Start over</button>
+    </div>
+  </section>
+</main>
+<script>
+"use strict";
+var CARDS = [
+ {
+  "id": "S1a",
+  "context": "Abstract sentence. The method is established; the contribution is the determination.",
+  "leftCanon": "A",
+  "leftText": "Using adsorption measurements and a pore-scale model, we determined how humidity changes carbon dioxide uptake in the sorbent.",
+  "rightText": "We determined how humidity changes carbon dioxide uptake in the sorbent, using adsorption measurements and a pore-scale model."
+ },
+ {
+  "id": "S5a",
+  "context": "Results sentence referring to plotted data.",
+  "leftCanon": "A",
+  "leftText": "Figure 3 shows that conversion rose from 0.41 to 0.58 as temperature rose.",
+  "rightText": "Figure 3 demonstrates that conversion rose from 0.41 to 0.58 as temperature rose."
+ },
+ {
+  "id": "C1",
+  "context": "A sentence in a project report.",
+  "leftCanon": "A",
+  "leftText": "The new control scheme reduced energy use by 8 % in the trial week.",
+  "rightText": "In conclusion, the groundbreaking new control scheme delivered a remarkable and significant reduction in energy use during the trial period, highlighting its transformative potential."
+ },
+ {
+  "id": "S6a",
+  "context": "A sentence about a projection, not a measurement.",
+  "leftCanon": "B",
+  "leftText": "The projections indicate that efficiency will fall at part load.",
+  "rightText": "The projections suggest that efficiency will fall at part load."
+ },
+ {
+  "id": "S2a",
+  "context": "Two-sentence summary of a paper, for readers outside the field. The two sentences are the same in both versions; only their order changes.",
+  "leftCanon": "B",
+  "leftText": "Catalyst loss limits the reuse of dissolved catalysts in continuous reactors. A membrane with a fixed pore size retained the catalyst while passing the product at the full reaction rate.",
+  "rightText": "A membrane with a fixed pore size retained the catalyst while passing the product at the full reaction rate. Catalyst loss limits the reuse of dissolved catalysts in continuous reactors."
+ },
+ {
+  "id": "S10a",
+  "context": "Closing paragraph stating a validity limit and its consequence. Each sentence may be quoted on its own.",
+  "leftCanon": "B",
+  "leftText": "Fick's law holds for a stagnant medium. In a moving medium, the law must be paired with a convection term.",
+  "rightText": "Fick's law holds for a stagnant medium. In a moving medium, Fick's law must be paired with a convection term."
+ },
+ {
+  "id": "S3a",
+  "context": "Title of a paper. The imaging method is new, and it is what makes the result obtainable.",
+  "leftCanon": "A",
+  "leftText": "Water transport limits current density in vapour-fed electrolysers",
+  "rightText": "Operando imaging: water transport limits current density in vapour-fed electrolysers"
+ },
+ {
+  "id": "S7a",
+  "context": "Closing sentences of a report section. The ground for the decision stands in the first sentence.",
+  "leftCanon": "A",
+  "leftText": "The model matched the plant data within 4 % across the full range. The model is suitable for sizing the absorber.",
+  "rightText": "The model matched the plant data within 4 % across the full range. Therefore, the model is suitable for sizing the absorber."
+ },
+ {
+  "id": "S4a",
+  "context": "Opening paragraph of a paper. A search of the literature has been done.",
+  "leftCanon": "B",
+  "leftText": "How conversion changes when the feed contains water vapour has not been measured.",
+  "rightText": "How conversion changes when the feed contains water vapour is not known."
+ },
+ {
+  "id": "S8a",
+  "context": "First paragraph of a paper, for a reader outside the subfield. The term is used again later in the paper.",
+  "leftCanon": "B",
+  "leftText": "At high temperature the effectiveness factor fell to 0.32. The effectiveness factor is the ratio of the actual rate in the pellet to the rate if the whole pellet were at surface conditions.",
+  "rightText": "At high temperature the effectiveness factor (the ratio of the actual rate in the pellet to the rate if the whole pellet were at surface conditions) fell to 0.32."
+ },
+ {
+  "id": "S9a",
+  "context": "Closing sentence of a paper, supported by two kinds of evidence: measurements and a model.",
+  "leftCanon": "A",
+  "leftText": "Together, the plant measurements and the model show that water transport, not kinetics, limits current density.",
+  "rightText": "The plant measurements and the model show that water transport, not kinetics, limits current density."
+ },
+ {
+  "id": "S1b",
+  "context": "Abstract sentence. The imaging method is established; the contribution is the map.",
+  "leftCanon": "B",
+  "leftText": "We mapped where liquid accumulates in the operating cell, by combining flow measurements with tomography.",
+  "rightText": "By combining flow measurements with tomography, we mapped where liquid accumulates in the operating cell."
+ },
+ {
+  "id": "S6b",
+  "context": "A sentence stating an inference from measured data.",
+  "leftCanon": "A",
+  "leftText": "The data suggest that fouling, not kinetics, caused the loss of capacity.",
+  "rightText": "The data indicate that fouling, not kinetics, caused the loss of capacity."
+ },
+ {
+  "id": "S2b",
+  "context": "Two-sentence summary of a paper, for readers outside the field. The two sentences are the same in both versions; only their order changes.",
+  "leftCanon": "A",
+  "leftText": "Cooling the feed by 10 K removed the temperature runaway in every simulated start-up. Packed-bed reactors can develop hot spots that grow faster than the cooling can remove heat.",
+  "rightText": "Packed-bed reactors can develop hot spots that grow faster than the cooling can remove heat. Cooling the feed by 10 K removed the temperature runaway in every simulated start-up."
+ },
+ {
+  "id": "S5b",
+  "context": "Results sentence referring to plotted data.",
+  "leftCanon": "B",
+  "leftText": "Figure 5 demonstrates that selectivity fell from 0.86 to 0.79 as pressure rose.",
+  "rightText": "Figure 5 shows that selectivity fell from 0.86 to 0.79 as pressure rose."
+ },
+ {
+  "id": "S3b",
+  "context": "Title of a paper. The measurement method is new, and it is what makes the result obtainable.",
+  "leftCanon": "B",
+  "leftText": "Mixed-gas permeation measurements: humidity sets the separation limit of mixed-gas membranes",
+  "rightText": "Humidity sets the separation limit of mixed-gas membranes"
+ },
+ {
+  "id": "S10b",
+  "context": "Closing paragraph stating a validity limit and its consequence. Each sentence may be quoted on its own.",
+  "leftCanon": "A",
+  "leftText": "Henry's law holds at low solute concentration. At high concentration, Henry's law overpredicts solubility in this system.",
+  "rightText": "Henry's law holds at low solute concentration. At high concentration, the law overpredicts solubility in this system."
+ },
+ {
+  "id": "S8b",
+  "context": "Methods paragraph. The term is used again later in the paper.",
+  "leftCanon": "A",
+  "leftText": "The space velocity (the volumetric feed rate divided by the catalyst volume) was kept at 2.0 per hour in every run.",
+  "rightText": "The space velocity was kept at 2.0 per hour in every run. The space velocity is the volumetric feed rate divided by the catalyst volume."
+ },
+ {
+  "id": "S4b",
+  "context": "Opening paragraph of a paper. A search of the literature has been done.",
+  "leftCanon": "A",
+  "leftText": "Whether the film resists fouling over months of operation is not known.",
+  "rightText": "Whether the film resists fouling over months of operation has not been tested."
+ },
+ {
+  "id": "S7b",
+  "context": "Closing sentences of a report section. The ground for the decision stands in the first sentence.",
+  "leftCanon": "B",
+  "leftText": "The pilot runs reproduced the laboratory yield within 3 %. Therefore, the process is ready for a larger trial.",
+  "rightText": "The pilot runs reproduced the laboratory yield within 3 %. The process is ready for a larger trial."
+ },
+ {
+  "id": "S9b",
+  "context": "Closing sentence of a paper, supported by two kinds of evidence: tracer tests and a model.",
+  "leftCanon": "B",
+  "leftText": "The tracer tests and the residence-time model show that bypassing, not back-mixing, explains the early breakthrough.",
+  "rightText": "Together, the tracer tests and the residence-time model show that bypassing, not back-mixing, explains the early breakthrough."
+ },
+ {
+  "id": "S1c",
+  "context": "Abstract sentence. Both sources are standard; the contribution is the estimate.",
+  "leftCanon": "A",
+  "leftText": "Drawing on plant records and a dynamic simulation, we estimated how often the column floods during start-up.",
+  "rightText": "We estimated how often the column floods during start-up, drawing on plant records and a dynamic simulation."
+ },
+ {
+  "id": "S6c",
+  "context": "A sentence stating an inference from a set of results.",
+  "leftCanon": "B",
+  "leftText": "The results indicate that a second absorber would recover most of the remaining solvent.",
+  "rightText": "The results suggest that a second absorber would recover most of the remaining solvent."
+ },
+ {
+  "id": "C2",
+  "context": "A sentence in a project report.",
+  "leftCanon": "B",
+  "leftText": "Conversion improved considerably when temperature was increased.",
+  "rightText": "Conversion rose from 0.41 to 0.58 when temperature rose from 320 K to 360 K."
+ },
+ {
+  "id": "S2c",
+  "context": "Two-sentence summary of a paper, for readers outside the field. The two sentences are the same in both versions; only their order changes.",
+  "leftCanon": "B",
+  "leftText": "Pressure drop sets most of the operating cost of a gas absorber. The new packing halved the pressure drop of the absorber at the same separation.",
+  "rightText": "The new packing halved the pressure drop of the absorber at the same separation. Pressure drop sets most of the operating cost of a gas absorber."
+ },
+ {
+  "id": "S5c",
+  "context": "Results sentence referring to a table.",
+  "leftCanon": "A",
+  "leftText": "The table shows that energy use per tonne of product was lowest for the third configuration.",
+  "rightText": "The table demonstrates that energy use per tonne of product was lowest for the third configuration."
+ },
+ {
+  "id": "S3c",
+  "context": "Title of a paper. The spectroscopy method is new, and it is what makes the result obtainable.",
+  "leftCanon": "A",
+  "leftText": "Feed composition controls selectivity in the hydrogenation reactor",
+  "rightText": "In-line spectroscopy: feed composition controls selectivity in the hydrogenation reactor"
+ },
+ {
+  "id": "S10c",
+  "context": "Closing paragraph stating a scope limit and its consequence. Each sentence may be quoted on its own.",
+  "leftCanon": "B",
+  "leftText": "The Ergun equation gives the pressure drop for flow through a packed bed. Outside its fitted range, the equation should not be used for design.",
+  "rightText": "The Ergun equation gives the pressure drop for flow through a packed bed. Outside its fitted range, the Ergun equation should not be used for design."
+ },
+ {
+  "id": "S8c",
+  "context": "Theory paragraph. The term is used again later in the paper.",
+  "leftCanon": "B",
+  "leftText": "The Biot number was below 0.1, so the pellet was treated as uniform in temperature. The Biot number is the ratio of the internal conduction resistance to the surface convection resistance.",
+  "rightText": "The Biot number (the ratio of the internal conduction resistance to the surface convection resistance) was below 0.1, so the pellet was treated as uniform in temperature."
+ },
+ {
+  "id": "S4c",
+  "context": "Opening paragraph of a paper. A search of the literature has been done.",
+  "leftCanon": "B",
+  "leftText": "The cause of the fall in selectivity at high conversion has not been identified.",
+  "rightText": "Why selectivity falls at high conversion is not known."
+ },
+ {
+  "id": "S7c",
+  "context": "Closing sentences of a report section. The ground for the finding stands in the first sentence.",
+  "leftCanon": "A",
+  "leftText": "The sensitivity study changed no ranking when prices moved by 20 %. The ranking does not depend on the price forecast.",
+  "rightText": "The sensitivity study changed no ranking when prices moved by 20 %. Therefore, the ranking does not depend on the price forecast."
+ },
+ {
+  "id": "S9c",
+  "context": "Closing sentence of a paper, supported by two kinds of evidence: bench experiments and a cost model.",
+  "leftCanon": "A",
+  "leftText": "Together, the bench experiments and the cost model show that solvent recovery, not reaction, dominates the process cost.",
+  "rightText": "The bench experiments and the cost model show that solvent recovery, not reaction, dominates the process cost."
+ },
+ {
+  "id": "S6d",
+  "context": "A sentence stating an inference from a calculation.",
+  "leftCanon": "A",
+  "leftText": "The calculation suggests that the exchanger is limited by the cold-side film.",
+  "rightText": "The calculation indicates that the exchanger is limited by the cold-side film."
+ },
+ {
+  "id": "S10d",
+  "context": "Closing paragraph stating an assumption and its consequence. Each sentence may be quoted on its own.",
+  "leftCanon": "A",
+  "leftText": "Raoult's law assumes an ideal solution. For non-ideal solutions, Raoult's law must be corrected with activity coefficients.",
+  "rightText": "Raoult's law assumes an ideal solution. For non-ideal solutions, the law must be corrected with activity coefficients."
+ },
+ {
+  "id": "R1",
+  "context": "Closing sentences of a report section. The ground for the decision stands in the first sentence.",
+  "leftCanon": "B",
+  "leftText": "The model matched the plant data within 4 % across the full range. Therefore, the model is suitable for sizing the absorber.",
+  "rightText": "The model matched the plant data within 4 % across the full range. The model is suitable for sizing the absorber."
+ },
+ {
+  "id": "R2",
+  "context": "Title of a paper. The imaging method is new, and it is what makes the result obtainable.",
+  "leftCanon": "B",
+  "leftText": "Operando imaging: water transport limits current density in vapour-fed electrolysers",
+  "rightText": "Water transport limits current density in vapour-fed electrolysers"
+ },
+ {
+  "id": "R3",
+  "context": "A sentence about a projection, not a measurement.",
+  "leftCanon": "A",
+  "leftText": "The projections suggest that efficiency will fall at part load.",
+  "rightText": "The projections indicate that efficiency will fall at part load."
+ },
+ {
+  "id": "R4",
+  "context": "First paragraph of a paper, for a reader outside the subfield. The term is used again later in the paper.",
+  "leftCanon": "A",
+  "leftText": "At high temperature the effectiveness factor (the ratio of the actual rate in the pellet to the rate if the whole pellet were at surface conditions) fell to 0.32.",
+  "rightText": "At high temperature the effectiveness factor fell to 0.32. The effectiveness factor is the ratio of the actual rate in the pellet to the rate if the whole pellet were at surface conditions."
+ }
+];
+var STORE_KEY = "writing-prefs-v1";
+var state = { idx: 0, answers: {} };
+try {
+  var saved = localStorage.getItem(STORE_KEY);
+  if (saved) { var parsed = JSON.parse(saved); if (parsed && parsed.answers) state = parsed; }
+} catch (e) { /* storage unavailable: the session still works */ }
+if (typeof state.idx !== "number" || state.idx < 0 || state.idx > CARDS.length) state.idx = 0;
+if (!state.answers) state.answers = {};
+
+var el = function (id) { return document.getElementById(id); };
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function otherCanon(canon) { return canon === "A" ? "B" : "A"; }
+function choiceFor(card, side) {
+  if (side === "N") return "N";
+  return side === "L" ? card.leftCanon : otherCanon(card.leftCanon);
+}
+function answeredCount() { return Object.keys(state.answers).length; }
+
+function render() {
+  var done = state.idx >= CARDS.length;
+  el("cardview").classList.toggle("hidden", done);
+  el("resultview").classList.toggle("hidden", !done);
+  var n = Math.min(state.idx + (done ? 0 : 1), CARDS.length);
+  el("bar").style.width = (100 * answeredCount() / CARDS.length) + "%";
+  el("barlabel").textContent = answeredCount() + " of " + CARDS.length + " answered";
+  if (done) { renderResults(); return; }
+  var card = CARDS[state.idx];
+  el("context").textContent = card.context;
+  el("lefttext").textContent = card.leftText;
+  el("righttext").textContent = card.rightText;
+  var ans = state.answers[card.id];
+  el("chooseleft").classList.toggle("selected", ans === card.leftCanon);
+  el("chooseright").classList.toggle("selected", ans === otherCanon(card.leftCanon));
+  el("choosenone").classList.toggle("selected", ans === "N");
+  el("back").disabled = state.idx === 0;
+  window.scrollTo(0, 0);
+}
+function choose(side) {
+  var card = CARDS[state.idx];
+  state.answers[card.id] = choiceFor(card, side);
+  state.idx += 1;
+  save(); render();
+}
+function buildSummary() {
+  var parts = [];
+  CARDS.forEach(function (card) {
+    parts.push(card.id + ":" + (state.answers[card.id] || "-"));
+  });
+  return "WRITING-PREFS v1\n" + parts.join(" ") +
+    "\nThe letter after each pair code names the version chosen for that pair. " +
+    "N = no significant difference. - = not answered.";
+}
+function renderResults() {
+  el("resultcount").textContent = answeredCount() + " of " + CARDS.length + " answered.";
+  el("summarybox").value = buildSummary();
+}
+el("chooseleft").addEventListener("click", function () { choose("L"); });
+el("chooseright").addEventListener("click", function () { choose("R"); });
+el("choosenone").addEventListener("click", function () { choose("N"); });
+el("back").addEventListener("click", function () {
+  if (state.idx > 0) { state.idx -= 1; save(); render(); }
+});
+el("reviewbtn").addEventListener("click", function () {
+  state.idx = 0; save(); render();
+});
+el("resetbtn").addEventListener("click", function () {
+  state = { idx: 0, answers: {} }; save(); render();
+});
+el("copybtn").addEventListener("click", function () {
+  var text = buildSummary();
+  function fallback() {
+    el("summarybox").focus(); el("summarybox").select();
+    el("copymsg").textContent = "The automatic copy did not work. The summary text is selected in the box: copy it by hand, then paste it into the chat.";
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      el("copymsg").textContent = "Copied. Paste it into the chat and send it.";
+    }, fallback);
+  } else { fallback(); }
+});
+el("downloadbtn").addEventListener("click", function () {
+  var payload = { version: 1, answers: state.answers, answered: answeredCount(), total: CARDS.length };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "writing-prefs-results.json";
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+});
+render();
+</script>
+</body>
+</html>
