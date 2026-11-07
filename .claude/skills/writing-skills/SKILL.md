@@ -20,6 +20,7 @@ This core governs all writing under the package. A reference file is loaded only
 - `references/drafting.md`: a new STEM paper or report is drafted from results or a fact base.
 - `references/significance.md`: a title, abstract, or opening is drafted for readers outside the document's subfield, or for a general-science journal; loaded with `drafting.md` when both conditions hold.
 - `references/exemplars.md`: a STEM paper or report is drafted, with `drafting.md`; also at a revision or check pass, with `ai-check.md`.
+- `references/exemplars-extended.md`: a model or theory paper is drafted, or a closing that combines evidence strands, with `drafting.md`.
 - `references/lexicon.md`: a STEM paper or report is drafted, with `drafting.md`; also at a revision or check pass, with `ai-check.md`. Word choice where the corpora differentiate the choices.
 
 `references/evidence.md` holds the evidence and limits of every rule and is not loaded for writing.

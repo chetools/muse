@@ -41,3 +41,5 @@ The liquid film resistance in aqueous monoethanolamine rises with solvent loadin
 ## Use
 
 An exemplar is a form to follow, not text to copy: the drafted passage takes the move sequence and the sentence forms, with its own objects, values, and scope. Where a drafted passage departs from its exemplar's move sequence, the departure is checked against the rule behind that move, and the passage is revised or the departure is recorded with its reason in the covering message.
+
+For a model or theory paper, and for a closing that combines evidence strands, the further passages in `exemplars-extended.md` load under their own condition.
