@@ -10,6 +10,9 @@ Checks:
               paragraph's sentences (core rule 11)
   frame       "thus", "therefore", "hence", "accordingly" in the last sentence of a paragraph (core rule 14)
   word        a word from the overused set in ai-check.md
+  phrase      "in conclusion" (lexicon.md L1; measured in the Phase 6 lexical pass: 0.387 per 1,000 words
+              in 36 no-skill drafts, 4 occurrences, against 0.002 per 1,000 in 431,116 words of
+              Nature and Science text, 1 occurrence, and none in 22 instructional items)
   emdash      more than two em dashes in one paragraph
   range       a hyphen between two numbers, where an en dash is meant (core rule 33)
   minus       a hyphen before a number after a space, where a minus sign is meant (core rule 33)
@@ -22,6 +25,7 @@ import sys
 OVERUSED = ["additionally", "align with", "bolstered", "crucial", "delve", "emphasizing", "enduring", "enhance",
             "fostering", "garner", "highlight", "interplay", "intricate", "landscape", "tapestry", "meticulous",
             "pivotal", "robust", "showcase", "testament", "underscore", "valuable", "vibrant", "utilized"]
+PHRASES = ["in conclusion"]
 UNITS = r"(?:m|cm|mm|km|s|ms|h|min|K|°C|Pa|kPa|MPa|bar|mol|kmol|kg|g|L|mL|J|kJ|MJ|W|kW|MW|N|V|A|Hz|%)"
 FRAME = re.compile(r"\b(thus|therefore|hence|accordingly)\b", re.I)
 
@@ -79,6 +83,9 @@ def lint(text):
         for w in OVERUSED:
             for m in re.finditer(rf"\b{re.escape(w)}\w*", low):
                 flags.append((no, "word", m.group(0)))
+        for p in PHRASES:
+            for m in re.finditer(rf"\b{re.escape(p)}\b", low):
+                flags.append((no, "phrase", m.group(0)))
         for m in re.finditer(r"(?<![\w.-])\d+(?:\.\d+)?-\d+(?:\.\d+)?(?![\w.-])", line):
             flags.append((no, "range", m.group(0)))
         for m in re.finditer(r"(?:^|[\s(=])(-\d+(?:\.\d+)?)", line):
