@@ -2,8 +2,8 @@
 
 ## Contents
 
-- `SKILL.md`: the core rules (rules 1–35), loaded for all writing under the package. It states which reference file loads under which condition.
-- `references/`: `textbook.md` (detail sentences), `equations.md` (displayed equations), `figures.md` (figures and tables), `business.md` (business documents), `structure.md` (reorganizing existing text by importance and dependency, and sizing the opening and closing to the body length), `ste100.md` (the Simplified Technical English dial, on request only), `ai-check.md` (the revision and check passes, the AI-writing patterns, and the house word list), `examples.md` (rejected and accepted forms for the rules most often broken), and `evidence.md` (evidence and limits; not loaded for writing).
+- `SKILL.md`: the core rules (rules 1–37), loaded for all writing under the package. It states which reference file loads under which condition.
+- `references/`: `textbook.md` (detail sentences), `equations.md` (displayed equations), `figures.md` (figures and tables), `business.md` (business documents), `structure.md` (reorganizing existing text by importance and dependency, and sizing the opening and closing to the body length), `drafting.md` (the order in which a new STEM paper or report is drafted from its results: fact base, advance sentence, claim sentence per figure, results, closing, opening, abstract, title), `significance.md` (stating the advance, the title, and the abstract for readers outside the subfield), `exemplars.md` (complete passages in accepted form, each with its move sequence), `ste100.md` (the Simplified Technical English dial, on request only), `ai-check.md` (the revision and check passes, the AI-writing patterns, and the house word list), `examples.md` (rejected and accepted forms for the rules most often broken), and `evidence.md` (evidence and limits; not loaded for writing).
 - `tools/`: `lint_prose.py` (mechanical scan of a draft, used in the revision pass), `check_package.py` (cross-reference check of the package), and `sync_skill.py` (installs or compares the package in another repository).
 - `APPENDIX.md`: two chief executive officer letter patterns held out of the main rules because they rest on one corpus.
 
@@ -12,6 +12,10 @@
 Paired samples, with and without the rules, are rendered on a published page with the differing forms highlighted and a difference line under each pair; each sample is labelled by its document type and by the files that type loads.
 
 [Writing skill: paired samples](https://chetools.github.io/muse/writing-skill-paired-samples/)
+
+A second worked example carries a set of dated research-notebook notes into a report. The notes and the report stand side by side, with the organisation record, the writing changes, the points the transformation could not settle, an account of the transformation method, and the key components of the skill itself.
+
+[Notebook notes to a report](https://chetools.github.io/muse/notebook-to-paper-comparison/)
 
 ## Use with an AI assistant
 

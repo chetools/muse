@@ -17,6 +17,9 @@ This core governs all writing under the package. A reference file is loaded only
 - `references/ste100.md`: only when a percentage of technical style, or STE100, is requested.
 - `references/ai-check.md`: a revision or check pass.
 - `references/examples.md`: a revision or check pass, with `ai-check.md`.
+- `references/drafting.md`: a new STEM paper or report is drafted from results or a fact base.
+- `references/significance.md`: a title, abstract, or opening is drafted for readers outside the document's subfield, or for a general-science journal; loaded with `drafting.md` when both conditions hold.
+- `references/exemplars.md`: a STEM paper or report is drafted, with `drafting.md`; also at a revision or check pass, with `ai-check.md`.
 
 `references/evidence.md` holds the evidence and limits of every rule and is not loaded for writing.
 
