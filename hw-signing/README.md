@@ -46,9 +46,15 @@ modified; the ChemEScribe base was copied, unmodified and hash-verified
 - `js/handoff.js` — the Muse handoff file (named
   `<course>-<hw>-handoff.md`, e.g. `CHE1234-HW1-handoff.md`):
   assignment configuration, the standalone grading instructions in
-  the result-block format, and the anonymised transcript, for the
-  student to give to Muse as one saved file instead of copied text.
-  *(Pure.)*
+  the result-block format, the prompt package itself when the
+  configured link carries its address (`pkgurl`; the page fetches
+  the package file at load and embeds it whole — a failed fetch
+  falls back to naming the package for the student to supply), and
+  the anonymised transcript, for the student to give to Muse as
+  one saved file instead of copied text. *(Pure.)*
+- Hosted prompt packages live in `packages/` (published with the
+  page); `packages/grade-distribution-pt1-v1.md` is the frozen
+  package for CHE1234 HW1.
 - `js/package.js` — signing payload, signing call (`POST <w>/sign`,
   fetch injected), session codes, and HTML package assembly. *(Pure
   except the injected fetch.)*
@@ -103,7 +109,7 @@ checksum, both grade pairs, and every verification field.
 
 ## Tests
 
-26 checks, all passing (`node tests/run-tests.mjs`): configuration
+28 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip; scrub removal in chunks and metadata,
 whole-word boundaries, canonical form; checksum against an independent
 Node recomputation; suspected-identifier cases; result
@@ -136,7 +142,7 @@ recording, and sign against a deployed Worker.
   seconds (the audit app reads it as a number); a line in the section
   states the unit, s. Elsewhere durations are written with the unit,
   e.g. `754.0 s`.
-- **Component version strings**: webapp `hw-signing-webapp 1.0.7`;
+- **Component version strings**: webapp `hw-signing-webapp 1.0.8`;
   model `parakeet-tdt-0.6b-v2-int8` (parakeet.js 1.4.4 and ONNX
   Runtime Web 1.24.1 are the vendored loaders, per `SOURCES.md`);
   glossary `chemescribe-glossary-bundle ea2807d2` — the bundle carries
