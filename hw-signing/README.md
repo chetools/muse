@@ -142,7 +142,7 @@ recording, and sign against a deployed Worker.
   seconds (the audit app reads it as a number); a line in the section
   states the unit, s. Elsewhere durations are written with the unit,
   e.g. `754.0 s`.
-- **Component version strings**: webapp `hw-signing-webapp 1.0.8`;
+- **Component version strings**: webapp `hw-signing-webapp 1.0.9`;
   model `parakeet-tdt-0.6b-v2-int8` (parakeet.js 1.4.4 and ONNX
   Runtime Web 1.24.1 are the vendored loaders, per `SOURCES.md`);
   glossary `chemescribe-glossary-bundle ea2807d2` — the bundle carries
