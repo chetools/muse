@@ -1,0 +1,745 @@
+AC-to-DC conversion (rectifier), Buck converter, Buck–boost converter, boost converter)
+Abney level
+Abrams' law (water–cement ratio law)
+Ackermann steering geometry
+Amagat's law
+Antoine (see 3.1)
+Antoine equation
+Archimedes (Ar)
+Archimedes' principle
+Arrhenius equation
+Atwood (A)
+Avogadro's law/number
+BTU (British thermal unit)
+Babbitt (metal)
+Bagnold (Ba)
+Beer–Lambert (Beer–Lambert–Bouguer) law
+Bejan (Be)
+Bernoulli (equation/principle)
+Bernoulli's principle/equation
+Bingham (Bm)
+Biot (Bi)
+Biot number
+Biot–Savart law
+Bird, Stewart & Lightfoot
+Blake (Bl/B)
+Bode plot
+Bode plot (see 3.6)
+Boltzmann equation/constant
+Bond (Bo)
+Boolean algebra
+Boyle's law
+Brinkman (Br)
+Brownell–Katz (NBK)
+Buchholz relay
+Butterworth filter
+CSTR (continuous stirred-tank reactor)
+Carnot cycle/engine/efficiency
+Carnot's theorem
+Cauchy (Ca)
+Cauchy–Riemann equations
+Chandrasekhar (C)
+Charles's law
+Chemical Engineering Plant Cost Index (CEPCI)
+Clausius theorem/inequality/statement
+Clausius–Clapeyron (see 3.1)
+Clausius–Clapeyron equation
+Colburn j-factor (jH/jD/jM)
+Couette flow
+Coulomb's law
+Courant (Co)
+Dalton's law
+Dalton's law (of partial pressures)
+Damköhler (Da)
+Damköhler number/numbers
+Darcy's law
+Darcy–Weisbach (see 3.2)
+Darcy–Weisbach equation
+DePriester chart
+Dean (D)
+Deborah (De)
+Distributed Control System (DCS)
+Dittus–Boelter correlation
+Dukhin (Du)
+Eckert (Ec)
+Ekman (Ek)
+Eley–Rideal
+Ericksen (Er)
+Euler (Eu)
+Euler number/equation
+Eötvös (Eo)
+FEED (front-end engineering design)
+Fanning (f)
+Fenske / Underwood / Gilliland (see 3.4)
+Fenske equation
+Fenske–Underwood–Gilliland (FUG) shortcut
+Fick's law(s) of diffusion
+Fick's laws (first/second)
+Fourier (Fo)
+Fourier number
+Fourier series/transform
+Fourier's law
+Fourier's law (of heat conduction)
+From S7 unless noted: Ampère's circuital law
+Froude (Fr)
+Froude number
+Galilei (Ga)
+Gay-Lussac's law
+Gibbs free energy
+Gibbs–Duhem equation
+Gibbs–Duhem relation
+Gibbs–Helmholtz equation
+Gilliland correlation
+Graetz (Gz)
+Graetz number
+Graham's law (of effusion)
+Grashof (Gr)
+Grashof number
+Görtler (G)
+HAZOP (hazard and operability study) `A` — spoken “haz-op”; BCcampus glossary covers the surrounding PHA vocabulary: hazard identification, fault-tree analysis, failure modes and effects analysis (FMEA)
+HAZOP-adjacent control terms
+HETP (height equivalent to a theoretical plate)
+HTU / $H_{OG}$ / $N_{OG}$
+Hagen (Hg)
+Hagen–Poiseuille (see 3.2)
+Hagen–Poiseuille / Poiseuille's law
+Hartmann (Ha)
+Hatta (Ha)
+Hatta number
+Heisler charts
+Helmholtz free energy
+Henderson–Hasselbalch equation
+Henry's law
+Hess's law
+Hooke's law
+Hunter–Nash method
+Jacobian (transformation)
+Jacobian / Hessian (matrices)
+Jakob (Ja)
+Joule's laws
+Joule–Thomson coefficient/effect
+Kapitza (Ka)
+Karlovitz (Ka)
+Keulegan–Carpenter (KC)
+Kirchhoff's laws
+Knudsen (Kn)
+Kremser (analysis/equation)
+Kremser (see 3.4)
+Kutateladze (Ku)
+Lang factor
+Langmuir equation/isotherm
+Langmuir–Hinshelwood (kinetics)
+Laplace (La)
+Laplace domain / s-domain
+Laplace transform
+Laplace transform (see 3.6)
+Laplace transform/equation
+Le Chatelier's principle
+Legendre transform(ation)
+Lewis (Le)
+Lockhart–Martinelli (χ)
+MIBK (methyl isobutyl ketone) `A,E-adjacent`
+Mach (Ma)
+Mach number
+Marangoni (Mg)
+Margules equation/expression
+Markstein (Ma)
+Marshall and Swift index
+Maxwell relations
+Maxwell's equations / Maxwell relations
+McCabe–Thiele (method/diagram)
+Michaelis–Menten
+Moody chart/diagram
+Morton (Mo)
+Murphree (see 3.4)
+Murphree efficiency
+NPSH (net positive suction head)
+NRTL (model)
+Navier–Stokes equations
+Nernst equation
+Newton's law of cooling
+Newton's law of viscosity
+Newton's laws / Newton's law of cooling
+Newtonian / non-Newtonian
+Newtonian fluid names: Bingham plastic
+Norton (equivalent)
+Nusselt (Nu)
+Nusselt number
+Nyquist (plot/criterion)
+O'Connell correlation, Drickamer–Bradford correlation
+Ohm's law
+Ohnesorge (Oh)
+PID (proportional–integral–derivative)
+PLC (programmable logic controller)
+Pascal's law
+Peng–Robinson (equation of state)
+Peng–Robinson / Soave–Redlich–Kwong / Redlich–Kwong (see 3.1)
+Pitot tube
+Poiseuille flow
+Poiseuille's law
+Poisson distribution/equation
+Poisson's ratio
+Ponchon–Savarit (method/diagram)
+Poynting correction/factor
+Prandtl (Pr)
+Prandtl number
+Péclet (Pe)
+RTD (resistance temperature detector/device)
+Rachford–Rice (procedure/equation)
+Raoult's law
+Rayleigh (Ra)
+Rayleigh equation (batch distillation)
+Rayleigh number
+Redlich–Kwong
+Reynolds number
+Rossby (Ro)
+Routh–Hurwitz
+SCADA
+Schmidt (Sc)
+Sherwood (Sh)
+Sieder–Tate correlation
+Soave–Redlich–Kwong
+Source: S17 (all 24 letters, with pronunciations). ChemE-heavy subset first: rho (ρ, density/resistivity)
+Source: S8 (primary) + S20 (corroboration). Symbol in brackets. Reynolds (Re)
+Species (from S12 benzene–toluene example, S16 hydrocarbons, S11 methanol–water, n-hexane/n-octane and acetone–water–MIBK systems in LearnChemE quiz list, plus BCcampus/LibreTexts usage): benzene
+Stanton (St)
+Stefan–Boltzmann law
+Stefan–Maxwell (equations)
+Stokes (Stk)
+Stokes' law
+Strouhal (St)
+Taylor (Ta)
+Taylor series / Maclaurin series
+Thiele modulus
+Thiele modulus (φ)
+Thévenin (equivalent)
+UNIFAC
+UNIQUAC
+Underwood equations
+Venturi (meter/effect)
+Weber (We)
+Weber number
+Weissenberg (Wi)
+Wilson equation
+Womersley (α)
+Young's modulus
+Ziegler–Nichols (tuning)
+absorbent / adsorbent / adsorbate
+absorber / stripper (column)
+absorption `H,S` — classic pair: absorption vs adsorption
+absorptivity / reflectivity / transmissivity
+acetaldehyde
+acetone
+acetylene
+acrolein
+activation energy
+activity / activity coefficient
+activity-coefficient models generally
+actuator
+adiabat
+adiabatic
+adiabatic flame temperature (MIT advanced thermo calendar)
+adsorption
+affinity laws
+aggregate / cement / concrete / mortar (near-set)
+agitator = impeller + shaft)
+air preheater)
+algorithm
+alloy / amalgam
+alpha
+ammonia
+ammonium
+ampacity
+ampere/amp
+ampere/amp (A)
+amplidyne
+angstrom (Å)
+anhydrous
+aniline
+annealing
+aqueous
+asphyxiant
+austenite / ferrite / martensite / cementite
+autoignition (temperature)
+azeotrope / azeotropic
+backlash `Hy` (S4). Civil/structural (S3): abutment
+balun
+bar / millibar / atm (atmosphere)
+batch / continuous / semicontinuous
+batch reactor
+beam / column / slab / footing / foundation
+bearing / shaft / coupling / gear / cam / follower / clutch / brake
+becquerel / gray / sievert (radiation units, lower priority)
+bending moment
+beta (β, volume expansion coefficient)
+bimolecular / unimolecular / termolecular
+blackbody / gray body
+block flow diagram (BFD)
+blowdown
+boiling regimes: nucleate boiling
+boilup (ratio)
+bottoms (product)
+boundary
+boundary conditions (initial/final)
+boundary layer
+boundary-layer separation
+bubble point
+bund (UK equivalent)
+buoyancy / buoyant
+burette/buret
+butadiene
+butanol
+calcination
+calorie / kilocalorie
+candela `F,N`. Non-SI / field units: poise (P) / centipoise (cP)
+cantilever
+capacitor / capacitance
+capillary (action/number/constant)
+capillary number (Ca)
+capital cost / fixed capital investment (FCI) / total capital investment (TCI) / working capital
+cascade control
+catalyst (see 3.5)
+catalyst / catalysis / catalytic
+cavitation
+cavitation number
+centrifuge
+chain reaction / initiation / propagation / termination (steps)
+chelate
+chemical potential
+chi
+chiral / chirality
+chlorobenzene-type substituted names generally
+colligative properties
+compressor (centrifugal/reciprocating)
+concentration
+condensation: filmwise / dropwise
+condenser
+condenser (total/partial)
+conduction
+constitutive (equation/relation/model)
+continuity equation
+continuum (hypothesis)
+control valve
+controlled variable
+convection (natural/forced)
+conversion
+copolymer
+corresponding states (theorem/principle)
+corrosion / corrosive
+cost of manufacturing (COM)
+coulomb
+coulomb (C)
+countercurrent / cocurrent (flow arrangement)
+creeping flow / Stokes flow
+critical point / critical temperature / critical pressure
+crystallisation/crystallization (S/Z spelling)
+crystallizer
+crystallizer (see 3.8)
+cubic equation of state
+cyclone (separator)
+damping / damped
+dead time / time delay
+deflection
+degrees Celsius/Fahrenheit/Rankine
+degrees of freedom
+del / nabla (operator)
+delta (δ/Δ, difference operator; boundary-layer thickness)
+departure function
+depreciation / salvage value
+derivative (action) / rate action
+design basis memorandum (DBM)
+detonation `N` vs deflagration
+dew point
+dialysis / electrodialysis
+differential (model/equation) vs integral (model)
+differential equation (ODE/PDE)
+diffusion / diffusivity
+dike (containment)
+dimensionless (itself)
+dimensionless analysis / Buckingham Pi theorem
+dispersion (model/modelling)
+disproportionation
+distillate
+distillation
+distillation column internals: trays, downcomer `N,Hy` — predicted: “down comer”, weir
+disturbance (variable/load)
+drag (coefficient) / lift (coefficient)
+dryer types: rotary / spray / fluid-bed / freeze (dryer)
+drying / dryer
+dump tank / quench drum / quench pool
+dust explosion / dust hazard analysis (DHA)
+eddies
+effectiveness factor
+eigenvalue / eigenvector
+electrostatic precipitator (ESP)
+elementary reaction
+emergency shutdown (system/device)
+emissivity
+enantiomer
+endothermic
+enthalpy
+entropy
+epsilon (ε, emissivity; void fraction/porosity)
+equilibrium constant
+equilibrium curve/line
+equimolar counterdiffusion (EMD)
+error (signal)
+eta (η, efficiency; viscosity)
+ethanol
+ethylene / ethane / ethene
+eutectic (point)
+eutectic (see 3.1)
+evaporator (see 3.8)
+evaporator: single-effect / double-effect / triple-effect / multiple-effect
+excess property / excess Gibbs energy
+exergy / availability
+exothermic
+exothermic/endothermic (see 3.1)
+exponential
+extended surface
+extensive property
+extent of reaction
+extract (noun, stress shift)
+extraction (liquid–liquid)
+farad
+farad (F)
+fatigue / creep
+feedback (control)
+feedforward (control)
+film theory / penetration theory / surface-renewal theory
+filter / filtration / filter press
+fin / finned (tube/surface)
+final control element
+first-order / second-order (system/response)
+flame arrester/arrestor
+flammable / inflammable
+flash (distillation/calculation/drum)
+flash distillation (see 3.1)
+flash point
+flotation
+flowsheet/flowsheeting
+fluidised/fluidized bed
+flux (molar/mass)
+flux/gradient pairs
+formaldehyde
+fouling (factor/resistance)
+fracture
+frequency / hertz
+fresh feed / net/net production
+friction factor (Darcy / Fanning)
+friction factor (see 3.2)
+fugacity
+fugacity coefficient
+furfural
+gain margin / phase margin
+gamma
+gauss
+geotechnical / geotechnics
+global warming potential (GWP), acidification potential (AP), eutrophication potential (EP), human toxicity potential (HTP), photochemical oxidation potential (POP), abiotic depletion potential (ADP), ecological toxicity potential (EcoTP), occupational cancer hazard (OCH) — the whole BCcampus LCA acronym family is a letter-soup ASR risk
+gpm / cfm-type flow units
+gradient / divergence / curl (operators)
+green engineering (BCcampus)
+gross/net economic potential (GEP/NEP)
+hardness / toughness / ductility / brittleness / malleability
+head loss / pressure drop/loss
+heat capacity / specific heat
+heat exchanger (see 3.3)
+heat exchanger types: shell-and-tube `Hy,M`, plate (heat exchanger), double-pipe
+heat of formation / reaction / fusion / vaporisation (vapourisation)
+heat sink / heat source
+henry (H)
+henry (unit)
+hertz (Hz)
+homogeneous / heterogeneous
+humidification / dehumidification
+hydrate / hydrates
+hydrochloric acid
+hydrocyclone
+hydrostatic
+ideal solution / ideal mixture
+impedance / reactance / admittance
+impeller
+incompressible / compressible
+indices / index notation
+inductor / inductance
+inherently safer design
+inhibition / inhibitor
+inside/outside battery limits (ISBL/OSBL)
+insulation / critical radius of insulation
+integral (action) / reset (time/action)
+integral / integration by parts
+intensive property
+interlock
+internal energy
+interpolation / extrapolation
+iota (ι)
+isentropic
+isobaric
+isochoric
+isomer / isomerism / isomerisation
+isotherm
+isothermal
+iteration / iterative / convergence / residual
+joule (J)
+kappa (κ, thermal conductivity in some notations)
+kelvin (K)
+lambda (λ, wavelength; eigenvalue; thermal conductivity in some texts)
+laminar
+latent heat
+layer of protection analysis (LOPA)
+leaching
+leaching (see 3.4)
+leaching/extraction vessels
+life cycle assessment (LCA) / cradle-to-grave / cradle-to-gate / gate-to-gate
+ligand
+light key / heavy key
+linearisation/linearization
+log mean temperature difference (LMTD)
+logarithm / logarithmic (log, ln spoken “ell-en”)
+lower/upper flammability (explosive) limits (LFL/UFL, LEL/UEL)
+lumped capacitance (method)
+management of change (MOC)
+manipulated variable
+manometer
+mass transfer coefficient
+material balance / mass balance / energy balance
+matrix / matrices
+measured variable
+membrane (separation)
+methane, ethane, propane, butane, pentane, hexane, heptane, octane, nonane, decane (S16 table, with tetradecane, octadecane) — the whole -ane series: ASR must keep the prefixes straight (meth-/eth-/prop-/but-/pent-/hex-/hept-/oct-/non-/dec-)
+methanol `S` — methanol/ethanol minimal pair
+methyl ethyl ketone (MEK)
+micron (for micrometre)
+miscible / immiscible
+mmHg (spoken “millimetres of mercury”)
+mole (mol)
+mole / molar / molarity / molality
+mole fraction
+molecularity
+moment of inertia / area moment of inertia / mass moment of inertia
+momentum (transfer/balance)
+momentum/heat/mass transfer (the triad)
+mu (μ, viscosity; also micro- prefix)
+n-butane, isobutane / 2-methylpropane
+n-hexane / n-octane
+newton (N)
+nitric acid
+non-ideality/nonideal
+nu (ν, kinematic viscosity; frequency)
+numerical methods: Euler (method) `E,F` — “oiler” again, Runge–Kutta `E,Hy,F,S` — predicted: “roonga kutta”, Newton–Raphson `E,Hy` — predicted: “Newton Rafson”, finite difference / finite element (method, FEM)
+offset (steady-state error)
+ohm (Ω)
+omega (ω/Ω, angular velocity; ohm)
+omicron (ο)
+open / closed / isolated system
+open-loop / closed-loop
+operating line
+ordinary differential equation
+orifice (meter/plate)
+orifice/obstruction meter, turbine flowmeter, differential-pressure cell
+osmotic pressure
+overall heat transfer coefficient
+override / split-range (control)
+oxidation / reduction / redox `A-coinage`
+oxidising/oxidizing agent
+packed-bed reactor (PBR)
+packing / packed bed/column
+packing types: Raschig rings `E,F`, Pall rings `E`, Berl saddles `E`, Bialecki rings
+partial differential / partial derivative
+partial molar (property/quantity)
+partial pressure
+pascal (Pa)
+passivation
+pentane isomers etc
+permeate / retentate
+permissible exposure limit (PEL)
+pervaporation
+phase rule / Gibbs phase rule
+phasor
+phenol
+phi (φ, fugacity coefficient!; volume fraction)
+phosphoric acid
+pi (π, Pi theorem; pressure in some notations)
+pilot plant
+pinch analysis (heat integration)
+pipette
+piping & instrumentation diagram (P&ID)
+plug-flow reactor (PFR)
+poisoning (catalyst) / deactivation / fouling / sintering
+polymer / polymerisation/polymerization / monomer / oligomer
+polystyrene / polyethylene / polypropylene
+polytropic
+potential flow
+power factor. Computing: compiler
+pre-exponential / frequency factor
+precipitate (noun/verb stress shift)
+prestressed (concrete)
+process flow diagram (PFD)
+process safety management (PSM)
+process synthesis / process design
+propanol / isopropanol
+proportional band / gain
+propylene / propane / propene
+pseudoplastic / dilatant
+pseudosteady state
+psi (pounds per square inch) `A,G-name`
+psi (ψ)
+psia / psig
+psychrometric (chart)
+pump (centrifugal / positive-displacement)
+pump head / shutoff head
+purchased equipment cost
+q-line
+quenching
+radiation
+raffinate
+rate law / rate constant / reaction order
+rate-determining step
+ratio control
+reactor types (see 3.5)
+rebar / reinforcement
+reboiler
+reboiler (kettle / thermosiphon
+rectifying section
+recycle / purge / bypass (streams)
+recycle reactor
+reduced property/properties
+reflux / reflux ratio
+regression / least squares
+relative volatility
+relief valve / relief system / DIERS
+residence time (distribution, RTD)
+resistor
+resonance / resonant frequency
+return on investment (ROI)
+reverse osmosis
+reversible / irreversible
+rheology
+root locus `M,Latin`
+rpm (revolutions per minute)
+runaway (reaction) / thermal runaway
+runaway / thermal explosion
+rupture disc/disk
+saturation / saturated liquid / saturated vapour
+scale-up
+scrubber
+selectivity
+selectivity/conversion/yield triad
+semibatch
+semiconductor / diode / transistor / thyristor
+sensible heat
+set point (also set-point, setpoint)
+settling / sedimentation
+shear (force) / shear diagram
+shear stress / shear rate
+shell balance (momentum/energy/mass)
+siemens (S)
+siemens (unit)
+sigma (σ/Σ, stress; surface tension; summation)
+similarity / scaling (analysis)
+simulation / simulator (Aspen-type names not in opened sources
+simulation/model/modelling (S/Z, single/double L)
+sintering (see 3.5)
+slug flow / annular flow / stratified flow (two-phase patterns)
+slurry reactor
+sodium hydroxide / caustic soda
+soil mechanics terms: permeability, porosity, compaction, consolidation (near-pair compaction/consolidation). Electrical/electronics (S5, S14): voltage / current / resistance (triad)
+solubility
+solvent / solute / diluent
+space time / space velocity
+specific speed
+spinodal decomposition
+splitter / mixer / separator
+spontaneity/spontaneous
+stability / BIBO stability
+stage / theoretical stage / equilibrium stage
+stagnation (point/pressure)
+state function
+statics / dynamics / kinematics / kinetics (near-set)
+steady state / unsteady state
+steady-state approximation
+steam table(s)
+steam, cooling water…)
+stepping off stages
+stokes (St) / centistokes
+storage: sphere / spheroid / floating-roof tank
+streamlines / streaklines / pathlines
+stress / strain / elastic / plastic (deformation)
+stripping (see above)
+stripping section
+styrene
+subcooled (liquid)
+subroutine-type vocabulary generally lower priority
+sulfuric acid (US) / sulphuric acid (UK)
+supercritical fluid
+superheated (vapour/steam)
+surface tension
+surroundings
+surveying / theodolite
+tau (τ, shear stress; time constant; torque)
+temperature approach / pinch point
+ternary diagram/system
+tesla
+tesla (T)
+thermal conductivity
+thermal conductivity / mass diffusivity as “diffusivities”
+thermal diffusivity
+thermal resistance / thermal circuit
+thermocouple
+theta (θ, dimensionless temperature/time; contact angle)
+thixotropic
+three-phase
+threshold limit value (TLV)
+throttle/throttling (process/valve)
+tie line / plait point
+time constant
+time-domain / frequency-domain
+titration
+toluene
+torque
+torr
+torsion / torsional
+toxic / toxicity / exposure limit
+transfer function
+transformer / alternator / armature
+transient balances)
+transient conduction
+transmitter / transducer
+transport phenomena (itself)
+tray (sieve/valve/bubble-cap)
+tray efficiency / overall (stage) efficiency
+triple point
+truss
+tuning (controller)
+turbine (steam/gas/expander)
+turbulent / turbulence
+turnover (frequency/number)
+two-phase flow
+unimolecular diffusion (UMD)
+unit operation / unit process (Outline)
+upsilon (υ)
+urea / fertiliser names (ammonia, urea in GATE-type lists — not opened, so treat as general knowledge, not sourced) — flagged unsourced, exclude if strict. Chemistry concepts: stoichiometry/stoichiometric
+valves: gate / globe / ball / butterfly / check / needle / plug / diaphragm / relief / safety (valve types) — globe predicted: world reading, gate/ball are common words
+van der Waals (equation / forces)
+van der Waals equation (see 3.1)
+vapour–liquid equilibrium (VLE)
+vibration
+virial equation / virial coefficient
+viscoelastic
+viscosity (dynamic/kinematic)
+volatile/volatility
+volt (V)
+vortex / vortices / Von Kármán vortex street
+vulcanisation
+water hammer
+watt (W)
+weber (Wb)
+wet-bulb / dry-bulb (temperature)
+wetting / contact angle
+xi (ξ)
+xylene (o-/m-/p-xylene) `S,G-adjacent`
+yield (reaction)
+yield point/strength, ultimate tensile strength (UTS)
+yield stress
+zeta (ζ)
+“Knockout Pot
