@@ -1,17 +1,16 @@
 // Student-Muse result block: extraction, parsing, hash validation.
 // Pure functions (hashing is injected by the caller from js/hash.js).
 //
-// Format — Stage 6 (the grading skill) emits exactly this:
+// Format — holistic grading (webapp 1.1.0; no tally, no checklist):
 //   === RESULT ===
 //   Completeness: 4/5
 //   Accuracy: 3/5
-//   Tally:
-//   - <point label>: full — "<quoted transcript passage>"
-//   - <point label>: half — "<quoted transcript passage>"
 //   Critique:
 //   <critique text, one or more lines>
 //   === END RESULT ===
 //   SHA256: <64 lowercase hex characters>
+// A block containing a "Tally:" line belongs to the superseded format
+// and is rejected.
 // Hash definition (identical to the skill's scripts/block_hash.py): the
 // SHA-256, lowercase hex, of the block exactly as emitted — the text from
 // the first character of the === RESULT === line through the end of the
@@ -45,28 +44,19 @@ export function extractResultBlock(pasted) {
   return { block, hash };
 }
 
-// Parse the block's contents. Returns { completeness, accuracy, tally,
-// critique } with tally entries { label, score, passage }, or null when
-// the block does not follow the format.
+// Parse the block's contents. Returns { completeness, accuracy,
+// critique }, or null when the block does not follow the format. A
+// "Tally:" line anywhere in the block rejects it: the tally format was
+// superseded by holistic grading in webapp 1.1.0.
 export function parseResultBlock(block) {
-  const lines = String(block || '').split('\n');
-  const comp = lines.join('\n').match(/^Completeness: ([0-5])\/5\s*$/m);
-  const acc = lines.join('\n').match(/^Accuracy: ([0-5])\/5\s*$/m);
+  const text = String(block || '');
+  const lines = text.split('\n');
+  if (lines.some((l) => l.trim() === 'Tally:')) return null;
+  const comp = text.match(/^Completeness: ([0-5])\/5\s*$/m);
+  const acc = text.match(/^Accuracy: ([0-5])\/5\s*$/m);
   if (!comp || !acc) return null;
-  const tallyStart = lines.findIndex((l) => l.trim() === 'Tally:');
   const critiqueStart = lines.findIndex((l) => l.trim() === 'Critique:');
-  if (tallyStart < 0 || critiqueStart < 0 || critiqueStart <= tallyStart) {
-    return null;
-  }
-  const tally = [];
-  for (const line of lines.slice(tallyStart + 1, critiqueStart)) {
-    const t = line.trim();
-    if (!t) continue;
-    const m = t.match(/^- (.+?): (full|half|zero) — "(.*)"$/);
-    if (!m) return null;
-    tally.push({ label: m[1], score: m[2], passage: m[3] });
-  }
-  if (!tally.length) return null;
+  if (critiqueStart < 0) return null;
   const critique = lines
     .slice(critiqueStart + 1)
     .filter((l) => l.trim() !== RESULT_END)
@@ -76,7 +66,6 @@ export function parseResultBlock(block) {
   return {
     completeness: Number(comp[1]),
     accuracy: Number(acc[1]),
-    tally,
     critique,
   };
 }
