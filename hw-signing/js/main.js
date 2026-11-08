@@ -237,7 +237,7 @@ async function refreshDerived() {
     $('transcriptBox').textContent = sc
       .map((c) => '[' + formatTranscriptTimestamp(c.start) + '] ' + c.text)
       .join('\n');
-    $('handoffBtn').disabled = !transcriptionComplete;
+    $('handoffBtn').disabled = !(transcriptionComplete && confirmed);
     const words = scrubWords();
     $('scrubStatus').textContent = words.length
       ? 'Removal list active: ' + words.length + ' entr' + (words.length === 1 ? 'y' : 'ies') + '.'
@@ -281,6 +281,7 @@ $('handoffBtn').addEventListener('click', () => {
 $('confirmChk').addEventListener('change', () => {
   confirmed = $('confirmChk').checked;
   updatePackageEnabled();
+  refreshDerived();
 });
 
 // --- Result block validation ---
