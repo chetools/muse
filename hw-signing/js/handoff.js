@@ -8,7 +8,19 @@
 // window can change characters and break the result block's hash check.
 // Pure functions.
 
-export const HANDOFF_FILE_NAME = 'claude-handoff.md';
+function namePart(value, fallback) {
+  const cleaned = String(value || '').replace(/[^A-Za-z0-9-_]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return cleaned || fallback;
+}
+
+// The saved file is named for the assignment it belongs to:
+// <course>-<hw>-handoff.md, for example CHE1234-HW1-handoff.md.
+export function handoffFileName(cfg) {
+  const c = cfg || {};
+  return namePart(c.course, 'course') + '-' + namePart(c.asg, 'hw') +
+    '-handoff.md';
+}
 
 const FORMAT_SAMPLE = [
   '=== RESULT ===',
