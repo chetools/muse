@@ -112,9 +112,15 @@
   <h3>Transcript (corrected, with removals applied)</h3>
   <div class="box" id="transcriptBox">The transcript will appear here.</div>
   <div class="row">
+    <button id="handoffBtn" class="primary" disabled>Download the Muse handoff file</button>
     <button id="copyTranscriptBtn" disabled>Copy transcript for Muse</button>
     <span class="status" id="copyStatus"></span>
   </div>
+  <p class="note">The handoff file is the reliable way to give Muse your transcript:
+  it saves the grading instructions, the assignment details, and this transcript in one
+  file, exactly as written. Give that file to Muse together with the prompt package.
+  Copying text through a chat window can change characters, which later breaks the
+  result block's hash check.</p>
 
   <h2>5. Review possible identifiers</h2>
   <p class="note">Words the page suspects may identify you, after your removals.
@@ -126,10 +132,10 @@
   </div>
 
   <h2>6. Muse's result</h2>
-  <p class="note">Put the copied transcript into Muse with the prompt package. For a
-  practice round, read the estimated grades and re-record if you want. For the final
-  recording, paste Muse's whole result block — including its SHA256 line — here;
-  the page checks the block against its hash and rejects a changed block.</p>
+  <p class="note">Give Muse the handoff file from step 4, together with the prompt
+  package. For a practice round, read the estimated grades and re-record if you want.
+  For the final recording, paste Muse's whole result block — including its SHA256
+  line — here; the page checks the block against its hash and rejects a changed block.</p>
   <textarea id="resultPaste" rows="10" placeholder="=== RESULT ===&#10;…&#10;=== END RESULT ===&#10;SHA256: …"></textarea>
   <div class="row">
     <button id="validateBtn">Check result block</button>
