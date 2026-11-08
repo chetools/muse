@@ -233,7 +233,6 @@ async function refreshDerived() {
     $('transcriptBox').textContent = sc
       .map((c) => '[' + formatTranscriptTimestamp(c.start) + '] ' + c.text)
       .join('\n');
-    $('copyTranscriptBtn').disabled = false;
     $('handoffBtn').disabled = false;
     const words = scrubWords();
     $('scrubStatus').textContent = words.length
@@ -241,7 +240,6 @@ async function refreshDerived() {
       : '';
   } else {
     $('transcriptBox').textContent = 'The transcript will appear here.';
-    $('copyTranscriptBtn').disabled = true;
     $('handoffBtn').disabled = true;
   }
   renderSuspects(sc);
@@ -262,17 +260,6 @@ function renderSuspects(sc) {
     .join('\n');
 }
 
-$('copyTranscriptBtn').addEventListener('click', async () => {
-  const text = canonical();
-  if (!text) return;
-  try {
-    await navigator.clipboard.writeText(text);
-    $('copyStatus').textContent = 'Copied.';
-  } catch {
-    $('copyStatus').textContent = 'Copy failed; select the transcript text and copy it by hand.';
-  }
-});
-
 $('handoffBtn').addEventListener('click', () => {
   const text = canonical();
   if (!text) return;
@@ -282,7 +269,7 @@ $('handoffBtn').addEventListener('click', () => {
   a.download = HANDOFF_FILE_NAME;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  $('copyStatus').textContent =
+  $('handoffStatus').textContent =
     'Handoff file downloaded as ' + HANDOFF_FILE_NAME +
     '. Give it to Muse together with the prompt package.';
 });
