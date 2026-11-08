@@ -35,6 +35,11 @@ export async function transcribePcm(model, pcm, durationS, { onChunk, onWindow }
   const chunks = [];
   const nWindows = Math.max(1, Math.ceil(durationS / FILE_WINDOW_S));
   for (let w = 0; w < nWindows; w++) {
+    // Yield before each window so the browser can paint the status and
+    // progress updates: inference blocks the page's single thread while
+    // a window runs, and without this yield the updates queued after the
+    // previous window may never become visible.
+    await new Promise((r) => setTimeout(r, 30));
     const wStart = w * FILE_WINDOW_S;
     const slice = pcm.subarray(
       Math.floor(wStart * 16000),
