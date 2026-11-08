@@ -16,6 +16,7 @@ import {
   findSuspects,
 } from './transcript.js';
 import { validateResultBlock } from './resultblock.js';
+import { buildHandoff, HANDOFF_FILE_NAME } from './handoff.js';
 import {
   AUDIO_FILE_NAME, PACKAGE_FILE_NAME, buildSigningPayload,
   requestSignature, assemblePackage, generateSessionCode,
@@ -233,6 +234,7 @@ async function refreshDerived() {
       .map((c) => '[' + formatTranscriptTimestamp(c.start) + '] ' + c.text)
       .join('\n');
     $('copyTranscriptBtn').disabled = false;
+    $('handoffBtn').disabled = false;
     const words = scrubWords();
     $('scrubStatus').textContent = words.length
       ? 'Removal list active: ' + words.length + ' entr' + (words.length === 1 ? 'y' : 'ies') + '.'
@@ -240,6 +242,7 @@ async function refreshDerived() {
   } else {
     $('transcriptBox').textContent = 'The transcript will appear here.';
     $('copyTranscriptBtn').disabled = true;
+    $('handoffBtn').disabled = true;
   }
   renderSuspects(sc);
   updatePackageEnabled();
@@ -268,6 +271,20 @@ $('copyTranscriptBtn').addEventListener('click', async () => {
   } catch {
     $('copyStatus').textContent = 'Copy failed; select the transcript text and copy it by hand.';
   }
+});
+
+$('handoffBtn').addEventListener('click', () => {
+  const text = canonical();
+  if (!text) return;
+  const blob = new Blob([buildHandoff(cfg, text)], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = HANDOFF_FILE_NAME;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  $('copyStatus').textContent =
+    'Handoff file downloaded as ' + HANDOFF_FILE_NAME +
+    '. Give it to Muse together with the prompt package.';
 });
 
 $('confirmChk').addEventListener('change', () => {
