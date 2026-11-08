@@ -317,6 +317,13 @@ $('resultPaste').addEventListener('input', () => {
 });
 
 // --- Packaging ---
+// The YouTube link is the last condition most students complete, and
+// it must re-evaluate the button on its own: without this listener the
+// button stayed disabled after the link was typed, because every
+// other trigger (result check, confirmation, derived refresh) had
+// already fired.
+$('ytLink').addEventListener('input', updatePackageEnabled);
+
 function updatePackageEnabled() {
   $('packageBtn').disabled = !(
     cfg.worker && cfg.pkg && wavBytes && audioSha && chunks.length &&
