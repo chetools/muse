@@ -184,8 +184,21 @@ $('runBtn').addEventListener('click', async () => {
   $('runProg').value = 0;
   $('liveBox').hidden = false;
   $('runStatus').textContent = 'Transcribing…';
+  const t0 = performance.now();
+  let lastPct = 0;
+  const timer = setInterval(() => {
+    $('runStatus').textContent = 'Transcribing… ' + lastPct +
+      ' % of the audio · ' + Math.round((performance.now() - t0) / 1000) +
+      ' s elapsed. The page may appear to pause while a piece is processed.';
+  }, 1000);
   try {
     await transcribePcm(model, pcm, durationS, {
+      onWindow: (done, total) => {
+        if (total > 0) {
+          lastPct = Math.round(100 * Math.min(1, done / total));
+          $('runProg').value = Math.min(1, done / total);
+        }
+      },
       onChunk: (item, progress) => {
         chunks.push(item);
         const s = scrubChunks([item], scrubWords())[0];
@@ -193,8 +206,8 @@ $('runBtn').addEventListener('click', async () => {
         $('liveCorrected').textContent = s.text;
         if (progress && progress.total > 0) {
           $('runProg').value = Math.min(1, progress.done / progress.total);
-          $('runStatus').textContent = 'Transcribing… ' +
-            Math.round(100 * Math.min(1, progress.done / progress.total)) + ' % of the audio.';
+          lastPct = Math.round(100 * Math.min(1, progress.done / progress.total));
+          $('runStatus').textContent = 'Transcribing… ' + lastPct + ' % of the audio.';
         }
         refreshDerived();
       },
@@ -207,6 +220,7 @@ $('runBtn').addEventListener('click', async () => {
     showError('Transcription failed or stopped partway. Pieces already shown are kept.', err);
     $('runStatus').textContent = '';
   } finally {
+    clearInterval(timer);
     $('runBtn').disabled = false;
     refreshDerived();
   }

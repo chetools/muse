@@ -27,7 +27,7 @@ import { normaliseWorkerBase } from './config.js';
 
 export const FORMAT_VERSION = '1';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 1.0.0',
+  webapp: 'hw-signing-webapp 1.0.1',
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };
