@@ -125,7 +125,7 @@ check("vocabulary 745", len((g / "vocabulary.txt").read_text().splitlines()) == 
 # that does not carry it).
 src = SKILL.parent / "local-chemescribe"
 names = ["transcribe.py", "correct.py", "context_choice.py",
-         "dict_check.py", "tidy.py", "learn_diff.py"]
+         "dict_check.py", "tidy.py"]
 if src.exists():
     same = all((SKILL / "scripts" / n).read_bytes() ==
                (src / "scripts" / n).read_bytes() for n in names)
@@ -136,15 +136,23 @@ if src.exists():
 else:
     check("pipeline scripts byte-identical to ChemEScribe (source absent, skipped)", True)
 
-# 14. Package shape: the sections the template requires, and the three
-# user features named in the instructions.
+# 14. Package shape: the sections the template requires, and the
+# defining feature named in the instructions.
 body = (SKILL / "SKILL.md").read_text()
 for needle in ["## Available connectors", "## Alternatives for better results",
-               "STOP RECORD", "personal-glossary.json", "trim_markers.py",
-               "Main speaker only", "Technical content only"]:
+               "STOP RECORD", "trim_markers.py"]:
     check(f"SKILL.md carries {needle!r}", needle in body)
 yaml_text = (SKILL / "skill.yaml").read_text()
 check("skill.yaml name", "name: local_chemescribe_marked" in yaml_text)
+
+# 15. The removed options stay removed: no main-speaker filter, no
+# technical-content filter, no personal dictionary, in the
+# instructions, the descriptor, or the scripts folder.
+joined = body + yaml_text
+for absent in ["personal-glossary", "learn_diff", "Main speaker only",
+               "Technical content only"]:
+    check(f"removed option absent: {absent!r}", absent not in joined)
+check("learn_diff.py absent", not (SKILL / "scripts" / "learn_diff.py").exists())
 
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
