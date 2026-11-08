@@ -41,9 +41,6 @@ modified; the ChemEScribe base was copied, unmodified and hash-verified
   count, email-like patterns), time/duration formatting. *(Pure.)*
 - `js/vocab.js` — vocabulary sets for that detection, built from the
   copied bundle's exported pairs and wordlist.
-- `js/chapters.js` — suggested YouTube chapters from chunk start
-  times: first chapter 00:00, at least 3 chapters, at least 10 s
-  between starts; copyable plain text. *(Pure.)*
 - `js/resultblock.js` — result-block extraction, parsing, and hash
   validation. *(Pure; hashing injected.)*
 - `js/package.js` — signing payload, signing call (`POST <w>/sign`,
@@ -100,11 +97,10 @@ checksum, both grade pairs, and every verification field.
 
 ## Tests
 
-28 checks, all passing (`node tests/run-tests.mjs`): configuration
+24 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip; scrub removal in chunks and metadata,
 whole-word boundaries, canonical form; checksum against an independent
-Node recomputation; suspected-identifier cases; chapter rules
-including the sparse-chunk fallback and the impossible case; result
+Node recomputation; suspected-identifier cases; result
 block acceptance, tamper rejection, missing-hash and malformed
 rejection, plus a cross-check of a fixture emission by the skill's
 `block_hash.py`; WAV header/size/duration; signing payload shape and
@@ -128,13 +124,12 @@ recording, and sign against a deployed Worker.
 
 - **Package transcript timestamps use total minutes** (`[75:20]`,
   never `h:mm:ss`), because the audit app's timestamp stripping reads
-  `mm:ss`; the checksum it recomputes then matches. YouTube chapter
-  text keeps the `h:mm:ss` form for recordings over one hour.
+  `mm:ss`; the checksum it recomputes then matches.
 - **Audio duration in the verification `<dl>` is a plain number** of
   seconds (the audit app reads it as a number); a line in the section
   states the unit, s. Elsewhere durations are written with the unit,
   e.g. `754.0 s`.
-- **Component version strings**: webapp `hw-signing-webapp 1.0.1`;
+- **Component version strings**: webapp `hw-signing-webapp 1.0.2`;
   model `parakeet-tdt-0.6b-v2-int8` (parakeet.js 1.4.4 and ONNX
   Runtime Web 1.24.1 are the vendored loaders, per `SOURCES.md`);
   glossary `chemescribe-glossary-bundle ea2807d2` — the bundle carries
@@ -145,10 +140,6 @@ recording, and sign against a deployed Worker.
   heard forms and terms plus the bundled English wordlist (the bundle's
   internal dictionary-term vocabulary is not exported). Sentence-initial
   capitals are not flagged.
-- **Chapters fallback**: when chunk starts alone give fewer than 3
-  valid chapters, starts at one-third and two-thirds of the duration
-  are used (snapped to a chunk start within 5 s when one qualifies);
-  under 30 s of audio no list is offered.
 - **No autosave**: unlike the base page, this page stores nothing
   (`autosave.js` is copied for reference and not used), so unscrubbed
   text and scrub-field content cannot persist in the browser.
