@@ -1,8 +1,0 @@
-name: local_chemescribe_marked
-title: ChemEScribe Marked — Transcribe with STOP RECORD / START RECORD Trim
-description: 'Transcribe a recording locally with NVIDIA Parakeet TDT 0.6B v2 (int8, CPU, through onnx-asr) and correct it with the built-in chemical-engineering glossary (the ChemEScribe bundle: 756-entry glossary, 745-term vocabulary, 152 certain and 60 uncertain sound-alike pairs, dictionary pass, mechanical tidy-up), then trim out every section between a spoken STOP RECORD and the next spoken START RECORD: repeated stop markers inside a removed section and repeated start markers while recording are counted and change nothing, an unclosed stop marker removes the rest of the recording and is flagged, and markers split across transcription chunks or mid-sentence are still found. The raw transcript is kept as the record and every removal is logged, so removals are reversible. Timestamps are a user option, off by default: with them, each roughly 25 second chunk of the transcript carries its time range in the recording, preserved through the correction passes. Trigger when a recording uses stop record / start record markers, or the user asks for this skill by name.'
-category: Work and knowledge
-include_in_prompt: true
-availability:
-  confidential_vm: true
-  needs_speech: false
