@@ -37,6 +37,8 @@ let durationS = 0;
 let sourceName = '';
 let chunks = [];            // pipeline output: {start, end, raw, corrected, ...}
 let transcriptionComplete = false;  // true only after a full run finishes
+let pkgText = null;                 // fetched prompt package text, if pkgurl set
+let pkgFetchFailed = false;
 let confirmed = false;
 let vocabulary = null;      // built lazily on first review render
 
@@ -58,6 +60,13 @@ function renderConfig() {
   if (cfg.course) parts.push('Course: ' + cfg.course);
   if (cfg.asg) parts.push('Assignment: ' + cfg.asg);
   if (cfg.pkg) parts.push('Prompt package: ' + cfg.pkg);
+  if (cfg.pkgurl && pkgText) {
+    parts.push('package file loaded (' + pkgText.length + ' characters, included in the handoff file)');
+  } else if (cfg.pkgurl && pkgFetchFailed) {
+    parts.push('package file could not be fetched (the handoff file will name the package instead)');
+  } else if (cfg.pkgurl) {
+    parts.push('package file loading…');
+  }
   if (cfg.worker) parts.push('Signing Worker: ' + cfg.worker);
   $('cfgLine').textContent = parts.length
     ? 'Configuration — ' + parts.join(' · ')
@@ -70,6 +79,7 @@ function renderConfig() {
     $('setupSection').hidden = false;
     $('suWorker').value = cfg.worker || '';
     $('suPkg').value = cfg.pkg || '';
+    $('suPkgUrl').value = cfg.pkgurl || '';
     $('suCourse').value = cfg.course || '';
     $('suAsg').value = cfg.asg || '';
   }
@@ -78,6 +88,7 @@ $('suBuild').addEventListener('click', () => {
   const link = buildConfigLink(window.location.origin + window.location.pathname, {
     worker: $('suWorker').value.trim(),
     pkg: $('suPkg').value.trim(),
+    pkgurl: $('suPkgUrl').value.trim(),
     course: $('suCourse').value.trim(),
     asg: $('suAsg').value.trim(),
   });
@@ -267,7 +278,7 @@ function renderSuspects(sc) {
 $('handoffBtn').addEventListener('click', () => {
   const text = canonical();
   if (!text) return;
-  const blob = new Blob([buildHandoff(cfg, text)], { type: 'text/markdown' });
+  const blob = new Blob([buildHandoff(cfg, text, pkgText)], { type: 'text/markdown' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = handoffFileName(cfg);
@@ -275,7 +286,9 @@ $('handoffBtn').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   $('handoffStatus').textContent =
     'Handoff file downloaded as ' + handoffFileName(cfg) +
-    '. Give it to Muse together with the prompt package.';
+    (pkgText
+      ? '. It includes the prompt package; give the file to Muse.'
+      : '. Give it to Muse together with the prompt package.');
 });
 
 $('confirmChk').addEventListener('change', () => {
@@ -356,3 +369,17 @@ $('packageBtn').addEventListener('click', async () => {
 
 renderConfig();
 refreshDerived();
+
+// Fetch the prompt package file, when the configured link carries its
+// address, so the handoff file can include it whole. A failed fetch is
+// not fatal: the handoff file then names the package and the student
+// supplies it separately, as before.
+if (cfg.pkgurl) {
+  fetch(cfg.pkgurl)
+    .then((r) => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then((t) => { pkgText = t; renderConfig(); })
+    .catch(() => { pkgFetchFailed = true; renderConfig(); });
+}

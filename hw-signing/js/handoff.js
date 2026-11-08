@@ -36,7 +36,7 @@ const FORMAT_SAMPLE = [
   'SHA256: <hash>',
 ].join('\n');
 
-export function buildHandoff(cfg, transcript) {
+export function buildHandoff(cfg, transcript, pkgText) {
   const c = cfg || {};
   const lines = [];
   lines.push('# Grading handoff');
@@ -48,11 +48,17 @@ export function buildHandoff(cfg, transcript) {
   lines.push('## Instructions for Muse');
   lines.push('');
   lines.push(
-    'Grade the transcript at the end of this file against the prompt ' +
-    'package identified above, which the student supplies with this ' +
-    'file. Report the result ONLY as a result block in the exact ' +
-    'format below, with its SHA256 line. No text outside the block ' +
-    'and its SHA256 line.');
+    pkgText
+      ? 'Grade the transcript at the end of this file against the ' +
+        'prompt package included in this file, in the section after ' +
+        'these instructions. Report the result ONLY as a result ' +
+        'block in the exact format below, with its SHA256 line. No ' +
+        'text outside the block and its SHA256 line.'
+      : 'Grade the transcript at the end of this file against the ' +
+        'prompt package identified above, which the student supplies ' +
+        'with this file. Report the result ONLY as a result block in ' +
+        'the exact format below, with its SHA256 line. No text ' +
+        'outside the block and its SHA256 line.');
   lines.push('');
   lines.push('Grading rules:');
   lines.push(
@@ -92,6 +98,12 @@ export function buildHandoff(cfg, transcript) {
     'hashlib over the file), and only then output the block with ' +
     'the computed SHA256 line appended. If you cannot run code, say ' +
     'so plainly instead of emitting a hash.');
+  if (pkgText) {
+    lines.push('');
+    lines.push('## Prompt package');
+    lines.push('');
+    lines.push(String(pkgText).replace(/\s+$/, ''));
+  }
   lines.push('');
   lines.push('## Transcript (anonymised)');
   lines.push('');
