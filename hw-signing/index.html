@@ -135,10 +135,13 @@
   result block's hash check.</p>
 
   <h2>6. Muse's result</h2>
-  <p class="note">Give Muse the handoff file from step 4, together with the prompt
-  package. For a practice round, read the estimated grades and re-record if you want.
-  For the final recording, paste Muse's whole result block — including its SHA256
-  line — here; the page checks the block against its hash and rejects a changed block.</p>
+  <p class="note">Give Muse the handoff file from step 5. Muse replies with a
+  text file only: open that file, copy its whole contents — the result block
+  including its SHA256 line — from the file, and paste them here. Do not copy
+  the block from a chat message; copying through a chat window can change
+  characters and break the hash check. For a practice round, read the estimated
+  grades in the file and re-record if you want. The page checks the pasted
+  block against its hash and rejects a changed block.</p>
   <textarea id="resultPaste" rows="10" placeholder="=== RESULT ===&#10;…&#10;=== END RESULT ===&#10;SHA256: …"></textarea>
   <div class="row">
     <button id="validateBtn">Check result block</button>
