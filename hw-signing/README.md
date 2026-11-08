@@ -43,7 +43,8 @@ modified; the ChemEScribe base was copied, unmodified and hash-verified
   copied bundle's exported pairs and wordlist.
 - `js/resultblock.js` — result-block extraction, parsing, and hash
   validation. *(Pure; hashing injected.)*
-- `js/handoff.js` — the Muse handoff file (`claude-handoff.md`):
+- `js/handoff.js` — the Muse handoff file (named
+  `<course>-<hw>-handoff.md`, e.g. `CHE1234-HW1-handoff.md`):
   assignment configuration, the standalone grading instructions in
   the result-block format, and the anonymised transcript, for the
   student to give to Muse as one saved file instead of copied text.
@@ -135,7 +136,7 @@ recording, and sign against a deployed Worker.
   seconds (the audit app reads it as a number); a line in the section
   states the unit, s. Elsewhere durations are written with the unit,
   e.g. `754.0 s`.
-- **Component version strings**: webapp `hw-signing-webapp 1.0.6`;
+- **Component version strings**: webapp `hw-signing-webapp 1.0.7`;
   model `parakeet-tdt-0.6b-v2-int8` (parakeet.js 1.4.4 and ONNX
   Runtime Web 1.24.1 are the vendored loaders, per `SOURCES.md`);
   glossary `chemescribe-glossary-bundle ea2807d2` — the bundle carries

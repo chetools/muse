@@ -16,7 +16,7 @@ import {
   findSuspects,
 } from './transcript.js';
 import { validateResultBlock } from './resultblock.js';
-import { buildHandoff, HANDOFF_FILE_NAME } from './handoff.js';
+import { buildHandoff, handoffFileName } from './handoff.js';
 import {
   AUDIO_FILE_NAME, PACKAGE_FILE_NAME, buildSigningPayload,
   requestSignature, assemblePackage, generateSessionCode,
@@ -270,11 +270,11 @@ $('handoffBtn').addEventListener('click', () => {
   const blob = new Blob([buildHandoff(cfg, text)], { type: 'text/markdown' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = HANDOFF_FILE_NAME;
+  a.download = handoffFileName(cfg);
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   $('handoffStatus').textContent =
-    'Handoff file downloaded as ' + HANDOFF_FILE_NAME +
+    'Handoff file downloaded as ' + handoffFileName(cfg) +
     '. Give it to Muse together with the prompt package.';
 });
 
