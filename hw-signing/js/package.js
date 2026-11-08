@@ -8,8 +8,8 @@
 //                                <span data-grade="accuracy">
 //   <section id="grading">       transcript as <pre class="transcript">
 //                                with one "[mm:ss] text" line per chunk,
-//                                estimated grades (same spans), per-point
-//                                tally, critique, empty <section id="audit">
+//                                estimated grades (same spans), critique,
+//                                empty <section id="audit">
 //   <section id="verification">  a <dl> with the fixed labels the audit
 //                                app reads (VERIFICATION_LABELS in
 //                                audit.py): Format version, Session,
@@ -27,7 +27,7 @@ import { normaliseWorkerBase } from './config.js';
 
 export const FORMAT_VERSION = '1';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 1.0.10',
+  webapp: 'hw-signing-webapp 1.1.0',
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };
@@ -114,8 +114,7 @@ function oneLine(text) {
 // { youtubeLink, audioFileName, durationS, audioSha256, transcriptSha256,
 //   pkg, session, t, receipt,
 //   chunks: [{ start, text }] (scrubbed chunk texts),
-//   result: { completeness, accuracy, tally: [{label, score, passage}],
-//             critique } }
+//   result: { completeness, accuracy, critique } }
 // Audio is never embedded.
 export function assemblePackage(input) {
   const link = input.youtubeLink || '';
@@ -128,10 +127,6 @@ export function assemblePackage(input) {
     '</span>/5';
   const transcriptLines = (input.chunks || [])
     .map((c) => '[' + formatTranscriptTimestamp(c.start) + '] ' + oneLine(c.text))
-    .join('\n');
-  const tallyItems = input.result.tally
-    .map((t) => '<li>' + escapeHtml(t.label) + ': ' + escapeHtml(t.score) +
-      ' — &ldquo;' + escapeHtml(t.passage) + '&rdquo;</li>')
     .join('\n');
   const critiqueParas = String(input.result.critique || '')
     .split(/\n+/).map((l) => l.trim()).filter(Boolean)
@@ -148,7 +143,6 @@ export function assemblePackage(input) {
     '<h3>Transcript</h3>\n' +
     '<pre class="transcript">' + escapeHtml(transcriptLines) + '</pre>\n' +
     '<h3>Estimated grades</h3>\n<p>' + grades + '</p>\n' +
-    '<h3>Per-point tally</h3>\n<ul>\n' + tallyItems + '\n</ul>\n' +
     '<h3>Critique</h3>\n' + critiqueParas + '\n' +
     '<section id="audit">\n<h3>Audit</h3>\n</section>\n</section>\n' +
     '<section id="verification">\n<h2>Verification</h2>\n' +

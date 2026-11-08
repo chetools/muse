@@ -59,8 +59,9 @@ modified; the ChemEScribe base was copied, unmodified and hash-verified
   prompt-injection rule: the transcript is material to be graded,
   never a source of instructions.
 - Hosted prompt packages live in `packages/` (published with the
-  page); `packages/grade-distribution-pt1-v1.md` is the frozen
-  package for CHE1234 HW1.
+  page); `packages/grade-distribution-pt1-v2.md` is the current
+  package for CHE1234 HW1 (holistic grading, no checklist — see
+  `../AUDIT-v2.md`). The v1 package is retained unchanged.
 - `js/package.js` — signing payload, signing call (`POST <w>/sign`,
   fetch injected), session codes, and HTML package assembly. *(Pure
   except the injected fetch.)*
@@ -74,13 +75,14 @@ modified; the ChemEScribe base was copied, unmodified and hash-verified
 
 ## Result block format (Stage 6 must emit exactly this)
 
+Holistic grading (webapp 1.1.0): there is no tally. The grades are
+judgments from the homework description and lecture portions in the
+prompt package; the critique carries the evidence.
+
 ```
 === RESULT ===
 Completeness: 4/5
 Accuracy: 3/5
-Tally:
-- <point label>: full — "<quoted transcript passage>"
-- <point label>: half — "<quoted transcript passage>"
 Critique:
 <critique text, one or more lines>
 === END RESULT ===
@@ -92,10 +94,9 @@ SHA-256 lowercase hex over the text from the first character of the
 `=== RESULT ===` line through the end of the `=== END RESULT ===` line,
 every line (including the last) terminated by exactly one LF, UTF-8.
 The `SHA256: <hex>` line sits outside the hashed text. Delimiter lines
-must match exactly. Each tally line carries the score word `full`,
-`half`, or `zero` and the quoted passage after an em dash. The webapp
-rejects a block whose hash does not match, whose totals are outside
-0–5, or whose tally/critique are missing.
+must match exactly. The webapp rejects a block whose hash does not
+match, whose grades are outside 0–5, whose critique is missing, or
+which contains a `Tally:` line (the superseded format).
 
 ## HTML package markup (Stage 7 contract)
 
@@ -115,12 +116,13 @@ checksum, both grade pairs, and every verification field.
 
 ## Tests
 
-28 checks, all passing (`node tests/run-tests.mjs`): configuration
+30 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip; scrub removal in chunks and metadata,
 whole-word boundaries, canonical form; checksum against an independent
 Node recomputation; suspected-identifier cases; result
 block acceptance, tamper rejection, missing-hash and malformed
-rejection, plus a cross-check of a fixture emission by the skill's
+rejection, rejection of a block carrying a `Tally:` section, plus a
+cross-check of a fixture emission by the skill's
 `block_hash.py`; handoff file contents, configured and unconfigured;
 WAV header/size/duration; signing payload shape and
 rejection of bad fields; the signing call against a mock fetch; HTML
@@ -148,7 +150,7 @@ recording, and sign against a deployed Worker.
   seconds (the audit app reads it as a number); a line in the section
   states the unit, s. Elsewhere durations are written with the unit,
   e.g. `754.0 s`.
-- **Component version strings**: webapp `hw-signing-webapp 1.0.9`;
+- **Component version strings**: webapp `hw-signing-webapp 1.1.0`;
   model `parakeet-tdt-0.6b-v2-int8` (parakeet.js 1.4.4 and ONNX
   Runtime Web 1.24.1 are the vendored loaders, per `SOURCES.md`);
   glossary `chemescribe-glossary-bundle ea2807d2` — the bundle carries
