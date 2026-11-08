@@ -15,7 +15,6 @@ import {
   parseScrubWords, scrubChunks, scrubMetadata, canonicalTranscript,
   findSuspects,
 } from './transcript.js';
-import { generateChapters, chaptersText } from './chapters.js';
 import { validateResultBlock } from './resultblock.js';
 import {
   AUDIO_FILE_NAME, PACKAGE_FILE_NAME, buildSigningPayload,
@@ -226,7 +225,7 @@ $('runBtn').addEventListener('click', async () => {
   }
 });
 
-// --- Derived views: transcript, checksum note, review list, chapters ---
+// --- Derived views: transcript, checksum note, review list ---
 async function refreshDerived() {
   const sc = scrubbed();
   if (sc.length) {
@@ -243,7 +242,6 @@ async function refreshDerived() {
     $('copyTranscriptBtn').disabled = true;
   }
   renderSuspects(sc);
-  renderChapters(sc);
   updatePackageEnabled();
 }
 
@@ -260,29 +258,6 @@ function renderSuspects(sc) {
     .map((s) => '“' + s.word + '” ×' + s.count + ' — ' + s.reason)
     .join('\n');
 }
-
-function renderChapters(sc) {
-  const link = $('ytLink').value.trim();
-  const box = $('chaptersBox');
-  if (!link || !sc.length) {
-    box.textContent = 'Chapters appear when a link is entered and a transcript exists.';
-    $('copyChaptersBtn').disabled = true;
-    return;
-  }
-  const chapters = generateChapters(sc, durationS);
-  if (!chapters) {
-    box.textContent = 'No valid chapter list: a chapter list needs at least 3 chapters at least 10 s apart.';
-    $('copyChaptersBtn').disabled = true;
-    return;
-  }
-  box.textContent = chaptersText(chapters);
-  $('copyChaptersBtn').disabled = false;
-}
-$('ytLink').addEventListener('input', () => renderChapters(scrubbed()));
-$('copyChaptersBtn').addEventListener('click', async () => {
-  const text = $('chaptersBox').textContent;
-  if (text) { try { await navigator.clipboard.writeText(text); } catch { /* stays copyable by hand */ } }
-});
 
 $('copyTranscriptBtn').addEventListener('click', async () => {
   const text = canonical();
