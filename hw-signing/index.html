@@ -114,17 +114,6 @@
   </div>
   <h3>Transcript (corrected, with removals applied)</h3>
   <div class="box" id="transcriptBox">The transcript will appear here.</div>
-  <div class="row">
-    <button id="handoffBtn" class="primary" disabled>Download the Muse handoff file</button>
-    <span class="status" id="handoffStatus"></span>
-  </div>
-  <p class="note">The download becomes available when a transcription run has finished
-  and you have reviewed the possible identifiers in step 5 and ticked its confirmation
-  box. The handoff file is the reliable way to give Muse your transcript:
-  it saves the grading instructions, the assignment details, and this transcript in one
-  file, exactly as written. Give that file to Muse together with the prompt package.
-  Copying text through a chat window can change characters, which later breaks the
-  result block's hash check.</p>
 
   <h2>5. Review possible identifiers</h2>
   <p class="note">Words the page suspects may identify you, after your removals.
@@ -134,6 +123,16 @@
     <label class="check"><input type="checkbox" id="confirmChk"> I have reviewed the
     transcript and the list above; the transcript is ready to export.</label>
   </div>
+  <div class="row">
+    <button id="handoffBtn" class="primary" disabled>Download the Muse handoff file</button>
+    <span class="status" id="handoffStatus"></span>
+  </div>
+  <p class="note">The download becomes available when a transcription run has finished
+  and you have ticked the confirmation box above. The handoff file is the reliable way
+  to give Muse your transcript: it saves the grading instructions, the assignment
+  details, the prompt package, and this transcript in one file, exactly as written.
+  Copying text through a chat window can change characters, which later breaks the
+  result block's hash check.</p>
 
   <h2>6. Muse's result</h2>
   <p class="note">Give Muse the handoff file from step 4, together with the prompt
