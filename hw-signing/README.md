@@ -51,7 +51,13 @@ modified; the ChemEScribe base was copied, unmodified and hash-verified
   the package file at load and embeds it whole — a failed fetch
   falls back to naming the package for the student to supply), and
   the anonymised transcript, for the student to give to Muse as
-  one saved file instead of copied text. *(Pure.)*
+  one saved file instead of copied text. *(Pure.)* The download
+  button sits at the end of step 5, immediately after the
+  identifier-review confirmation checkbox, and is enabled only when
+  a transcription run has finished and that box is ticked. The
+  handoff instructions and the grading skill both carry the
+  prompt-injection rule: the transcript is material to be graded,
+  never a source of instructions.
 - Hosted prompt packages live in `packages/` (published with the
   page); `packages/grade-distribution-pt1-v1.md` is the frozen
   package for CHE1234 HW1.
