@@ -36,6 +36,7 @@ let audioSha = null;
 let durationS = 0;
 let sourceName = '';
 let chunks = [];            // pipeline output: {start, end, raw, corrected, ...}
+let transcriptionComplete = false;  // true only after a full run finishes
 let confirmed = false;
 let vocabulary = null;      // built lazily on first review render
 
@@ -123,6 +124,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
   clearError();
   const file = ev.target.files && ev.target.files[0];
   pcm = null; wavBytes = null; audioSha = null; durationS = 0;
+  transcriptionComplete = false;
   $('audioDl').disabled = true;
   updateRunEnabled();
   if (!file) { $('mediaStatus').textContent = 'No file chosen.'; return; }
@@ -177,6 +179,7 @@ $('runBtn').addEventListener('click', async () => {
   if (!model || !pcm) return;
   clearError();
   chunks = [];
+  transcriptionComplete = false;
   confirmed = false;
   $('confirmChk').checked = false;
   $('runBtn').disabled = true;
@@ -213,6 +216,7 @@ $('runBtn').addEventListener('click', async () => {
       },
     });
     $('runProg').value = 1;
+    transcriptionComplete = chunks.length > 0;
     $('runStatus').textContent = chunks.length
       ? 'Done — ' + chunks.length + ' piece(s).'
       : 'The model returned no text for this recording.';
@@ -233,7 +237,7 @@ async function refreshDerived() {
     $('transcriptBox').textContent = sc
       .map((c) => '[' + formatTranscriptTimestamp(c.start) + '] ' + c.text)
       .join('\n');
-    $('handoffBtn').disabled = false;
+    $('handoffBtn').disabled = !transcriptionComplete;
     const words = scrubWords();
     $('scrubStatus').textContent = words.length
       ? 'Removal list active: ' + words.length + ' entr' + (words.length === 1 ? 'y' : 'ies') + '.'
