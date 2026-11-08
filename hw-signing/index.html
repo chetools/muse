@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: 'sha256-mC4pxt/A5P7crd833V8h+oeOHFe32L81ZawH0lbCSaQ='; worker-src 'self' blob:; connect-src 'self' blob: data: https:; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>HW Signing — transcribe, practise, package</title>
+<style>
+  html { background: #ffffff; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a;
+         margin: 0; line-height: 1.5; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.4rem; margin: 0 0 6px; }
+  h2 { font-size: 1.05rem; margin: 26px 0 8px; }
+  p, li { font-size: 0.95rem; }
+  .sub { color: #444; margin: 0 0 4px; }
+  button { font: inherit; padding: 8px 16px; border: 1px solid #888; border-radius: 6px;
+           background: #f4f4f4; cursor: pointer; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary { background: #1f5fa6; border-color: #1f5fa6; color: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+  progress { width: 100%; height: 18px; }
+  .status { font-size: 0.92rem; color: #333; min-height: 1.4em; }
+  .err { color: #8b1a1a; background: #fdf0f0; border: 1px solid #e0b4b4; border-radius: 6px;
+         padding: 8px 12px; display: none; }
+  .box { border: 1px solid #ccc; border-radius: 6px; padding: 12px 14px; background: #fafafa; }
+  .mono { font-family: ui-monospace, monospace; font-size: 0.85rem; white-space: pre-wrap;
+          word-break: break-all; }
+  #transcriptBox { white-space: pre-wrap; font-size: 1rem; }
+  textarea { width: 100%; box-sizing: border-box; font: inherit; }
+  input[type="text"], input[type="url"] { font: inherit; padding: 6px 8px; }
+  .note { color: #555; font-size: 0.88rem; }
+  label.check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; }
+  #liveBox .lbl { font-weight: 600; font-size: 0.88rem; color: #444; }
+  #liveRaw { color: #555; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "onnxruntime-web": "./chemescribe-base/vendor/ort/ort.wasm.min.mjs",
+    "parakeet.js": "./chemescribe-base/vendor/parakeet/src/index.js"
+  }
+}
+</script>
+</head>
+<body>
+<div class="wrap">
+  <h1>HW Signing</h1>
+  <p class="sub">Transcribe a spoken explanation on this device, remove names and
+  identifying words, practise against the grading prompt in Muse, and package the
+  final recording for Canvas. Your audio never leaves this device; the only network
+  call this page makes with submission data is the signing call, which carries two
+  fingerprints and no audio and no transcript.</p>
+  <p class="status" id="cfgLine">Configuration: reading the link…</p>
+  <div class="err" id="errBox"></div>
+
+  <section id="setupSection" hidden>
+    <h2>Teacher setup — build the student link</h2>
+    <p class="note">Enter the details once; the finished link goes in Canvas and
+    carries the configuration, so students type no addresses.</p>
+    <div class="row"><label>Signing Worker address <input type="url" id="suWorker" size="44" placeholder="https://hw-signing.example.workers.dev"></label></div>
+    <div class="row"><label>Prompt package <input type="text" id="suPkg" size="30" placeholder="pkg id and version"></label></div>
+    <div class="row"><label>Course <input type="text" id="suCourse" size="30"></label>
+    <label>Assignment <input type="text" id="suAsg" size="30"></label></div>
+    <div class="row"><button id="suBuild" class="primary">Build link</button>
+    <button id="suCopy">Copy link</button></div>
+    <p class="mono" id="suLink"></p>
+  </section>
+
+  <h2>1. Load the model</h2>
+  <div class="row">
+    <button id="loadBtn" class="primary">Load model (about 670 MB, first time only)</button>
+    <span class="status" id="loadStatus">Model not loaded.</span>
+  </div>
+  <progress id="loadProg" value="0" max="1" hidden></progress>
+  <p class="note">Nothing is downloaded until you press the button. Transcription runs
+  entirely in this browser (NVIDIA Parakeet TDT 0.6B v2, int8, through parakeet.js 1.4.4
+  and ONNX Runtime Web 1.24.1, both vendored with this page).</p>
+
+  <h2>2. Choose the recording file</h2>
+  <div class="row">
+    <input type="file" id="mediaFile" accept="audio/*,video/*,.wav,.mp3,.m4a,.webm,.ogg,.mp4,.mov,.mkv">
+    <span class="status" id="mediaStatus">No file chosen.</span>
+  </div>
+  <p class="note" id="audioMeta"></p>
+  <div class="row">
+    <button id="audioDl" disabled>Download extracted audio (WAV)</button>
+    <span class="note">This WAV file is one of the two files submitted to Canvas.</span>
+  </div>
+
+  <h2>3. Names and words to remove</h2>
+  <p class="note">One per line, or separated by commas. Every occurrence is removed
+  from the transcript and from anything this page shows or exports. What you type
+  here stays in this page: it is never exported, stored, or sent anywhere.</p>
+  <textarea id="scrubField" rows="3" placeholder="e.g. your name, your lab partner's name, your school"></textarea>
+  <p class="status" id="scrubStatus"></p>
+
+  <h2>4. Transcribe</h2>
+  <div class="row">
+    <button id="runBtn" class="primary" disabled>Transcribe</button>
+    <span class="status" id="runStatus"></span>
+  </div>
+  <progress id="runProg" value="0" max="1" hidden></progress>
+  <div class="box" id="liveBox" hidden>
+    <div><span class="lbl">Latest piece, as transcribed:</span> <span id="liveRaw"></span></div>
+    <div style="margin-top:6px"><span class="lbl">Latest piece, after glossary correction and removal:</span> <span id="liveCorrected"></span></div>
+  </div>
+  <h3>Transcript (corrected, with removals applied)</h3>
+  <div class="box" id="transcriptBox">The transcript will appear here.</div>
+  <div class="row">
+    <button id="copyTranscriptBtn" disabled>Copy transcript for Muse</button>
+    <span class="status" id="copyStatus"></span>
+  </div>
+
+  <h2>5. Review possible identifiers</h2>
+  <p class="note">Words the page suspects may identify you, after your removals.
+  Add any that are yours to the removal list above, then confirm.</p>
+  <div class="box" id="suspectsBox">No transcript yet.</div>
+  <div class="row">
+    <label class="check"><input type="checkbox" id="confirmChk"> I have reviewed the
+    transcript and the list above; the transcript is ready to export.</label>
+  </div>
+
+  <h2>6. Muse's result</h2>
+  <p class="note">Put the copied transcript into Muse with the prompt package. For a
+  practice round, read the estimated grades and re-record if you want. For the final
+  recording, paste Muse's whole result block — including its SHA256 line — here;
+  the page checks the block against its hash and rejects a changed block.</p>
+  <textarea id="resultPaste" rows="10" placeholder="=== RESULT ===&#10;…&#10;=== END RESULT ===&#10;SHA256: …"></textarea>
+  <div class="row">
+    <button id="validateBtn">Check result block</button>
+    <span class="status" id="resultStatus"></span>
+  </div>
+
+  <h2>7. Final package</h2>
+  <div class="row">
+    <label>YouTube link (unlisted video of this same recording)
+    <input type="url" id="ytLink" size="46" placeholder="https://www.youtube.com/watch?v=…"></label>
+  </div>
+  <p class="note">Suggested chapters for the video description, from the transcript:</p>
+  <div class="box mono" id="chaptersBox">Chapters appear when a link is entered and a transcript exists.</div>
+  <div class="row"><button id="copyChaptersBtn" disabled>Copy chapters</button></div>
+  <div class="row">
+    <button id="packageBtn" class="primary" disabled>Sign and build the HTML package</button>
+    <span class="status" id="packageStatus"></span>
+  </div>
+  <p class="note">The package is the second file for Canvas: add the downloaded audio
+  and the downloaded HTML file to one attempt in the Canvas assignment, then submit.</p>
+</div>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
