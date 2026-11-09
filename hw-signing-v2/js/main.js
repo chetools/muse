@@ -191,7 +191,6 @@ async function adoptCacheRecord(record, note) {
   durationS = record.duration_s || (wavBytes ? (wavBytes.length - 44) / 2 / SAMPLE_RATE : 0);
   transcriptionComplete = !!record.complete;
   $('mediaStatus').textContent = note;
-  $('audioDl').disabled = !wavBytes;
   setAudioMeta();
   refreshDerived();
 }
@@ -203,7 +202,6 @@ $('mediaFile').addEventListener('change', async (ev) => {
   chunks = []; windowsDoneBase = 0;
   transcriptionComplete = false;
   confirmed = false; $('confirmChk').checked = false;
-  $('audioDl').disabled = true;
   updateRunEnabled();
   if (!file) { $('mediaStatus').textContent = 'No file chosen.'; return; }
   sourceName = file.name;
@@ -214,7 +212,6 @@ $('mediaFile').addEventListener('change', async (ev) => {
     wavBytes = encodeWavPcm16(pcm);
     audioSha = await sha256Hex(wavBytes);
     setAudioMeta();
-    $('audioDl').disabled = false;
     // Cache check: a hit restores the transcript with no transcription.
     const record = await cacheGet(audioSha, VERSIONS.model, VERSIONS.glossary)
       .catch(() => null);
@@ -243,11 +240,6 @@ $('mediaFile').addEventListener('change', async (ev) => {
     $('mediaStatus').textContent = 'That file could not be decoded.';
     showError('The chosen file could not be decoded as audio or video by this browser.', err, $('mediaFile'));
   }
-});
-
-$('audioDl').addEventListener('click', () => {
-  if (!wavBytes) return;
-  downloadBlob(new Blob([wavBytes], { type: 'audio/wav' }), AUDIO_FILE_NAME);
 });
 
 // --- Saved recordings list ---
