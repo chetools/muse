@@ -62,10 +62,26 @@ const readyBundles = new Map(); // "pkg|code" -> result bundle from /jobs/status
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
 const expandedJobs = new Set(); // "pkg|code" with grades shown (kept across refreshes)
 
-function showError(message, err) {
+// Errors belong beside the control that was used, in the part
+// of the window on screen — not in one banner at the top of a
+// long page (teacher's rule, 2026-11-09). The page's one error
+// box moves: showError takes the control whose action failed
+// and places the box directly after that control's row, then
+// scrolls it into view if it is off screen. With no anchor, the
+// box stays where it sits (at the top, for configuration errors
+// at page load).
+function showError(message, err, anchor) {
   const box = $('errBox');
   box.textContent = message;
   box.style.display = 'block';
+  const host = anchor || (document.activeElement
+    && document.activeElement !== document.body
+    ? document.activeElement : null);
+  if (host && host.isConnected && !box.contains(host)) {
+    const row = host.closest('.row, .recrow, .jobrow') || host;
+    if (row.parentNode) row.after(box);
+  }
+  if (box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
   if (err) console.error(err);
 }
 function clearError() { $('errBox').style.display = 'none'; }
@@ -146,7 +162,7 @@ $('loadBtn').addEventListener('click', async () => {
     updateRunEnabled();
   } catch (err) {
     $('loadStatus').textContent = 'Model did not load.';
-    showError('The model could not be loaded. Check the connection and try again.', err);
+    showError('The model could not be loaded. Check the connection and try again.', err, $('loadBtn'));
     $('loadBtn').disabled = false;
   }
 });
@@ -225,7 +241,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
     }
   } catch (err) {
     $('mediaStatus').textContent = 'That file could not be decoded.';
-    showError('The chosen file could not be decoded as audio or video by this browser.', err);
+    showError('The chosen file could not be decoded as audio or video by this browser.', err, $('mediaFile'));
   }
 });
 
@@ -259,13 +275,13 @@ async function renderCacheList() {
       clearError();
       try {
         const record = await cacheGet(entry.audio_sha256, VERSIONS.model, VERSIONS.glossary);
-        if (!record) { showError('That saved recording was made by an older model or glossary version and cannot be restored.'); return; }
+        if (!record) { showError('That saved recording was made by an older model or glossary version and cannot be restored.', null, restoreBtn); return; }
         audioSha = entry.audio_sha256;
         sourceName = '';
         pcm = null;
         updateRunEnabled();
         await adoptCacheRecord(record, 'Recording restored from this computer.');
-      } catch (err) { showError('The saved recording could not be restored.', err); }
+      } catch (err) { showError('The saved recording could not be restored.', err, restoreBtn); }
     });
     const delBtn = document.createElement('button');
     delBtn.textContent = 'Delete';
@@ -342,7 +358,7 @@ $('runBtn').addEventListener('click', async () => {
       ? 'Done — ' + chunks.length + ' piece(s).'
       : 'The model returned no text for this recording.';
   } catch (err) {
-    showError('Transcription failed or stopped partway. Pieces already shown are kept and saved; choosing the same file again resumes.', err);
+    showError('Transcription failed or stopped partway. Pieces already shown are kept and saved; choosing the same file again resumes.', err, $('runBtn'));
     $('runStatus').textContent = '';
   } finally {
     clearInterval(timer);
@@ -535,10 +551,10 @@ $('submitJobBtn').addEventListener('click', async () => {
       new Date(res.expires_at).toLocaleString() + '.';
     renderJobs();
   } catch (err) {
-    showError('Sending for grading failed: ' + err.message, err);
-    // The banner sits at the top of the page; the reason also belongs
-    // beside the button, where the student is looking. Nothing is
-    // recorded in the job list for a failed send.
+    showError('Sending for grading failed: ' + err.message, err, $('submitJobBtn'));
+    // The reason also goes in the status line beside the button,
+    // where the student is looking. Nothing is recorded in the
+    // job list for a failed send.
     $('jobStatus').textContent = 'Sending failed: ' + err.message;
   } finally {
     updateJobEnabled();
@@ -558,10 +574,10 @@ async function wavBytesForBundle(bundle) {
   return null;
 }
 
-async function downloadSubmissionZip(entry, bundle) {
+async function downloadSubmissionZip(entry, bundle, anchor) {
   const wav = await wavBytesForBundle(bundle);
   if (!wav) {
-    showError('The audio for this job is not on this computer. Choose the recording file in step 2 (or restore it from the saved recordings), then download the ZIP.');
+    showError('The audio for this job is not on this computer. Choose the recording file in step 2 (or restore it from the saved recordings), then download the ZIP.', null, anchor);
     return;
   }
   // The HTML's YouTube link comes from local keeping only; cross-check
@@ -570,12 +586,12 @@ async function downloadSubmissionZip(entry, bundle) {
   const link = entry.youtube_link || '';
   const videoId = parseYouTubeVideoId(link);
   if (!videoId) {
-    showError('The YouTube link kept on this browser is missing. Re-enter it in step 6 and download again from the job list after re-checking.');
+    showError('The YouTube link kept on this browser is missing. Re-enter it in step 6 and download again from the job list after re-checking.', null, anchor);
     return;
   }
   const videoIdSha = await sha256Hex(videoId);
   if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== videoIdSha) {
-    showError('The YouTube link kept on this browser is not the video that was checked for this job.');
+    showError('The YouTube link kept on this browser is not the video that was checked for this job.', null, anchor);
     return;
   }
   const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
@@ -649,7 +665,7 @@ function renderJobRow(container, entry, statusInfo) {
       const zipBtn = document.createElement('button');
       zipBtn.className = 'primary';
       zipBtn.textContent = 'Download submission ZIP';
-      zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle));
+      zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle, zipBtn));
       row.append(document.createTextNode(' '), zipBtn);
     }
     // No per-row conversion button: the conversion panel's picker is
