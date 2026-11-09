@@ -1,0 +1,10 @@
+name: local_grading_poll
+title: Poll for HW Signing v2 Grading Jobs and Grade Them
+description: "Set up a poll on the teacher's Muse so HW Signing v2 grading jobs are graded without the teacher watching for them: store the grading worker address and grading token in config.json, install a 60-second poll hook that wakes Muse only when a job is waiting, then for each job claim it, spawn one clean-context grading sub-agent instructed with the job's prompt package and the student transcript as data, and post the structured result back to the worker. Also trigger when the teacher says 'grade now' or 'check for jobs' — run the check at once and grade what it finds."
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

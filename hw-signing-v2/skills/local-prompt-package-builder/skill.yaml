@@ -1,0 +1,10 @@
+name: local_prompt_package_builder
+title: Build and Manage HW Signing v2 Prompt Packages
+description: "Author the grading prompt package for an HW Signing v2 assignment in the teacher's Muse: assemble the homework text (verbatim from Canvas where possible), teacher-approved lecture transcript excerpts, scope limits and grading notes into the fixed format with the standing grading rules; freeze on teacher approval; trial it with a source-bound generating sub-agent and a separate clean-context grading sub-agent (open gate 5/5 completeness and 5/5 accuracy, or a recorded teacher override); upload it to the grading worker by content hash, manage its lifecycle (list, show, open, close, retire, new version), and generate the verified student link for Canvas."
+include_in_prompt: true
+availability:
+  confidential_vm: true
+  needs_speech: false
+skill_improvement:
+  managed: true
+  needs_review: true

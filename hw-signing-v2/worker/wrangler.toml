@@ -1,0 +1,25 @@
+name = "hw-grading"
+main = "worker.js"
+compatibility_date = "2026-11-09"
+workers_dev = true
+
+# D1 database holding prompt packages and grading jobs.
+# Create it (Cloudflare dashboard > Storage & Databases > D1, or
+# `wrangler d1 create hw-grading`), replace the placeholder
+# database_id below with the real one, and apply schema.sql.
+[[d1_databases]]
+binding = "DB"
+database_name = "hw-grading"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Secrets are set in the Cloudflare dashboard (Settings > Variables
+# and Secrets) or with `wrangler secret put`. They are NEVER values
+# in this file. Required secrets:
+#   SIGNING_SECRET   - long random string (32+ chars); HMAC key for
+#                      grade receipts and YouTube check tokens.
+#   ADMIN_TOKEN      - long random string; teacher package admin.
+#   GRADING_TOKEN    - long random string; the grading poll/claim API.
+#   VAPID_PUBLIC_KEY - base64url uncompressed P-256 point (65 bytes)
+#   VAPID_PRIVATE_KEY - base64url P-256 private scalar (32 bytes)
+#                      for Web Push (RFC 8292). Generate a key pair
+#                      once and keep the private key only here.

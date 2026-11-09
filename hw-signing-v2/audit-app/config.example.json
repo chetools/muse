@@ -1,0 +1,11 @@
+{
+ "acoustic_threshold": 0.85,
+ "appeal_period_passed": false,
+ "assignment_id": 0,
+ "canvas_base_url": "https://uc.instructure.com",
+ "canvas_token": "PASTE_CANVAS_TOKEN_HERE",
+ "course_id": 0,
+ "data_dir": "data",
+ "grading_admin_token": "PASTE_GRADING_ADMIN_TOKEN_HERE_OR_SAVE_IT_ON_THE_PACKAGES_PAGE",
+ "worker_base_url": "https://hw-grading.example.workers.dev"
+}
