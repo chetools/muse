@@ -218,6 +218,25 @@ export async function fetchJobStatus(workerBase, creds, fetchFn) {
   return { status: data.status, data };
 }
 
+// POST /jobs/finalize → turns an existing job into the final
+// (Canvas submission) job by attaching a fresh YouTube check. The
+// Worker verifies the check token exactly as at intake, enforces
+// one final per recording, and re-signs a graded job's result bundle
+// with the video hash. Throws with the Worker's error message.
+export async function finalizeJob(workerBase, payload, fetchFn) {
+  const { status, ok, data } = await postJson(workerBase, '/jobs/finalize', {
+    pkg: payload.pkg,
+    retrieval_code: payload.retrieval_code,
+    youtube_token: payload.youtube_token,
+    youtube_video_id: payload.youtube_video_id,
+    youtube_checked_at: payload.youtube_checked_at,
+  }, fetchFn);
+  if (!ok || !data || !data.ok) {
+    throw new Error((data && data.error) || ('finalize failed (HTTP ' + status + ')'));
+  }
+  return data;
+}
+
 // POST /jobs/retrieved → marks the job retrieved on the Worker.
 export async function markJobRetrieved(workerBase, creds, fetchFn) {
   const { ok } = await postJson(workerBase, '/jobs/retrieved', {
