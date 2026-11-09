@@ -1,4 +1,4 @@
-"""Build dist/mccabe-thiele-ponchon-savarit-standalone-v6.html.
+"""Build dist/mccabe-thiele-ponchon-savarit-standalone-v7.html.
 
 Single build entry point: renders the Theory from web/theory.md,
 the Code listings from the Python files on disk, the walkthrough
@@ -34,7 +34,7 @@ DEFAULT_SPEC = {"system": "benzene-toluene", "P_atm": 1.0, "zF": 0.4,
                 "spec_mode": "compositions", "product_basis": "hold_xD",
                 "reflux_basis": "abs", "N_stages": 15, "R_abs": 2.0,
                 "D_spec": 0.3889}
-OUT_NAME = "mccabe-thiele-ponchon-savarit-standalone-v6.html"
+OUT_NAME = "mccabe-thiele-ponchon-savarit-standalone-v7.html"
 
 
 # ------------------------------------------------------------ math pipeline

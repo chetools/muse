@@ -407,6 +407,36 @@ balance $F h_F + Q_B = D h_D + B h_B + Q_C$ identically, by the
 construction of $H_{\Delta B}$; the verification battery checks the
 closure numerically on every tested run.
 
+Projected onto the $y$–$x$ diagram, the same stepping shows why
+the McCabe–Thiele operating lines are not recovered. Let $n$
+denote a stage number (a count, dimensionless), $x_n$ the mole
+fraction of the light component in the liquid leaving stage $n$,
+and $y_{n+1}$ the mole fraction of the light component in the
+vapour leaving stage $n + 1$. The pair $(x_n, y_{n+1})$ is the
+operating point of the cut between the two stages: the two
+streams that pass each other there. A section balance with a
+constant liquid molar flow rate $L$ and a constant vapour molar
+flow rate $V$, both in $\mathrm{kmol/s}$, fixes $y_{n+1}$ as one linear function of
+$x_n$ throughout a section, which is the straight operating line.
+In the Ponchon–Savarit stepping $L$ and $V$ take the values of
+the per-stage table, which vary from stage to stage, so no single
+linear function passes through the operating points: joined in
+stage order between $(x_D, x_D)$ and $(x_B, x_B)$, they form a
+curve in each section. Fig. 3 of the App draws that curve against
+the straight McCabe–Thiele lines for the same specification, in
+light grey. The curve and the lines meet at the two product
+points and separate between them. For the four real systems the
+separation is largest at the feed stage or at the stage directly
+above it — at the defaults of the App for benzene–toluene and
+methanol–water, and at a distillate mole fraction below the
+azeotrope for ethanol–water ($x_D = 0.80$) and isopropanol–water
+($x_D = 0.60$), which are infeasible at the default
+$x_D = 0.95$. On the synthetic preset at $r_L = 1.5$ the
+separation is largest below the feed stage, in the stripping
+section. At $r_L = 1$ on the synthetic preset the
+separation is zero at every point, as the constant molal overflow
+check requires.
+
 ## What the comparison shows
 
 McCabe–Thiele is the special case of Ponchon–Savarit in which the

@@ -94,6 +94,98 @@ def test_benzene_toluene_column():
     assert r["azeotrope"] is None
 
 
+def _op_line_deviations(r):
+    """Vertical distances of the Ponchon-Savarit operating points
+    from the straight-line polyline (xB, xB) - (x_int, y_int) -
+    (xD, xD) of the same specification, where (x_int, y_int) is the
+    intersection of the rectifying operating line with the q-line."""
+    ps = r["ps"]
+    xD, xB = ps["xD_out"], ps["xB_out"]
+    xi, yi = ps["op_line_x_int"], ps["op_line_y_int"]
+
+    def line_y(x):
+        if x >= xi:
+            return yi + (xD - yi) * (x - xi) / (xD - xi)
+        return xB + (yi - xB) * (x - xB) / (xi - xB)
+
+    return [y - line_y(x) for x, y in ps["op_points"]]
+
+
+def test_ps_operating_points_match_stage_pairs():
+    r = mc.solve_column({**BT_SPEC, "xD": 0.95, "xB": 0.05,
+                         "R_mult": 1.3})
+    ps = r["ps"]
+    st = ps["stages"]
+    assert len(ps["op_points"]) == len(st) - 1
+    for i, (x, y) in enumerate(ps["op_points"]):
+        assert x == st[i]["x"] and y == st[i + 1]["y"]
+
+
+def test_ps_operating_points_on_straight_lines_at_ratio_1():
+    # At latent-heat ratio 1.0 constant molal overflow holds exactly,
+    # so every Ponchon-Savarit operating point must lie on the
+    # straight McCabe-Thiele operating lines.
+    r = _alpha_run(ratio=1.0)
+    devs = _op_line_deviations(r)
+    assert devs and max(abs(d) for d in devs) < 1e-9
+
+
+def test_ps_operating_points_curve_for_benzene_toluene():
+    # Benzene-toluene defaults: the operating points bow to one side
+    # of the straight lines, by at most 0.0086 in mole fraction
+    # (measured 2026-11-09 on this core; near the feed stage).
+    r = mc.solve_column({**BT_SPEC, "xD": 0.95, "xB": 0.05,
+                         "R_mult": 1.3})
+    devs = _op_line_deviations(r)
+    assert min(devs) > -1e-12
+    assert 0.005 < max(devs) < 0.012
+    # Compositions mode: one specification, so the straight lines of
+    # the Ponchon-Savarit result are the McCabe-Thiele lines; the
+    # intersection also matches the analytic construction from the
+    # specification alone (at q = 1 the q-line is x = zF).
+    assert r["ps"]["op_line_x_int"] == r["mt"]["x_int"]
+    assert r["ps"]["op_line_y_int"] == r["mt"]["y_int"]
+    xi, yi = _analytic_line_intersection(0.4, 1.0, 0.95, r["R"])
+    assert abs(r["ps"]["op_line_x_int"] - xi) < 1e-12
+    assert abs(r["ps"]["op_line_y_int"] - yi) < 1e-12
+
+
+def _analytic_line_intersection(zF, q, xD, R):
+    """Intersection of the rectifying operating line with the
+    q-line, from the specification alone: the rectifying line is
+    y = R/(R + 1) x + xD/(R + 1) and the q-line is
+    y = q/(q - 1) x - zF/(q - 1). Independent of the stepping code,
+    so tests using it are not circular."""
+    m_r, b_r = R / (R + 1.0), xD / (R + 1.0)
+    if abs(q - 1.0) < 1e-12:
+        return zF, m_r * zF + b_r
+    m_q, b_q = q / (q - 1.0), -zF / (q - 1.0)
+    x_int = (b_q - b_r) / (m_r - m_q)
+    return x_int, m_r * x_int + b_r
+
+
+def test_ps_operating_line_uses_ps_specification_in_stages_mode():
+    # Stages mode under the multiple basis: each method solves its
+    # own pair and its own operating reflux ratio, so the straight
+    # lines drawn for the Ponchon-Savarit run must be the
+    # McCabe-Thiele lines of the Ponchon-Savarit pair at the
+    # Ponchon-Savarit reflux ratio, not the McCabe-Thiele run's.
+    # The reference intersection is analytic (from the specification
+    # alone, at q = 0.5 so the intersection is non-trivial), not a
+    # second call to the stepping code that produced the fields.
+    spec = {**BT_SPEC, "q": 0.5, "spec_mode": "stages",
+            "product_basis": "D", "reflux_basis": "mult",
+            "R_mult": 1.3, "D_spec": 0.388889, "N_stages": 15}
+    r = mc.solve_column(spec)
+    ps = r["ps"]
+    assert ps["stages_solved"]
+    xi, yi = _analytic_line_intersection(0.4, 0.5, ps["xD_out"],
+                                         ps["R_out"])
+    assert abs(ps["op_line_x_int"] - xi) < 1e-9
+    assert abs(ps["op_line_y_int"] - yi) < 1e-9
+    assert abs(ps["op_line_y_int"] - r["mt"]["y_int"]) > 1e-5
+
+
 def test_ethanol_water_infeasible_past_azeotrope():
     r = mc.solve_column({"system": "ethanol-water", "P_atm": 1.0,
                          "zF": 0.4, "xD": 0.95, "xB": 0.05, "R_mult": 1.3,

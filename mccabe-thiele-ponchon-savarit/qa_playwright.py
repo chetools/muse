@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).parent
 QA = ROOT / "dist" / "qa"
 QA.mkdir(parents=True, exist_ok=True)
-URL = "http://localhost:8907/mccabe-thiele-ponchon-savarit-standalone-v6.html"
+URL = "http://localhost:8907/mccabe-thiele-ponchon-savarit-standalone-v7.html"
 
 report = {"console_errors": [], "page_errors": []}
 
@@ -31,7 +31,42 @@ with sync_playwright() as pw:
     page.goto(URL)
     page.wait_for_timeout(2500)
     report["fig_mt_svg"] = page.locator("#fig-mt svg").count()
+    report["fig_psxy_svg"] = page.locator("#fig-psxy svg").count()
+    # Fig. 3 geometry, read from the drawn traces (v7): the
+    # Ponchon-Savarit trace must run from (xD, xD) to (xB, xB)
+    # through the core operating points, bowed away from the
+    # light-grey straight-line trace by the benzene-toluene default
+    # deviation (0.0086 in mole fraction, band 0.005 to 0.012).
+    report["psxy_check"] = page.evaluate("""() => {
+      const gd = document.querySelector('#fig-psxy');
+      if (!gd || !gd.data) return null;
+      const grey = gd.data.find(
+        t => t.name && t.name.includes('McCabe'));
+      const ps = gd.data.find(
+        t => t.name && t.name.includes('Ponchon'));
+      if (!grey || !ps) return {grey: !!grey, ps: !!ps};
+      const lineY = (x) => {
+        const [xb, xi, xd] = grey.x, [yb, yi, yd] = grey.y;
+        return x >= xi ? yi + (yd - yi) * (x - xi) / (xd - xi)
+                       : yb + (yi - yb) * (x - xb) / (xi - xb);
+      };
+      let maxDev = 0;
+      for (let i = 1; i < ps.x.length - 1; i++)
+        maxDev = Math.max(maxDev,
+          Math.abs(ps.y[i] - lineY(ps.x[i])));
+      return {n_points: ps.x.length, max_dev: maxDev,
+        first: [ps.x[0], ps.y[0]],
+        last: [ps.x[ps.x.length - 1], ps.y[ps.y.length - 1]],
+        grey_x: grey.x, grey_y: grey.y};
+    }""")
+    _psxy = report["psxy_check"]
+    assert _psxy and _psxy["n_points"] == 16 \
+        and 0.005 < _psxy["max_dev"] < 0.012 \
+        and _psxy["first"] == [0.95, 0.95] \
+        and _psxy["last"] == [0.05, 0.05], _psxy
     report["metric_cards"] = page.locator("#metrics .metric").count()
+    page.locator("#app-psxy").screenshot(path=str(QA / "app-psxy-1440.png"))
+    print("shot app-psxy-1440.png")
     report["stage_rows"] = page.locator("#stage-rows tr").count()
     report["step_label"] = page.locator("#stepct").inner_text()
     shot(page, "app-1440.png")
@@ -336,6 +371,43 @@ with sync_playwright() as pw:
     }""")
     report["edges_2560"] = edges
     shot(page, "app-2560.png", full=False)
+    # Fig. 3 in a pinched run and at one shown stage (v7): a pinched
+    # Ponchon-Savarit run (synthetic preset, latent-heat ratio 2.0)
+    # stalls at liquid mole fraction about 0.529, so the drawn curve
+    # must stay open there and must not close at (xB, xB); and with
+    # one stage shown the curve must already carry the first
+    # operating point, as Figs. 1 and 2 carry that stage's corner
+    # and ray.
+    pinch_spec = {"system": "alpha", "alpha_value": 2.5,
+                  "latent_ratio": 2.0, "zF": 0.5, "xD": 0.95,
+                  "xB": 0.05, "R_mult": 1.3, "feed_mode": "q",
+                  "q": 1.0, "P_atm": 1.0}
+    pinch_res = json.loads(json.dumps(_mc.solve_column(pinch_spec)))
+    assert pinch_res["ps"]["pinched"]
+    page.evaluate("""([res, spec]) => displayResult(res, spec)""",
+                  [pinch_res, pinch_spec])
+    page.wait_for_timeout(500)
+    report["psxy_pinched"] = page.evaluate("""() => {
+      const gd = document.querySelector('#fig-psxy');
+      const ps = gd.data.find(
+        t => t.name && t.name.includes('Ponchon'));
+      return {n: ps.x.length,
+        last: [ps.x[ps.x.length - 1], ps.y[ps.y.length - 1]]};
+    }""")
+    _pp = report["psxy_pinched"]
+    assert _pp["last"][0] > 0.5 and _pp["last"] != [0.05, 0.05], _pp
+    page.evaluate("stepShown = 1; renderPSXY(current, stepShown);")
+    page.wait_for_timeout(300)
+    report["psxy_step1_points"] = page.evaluate("""() => {
+      const gd = document.querySelector('#fig-psxy');
+      const ps = gd.data.find(
+        t => t.name && t.name.includes('Ponchon'));
+      return ps.x.length;
+    }""")
+    assert report["psxy_step1_points"] == 2, report["psxy_step1_points"]
+    page.locator("#app-psxy").screenshot(
+        path=str(QA / "app-psxy-pinched-1440.png"))
+    print("shot app-psxy-pinched-1440.png")
     browser.close()
 
 print(json.dumps(report, indent=1))

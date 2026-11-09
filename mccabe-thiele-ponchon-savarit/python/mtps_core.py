@@ -589,10 +589,22 @@ def ponchon_savarit(eq, zF, hF, xD, xB, R, F=1.0, max_stages=400):
         N = float(len(stages))
     if feed_stage is None:
         feed_stage = len(stages)
+    # Operating points for a y-x diagram: the pair (x_n, y_{n+1}),
+    # where x_n is the liquid mole fraction of the light component
+    # leaving stage n and y_{n+1} is the vapour mole fraction of the
+    # light component leaving stage n + 1, for n = 1 to the number of
+    # stages minus 1. These are the streams that pass each other
+    # between two stages. Under constant molal overflow they lie on
+    # the two straight McCabe-Thiele operating lines; here the liquid
+    # and vapour molar flow rates vary from stage to stage, so the
+    # points form a curve instead (App Fig. 3).
+    op_points = [[stages[i]["x"], stages[i + 1]["y"]]
+                 for i in range(len(stages) - 1)]
     return {"N": float(N), "feed_stage": int(feed_stage),
             "pinched": pinched, "stages": stages, "QC_MW": float(QC),
             "QB_MW": float(QB), "H_DD": float(H_DD), "H_DB": float(H_DB),
-            "D": float(D), "B": float(B), "x_tie_feed": float(x_tie)}
+            "D": float(D), "B": float(B), "x_tie_feed": float(x_tie),
+            "op_points": op_points}
 
 
 # -------------------------------------------------------------- orchestration
@@ -733,7 +745,10 @@ def solve_column(p):
                   "pinched": ps["pinched"], "QC_MW": ps["QC_MW"],
                   "QB_MW": ps["QB_MW"], "H_DD": ps["H_DD"],
                   "H_DB": ps["H_DB"], "stages": ps["stages"],
-                  "x_tie_feed": ps["x_tie_feed"], **extra}
+                  "x_tie_feed": ps["x_tie_feed"],
+                  "op_points": ps["op_points"],
+                  "op_line_x_int": mt["x_int"],
+                  "op_line_y_int": mt["y_int"], **extra}
         top = {"xD": xD, "xB": xB, "R": mt["R"], "R_min": mt["R_min"],
                "N_min": mt["N_min"], "D_kmol_s": D, "B_kmol_s": B,
                "condenser_T_C": T_of(xD), "reboiler_T_C": T_of(xB),
@@ -923,6 +938,9 @@ def _solve_stages(p, eq, zF, q, hF, az, T_of):
               "QB_MW": ps["QB_MW"], "H_DD": ps["H_DD"],
               "H_DB": ps["H_DB"], "stages": ps["stages"],
               "x_tie_feed": ps["x_tie_feed"],
+              "op_points": ps["op_points"],
+              "op_line_x_int": mt_at_ps["x_int"],
+              "op_line_y_int": mt_at_ps["y_int"],
               **extras(s, R_ps, mt_at_ps["R_min"])}
     mt_top = solved["mt"]
     D_top, B_top = overall_flows(zF, mt_top["xD"], mt_top["xB"])

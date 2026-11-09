@@ -300,6 +300,47 @@ function renderPS(r, shown) {
     yaxis: { title: "molar enthalpy (kJ/mol)", range: [hmin - pad, hmax + pad] },
   }, PCTL);
 }
+function renderPSXY(r, shown) {
+  const eq = r.eq_curve;
+  const xD = r.mode === "stages" ? r.ps.xD_out : r.xD;
+  const xB = r.mode === "stages" ? r.ps.xB_out : r.xB;
+  const st = r.ps.stages;
+  const ops = r.ps.op_points || [];
+  const nShow = Math.min(shown, st.length);
+  /* Operating point i (0-based) pairs the liquid of stage i + 1 with
+     the vapour of stage i + 2. Figs. 1 and 2 already use that vapour
+     value when stage i + 1 is shown (the staircase corner and the
+     construction ray), so the point is revealed with stage i + 1 to
+     keep the three figures at the same stage. The curve runs from
+     the distillate product point (xD, xD) through the revealed
+     points, and closes at the bottoms product point (xB, xB) when
+     every stage is shown and the stepping reached xB: a pinched run
+     stalls before xB, so its curve is left open at the pinch
+     composition. All coordinates come from the Python result; this
+     function only selects which of them are drawn. */
+  const vis = ops.slice(0, Math.min(nShow, ops.length));
+  const cx = [xD].concat(vis.map((p) => p[0]));
+  const cy = [xD].concat(vis.map((p) => p[1]));
+  if (nShow >= st.length && !r.ps.pinched) { cx.push(xB); cy.push(xB); }
+  const traces = [
+    { type: "scatter", x: eq.x, y: eq.y, mode: "lines", name: "Equilibrium curve",
+      line: { color: BLUE, width: 2 } },
+    { type: "scatter", x: [0, 1], y: [0, 1], mode: "lines", name: "Diagonal y = x",
+      line: { color: GREY, width: 1, dash: "dash" } },
+    { type: "scatter",
+      x: [xB, r.ps.op_line_x_int, xD], y: [xB, r.ps.op_line_y_int, xD],
+      mode: "lines", name: "McCabe–Thiele operating lines (straight)",
+      line: { color: "#C9C9C9", width: 3 } },
+    { type: "scatter", x: cx, y: cy, mode: "lines+markers",
+      name: "Ponchon–Savarit operating points",
+      line: { color: ORANGE, width: 2 },
+      marker: { color: ORANGE, size: 6 } },
+  ];
+  Plotly.react("fig-psxy", traces, {
+    margin: { l: 52, r: 150, t: 8, b: 44 }, legend: LEGEND,
+    xaxis: { title: "x", range: [0, 1] }, yaxis: { title: "y", range: [0, 1] },
+  }, PCTL);
+}
 function renderTXY(r) {
   if (r.system === "alpha") return;
   const eq = r.eq_curve;
@@ -486,6 +527,7 @@ function renderAll() {
   renderBanner(current);
   renderMT(current, stepShown);
   renderPS(current, stepShown);
+  renderPSXY(current, stepShown);
   renderTXY(current);
   renderTable(current);
   $("Rabs").textContent = fmt(current.R, 3);
@@ -511,12 +553,14 @@ $("step1").addEventListener("click", () => {
   if (!current) return;
   stepShown = (stepShown >= totalSteps()) ? 1
     : Math.min(stepShown + 1, totalSteps());
-  renderMT(current, stepShown); renderPS(current, stepShown); updateStepLabel();
+  renderMT(current, stepShown); renderPS(current, stepShown);
+  renderPSXY(current, stepShown); updateStepLabel();
 });
 $("runall").addEventListener("click", () => {
   if (!current) return;
   stepShown = totalSteps();
-  renderMT(current, stepShown); renderPS(current, stepShown); updateStepLabel();
+  renderMT(current, stepShown); renderPS(current, stepShown);
+  renderPSXY(current, stepShown); updateStepLabel();
 });
 
 /* ---------- worker (Pyodide, Python only) ---------- */

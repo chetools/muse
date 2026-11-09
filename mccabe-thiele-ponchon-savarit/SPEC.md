@@ -173,6 +173,27 @@ An alternative specification mode, selected in the App by a
   diagram side by side, stages numbered identically on both, tie
   lines on the enthalpy–composition diagram, difference (pole)
   points shown.
+- Ponchon–Savarit operating-line diagram (added v7): a y–x diagram
+  plotting the Ponchon–Savarit operating points (x_n, y_{n+1}),
+  where x_n is the liquid mole fraction of the light component
+  leaving stage n and y_{n+1} is the vapour mole fraction of the
+  light component leaving stage n + 1, joined in stage order
+  between the product points (xD, xD) and (xB, xB). Because the
+  internal liquid and vapour molar flow rates vary from stage to
+  stage, the joined points form a curve in each section instead
+  of two straight lines (coincident with the lines where constant
+  molal overflow holds, and not closed at (xB, xB) in a pinched
+  run, whose stepping stalls before xB). The
+  McCabe–Thiele operating lines for the same specification are
+  drawn underneath in light grey: the same product compositions,
+  reflux ratio and feed condition; in stages mode the
+  specification is the Ponchon–Savarit run's own calculated pair
+  and reflux ratio, and the lines' intersection with the q-line is
+  computed in the Python core for that specification and returned
+  as the Ponchon–Savarit result's op_line_x_int / op_line_y_int
+  fields, with the operating points returned as op_points. The
+  figure is live (recomputed on Run) and follows the step buttons;
+  it is Fig. 3, and the temperature–composition diagram is Fig. 4.
 - Temperature–composition diagram as a smaller third panel (real
   systems only).
 - Step-one-stage and run-all buttons driving both diagrams together.
@@ -215,6 +236,13 @@ and page link in the handover message.
   component balance to 1e-9 relative; overall energy balance
   (feed + reboiler = distillate + bottoms + condenser) to 1e-6
   relative on duties.
+- Ponchon–Savarit operating points (added v7): each returned point
+  is the stage pair (stages[n].x, stages[n + 1].y). At latent-heat
+  ratio 1.0 every operating point lies on the straight
+  McCabe–Thiele operating lines to 1e-9 in mole fraction. At the
+  benzene–toluene defaults the points lie on or to one side of the
+  straight lines, with a maximum vertical deviation of 0.0086 in
+  mole fraction (test band 0.005 to 0.012), near the feed stage.
 - At latent-heat ratio 1.0 the two methods give identical stage
   counts for the fixed-volatility preset. At ratio 2.0 and reflux
   1.3 times the McCabe–Thiele minimum, the Ponchon–Savarit stepping
