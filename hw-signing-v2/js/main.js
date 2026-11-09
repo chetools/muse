@@ -242,11 +242,14 @@ async function renderCacheList() {
     const row = document.createElement('div');
     row.className = 'recrow';
     const when = entry.created_at ? new Date(entry.created_at).toLocaleString() : '';
-    row.append(document.createTextNode(
+    const meta = document.createElement('span');
+    meta.className = 'recmeta';
+    meta.textContent =
       when + ' · ' + formatDuration(entry.duration_s) + ' · ' +
       (entry.size_bytes / 1048576).toFixed(1) + ' MB · ' +
       (entry.complete ? 'transcribed' : 'partly transcribed (' + entry.chunks + ' pieces)') +
-      ' · fingerprint ' + entry.audio_sha256.slice(0, 12) + '… '));
+      ' · fingerprint ' + entry.audio_sha256.slice(0, 12) + '…';
+    row.append(meta);
     const restoreBtn = document.createElement('button');
     restoreBtn.textContent = 'Restore';
     restoreBtn.addEventListener('click', async () => {
@@ -267,7 +270,7 @@ async function renderCacheList() {
       await cacheDelete(entry.audio_sha256).catch(() => {});
       renderCacheList();
     });
-    row.append(restoreBtn, document.createTextNode(' '), delBtn);
+    row.append(restoreBtn, delBtn);
     box.append(row);
   }
 }
