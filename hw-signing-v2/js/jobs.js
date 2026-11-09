@@ -15,6 +15,11 @@ export const TRANSCRIPT_MAX_CHARS = 200000;
 // The retrieval name rule, identical to the Worker's validation.
 export const RETRIEVAL_NAME_RE = /^[a-z0-9][a-z0-9-]{2,23}$/;
 
+// The retrieval code rule, identical to the Worker's validation: letters
+// and numbers only, and a single character is enough — the code is a
+// retrieval aid, not a password.
+export const RETRIEVAL_CODE_RE = /^[A-Za-z0-9]{1,128}$/;
+
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 // Parse the video ID out of a YouTube URL in any of the forms the
@@ -105,8 +110,8 @@ export function validateJobPayload(body) {
     return fail('The retrieval name does not follow the format rule.');
   }
   if (typeof body.retrieval_code !== 'string' ||
-      body.retrieval_code.length < 4 || body.retrieval_code.length > 128) {
-    return fail('Enter a retrieval code of at least 4 characters.');
+      !RETRIEVAL_CODE_RE.test(body.retrieval_code)) {
+    return fail('Enter a retrieval code using letters and numbers only.');
   }
   if (body.kind === 'final') {
     if (!body.youtube_token) return fail('A final submission needs the YouTube link checked first.');
