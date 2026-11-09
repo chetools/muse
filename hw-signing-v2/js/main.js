@@ -4,9 +4,7 @@
 //
 // Privacy invariants held here:
 // - the scrub field's contents are read only to scrub, and never enter
-//   any export, storage, or network call — except that the retrieval
-//   name is checked against them (locally, in jobs.js) so a student
-//   cannot put a scrubbed word back into a stored record;
+//   any export, storage, or network call;
 // - nothing leaves the machine before the step-5 confirmation: the
 //   job is the first network call carrying submission data, and it
 //   carries the scrubbed transcript, fingerprints and versions — no
@@ -14,7 +12,7 @@
 // - browser storage holds only what the design settles: IndexedDB
 //   caches the student's own recordings and corrected transcripts
 //   (pre-scrub) on this machine, and localStorage holds the job
-//   entries (retrieval name and code, labels, expiry, and the
+//   entries (retrieval code, labels, expiry, and the
 //   YouTube link kept locally for ZIP creation). The transcript and
 //   the grades are never written to localStorage.
 
@@ -36,12 +34,11 @@ import {
 } from './cache.js';
 import { fromCachedChunk } from './cachekey.js';
 import {
-  parseYouTubeVideoId, canonicalWatchUrl, validateRetrievalName,
+  parseYouTubeVideoId, canonicalWatchUrl,
   validateJobPayload, buildJobPayload, loadJobEntries, addJobEntry,
-  removeJobEntry, pruneExpiredEntries, saveJobEntries, fetchWorkerInfo,
+  removeJobEntry, pruneExpiredEntries, saveJobEntries,
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
 } from './jobs.js';
-import { subscribeToPush } from './push.js';
 import { buildZip, SUBMISSION_ZIP_NAME, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
 
 const $ = (id) => document.getElementById(id);
@@ -61,7 +58,9 @@ let vocabulary = null;
 let ytCheck = null;         // { videoId, token, checkedAt } after an ok check
 let ytPlayer = null;
 let ytApiPromise = null;
-const readyBundles = new Map(); // "pkg|name" -> result bundle from /jobs/status
+const readyBundles = new Map(); // "pkg|code" -> result bundle from /jobs/status
+const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
+const expandedJobs = new Set(); // "pkg|code" with grades shown (kept across refreshes)
 
 function showError(message, err) {
   const box = $('errBox');
@@ -399,7 +398,6 @@ $('kindFinal').addEventListener('change', () => {
   $('finalFields').hidden = false;
   updateJobEnabled();
 });
-$('retrievalName').addEventListener('input', updateJobEnabled);
 $('retrievalCode').addEventListener('input', updateJobEnabled);
 
 // YouTube: the link invalidates any earlier check when it changes.
@@ -494,28 +492,11 @@ $('ytCheckBtn').addEventListener('click', async () => {
 
 $('submitJobBtn').addEventListener('click', async () => {
   clearError();
-  const nameCheck = validateRetrievalName($('retrievalName').value.trim(), scrubWords());
-  if (!nameCheck.ok) {
-    $('jobStatus').textContent = nameCheck.reason;
-    return;
-  }
   $('submitJobBtn').disabled = true;
   $('jobStatus').textContent = 'Preparing…';
   try {
     const transcript = canonical();
     const transcriptSha = await sha256Hex(transcript);
-    let pushSubscription = null;
-    if ($('notifyChk').checked) {
-      $('jobStatus').textContent = 'Setting up the notification…';
-      try {
-        const info = await fetchWorkerInfo(cfg.worker);
-        pushSubscription = await subscribeToPush(info && info.vapid_public_key);
-      } catch (err) { console.error(err); }
-      if (!pushSubscription) {
-        $('jobStatus').textContent =
-          'Notification could not be set up (permission or browser support); sending without it.';
-      }
-    }
     const payload = buildJobPayload({
       pkg: cfg.pkg,
       pkgContentSha256: cfg.ph,
@@ -524,12 +505,10 @@ $('submitJobBtn').addEventListener('click', async () => {
       audioSha256: audioSha,
       transcriptSha256: transcriptSha,
       versions: VERSIONS,
-      retrievalName: $('retrievalName').value.trim(),
       retrievalCode: $('retrievalCode').value,
       youtubeToken: ytCheck ? ytCheck.token : null,
       youtubeVideoId: ytCheck ? ytCheck.videoId : null,
       youtubeCheckedAt: ytCheck ? ytCheck.checkedAt : null,
-      pushSubscription,
     });
     const check = validateJobPayload(payload);
     if (!check.ok) throw new Error(check.reason);
@@ -539,7 +518,6 @@ $('submitJobBtn').addEventListener('click', async () => {
       pkg: cfg.pkg,
       course: cfg.course,
       asg: cfg.asg,
-      retrieval_name: payload.retrieval_name,
       retrieval_code: payload.retrieval_code,
       kind: payload.kind,
       youtube_link: payload.kind === 'final' ? $('ytLink').value.trim() : '',
@@ -547,8 +525,9 @@ $('submitJobBtn').addEventListener('click', async () => {
       expires_at: res.expires_at,
     });
     $('jobStatus').textContent =
-      'Sent. Grading usually takes minutes; this page shows the result when it is ready, ' +
-      'and the job is kept until ' + new Date(res.expires_at).toLocaleString() + '.';
+      'Sent. The list below updates every 5 seconds while this page is open and shows ' +
+      'when the grade is ready; the job is kept until ' +
+      new Date(res.expires_at).toLocaleString() + '.';
     renderJobs();
   } catch (err) {
     showError('Sending for grading failed: ' + err.message, err);
@@ -562,7 +541,7 @@ $('submitJobBtn').addEventListener('click', async () => {
 });
 
 // --- Retrieval: jobs list, grades reveal, ZIP download ---
-function jobKey(pkg, name) { return pkg + '|' + name; }
+function jobKey(pkg, code) { return pkg + '|' + code; }
 
 async function wavBytesForBundle(bundle) {
   if (wavBytes && audioSha === bundle.audio_sha256) return wavBytes;
@@ -613,10 +592,10 @@ async function downloadSubmissionZip(entry, bundle) {
   downloadBlob(zip, SUBMISSION_ZIP_NAME);
   try {
     await markJobRetrieved(cfg.worker, {
-      pkg: entry.pkg, retrieval_name: entry.retrieval_name, retrieval_code: entry.retrieval_code,
+      pkg: entry.pkg, retrieval_code: entry.retrieval_code,
     });
   } catch { /* the ZIP is already in the student's hands */ }
-  removeJobEntry(entry.pkg, entry.retrieval_name);
+  removeJobEntry(entry.pkg, entry.retrieval_code);
   renderJobs();
 }
 
@@ -624,18 +603,27 @@ function renderJobRow(container, entry, statusInfo) {
   const row = document.createElement('div');
   row.className = 'jobrow';
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
-  const statusText = statusInfo === null ? 'checking…'
-    : statusInfo === 'forbidden' ? 'not found under this name and code'
-    : statusInfo === 'ready' ? 'ready'
-    : 'grading';
+  let statusText;
+  if (statusInfo === null) statusText = 'checking…';
+  else if (statusInfo.status === 'forbidden') statusText = 'not found under this code';
+  else if (statusInfo.status === 'ready') statusText = 'ready';
+  else if (statusInfo.status === 'claimed') statusText = 'being graded now';
+  else if (statusInfo.status === 'queued') {
+    const ahead = statusInfo.queue_ahead;
+    statusText = typeof ahead === 'number'
+      ? (ahead === 0 ? 'waiting — next in the grading queue'
+        : 'waiting — ' + ahead + (ahead === 1 ? ' job' : ' jobs') + ' ahead')
+      : 'waiting';
+  } else statusText = statusInfo.status;
   row.append(document.createTextNode(
-    label + ' — ' + entry.retrieval_name + ' (' + entry.kind + '): ' + statusText + ' '));
-  if (statusInfo === 'ready') {
-    const bundle = readyBundles.get(jobKey(entry.pkg, entry.retrieval_name));
+    label + ' (' + entry.kind + '): ' + statusText + ' '));
+  if (statusInfo && statusInfo.status === 'ready') {
+    const bundle = readyBundles.get(jobKey(entry.pkg, entry.retrieval_code));
+    const key = jobKey(entry.pkg, entry.retrieval_code);
     const showBtn = document.createElement('button');
-    showBtn.textContent = 'Show grades and critique';
+    showBtn.textContent = expandedJobs.has(key) ? 'Hide grades and critique' : 'Show grades and critique';
     const detail = document.createElement('div');
-    detail.hidden = true;
+    detail.hidden = !expandedJobs.has(key);
     if (bundle) {
       detail.innerHTML = '';
       const p = document.createElement('p');
@@ -648,6 +636,7 @@ function renderJobRow(container, entry, statusInfo) {
     }
     showBtn.addEventListener('click', () => {
       detail.hidden = !detail.hidden;
+      if (detail.hidden) expandedJobs.delete(key); else expandedJobs.add(key);
       showBtn.textContent = detail.hidden ? 'Show grades and critique' : 'Hide grades and critique';
     });
     row.append(showBtn, detail);
@@ -662,7 +651,7 @@ function renderJobRow(container, entry, statusInfo) {
   const forgetBtn = document.createElement('button');
   forgetBtn.textContent = 'Remove from this browser';
   forgetBtn.addEventListener('click', () => {
-    removeJobEntry(entry.pkg, entry.retrieval_name);
+    removeJobEntry(entry.pkg, entry.retrieval_code);
     renderJobs();
   });
   row.append(document.createTextNode(' '), forgetBtn);
@@ -680,30 +669,47 @@ async function renderJobs() {
   for (const entry of entries) {
     const holder = document.createElement('div');
     box.append(holder);
-    renderJobRow(holder, entry, null);
+    const key = jobKey(entry.pkg, entry.retrieval_code);
+    renderJobRow(holder, entry, jobStates.get(key) || null);
     try {
       const res = await fetchJobStatus(cfg.worker, {
-        pkg: entry.pkg, retrieval_name: entry.retrieval_name, retrieval_code: entry.retrieval_code,
+        pkg: entry.pkg, retrieval_code: entry.retrieval_code,
       });
       if (res.status === 'ready' && res.data && res.data.result) {
-        readyBundles.set(jobKey(entry.pkg, entry.retrieval_name), res.data.result);
+        readyBundles.set(key, res.data.result);
       }
+      jobStates.set(key, {
+        status: res.status,
+        queue_ahead: res.data ? res.data.queue_ahead : undefined,
+      });
       holder.textContent = '';
-      renderJobRow(holder, entry, res.status);
+      renderJobRow(holder, entry, jobStates.get(key));
     } catch {
       holder.textContent = '';
-      renderJobRow(holder, entry, 'grading');
+      renderJobRow(holder, entry, jobStates.get(key) || { status: 'queued' });
     }
   }
 }
 
-// Manual retrieval (different browser): status by typed name + code
+// The jobs list refreshes itself every 5 seconds while the page is
+// open, so a waiting student sees the queue move and the grade arrive
+// without reloading — no notification is needed. Refreshes pause
+// while the tab is hidden and never overlap.
+let jobsRefreshInFlight = false;
+async function refreshJobs() {
+  if (jobsRefreshInFlight || document.hidden) return;
+  jobsRefreshInFlight = true;
+  try { await renderJobs(); } catch { /* the next tick retries */ }
+  jobsRefreshInFlight = false;
+}
+setInterval(refreshJobs, 5000);
+
+// Manual retrieval (different browser): status by typed code
 // against the configured package. On ready, the same rendering is
 // used, with a synthetic entry; the ZIP path then needs the audio on
 // this computer, as the section text states.
 $('manualBtn').addEventListener('click', async () => {
   clearError();
-  const name = $('manualName').value.trim();
   const code = $('manualCode').value;
   const box = $('manualBox');
   box.hidden = true;
@@ -714,17 +720,20 @@ $('manualBtn').addEventListener('click', async () => {
   $('manualStatus').textContent = 'Checking…';
   try {
     const res = await fetchJobStatus(cfg.worker, {
-      pkg: cfg.pkg, retrieval_name: name, retrieval_code: code,
+      pkg: cfg.pkg, retrieval_code: code,
     });
     if (res.status === 'forbidden') {
-      $('manualStatus').textContent = 'No job under that name and code.';
+      $('manualStatus').textContent = 'No job under that code.';
       return;
     }
-    $('manualStatus').textContent = 'Status: ' + res.status + '.';
+    $('manualStatus').textContent = 'Status: ' + res.status +
+      (res.data && typeof res.data.queue_ahead === 'number' && res.status === 'queued'
+        ? ' — ' + res.data.queue_ahead + (res.data.queue_ahead === 1 ? ' job' : ' jobs') + ' ahead in the grading queue.'
+        : '.');
     if (res.status === 'ready' && res.data && res.data.result) {
       const entry = {
         pkg: cfg.pkg, course: cfg.course, asg: cfg.asg,
-        retrieval_name: name, retrieval_code: code,
+        retrieval_code: code,
         kind: res.data.result.youtube_video_sha256 && res.data.result.youtube_video_sha256 !== 'none'
           ? 'final' : 'practice',
         youtube_link: '',
@@ -735,7 +744,7 @@ $('manualBtn').addEventListener('click', async () => {
       // the student enters it in step 6 and the row reads the live
       // entry at click time (the signed video hash check in
       // downloadSubmissionZip verifies it is the checked video).
-      readyBundles.set(jobKey(entry.pkg, entry.retrieval_name), res.data.result);
+      readyBundles.set(jobKey(entry.pkg, entry.retrieval_code), res.data.result);
       entry.youtube_link = $('ytLink').value.trim();
       $('ytLink').addEventListener('input', () => {
         entry.youtube_link = $('ytLink').value.trim();
