@@ -151,24 +151,21 @@
 
   <h2>6. Send for grading</h2>
   <div class="row">
-    <label class="check"><input type="radio" name="kind" id="kindPractice" value="practice" checked> Practice — grades and critique only</label>
-    <label class="check"><input type="radio" name="kind" id="kindFinal" value="final"> Final — for the Canvas submission</label>
+    <label>YouTube link (this same recording, set to Unlisted or Public) — optional now; required for the Canvas submission
+    <input type="url" id="ytLink" size="46" placeholder="https://www.youtube.com/watch?v=…"></label>
   </div>
-  <div id="finalFields" hidden>
-    <div class="row">
-      <label>YouTube link (this same recording, set to Unlisted or Public)
-      <input type="url" id="ytLink" size="46" placeholder="https://www.youtube.com/watch?v=…"></label>
-    </div>
-    <div class="row">
-      <button id="ytCheckBtn">Check link</button>
-      <span class="status" id="ytStatus"></span>
-    </div>
-    <div id="ytPlayerWrap" hidden><div id="ytPlayer"></div></div>
-    <p class="note">A final submission cannot be created without a YouTube link
-    that checks out as Unlisted or Public. The link itself is never sent with the
-    transcript; the grading side stores only the fact that the check passed. The
-    link is written into your submission file when you download it.</p>
+  <div class="row">
+    <button id="ytCheckBtn">Check link</button>
+    <span class="status" id="ytStatus"></span>
   </div>
+  <div id="ytPlayerWrap" hidden><div id="ytPlayer"></div></div>
+  <p class="note">Send first, decide later. The grade comes back in section 7,
+  and any graded job can be turned into your Canvas submission there. If the
+  link is added and checked now, the job is submission-ready as soon as it is
+  graded; if not, you add the link when you convert the job. The link itself
+  is never sent with the transcript; the grading side stores only the fact
+  that the check passed and a hash of the video. The link is written into
+  your submission file when you download it.</p>
   <div class="row oneline">
     <label>Retrieval code <input type="text" id="retrievalCode" size="12" autocomplete="off" spellcheck="false"></label>
   </div>
@@ -190,6 +187,29 @@
   are ahead of it in the grading queue, and grades and critique appear
   here when they are ready. A job is kept for 48 hours.</p>
   <div class="box" id="jobsBox">No jobs sent from this browser yet.</div>
+
+  <div id="finPanel" hidden>
+    <h3>Turn a graded job into your Canvas submission</h3>
+    <p class="note">Pick the graded job — the latest is selected. It must be
+    the job for this same recording: the check below previews the video and
+    compares its length with that job's audio, and the submission file is
+    built from that job's audio and grade. One submission per recording.</p>
+    <div class="row">
+      <label>Graded job <select id="finJobSel"></select></label>
+    </div>
+    <div class="row">
+      <label>YouTube link <input type="url" id="finLink" size="46" placeholder="https://www.youtube.com/watch?v=…"></label>
+    </div>
+    <div class="row">
+      <button id="finCheckBtn">Check link</button>
+      <span class="status" id="finStatus"></span>
+    </div>
+    <div id="finPlayerWrap" hidden><div id="finPlayer"></div></div>
+    <div class="row">
+      <button id="finConfirmBtn" class="primary" disabled>Turn into my submission</button>
+      <span class="status" id="finDone"></span>
+    </div>
+  </div>
   <h3>Retrieving on a different browser</h3>
   <p class="note">Enter the retrieval code you picked. The audio for the
   submission ZIP must be on this computer — choose the recording file above, or
