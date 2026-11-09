@@ -652,6 +652,10 @@ function renderJobRow(container, entry, statusInfo) {
         bundle.accuracy + '/5';
       const crit = document.createElement('div');
       crit.className = 'box';
+      // The critique is a numbered list, one point per line:
+      // keep the line breaks when it is shown (the submission
+      // HTML does the same with white-space: pre-line).
+      crit.style.whiteSpace = 'pre-line';
       crit.textContent = bundle.critique || '';
       detail.append(p, crit);
     }
