@@ -36,6 +36,15 @@
   #liveRaw { color: #555; }
   .jobrow, .recrow { border-top: 1px solid #ddd; padding: 8px 0; }
   .jobrow:first-child, .recrow:first-child { border-top: none; }
+  .recrow { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+  .recrow .recmeta { flex: 1 1 auto; min-width: 0; overflow: hidden;
+                     text-overflow: ellipsis; white-space: nowrap; }
+  .recrow button { flex: 0 0 auto; }
+  .row.oneline { flex-wrap: nowrap; }
+  .row.oneline label { display: flex; align-items: center; gap: 8px; min-width: 0;
+                       white-space: nowrap; }
+  .row.oneline input { min-width: 0; }
+  .row.oneline button { flex: 0 0 auto; }
   #ytPlayerWrap { margin: 10px 0; }
 </style>
 <script type="importmap">
@@ -160,13 +169,15 @@
     transcript; the grading side stores only the fact that the check passed. The
     link is written into your submission file when you download it.</p>
   </div>
-  <div class="row">
+  <div class="row oneline">
     <label>Retrieval name <input type="text" id="retrievalName" size="24" placeholder="e.g. copper-river-7"></label>
-    <label>Retrieval code <input type="password" id="retrievalCode" size="16"></label>
+    <label>Retrieval code <input type="text" id="retrievalCode" size="12" autocomplete="off" spellcheck="false"></label>
   </div>
   <p class="note">Pick a name and code you will remember; do not use your name or
   anything that identifies you — the page blocks a name containing a word from
-  your removal list. Both are kept in this browser, so coming back to this page
+  your removal list. The code is letters and numbers only, and a single
+  character is enough; it is not a password, so it is shown as you type.
+  Both are kept in this browser, so coming back to this page
   (or clicking the notification) retrieves your grade without typing. On a
   different browser, the name and code are how you retrieve it. A name can be
   used only once per assignment.</p>
@@ -186,9 +197,9 @@
   <p class="note">Enter the retrieval name and code you picked. The audio for the
   submission ZIP must be on this computer — choose the recording file above, or
   restore it from the saved recordings, before downloading the ZIP.</p>
-  <div class="row">
+  <div class="row oneline">
     <label>Retrieval name <input type="text" id="manualName" size="24"></label>
-    <label>Retrieval code <input type="password" id="manualCode" size="16"></label>
+    <label>Retrieval code <input type="text" id="manualCode" size="12" autocomplete="off" spellcheck="false"></label>
     <button id="manualBtn">Retrieve</button>
   </div>
   <p class="status" id="manualStatus"></p>
