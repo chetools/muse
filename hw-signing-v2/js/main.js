@@ -549,7 +549,10 @@ $('submitJobBtn').addEventListener('click', async () => {
     renderJobs();
   } catch (err) {
     showError('Sending for grading failed: ' + err.message, err);
-    $('jobStatus').textContent = '';
+    // The banner sits at the top of the page; the reason also belongs
+    // beside the button, where the student is looking. Nothing is
+    // recorded in the job list for a failed send.
+    $('jobStatus').textContent = 'Sending failed: ' + err.message;
   } finally {
     updateJobEnabled();
   }
