@@ -22,10 +22,17 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 3. The student scrubs identifying words, reviews the suspected
    identifiers, and ticks the confirmation. Nothing leaves the machine
    before that confirmation.
-4. The student sends a grading job (Practice, or Final with a checked
-   YouTube link) under a self-picked retrieval name and code. The
-   teacher's Muse grades it; the Worker signs the result.
-5. When the job is ready the page shows the grades and critique, and
+4. The student sends a grading job under a self-picked retrieval
+   code; the YouTube link is optional at send (a checked link makes
+   the job submission-ready when graded). There is no Practice/Final
+   choice. The teacher's Muse grades it; the Worker signs the result.
+5. The jobs list refreshes every 5 seconds while the page is open — a
+   waiting job shows how many jobs are ahead of it — and when the job
+   is ready the page shows the grades and critique. A graded job
+   without a checked link can then be turned into the Canvas
+   submission from the conversion panel (pick the job, check the
+   link, confirm; the Worker re-signs the bundle with the video
+   hash), and
    for a final job builds `submission.zip` — one file for Canvas.
 
 ## Layout
@@ -76,13 +83,9 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   student's browser so the HTML can be built at ZIP creation on a
   later visit; it is never sent with the job. Expired entries are
   pruned on load; an entry is removed when its ZIP is downloaded.
-- `js/push.js` — Web Push: VAPID key conversion and the subscription
-  flow (permission, service-worker registration, subscription JSON for
-  the job payload). Push is optional and never blocks a submission.
-- `sw.js` — the service worker: shows the Worker's push notification
-  (title and body only, no grade) and opens the configured page URL on
-  click (the page stores its own URL in a Cache Storage entry at
-  subscribe time; the fallback is the worker scope URL).
+- `js/push.js` / `sw.js` — Web Push pieces retained from the pre-2.1.0
+  design. Since 2.1.0 the page does not subscribe to push and there is
+  no notification: the jobs list auto-refreshes every 5 seconds.
 - `js/zip.js` — a minimal deterministic ZIP writer: stored entries,
   local CRC-32, fixed DOS timestamp 1980-01-01, entry order
   `submission.html` then `submission-audio.wav`. Rebuilding a ZIP from

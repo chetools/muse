@@ -652,17 +652,8 @@ function renderJobRow(container, entry, statusInfo) {
       zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle));
       row.append(document.createTextNode(' '), zipBtn);
     }
-    if (entry.kind === 'practice' && bundle) {
-      const convBtn = document.createElement('button');
-      convBtn.textContent = 'Turn into my submission';
-      convBtn.addEventListener('click', () => {
-        if (entry.manual) finManualEntry = entry;
-        refreshFinPanel(jobKey(entry.pkg, entry.retrieval_code));
-        $('finPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        $('finLink').focus();
-      });
-      row.append(document.createTextNode(' '), convBtn);
-    }
+    // No per-row conversion button: the conversion panel's picker is
+    // the single route to turning a graded job into the submission.
   }
   const forgetBtn = document.createElement('button');
   forgetBtn.textContent = 'Remove from this browser';
@@ -680,7 +671,11 @@ async function renderJobs() {
   // Worker has deleted those jobs in any case.
   const entries = pruneExpiredEntries(loadJobEntries(), Date.now());
   saveJobEntries(entries);
-  if (!entries.length) { box.textContent = 'No jobs sent from this browser yet.'; return; }
+  if (!entries.length) {
+    box.textContent = 'No jobs sent from this browser yet.';
+    refreshFinPanel();
+    return;
+  }
   box.textContent = '';
   for (const entry of entries) {
     const holder = document.createElement('div');
@@ -724,6 +719,7 @@ setInterval(refreshJobs, 5000);
 // --- Conversion: turn a graded job into the Canvas submission ---
 let finCheck = null;
 let finManualEntry = null;
+let finPrevSelKey = null;
 
 function conversionCandidates() {
   const out = [];
@@ -747,7 +743,7 @@ function refreshFinPanel(preferKey) {
   const panel = $('finPanel');
   if (!panel) return;
   const cands = conversionCandidates();
-  if (!cands.length) { panel.hidden = true; return; }
+  if (!cands.length) { panel.hidden = true; finPrevSelKey = null; return; }
   panel.hidden = false;
   const sel = $('finJobSel');
   const prev = preferKey || sel.value;
@@ -762,6 +758,14 @@ function refreshFinPanel(preferKey) {
   const latest = cands[cands.length - 1];
   sel.value = cands.some((c) => jobKey(c.entry.pkg, c.entry.retrieval_code) === prev)
     ? prev : jobKey(latest.entry.pkg, latest.entry.retrieval_code);
+  // The picker is rebuilt on every jobs-list refresh, so it tracks
+  // graded jobs being added or removed at once. If a rebuild changed
+  // which job is selected (the selected job was removed, so the
+  // latest took its place), a link check already made was for a
+  // different job and no longer stands — the select's own change
+  // event does not fire for a programmatic change.
+  if (finPrevSelKey !== null && sel.value !== finPrevSelKey) finResetCheck();
+  finPrevSelKey = sel.value;
 }
 
 function finSelected() {
