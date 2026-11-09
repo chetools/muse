@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob: 'sha256-HX3bpACk64sXqsfhdVkgTSYuC6rSA7sXKhilKPrp9G0='; worker-src 'self' blob:; connect-src 'self' blob: data: https://huggingface.co https://*.huggingface.co https://*.hf.co https://*.xethub.hf.co; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>ChemEScribe — transcription informed by chemical-engineering knowledge</title>
+<style>
+  html { background: #ffffff; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a;
+         margin: 0; line-height: 1.5; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.45rem; margin: 0 0 6px; }
+  h2 { font-size: 1.05rem; margin: 26px 0 8px; }
+  p, li { font-size: 0.95rem; }
+  .sub { color: #444; margin: 0 0 4px; }
+  button { font: inherit; padding: 8px 16px; border: 1px solid #888; border-radius: 6px;
+           background: #f4f4f4; cursor: pointer; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary { background: #1f5fa6; border-color: #1f5fa6; color: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+  progress { width: 100%; height: 18px; }
+  .status { font-size: 0.92rem; color: #333; min-height: 1.4em; }
+  .err { color: #8b1a1a; background: #fdf0f0; border: 1px solid #e0b4b4; border-radius: 6px;
+         padding: 8px 12px; display: none; }
+  .box { border: 1px solid #ccc; border-radius: 6px; padding: 12px 14px; background: #fafafa; }
+  #transcript { white-space: pre-wrap; font-size: 1rem; }
+  #corrections { white-space: pre-wrap; font-size: 0.92rem; }
+  #restoreBox { border: 1px solid #b98a1c; background: #fff8e1; border-radius: 6px;
+                padding: 10px 14px; display: none; margin: 10px 0; }
+  table { border-collapse: collapse; font-size: 0.88rem; }
+  td, th { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  #netlog { font-family: ui-monospace, monospace; font-size: 0.78rem; white-space: pre-wrap;
+            word-break: break-all; max-height: 220px; overflow: auto; }
+  .note { color: #555; font-size: 0.88rem; }
+  details { margin: 26px 0 8px; }
+  details summary { font-size: 1.05rem; font-weight: 600; cursor: pointer; }
+  details h3 { font-size: 0.98rem; margin: 16px 0 6px; }
+  label.check { display: flex; gap: 8px; align-items: center; font-size: 0.95rem; }
+  mark.corr { padding: 0 1px; border-radius: 2px; }
+  mark.corr-certain { background: #d9ecd2; }
+  mark.corr-slash { background: #fdeec2; }
+  mark.corr-context { background: #d7e6f7; }
+  mark.corr-dictionary { background: #e3d7f7; }
+  #liveBox { margin-top: 8px; }
+  #liveBox .lbl { font-weight: 600; font-size: 0.88rem; color: #444; }
+  #liveRaw { color: #555; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "onnxruntime-web": "./vendor/ort/ort.wasm.min.mjs",
+    "parakeet.js": "./vendor/parakeet/src/index.js"
+  }
+}
+</script>
+</head>
+<body>
+<div class="wrap">
+  <h1>ChemEScribe</h1>
+  <p class="sub">Transcription informed by chemical-engineering background knowledge: a
+  glossary of 756 chemical-engineering terms, its correction pairs and its context rules
+  correct the transcript as it is produced. The recogniser runs entirely in this browser —
+  no server takes part, and your audio never leaves this device.</p>
+
+  <h2>Corrections</h2>
+  <p>The correction map loaded in this page has <span id="pairCount">209</span> pairs.
+  A confident correction replaces the misheard form
+  outright. An uncertain one — the heard form is an ordinary English word that may have been
+  said as itself, or the glossary lists several candidate terms — is written in the transcript
+  as the heard form followed by every candidate, separated by slashes with no spaces, for
+  example “viral/virial equation/virial coefficient”, so nothing is silently chosen. One
+  exception: where the word next to the mishearing is the last word (or the first word) of
+  exactly one candidate, the context settles the choice — “viral coefficient” becomes
+  “virial coefficient” — and the list below the transcript marks that correction as chosen
+  by context and names the cue word. A further check then looks for words that appear in no
+  English dictionary list and no glossary list: each is matched against the glossary terms
+  by sound and by spelling, replaced only when one term matches closely and clearly,
+  written in slash form when two or more terms match closely, and left as heard otherwise.
+  Last, a tidy-up removes filler words (um, uh), collapses a doubled word such as “the
+  the”, and normalises spacing and capitalisation; it changes nothing about grammar or
+  tense. After every transcription, the page lists each correction it applied and marks
+  the uncertain ones, so any correction can be checked against the recording.</p>
+
+  <h2>1. Load the model</h2>
+  <div class="row">
+    <button id="loadBtn" class="primary">Load model (about 670 MB, first time only)</button>
+    <span class="status" id="loadStatus">Model not loaded.</span>
+  </div>
+  <progress id="loadProg" value="0" max="1" hidden></progress>
+  <p class="note">Nothing is downloaded until you press the button. The first load takes a
+  few minutes; the model then needs roughly 2 GB of memory while transcribing.</p>
+
+  <h2>2. Options, then choose an audio file or record one</h2>
+  <div class="row">
+    <label class="check"><input type="checkbox" id="tsCheck"> Include timestamps — prefix each
+    piece of the transcript with its start time in the audio, like [01:05]</label>
+  </div>
+  <div class="row">
+    <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg">
+    <span class="status" id="audioStatus">No file chosen.</span>
+  </div>
+  <p class="note">Any recording your browser can play back works. Long recordings are cut into
+  windows inside the page before transcription.</p>
+  <div class="row">
+    <button id="recBtn" disabled>Start recording</button>
+    <button id="recStopBtn" disabled>Stop recording</button>
+    <span class="status" id="recStatus">Recording needs the model loaded (step 1).</span>
+  </div>
+  <p class="note">Recording runs from the microphone on this device; nothing is uploaded.
+  While you record, the audio is transcribed in pieces of about 12 s as it arrives, and the
+  transcript below grows piece by piece. The corrections described above are applied as each
+  piece lands, and to a transcribed file in the same way.</p>
+
+  <h2>3. Transcribe a chosen file</h2>
+  <div class="row">
+    <button id="runBtn" class="primary" disabled>Transcribe</button>
+    <span class="status" id="runStatus"></span>
+  </div>
+  <progress id="runProg" hidden></progress>
+  <div class="err" id="errBox"></div>
+
+  <h2>Live progress</h2>
+  <p class="note">Transcription does not wait for the whole recording. As each piece is
+  transcribed — about 12 s pieces while recording, about 25 s windows from a file — its words
+  appear here at once: first as transcribed, then after the glossary correction, with corrected
+  words marked (green: a confident correction; yellow: an uncertain one, shown in slash form;
+  blue: chosen by the words around it; purple: found by the dictionary check). The result
+  below grows piece by piece in the same way,
+  with the same marks. Copying, downloading and autosaving use the plain text, without marks.</p>
+  <progress id="liveProg" value="0" max="1" hidden></progress>
+  <p class="status" id="liveStatus">No transcription running.</p>
+  <div class="box" id="liveBox" hidden>
+    <div><span class="lbl">Latest piece, as transcribed:</span> <span id="liveRaw"></span></div>
+    <div style="margin-top:6px"><span class="lbl">Latest piece, after glossary correction:</span> <span id="liveCorrected"></span></div>
+    <p class="note" id="liveMeta"></p>
+  </div>
+
+  <h2>Result</h2>
+  <div class="box" id="transcript">The transcript will appear here.</div>
+  <div class="row">
+    <button id="copyBtn" disabled>Copy transcript</button>
+    <button id="downloadBtn" disabled>Download transcript</button>
+    <span class="status" id="metrics"></span>
+  </div>
+  <h2>Corrections applied</h2>
+  <div class="box" id="corrections">No transcription yet.</div>
+
+  <h2>Autosave</h2>
+  <p class="note">While a transcript exists, this page saves it inside the browser after every
+  transcribed piece and every 15 s, so a crash loses at most the piece in progress. On a laptop
+  in desktop Chrome, you can also choose a file on disk and the page writes the same text to
+  that file on the same schedule. <span id="fsNote"></span></p>
+  <div id="restoreBox">
+    <span id="restoreInfo"></span>
+    <button id="restoreBtn">Restore autosaved transcript</button>
+  </div>
+  <div class="row">
+    <button id="autosaveFileBtn" disabled>Choose autosave file</button>
+    <span class="status" id="saveStatus">Autosave: in-browser save only.</span>
+  </div>
+
+  <details id="techDetails">
+    <summary>Technical details</summary>
+
+    <h3>Recogniser</h3>
+    <p>The recogniser is NVIDIA Parakeet TDT 0.6B v2 (English, int8). Pressing “Load model”
+    downloads its files (about 670 MB in total) from the Hugging Face repository
+    <i>ysdede/parakeet-tdt-0.6b-v2-onnx</i>; the browser caches them on this device for later
+    visits. Your audio is read on this device only and is never uploaded.</p>
+
+    <h3>Runtime</h3>
+    <p>The recogniser runs on WebAssembly (WASM), the browser’s sandboxed code format, through
+    parakeet.js 1.4.4 and ONNX Runtime Web 1.24.1, both vendored on this site. The backend is
+    the CPU on one thread: multi-threaded WASM needs an extra browser isolation mode that this
+    site cannot use. While it runs, the model needs roughly 2 GB of memory; a phone browser
+    gives one page far less memory than a desktop browser, so on a phone the model load itself
+    is the test.</p>
+
+    <h3>Privacy and network audit</h3>
+    <p>This page sends no telemetry and carries no analytics. The speech runtime is the
+    WebAssembly build of ONNX Runtime, and that build carries no telemetry (the telemetry
+    observed earlier came from the native desktop build). A content security policy in this
+    page’s head limits its network connections to this site and to Hugging Face. Before
+    publication the vendored files were string-searched for telemetry and analytics endpoints
+    — among them <i>mobile.events.data.microsoft.com</i> and OneCollector — and none were
+    found; headless test runs recorded requests to this site only on load, and to this site
+    and Hugging Face after “Load model” was pressed. Nothing is fetched until you press
+    “Load model”.</p>
+
+    <h3>Glossary data</h3>
+    <p>The correction map is generated from the chemical-engineering glossary bundle that the
+    ChemEScribe skill in Muse uses as well: a glossary of 756 terms with 212 sound-alike
+    correction pairs. Of the 212 pairs, 9 are attested errors and the rest are predicted
+    sound-alikes. The bundle classes 152 pairs as confident and 60 as uncertain; this page
+    loads 209 of them — 149 confident and 60 uncertain — and 3 pairs are not used on this
+    page.</p>
+    <p>The dictionary check uses a bundled English wordlist (SCOWL, the Spell Checker
+    Oriented Word Lists, 116,349 words at the levels ordinary academic writing needs,
+    permissively licensed) together with the glossary’s terms. A word in neither list is
+    compared with the glossary terms on sound (Soundex) first and spelling (edit distance)
+    second; it is replaced only when the sound codes are equal, the distance is at most 2
+    and the margin over the next candidate is clear — a bar measured to make no false
+    replacement on test corpora of ordinary and textbook sentences. A real English word
+    that merely sounds technical is never replaced by this check, only slashed or left.
+    The tidy-up is mechanical only — fillers, doubled words, spacing, capitalisation — and
+    does not correct grammar or tense; the speaker’s grammar is transcribed as spoken.</p>
+
+    <h3>Network log</h3>
+    <p class="note">Every resource fetched by this page since it opened, from the browser’s own
+    resource records. On first opening, before “Load model” is pressed, every entry is a file from
+    this site.</p>
+    <div class="box" id="netlog">(no resources recorded yet)</div>
+  </details>
+</div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
