@@ -4,16 +4,13 @@
 // the API helpers take fetch as a parameter, as in package.js.
 //
 // The job carries the scrubbed transcript and no name, no Canvas
-// identity and no YouTube link. The Worker stores only a salted hash
-// of the retrieval code.
+// identity and no YouTube link. Retrieval is by code only; the
+// Worker stores a lookup hash of the code, never the code itself.
 
 import { normaliseWorkerBase } from './config.js';
 
 export const JOBS_STORAGE_KEY = 'hw-signing.jobs.v2';
 export const TRANSCRIPT_MAX_CHARS = 200000;
-
-// The retrieval name rule, identical to the Worker's validation.
-export const RETRIEVAL_NAME_RE = /^[a-z0-9][a-z0-9-]{2,23}$/;
 
 // The retrieval code rule, identical to the Worker's validation: letters
 // and numbers only, and a single character is enough — the code is a
@@ -48,41 +45,6 @@ export function canonicalWatchUrl(videoId) {
   return 'https://www.youtube.com/watch?v=' + videoId;
 }
 
-// A retrieval name must satisfy the format rule AND must not contain
-// any of the student's own scrub words: the name is the one place in
-// this flow where a student could put an identifier back into a
-// record that was just scrubbed. Matching is deliberately strict —
-// a blocked student picks another name, which costs nothing — but it
-// is not substring-blind for very short words:
-// - a multi-word scrub entry collapsed ("Jordan Lee" → "jordanlee",
-//   length >= 4) blocks anywhere in the name;
-// - a token of length >= 3 blocks anywhere ("jordan", "priya");
-// - a 2-letter token blocks only as a whole hyphen-separated segment
-//   ("al-paso" blocks; "always-7" and "final-try" do not);
-// - single letters are ignored.
-export function validateRetrievalName(name, scrubWords) {
-  const n = String(name || '');
-  if (!RETRIEVAL_NAME_RE.test(n)) {
-    return {
-      ok: false,
-      reason: 'Use 3–24 characters: lowercase letters, digits and hyphens, starting with a letter or digit.',
-    };
-  }
-  const blocked = { ok: false, reason: 'That name contains a word from your removal list. Pick a name that does not identify you.' };
-  const segments = n.split('-');
-  for (const w of scrubWords || []) {
-    const raw = String(w || '').toLowerCase();
-    if (!raw) continue;
-    const collapsed = raw.replace(/[^a-z0-9]+/g, '');
-    if (collapsed.length >= 4 && n.includes(collapsed)) return blocked;
-    for (const token of raw.split(/[^a-z0-9]+/)) {
-      if (token.length >= 3 && n.includes(token)) return blocked;
-      if (token.length === 2 && segments.includes(token)) return blocked;
-    }
-  }
-  return { ok: true };
-}
-
 // Client-side mirror of the Worker's POST /jobs validation. Returns
 // { ok: true } or { ok: false, reason } — the reason of the FIRST
 // failed check, in the Worker's order of concern.
@@ -106,9 +68,6 @@ export function validateJobPayload(body) {
   if (!SHA256_HEX.test(body.transcript_sha256 || '')) return fail('The transcript checksum is missing.');
   const v = body.versions || {};
   if (!v.webapp || !v.model || !v.glossary) return fail('Component versions are missing.');
-  if (!RETRIEVAL_NAME_RE.test(body.retrieval_name || '')) {
-    return fail('The retrieval name does not follow the format rule.');
-  }
   if (typeof body.retrieval_code !== 'string' ||
       !RETRIEVAL_CODE_RE.test(body.retrieval_code)) {
     return fail('Enter a retrieval code using letters and numbers only.');
@@ -137,7 +96,6 @@ export function buildJobPayload(state) {
     audio_sha256: state.audioSha256,
     transcript_sha256: state.transcriptSha256,
     versions: { ...state.versions },
-    retrieval_name: state.retrievalName,
     retrieval_code: state.retrievalCode,
   };
   if (state.kind === 'final') {
@@ -145,12 +103,11 @@ export function buildJobPayload(state) {
     body.youtube_video_id = state.youtubeVideoId;
     body.youtube_checked_at = state.youtubeCheckedAt;
   }
-  if (state.pushSubscription) body.push_subscription = state.pushSubscription;
   return body;
 }
 
 /* ---------------- localStorage job entries ----------------
- * A list of { pkg, course, asg, retrieval_name, retrieval_code, kind,
+ * A list of { pkg, course, asg, retrieval_code, kind,
  * youtube_link, created_at, expires_at }. youtube_link is held only
  * here, on the student's own browser, so the HTML can be built at ZIP
  * creation on a later visit; it is never sent to the Worker with the
@@ -179,15 +136,15 @@ export function saveJobEntries(entries, storage) {
 
 export function addJobEntry(entry, storage) {
   const entries = loadJobEntries(storage)
-    .filter((e) => !(e.pkg === entry.pkg && e.retrieval_name === entry.retrieval_name));
+    .filter((e) => !(e.pkg === entry.pkg && e.retrieval_code === entry.retrieval_code));
   entries.push(entry);
   saveJobEntries(entries, storage);
   return entries;
 }
 
-export function removeJobEntry(pkg, retrievalName, storage) {
+export function removeJobEntry(pkg, retrievalCode, storage) {
   const entries = loadJobEntries(storage)
-    .filter((e) => !(e.pkg === pkg && e.retrieval_name === retrievalName));
+    .filter((e) => !(e.pkg === pkg && e.retrieval_code === retrievalCode));
   saveJobEntries(entries, storage);
   return entries;
 }
@@ -236,7 +193,7 @@ export async function requestYouTubeCheck(workerBase, url, fetchFn) {
 }
 
 // POST /jobs → {job_id, created_at, expires_at}. Throws with the
-// Worker's error message on failure (e.g. duplicate name, second
+// Worker's error message on failure (e.g. duplicate code, second
 // final for one fingerprint).
 export async function submitJob(workerBase, payload, fetchFn) {
   const { status, ok, data } = await postJson(workerBase, '/jobs', payload, fetchFn);
@@ -247,13 +204,13 @@ export async function submitJob(workerBase, payload, fetchFn) {
 }
 
 // POST /jobs/status → {status, data} where data is the status body
-// (including the result bundle when ready), or null on 403 — the
-// Worker returns the same 403 for an unknown name and a wrong code,
-// and the page preserves that indistinguishability.
+// (the result bundle when ready; queue_ahead — how many jobs are
+// ahead in the grading queue — while waiting), or null on 403: the
+// Worker returns the same 403 for every wrong code, and the page
+// preserves that indistinguishability.
 export async function fetchJobStatus(workerBase, creds, fetchFn) {
   const { status, ok, data } = await postJson(workerBase, '/jobs/status', {
     pkg: creds.pkg,
-    retrieval_name: creds.retrieval_name,
     retrieval_code: creds.retrieval_code,
   }, fetchFn);
   if (status === 403) return { status: 'forbidden', data: null };
@@ -265,7 +222,6 @@ export async function fetchJobStatus(workerBase, creds, fetchFn) {
 export async function markJobRetrieved(workerBase, creds, fetchFn) {
   const { ok } = await postJson(workerBase, '/jobs/retrieved', {
     pkg: creds.pkg,
-    retrieval_name: creds.retrieval_name,
     retrieval_code: creds.retrieval_code,
   }, fetchFn);
   return ok;
