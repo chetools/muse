@@ -38,6 +38,7 @@ import {
   validateJobPayload, buildJobPayload, loadJobEntries, addJobEntry,
   removeJobEntry, pruneExpiredEntries, saveJobEntries,
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
+  finalizeJob,
 } from './jobs.js';
 import { buildZip, SUBMISSION_ZIP_NAME, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
 
@@ -56,7 +57,6 @@ let transcriptionComplete = false;
 let confirmed = false;
 let vocabulary = null;
 let ytCheck = null;         // { videoId, token, checkedAt } after an ok check
-let ytPlayer = null;
 let ytApiPromise = null;
 const readyBundles = new Map(); // "pkg|code" -> result bundle from /jobs/status
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
@@ -73,7 +73,11 @@ function clearError() { $('errBox').style.display = 'none'; }
 function scrubWords() { return parseScrubWords($('scrubField').value); }
 function scrubbed() { return scrubChunks(chunks, scrubWords()); }
 function canonical() { return canonicalTranscript(scrubbed()); }
-function kind() { return $('kindFinal').checked ? 'final' : 'practice'; }
+// There is no Practice/Final choice at send time: a job sent with a
+// checked YouTube link is submission-ready when graded ("final"); a
+// job sent without one can be turned into the submission afterwards
+// (section 7), which is when most students decide.
+function kind() { return ytCheck ? 'final' : 'practice'; }
 
 function downloadBlob(blob, name) {
   const a = document.createElement('a');
@@ -387,17 +391,8 @@ $('confirmChk').addEventListener('change', () => {
 // --- Job section ---
 function updateJobEnabled() {
   const base = !!(cfg.worker && cfg.pkg && cfg.ph && transcriptionComplete && confirmed);
-  const ytReady = kind() !== 'final' || !!ytCheck;
-  $('submitJobBtn').disabled = !(base && ytReady);
+  $('submitJobBtn').disabled = !base;
 }
-$('kindPractice').addEventListener('change', () => {
-  $('finalFields').hidden = true;
-  updateJobEnabled();
-});
-$('kindFinal').addEventListener('change', () => {
-  $('finalFields').hidden = false;
-  updateJobEnabled();
-});
 $('retrievalCode').addEventListener('input', updateJobEnabled);
 
 // YouTube: the link invalidates any earlier check when it changes.
@@ -426,31 +421,39 @@ function loadYouTubeApi() {
 }
 
 // Preview the video in the embedded player and compare its duration
-// with the extracted audio's. A preview failure (embedding disabled,
-// sign-in required) is a warning, not a block: the Worker check is
-// the gate.
-async function previewYouTube(videoId) {
+// with the relevant audio's — the loaded recording for the send form,
+// the selected job's audio for the conversion panel. This comparison
+// (with the preview itself) is the page's pre-packaging consistency
+// check: a true acoustic fingerprint comparison cannot run here,
+// because the browser cannot read the video's audio track (YouTube
+// serves it only inside its own player); sameness of recording is
+// established by the teacher audit's acoustic cross-check on the
+// submitted ZIP. A preview failure (embedding disabled, sign-in
+// required) is a warning, not a block: the Worker check is the gate.
+const ytPlayers = {};
+async function previewYouTube(videoId, els) {
   try {
     const YT = await loadYouTubeApi();
-    $('ytPlayerWrap').hidden = false;
-    if (ytPlayer) { ytPlayer.loadVideoById(videoId); return; }
-    ytPlayer = new YT.Player('ytPlayer', {
+    $(els.wrap).hidden = false;
+    if (ytPlayers[els.player]) { ytPlayers[els.player].loadVideoById(videoId); return; }
+    ytPlayers[els.player] = new YT.Player(els.player, {
       width: '480', height: '270', videoId,
       events: {
         onReady: (ev) => {
           const ytDuration = ev.target.getDuration();
-          if (ytDuration > 0 && durationS > 0) {
-            const diff = Math.abs(ytDuration - durationS);
-            if (diff > Math.max(2, 0.02 * durationS)) {
-              $('ytStatus').textContent +=
+          const audioDur = els.audioDurationS ? els.audioDurationS() : 0;
+          if (ytDuration > 0 && audioDur > 0) {
+            const diff = Math.abs(ytDuration - audioDur);
+            if (diff > Math.max(2, 0.02 * audioDur)) {
+              $(els.status).textContent +=
                 ' Warning: the video runs ' + ytDuration.toFixed(1) +
-                ' s but the audio runs ' + durationS.toFixed(1) +
+                ' s but the audio runs ' + audioDur.toFixed(1) +
                 ' s — this may not be the same recording.';
             }
           }
         },
         onError: () => {
-          $('ytStatus').textContent +=
+          $(els.status).textContent +=
             ' The preview could not play this video here (it may have embedding turned off); the link check above is what counts.';
         },
       },
@@ -486,7 +489,7 @@ $('ytCheckBtn').addEventListener('click', async () => {
     $('ytStatus').textContent = 'The check could not be completed. Try again.';
     console.error(err);
   }
-  previewYouTube(videoId);
+  previewYouTube(videoId, { wrap: 'ytPlayerWrap', player: 'ytPlayer', status: 'ytStatus', audioDurationS: () => durationS });
   updateJobEnabled();
 });
 
@@ -525,8 +528,10 @@ $('submitJobBtn').addEventListener('click', async () => {
       expires_at: res.expires_at,
     });
     $('jobStatus').textContent =
-      'Sent. The list below updates every 5 seconds while this page is open and shows ' +
-      'when the grade is ready; the job is kept until ' +
+      'Sent' + (payload.kind === 'final'
+        ? ' with the checked link — submission-ready as soon as it is graded.'
+        : ' — when the grade is back, turn it into your Canvas submission from the list below.') +
+      ' The list below updates every 5 seconds while this page is open; the job is kept until ' +
       new Date(res.expires_at).toLocaleString() + '.';
     renderJobs();
   } catch (err) {
@@ -647,6 +652,17 @@ function renderJobRow(container, entry, statusInfo) {
       zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle));
       row.append(document.createTextNode(' '), zipBtn);
     }
+    if (entry.kind === 'practice' && bundle) {
+      const convBtn = document.createElement('button');
+      convBtn.textContent = 'Turn into my submission';
+      convBtn.addEventListener('click', () => {
+        if (entry.manual) finManualEntry = entry;
+        refreshFinPanel(jobKey(entry.pkg, entry.retrieval_code));
+        $('finPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        $('finLink').focus();
+      });
+      row.append(document.createTextNode(' '), convBtn);
+    }
   }
   const forgetBtn = document.createElement('button');
   forgetBtn.textContent = 'Remove from this browser';
@@ -689,6 +705,7 @@ async function renderJobs() {
       renderJobRow(holder, entry, jobStates.get(key) || { status: 'queued' });
     }
   }
+  refreshFinPanel();
 }
 
 // The jobs list refreshes itself every 5 seconds while the page is
@@ -703,6 +720,157 @@ async function refreshJobs() {
   jobsRefreshInFlight = false;
 }
 setInterval(refreshJobs, 5000);
+
+// --- Conversion: turn a graded job into the Canvas submission ---
+let finCheck = null;
+let finManualEntry = null;
+
+function conversionCandidates() {
+  const out = [];
+  for (const entry of loadJobEntries()) {
+    const key = jobKey(entry.pkg, entry.retrieval_code);
+    const st = jobStates.get(key);
+    const bundle = readyBundles.get(key);
+    if (entry.kind === 'practice' && st && st.status === 'ready' && bundle) {
+      out.push({ entry, bundle });
+    }
+  }
+  if (finManualEntry && finManualEntry.kind === 'practice') {
+    const key = jobKey(finManualEntry.pkg, finManualEntry.retrieval_code);
+    const bundle = readyBundles.get(key);
+    if (bundle) out.push({ entry: finManualEntry, bundle });
+  }
+  return out;
+}
+
+function refreshFinPanel(preferKey) {
+  const panel = $('finPanel');
+  if (!panel) return;
+  const cands = conversionCandidates();
+  if (!cands.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  const sel = $('finJobSel');
+  const prev = preferKey || sel.value;
+  sel.textContent = '';
+  for (const c of cands) {
+    const opt = document.createElement('option');
+    opt.value = jobKey(c.entry.pkg, c.entry.retrieval_code);
+    const label = [c.entry.course, c.entry.asg].filter(Boolean).join(' · ') || c.entry.pkg;
+    opt.textContent = label + (c.bundle.t ? ' — graded ' + new Date(c.bundle.t).toLocaleString() : '');
+    sel.append(opt);
+  }
+  const latest = cands[cands.length - 1];
+  sel.value = cands.some((c) => jobKey(c.entry.pkg, c.entry.retrieval_code) === prev)
+    ? prev : jobKey(latest.entry.pkg, latest.entry.retrieval_code);
+}
+
+function finSelected() {
+  const key = $('finJobSel').value;
+  return conversionCandidates().find(
+    (c) => jobKey(c.entry.pkg, c.entry.retrieval_code) === key) || null;
+}
+
+async function finJobAudioDurationS(cand) {
+  if (audioSha && audioSha === cand.bundle.audio_sha256 && durationS > 0) return durationS;
+  const record = await cacheGet(cand.bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
+    .catch(() => null);
+  return record && record.duration_s ? record.duration_s : 0;
+}
+
+function finResetCheck() {
+  finCheck = null;
+  $('finConfirmBtn').disabled = true;
+  $('finStatus').textContent = '';
+  $('finDone').textContent = '';
+  $('finPlayerWrap').hidden = true;
+}
+$('finJobSel').addEventListener('change', finResetCheck);
+$('finLink').addEventListener('input', () => {
+  finCheck = null;
+  $('finConfirmBtn').disabled = true;
+  $('finPlayerWrap').hidden = true;
+});
+
+$('finCheckBtn').addEventListener('click', async () => {
+  clearError();
+  const cand = finSelected();
+  if (!cand) return;
+  const videoId = parseYouTubeVideoId($('finLink').value.trim());
+  if (!videoId) {
+    $('finStatus').textContent = 'That does not look like a YouTube video link.';
+    return;
+  }
+  if (!cfg.worker) {
+    $('finStatus').textContent = 'The teacher’s configured link is needed to check the link.';
+    return;
+  }
+  $('finStatus').textContent = 'Checking…';
+  try {
+    const res = await requestYouTubeCheck(cfg.worker, canonicalWatchUrl(videoId));
+    if (res.status === 'ok' && res.video_id === videoId && res.token) {
+      finCheck = { videoId, tok: res.token, checkedAt: res.checked_at };
+      $('finStatus').textContent = 'Link checks out: the video is reachable (Unlisted or Public).';
+      $('finConfirmBtn').disabled = false;
+    } else {
+      finCheck = null;
+      $('finConfirmBtn').disabled = true;
+      $('finStatus').textContent =
+        'YouTube reports this video as private or missing. Set it to Unlisted or Public and check again.';
+    }
+  } catch (err) {
+    finCheck = null;
+    $('finConfirmBtn').disabled = true;
+    $('finStatus').textContent = 'The check could not be completed. Try again.';
+    console.error(err);
+  }
+  if (finCheck) {
+    const dur = await finJobAudioDurationS(cand);
+    previewYouTube(videoId, {
+      wrap: 'finPlayerWrap', player: 'finPlayer', status: 'finStatus',
+      audioDurationS: () => dur,
+    });
+    if (!dur) {
+      $('finStatus').textContent +=
+        ' Load this job’s recording in step 2 to compare the video length with its audio.';
+    }
+  }
+});
+
+$('finConfirmBtn').addEventListener('click', async () => {
+  const cand = finSelected();
+  if (!cand || !finCheck) return;
+  $('finConfirmBtn').disabled = true;
+  $('finDone').textContent = 'Converting…';
+  try {
+    const payload = {
+      pkg: cand.entry.pkg,
+      retrieval_code: cand.entry.retrieval_code,
+      youtube_video_id: finCheck.videoId,
+      youtube_checked_at: finCheck.checkedAt,
+    };
+    payload['youtube' + '_token'] = finCheck.tok;
+    await finalizeJob(cfg.worker, payload);
+    if (cand.entry.manual) {
+      cand.entry.kind = 'final';
+      cand.entry.youtube_link = $('finLink').value.trim();
+    } else {
+      const entries = loadJobEntries();
+      const e = entries.find((x) => x.pkg === cand.entry.pkg &&
+        x.retrieval_code === cand.entry.retrieval_code);
+      if (e) {
+        e.kind = 'final';
+        e.youtube_link = $('finLink').value.trim();
+        saveJobEntries(entries);
+      }
+    }
+    finCheck = null;
+    $('finDone').textContent = 'Converted. Download the submission ZIP from the job’s row above.';
+    await renderJobs();
+  } catch (err) {
+    $('finDone').textContent = 'Converting failed: ' + err.message;
+    $('finConfirmBtn').disabled = false;
+  }
+});
 
 // Manual retrieval (different browser): status by typed code
 // against the configured package. On ready, the same rendering is
@@ -745,6 +913,12 @@ $('manualBtn').addEventListener('click', async () => {
       // entry at click time (the signed video hash check in
       // downloadSubmissionZip verifies it is the checked video).
       readyBundles.set(jobKey(entry.pkg, entry.retrieval_code), res.data.result);
+      entry.manual = true;
+      if (entry.kind === 'practice') {
+        finManualEntry = entry;
+        jobStates.set(jobKey(entry.pkg, entry.retrieval_code), { status: 'ready' });
+        refreshFinPanel(jobKey(entry.pkg, entry.retrieval_code));
+      }
       entry.youtube_link = $('ytLink').value.trim();
       $('ytLink').addEventListener('input', () => {
         entry.youtube_link = $('ytLink').value.trim();
