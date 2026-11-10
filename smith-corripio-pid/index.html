@@ -1835,6 +1835,7 @@ function plot(el, traces, layout) {
 
 // ------------------------------------------------------------- worker
 let worker = null, msgSeq = 0;
+let runtimeReady = false, runtimeFailed = false;
 const pending = new Map();
 let progressCb = null;
 function callWorker(type, payload, onProgress) {
@@ -1858,14 +1859,18 @@ function initWorker() {
   worker.onmessage = (ev) => {
     const d = ev.data;
     if (d.type === "ready") {
+      runtimeReady = true;
       $("boot-status").textContent = "Python runtime ready.";
       document.querySelectorAll("button.run, #m-dual-manual, " +
         "#m-dual-half, #m-dual-ls, #s-load-opt, #s-load-click")
         .forEach((b) => { if (b.id !== "s-load-opt" &&
                             b.id !== "s-load-click") b.disabled = false; });
+      // A sweep marked stale while its panel was on screen runs now.
+      if (sweepStale && !$("panel-sweep").hidden) sweepAuto.schedule();
     } else if (d.type === "progress") {
       if (progressCb) progressCb(d.frac);
     } else if (d.type === "fatal") {
+      runtimeFailed = true;
       $("boot-status").textContent =
         "The Python runtime failed to load. The precomputed default " +
         "run remains displayed.";
@@ -1876,10 +1881,37 @@ function initWorker() {
     }
   };
   worker.onerror = () => {
+    runtimeFailed = true;
     $("boot-status").textContent =
       "The Python runtime failed to load. The precomputed default " +
       "run remains displayed.";
   };
+}
+
+// ------------------------------------------------------- auto-run
+// Fast calculations run automatically when inputs change: a change
+// schedules one run after a debounce; changes inside the window
+// coalesce, and a change arriving while a run is in flight schedules
+// exactly one follow-up run, which reads the latest inputs when it
+// starts. Scheduling is gated on the runtime being ready — before
+// boot (or after a failed boot) a change only marks the display
+// stale, exactly as it did before auto-run existed.
+function makeAutoRunner(fn, debounceMs) {
+  let timer = null, running = false, again = false;
+  async function kick() {
+    if (running) { again = true; return; }
+    running = true;
+    try { await fn(); } catch (e) { /* fn reports its own errors */ }
+    running = false;
+    if (again) { again = false; schedule(); }
+  }
+  function schedule() {
+    if (!runtimeReady || runtimeFailed || !worker) return;
+    if (running) { again = true; return; }
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; kick(); }, debounceMs);
+  }
+  return { schedule };
 }
 
 // ------------------------------------------------------------- tabs
@@ -1889,6 +1921,10 @@ function showPanel(name, push) {
   document.querySelectorAll(".tabbtn").forEach((b) =>
     b.classList.toggle("active", b.dataset.tab === name));
   if (push) history.replaceState(null, "", "#" + name);
+  // A sweep left stale by App edits runs once when its panel is
+  // next shown and the runtime is ready.
+  if (name === "sweep" && sweepStale && runtimeReady && !runtimeFailed)
+    sweepAuto.schedule();
   requestAnimationFrame(resizeCharts);
 }
 document.querySelectorAll(".tabbtn").forEach((b) =>
@@ -2014,6 +2050,15 @@ async function runAppAs(name) {
     renderApp();
   } catch (e) { $("a-note").textContent = e.message; }
 }
+const appAuto = makeAutoRunner(() => runAppAs("Manual tuning"), 350);
+// One path for every App input change, typed or programmatic:
+// mark the display stale, register the sweep impact, and schedule
+// the automatic re-run (a no-op until the runtime is ready).
+function appInputsChanged() {
+  markStale();
+  noteSweepImpact();
+  appAuto.schedule();
+}
 async function refreshTuning(which) {
   if (!worker) return;
   const res = await callWorker("tuning", appPayload());
@@ -2022,6 +2067,7 @@ async function refreshTuning(which) {
   $("a-Ti").value = src.Ti.toFixed(4);
   $("a-Td").value = src.Td.toFixed(4);
   $("a-note").textContent = res.note || "";
+  noteSweepImpact();
   runAppAs(which === "ZN" ? "Ziegler–Nichols" : "Smith and Corripio");
 }
 $("a-run").addEventListener("click", () => runAppAs("Manual tuning"));
@@ -2035,18 +2081,22 @@ $("a-windup-preset").addEventListener("click", () => {
   $("a-note").textContent = "Windup preset set: set-point step 25 %, " +
     "output limited to 80 %. Run with anti-windup None, then with " +
     "Clamping or Back-calculation, and compare the overshoot.";
-  markStale();
+  appInputsChanged();
 });
 $("a-preset").addEventListener("change", () => {
   const r = parseFloat($("a-preset").value);
   if (!Number.isNaN(r)) {
     $("a-theta").value = (r * parseFloat($("a-tau").value)).toFixed(2);
-    markStale();
+    appInputsChanged();
   }
 });
 function markStale() { $("a-stale").hidden = false; }
+// Every computational input and select auto-runs on change; the
+// display toggles are excluded — they only re-render the last run.
+const DISPLAY_ONLY = ["a-show-pv", "a-show-mv", "a-show-e", "a-show-pid"];
 document.querySelectorAll("#panel-app input, #panel-app select")
-  .forEach((el) => el.addEventListener("change", markStale));
+  .forEach((el) => { if (!DISPLAY_ONLY.includes(el.id))
+    el.addEventListener("change", appInputsChanged); });
 ["a-show-pv", "a-show-mv", "a-show-e", "a-show-pid"].forEach((id) =>
   $(id).addEventListener("change", renderApp));
 
@@ -2109,6 +2159,10 @@ async function runModel() {
   } catch (e) { $("m-note").textContent = e.message; }
 }
 $("m-run").addEventListener("click", runModel);
+const modelAuto = makeAutoRunner(runModel, 350);
+document.querySelectorAll("#panel-model input, #panel-model select")
+  .forEach((el) => el.addEventListener("change",
+    () => modelAuto.schedule()));
 $("m-family").addEventListener("change", () => {
   const f = $("m-family").value;
   $("m-fam-equal").hidden = f !== "lags_equal";
@@ -2166,6 +2220,19 @@ $("m-use-ls").addEventListener("click", () => useForTuning("ls"));
 
 // ------------------------------------------------------------- Sweep tab
 let sweepRes = null, clickedPoint = null;
+let sweepStale = false;
+// An App input change reaches the sweep in one of two ways: while
+// the Sweep panel is visible it schedules an automatic re-sweep;
+// while hidden it only marks the results stale (the note says so),
+// and showing the panel again runs the sweep once — see showPanel.
+function noteSweepImpact() {
+  if (!$("panel-sweep").hidden) { sweepAuto.schedule(); return; }
+  sweepStale = true;
+  $("s-note").textContent = "App inputs have changed since these " +
+    "sweeps were computed. The sweep runs again when this panel " +
+    "is shown.";
+}
+const sweepAuto = makeAutoRunner(runSweep, 800);
 function renderSweep() {
   if (!sweepRes) return;
   for (const param of ["Kc", "Ti", "Td"]) {
@@ -2215,6 +2282,7 @@ function renderSweep() {
 }
 async function runSweep() {
   if (!worker) return;
+  sweepStale = false;
   const bar = $("s-progress");
   bar.hidden = false; bar.value = 0;
   try {
@@ -2232,6 +2300,8 @@ function loadIntoApp(pt) {
   $("a-Ti").value = pt.Ti.toFixed(4);
   $("a-Td").value = pt.Td.toFixed(4);
   showPanel("app", true);
+  // The loaded point changes the App tuning the sweep is based on.
+  noteSweepImpact();
   runAppAs("Sweep point");
 }
 $("s-load-opt").addEventListener("click", () => {
