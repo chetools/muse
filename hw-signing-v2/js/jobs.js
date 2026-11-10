@@ -45,6 +45,62 @@ export function canonicalWatchUrl(videoId) {
   return 'https://www.youtube.com/watch?v=' + videoId;
 }
 
+/* ---------------- duration comparison ----------------
+ * The page's audio duration (the decoded audio track) and the
+ * YouTube player's duration (the whole transcoded presentation) are
+ * not the same quantity, so an identical upload can differ by a
+ * fraction of a second, and a camera file whose video track runs
+ * past its audio by more. The comparison therefore has three bands:
+ *   pass    — difference at most DURATION_PASS_S: no action needed.
+ *   confirm — difference up to max(2 s, 2% of the audio): the link
+ *             may be used only after the student plays the preview
+ *             and explicitly confirms it is the same recording.
+ *   block   — beyond that tolerance: the link cannot be used for
+ *             this recording at all.
+ * When either duration is unknown (the preview could not report
+ * one), the band is 'unknown', which is handled like 'confirm': the
+ * student must play the preview and confirm. The Worker stores one
+ * anonymous statistic per reported comparison (POST /stats/duration)
+ * so the pass band can be tightened later from measured data.
+ */
+export const DURATION_PASS_S = 1.0;
+
+export function classifyDuration(audioS, videoS) {
+  const a = Number(audioS);
+  const v = Number(videoS);
+  if (!(a > 0) || !(v > 0)) {
+    return { band: 'unknown', diffS: null, tolS: null };
+  }
+  const diffS = Math.abs(v - a);
+  const tolS = Math.max(2, 0.02 * a);
+  const band = diffS <= DURATION_PASS_S ? 'pass'
+    : diffS <= tolS ? 'confirm' : 'block';
+  return { band, diffS, tolS };
+}
+
+/* ---------------- submission verification ----------------
+ * Before a submission ZIP is built, the page recomputes the hashes
+ * of the exact contents it is about to package — the WAV bytes, the
+ * canonical transcript built from the job recording's own cached
+ * chunks, and the critique in the result bundle — and compares them
+ * with the hashes the grading Worker signed. Returns a list of
+ * failure codes (empty when everything matches): 'audio',
+ * 'transcript', 'critique'. Pure; the caller supplies the hashes it
+ * computed so this stays Node-testable.
+ */
+export function verifyBundleContents(bundle, actual) {
+  const failures = [];
+  if (!bundle || !actual) return ['audio', 'transcript', 'critique'];
+  if (actual.wavSha256 !== bundle.audio_sha256) failures.push('audio');
+  if (actual.transcriptSha256 !== bundle.transcript_sha256) {
+    failures.push('transcript');
+  }
+  if (actual.critiqueSha256 !== bundle.critique_sha256) {
+    failures.push('critique');
+  }
+  return failures;
+}
+
 // Client-side mirror of the Worker's POST /jobs validation. Returns
 // { ok: true } or { ok: false, reason } — the reason of the FIRST
 // failed check, in the Worker's order of concern.
@@ -108,7 +164,10 @@ export function buildJobPayload(state) {
 
 /* ---------------- localStorage job entries ----------------
  * A list of { pkg, course, asg, retrieval_code, kind,
- * youtube_link, created_at, expires_at }. youtube_link is held only
+ * youtube_link, youtube_title, created_at, expires_at }.
+ * youtube_title is the title the Worker returned at the link check,
+ * kept locally so the student can recognise the video again at ZIP
+ * time; it is never sent with the job. youtube_link is held only
  * here, on the student's own browser, so the HTML can be built at ZIP
  * creation on a later visit; it is never sent to the Worker with the
  * job. (SPEC names the other fields; the link field is the local
@@ -235,6 +294,24 @@ export async function finalizeJob(workerBase, payload, fetchFn) {
     throw new Error((data && data.error) || ('finalize failed (HTTP ' + status + ')'));
   }
   return data;
+}
+
+// POST /stats/duration {pkg, context, audio_s, video_s} → records
+// one anonymous duration comparison on the Worker (no video ID, no
+// link, no student information) so the duration bands can be
+// recalibrated from measured same-recording differences. Best
+// effort: returns true when stored, false otherwise; a failure never
+// affects the student's flow.
+export async function reportDurationStat(workerBase, stat, fetchFn) {
+  try {
+    const { ok } = await postJson(workerBase, '/stats/duration', {
+      pkg: stat.pkg || '',
+      context: stat.context || '',
+      audio_s: stat.audioS,
+      video_s: stat.videoS,
+    }, fetchFn);
+    return !!ok;
+  } catch { return false; }
 }
 
 // POST /jobs/retrieved → marks the job retrieved on the Worker.

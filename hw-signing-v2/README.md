@@ -68,20 +68,30 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 - `js/cache.js` — IndexedDB (`hw-signing-v2`, store `recordings`,
   keyed by audio fingerprint): the WAV blob and the corrected
   **pre-scrub** chunks, cached per chunk as transcription runs, with
-  window progress for resume. The recordings list UI shows date,
-  duration, size and state per entry, with Restore and Delete.
+  window progress for resume, and the source file name. The
+  recordings list UI shows the source file name, date, duration,
+  size, state and the transcript's opening words per entry (name and
+  words scrubbed with the current removal list), with Restore and
+  Delete — takes of one assignment are told apart by name and
+  opening words, not by date alone.
   Scrubbing is applied fresh on every load; cached chunks are never
   scrubbed. Nothing else is stored in IndexedDB.
 - `js/jobs.js` — grading jobs: the retrieval-name rule (format plus
   blocking of the student's own scrub words), the POST /jobs payload
   mirror of the Worker's validation, the Worker calls (`/youtube-check`,
-  `/jobs`, `/jobs/status`, `/jobs/retrieved`, `GET /` for the VAPID
-  key; fetch injected), the YouTube video-ID parser, and the
+  `/jobs`, `/jobs/status`, `/jobs/retrieved`, `/stats/duration`,
+  `GET /` for the VAPID key; fetch injected), the YouTube video-ID
+  parser, the duration comparison bands (`classifyDuration`: pass at
+  a difference of at most 1 s; confirm — the student's
+  played-and-confirmed tick — up to max(2 s, 2% of the audio); block
+  beyond), the pre-ZIP bundle verification (`verifyBundleContents`),
+  and the
   localStorage entries under `hw-signing.jobs.v2`: `{pkg, course, asg,
-  retrieval_name, retrieval_code, kind, youtube_link, created_at,
-  expires_at}`. The `youtube_link` field is held **only** in the
+  retrieval_name, retrieval_code, kind, youtube_link, youtube_title,
+  created_at, expires_at}`. The `youtube_link` and `youtube_title`
+  fields are held **only** in the
   student's browser so the HTML can be built at ZIP creation on a
-  later visit; it is never sent with the job. Expired entries are
+  later visit; they are never sent with the job. Expired entries are
   pruned on load; an entry is removed when its ZIP is downloaded.
 - `js/push.js` / `sw.js` — Web Push pieces retained from the pre-2.1.0
   design. Since 2.1.0 the page does not subscribe to push and there is
@@ -115,9 +125,17 @@ SHA-256 (or `none`), Graded at, Grade receipt. There is no v1
 Session/Signed-at/Receipt: the job ID and the Worker's grade receipt
 over the signed result bundle take their place. The HTML is built
 only at retrieval, from the signed bundle, so the grades and critique
-in it are exactly what the Worker signed; the page cross-checks the
-locally kept YouTube link against the bundle's signed video-ID hash
-before building the ZIP.
+in it are exactly what the Worker signed. Downloading is two steps:
+Review first verifies the exact contents against the signed bundle —
+the WAV bytes' SHA-256, the canonical transcript's SHA-256 (built
+from the job recording's own cached chunks, never from the
+transcript currently on the page; a removal list that differs from
+the one used at send time fails this check and the error says so),
+the critique's SHA-256, and the locally kept YouTube link's video-ID
+hash — and shows a panel identifying what will be packaged (course,
+grades, recording file name/duration/fingerprint/opening words,
+video title and link, each marked verified); the panel's button then
+builds the ZIP from those verified parts.
 
 ## Privacy invariants
 
@@ -135,10 +153,16 @@ before building the ZIP.
 - Browser storage is the settled exception to v1's "stores nothing"
   rule, and it holds recordings and job entries only — never the
   scrub list, never the grades.
+- Duration statistics: when a link check's preview reports the
+  video's length, the page sends the Worker the two durations, the
+  flow name (`send`/`convert`) and the package label — no video ID,
+  no link, nothing about the student — so the duration bands can be
+  recalibrated from measured same-recording differences
+  (`POST /stats/duration`, one report per video/recording pair).
 
 ## Tests
 
-32 checks, all passing (`node tests/run-tests.mjs`): configuration
+42 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip including `ph`; scrub and canonical form;
 checksum against Node; suspected identifiers; WAV; cache-key rules
 (course/pkg excluded, model/glossary included) and stored-chunk
@@ -154,14 +178,15 @@ wiring guards over `main.js`, `index.html`, and `sw.js`.
 
 ## Not run live
 
-Browser-only parts were not executed here: no Web Audio decode, no
-model download or Parakeet run, no IndexedDB transaction, no YouTube
-player, no push subscription, and no page rendering took place in
-this environment. The Worker calls were tested only against mock
-fetches; the grading Worker is a separate component of the same SPEC.
-First live use needs one end-to-end pass in Chrome against a deployed
-Worker: load the model, transcribe a known recording, interrupt and
-resume it, submit practice and final jobs, and download the ZIP.
+The 2.4.0 verification flow was exercised in headless Chromium
+against a stub Worker: a seeded ready final job and cache record
+produced the review panel with the recording and video identified,
+a removal-list change blocked the ZIP with the transcript-checksum
+message, and the downloaded ZIP's entries and audio bytes verified.
+Not exercised: Web Audio decode of a real recording, the Parakeet
+model run, and the YouTube IFrame player against a real video (the
+sandbox browser cannot reach YouTube); the duration watch's band
+logic is Node-tested through `classifyDuration`.
 
 ## Decisions taken where the SPEC was silent
 

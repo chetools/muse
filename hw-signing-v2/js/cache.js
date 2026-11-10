@@ -18,7 +18,7 @@
 // All database access is lazy (inside the functions), so importing
 // this module outside a browser is harmless.
 
-import { cacheHit, toCachedChunk } from './cachekey.js';
+import { cacheHit, toCachedChunk, recordingFirstWords } from './cachekey.js';
 
 export const CACHE_DB_NAME = 'hw-signing-v2';
 export const CACHE_STORE = 'recordings';
@@ -71,17 +71,24 @@ export async function cacheGet(audioSha256, model, glossary) {
 }
 
 // Create the record for a freshly fingerprinted recording, if none
-// exists yet. An existing record (e.g. a partial run) is kept.
-export async function cacheInit(audioSha256, { model, glossary, wavBlob, duration_s }) {
+// exists yet. An existing record (e.g. a partial run) is kept. The
+// source file name is kept with the record (this machine only, like
+// the chunks) so a saved recording can be recognised in the list and
+// at ZIP time; it is metadata from the student's own file and is
+// scrubbed again wherever it is displayed.
+export async function cacheInit(audioSha256, { model, glossary, wavBlob, duration_s, source_name }) {
   await withStore('readwrite', async (store) => {
     const existing = await requestToPromise(store.get(audioSha256));
     if (existing) {
       // Refresh the WAV blob — the bytes are identical by fingerprint,
       // but a partial record may predate the blob being kept.
-      if (!existing.wavBlob && wavBlob) {
-        existing.wavBlob = wavBlob;
-        store.put(existing);
+      let dirty = false;
+      if (!existing.wavBlob && wavBlob) { existing.wavBlob = wavBlob; dirty = true; }
+      if (!existing.source_name && source_name) {
+        existing.source_name = source_name;
+        dirty = true;
       }
+      if (dirty) store.put(existing);
       return;
     }
     store.put({
@@ -91,6 +98,7 @@ export async function cacheInit(audioSha256, { model, glossary, wavBlob, duratio
       wavBlob: wavBlob || null,
       chunks: [],
       duration_s: duration_s || 0,
+      source_name: source_name || '',
       created_at: new Date().toISOString(),
       windows_done: 0,
       complete: false,
@@ -133,9 +141,11 @@ export async function cacheComplete(audioSha256) {
   });
 }
 
-// Summaries for the recordings list UI, newest first. The chunk text
-// is included in the stored record but a summary carries only what
-// the list shows: date, duration, size, progress state.
+// Summaries for the recordings list UI, newest first: date,
+// duration, size, progress state, the source file name and the
+// transcript's opening words — the two things a student recognises
+// a recording by. Both are pre-scrub; the list UI scrubs them with
+// the student's current removal list before display.
 export async function cacheList() {
   const all = await withStore('readonly', (store) =>
     requestToPromise(store.getAll()));
@@ -149,6 +159,8 @@ export async function cacheList() {
       created_at: r.created_at || '',
       chunks: (r.chunks || []).length,
       complete: !!r.complete,
+      source_name: r.source_name || '',
+      first_words: recordingFirstWords(r.chunks),
     }))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 }

@@ -46,3 +46,20 @@ export function fromCachedChunk(cached) {
     corrected: cached.corrected,
   };
 }
+
+// The opening words of a recording's corrected transcript, from its
+// cached chunks. Recordings and jobs are otherwise identified only
+// by dates, durations and fingerprint prefixes, which are easy to
+// confuse when a student has several takes of the same assignment;
+// the opening words are what the student recognises. The text is
+// pre-scrub, like everything in the cache: callers that display it
+// apply the student's current removal list first.
+export function recordingFirstWords(cachedChunks, wordCount = 12) {
+  const text = (cachedChunks || [])
+    .map((c) => String((c && c.corrected) || ''))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text) return '';
+  return text.split(' ').slice(0, wordCount).join(' ');
+}
