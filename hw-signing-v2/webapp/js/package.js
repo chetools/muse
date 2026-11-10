@@ -37,7 +37,7 @@
 
 export const FORMAT_VERSION = '2';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 2.4.2',
+  webapp: 'hw-signing-webapp 2.4.3',
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };
@@ -102,7 +102,7 @@ export function assemblePackage(input) {
     '<title>Submission package</title>\n</head>\n<body>\n' +
     '<section id="summary">\n<h1>Summary</h1>\n' +
     '<p>YouTube: ' + linkHtml + '</p>\n' +
-    '<p>Grades (predicted): ' + grades + '</p>\n</section>\n' +
+    '<p>Grades: ' + grades + '</p>\n</section>\n' +
     '<section id="grading">\n<h2>Grading</h2>\n' +
     '<h3>Transcript</h3>\n' +
     '<pre class="transcript">' + escapeHtml(transcriptLines) + '</pre>\n' +

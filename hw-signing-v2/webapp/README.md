@@ -220,7 +220,7 @@ logic is Node-tested through `classifyDuration`.
   segment ("al-paso"), not inside longer words ("always-7",
   "final-try"); longer words and collapsed multi-word entries block
   anywhere.
-- **Component version strings**: webapp `hw-signing-webapp 2.4.2`;
+- **Component version strings**: webapp `hw-signing-webapp 2.4.3`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle
