@@ -24,22 +24,32 @@
 // jobs table keeps only youtube_status ("ok" / "none") and, for final
 // jobs, youtube_video_sha256 (SHA-256 hex of the video ID).
 
-const SERVICE_VERSION = "2.4.0";
+const SERVICE_VERSION = "2.4.1";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
-const JOB_TTL_MS = 48 * 60 * 60 * 1000;
+// Job lifetime (2.4.1): an ungraded job is kept for up to
+// UNGRADED_TTL_MS after creation, so a submission made while the
+// teacher's Muse is not polling is not lost; once graded, the job
+// (transcript and result) is kept for GRADED_TTL_MS after grading and
+// then expires. Before 2.4.1 every job expired 48 h after creation,
+// graded or not.
+const UNGRADED_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const GRADED_TTL_MS = 48 * 60 * 60 * 1000;
 const YOUTUBE_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_TRANSCRIPT_CHARS = 200000;
 const MAX_CRITIQUE_CHARS = 20000;
 const MAX_PACKAGE_CHARS = 500000;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
-// Retrieval is by code only (no name). The code rule: letters and
-// numbers only, a single character is enough — it is a retrieval aid,
-// not a password. Jobs are looked up by code_lookup, the SHA-256 hex
-// of "<pkg>\n<code>", which is also the uniqueness key: one code per
-// package, enforced by the jobs_code_lookup unique index.
-const RETRIEVAL_CODE = /^[A-Za-z0-9]{1,128}$/;
+// Retrieval is by code only (no name). The creation rule (2.4.1):
+// letters and numbers only, at least 8 characters — the code is the
+// only credential for status, retrieval and finalize, so a short code
+// is guessable. The minimum applies at creation only; lookup does not
+// re-validate length, so jobs created before 2.4.1 with shorter codes
+// remain retrievable. Jobs are looked up by code_lookup, the SHA-256
+// hex of "<pkg>\n<code>", which is also the uniqueness key: one code
+// per package, enforced by the jobs_code_lookup unique index.
+const RETRIEVAL_CODE = /^[A-Za-z0-9]{8,128}$/;
 
 async function codeLookupFor(pkg, code) {
   return sha256Hex(`${pkg}\n${code}`);
@@ -228,16 +238,68 @@ async function getJobRow(env, jobId) {
 }
 
 // Job lifecycle maintenance, run at the start of job-related calls:
-// jobs past their 48 h expiry lose their transcript and result and
+// jobs past their expiry lose their transcript and result and
 // become "expired"; claims past their 15 min lease return to "queued".
+// The expiry a student should be shown for a live job: for an
+// ungraded job the created_at + UNGRADED_TTL_MS cap (a job created
+// before 2.4.1 carries a stored expires_at of creation + 48 h, which
+// no longer governs it while it is ungraded); for a graded job
+// graded_at + GRADED_TTL_MS (the stored expires_at holds exactly
+// that for jobs graded under 2.4.1; a job graded before 2.4.1 carries
+// creation + 48 h there, which no longer governs it either).
+function effectiveExpiresAt(row) {
+  if (row.status === "queued" || row.status === "claimed") {
+    return new Date(
+      Date.parse(row.created_at) + UNGRADED_TTL_MS,
+    ).toISOString();
+  }
+  if (row.status === "ready" && row.graded_at) {
+    return new Date(
+      Date.parse(row.graded_at) + GRADED_TTL_MS,
+    ).toISOString();
+  }
+  return row.expires_at;
+}
+
 async function sweep(env, nowIso) {
+  // Graded (ready) jobs expire GRADED_TTL_MS after grading, measured
+  // from graded_at so jobs graded before 2.4.1 follow the same rule.
   await env.DB.prepare(
     "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
       "result_json = NULL, push_json = NULL " +
-      "WHERE expires_at <= ? AND status <> ?",
+      "WHERE status = ? AND graded_at <= ?",
   )
-    .bind("expired", nowIso, "expired")
+    .bind(
+      "expired",
+      "ready",
+      new Date(Date.parse(nowIso) - GRADED_TTL_MS).toISOString(),
+    )
     .run();
+  // Any other non-queued status (none is defined today) expires at
+  // its stored expires_at.
+  await env.DB.prepare(
+    "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
+      "result_json = NULL, push_json = NULL " +
+      "WHERE expires_at <= ? AND status <> ? " +
+      "AND status <> ? AND status <> ? AND status <> ?",
+  )
+    .bind("expired", nowIso, "expired", "queued", "claimed", "ready")
+    .run();
+  // Ungraded jobs expire only at the ungraded cap, measured from
+  // creation, whatever their stored expires_at says (jobs created
+  // before 2.4.1 carry creation + 48 h there).
+  const ungradedCutoff = new Date(
+    Date.parse(nowIso) - UNGRADED_TTL_MS,
+  ).toISOString();
+  for (const st of ["queued", "claimed"]) {
+    await env.DB.prepare(
+      "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
+        "result_json = NULL, push_json = NULL " +
+        "WHERE status = ? AND created_at <= ?",
+    )
+      .bind("expired", st, ungradedCutoff)
+      .run();
+  }
   await env.DB.prepare(
     "UPDATE jobs SET status = ?, claimed_at = NULL, claim_expires = NULL " +
       "WHERE status = ? AND claim_expires <= ?",
@@ -711,7 +773,7 @@ async function handleJobCreate(request, env) {
   const codeSalt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
   const codeHash = await sha256Hex(`${codeSalt}\n${body.retrieval_code}`);
   const jobId = crypto.randomUUID();
-  const expiresIso = new Date(now.getTime() + JOB_TTL_MS).toISOString();
+  const expiresIso = new Date(now.getTime() + UNGRADED_TTL_MS).toISOString();
   try {
     await env.DB.prepare(
       "INSERT INTO jobs (job_id, pkg, retrieval_name, code_lookup, code_salt, code_hash, " +
@@ -851,10 +913,13 @@ async function handleJobStatus(request, env) {
   await sweep(env, new Date().toISOString());
   const row = await jobByRetrieval(env, body);
   if (isErrorResponse(row)) return row;
-  if (row.status === "expired" || Date.parse(row.expires_at) <= Date.now()) {
+  // The sweep above has already expired every job that is due, under
+  // the ungraded cap or the graded expiry as its status requires, so
+  // the stored status is the whole determination here.
+  if (row.status === "expired") {
     return json({ status: "expired" });
   }
-  const out = { status: row.status };
+  const out = { status: row.status, expires_at: effectiveExpiresAt(row) };
   if (row.status === "queued" || row.status === "claimed") {
     out.queue_ahead = await queueAhead(env, row);
   }
@@ -886,7 +951,7 @@ async function handleJobFinalize(request, env) {
   await sweep(env, now.toISOString());
   const row = await jobByRetrieval(env, body);
   if (isErrorResponse(row)) return row;
-  if (row.status === "expired" || Date.parse(row.expires_at) <= now.getTime()) {
+  if (row.status === "expired") {
     return json({ error: "job expired" }, 410);
   }
   if (row.kind === "final") {
@@ -948,7 +1013,7 @@ async function handleJobRetrieved(request, env) {
   await sweep(env, new Date().toISOString());
   const row = await jobByRetrieval(env, body);
   if (isErrorResponse(row)) return row;
-  if (row.status === "expired" || Date.parse(row.expires_at) <= Date.now()) {
+  if (row.status === "expired") {
     return json({ error: "job expired" }, 410);
   }
   if (!row.retrieved_at) {
@@ -966,11 +1031,14 @@ async function handlePending(request, env) {
   if (badDb) return badDb;
   const nowIso = new Date().toISOString();
   await sweep(env, nowIso);
+  // The sweep has expired every due job, so a job still in status
+  // queued is live — including a pre-2.4.1 job whose stored
+  // expires_at (creation + 48 h) has passed while it waits.
   const { results } = await env.DB.prepare(
     "SELECT job_id, pkg, kind, created_at, transcript FROM jobs " +
-      "WHERE status = ? AND expires_at > ? ORDER BY created_at",
+      "WHERE status = ? ORDER BY created_at",
   )
-    .bind("queued", nowIso)
+    .bind("queued")
     .all();
   return json(
     results.map((r) => ({
@@ -1119,10 +1187,15 @@ async function handleResult(request, env) {
     gradeCanonical(bundle),
   );
   const stored = { ...bundle, injection_flags: body.injection_flags || [] };
+  // Grading starts the job's remaining lifetime: it now expires
+  // GRADED_TTL_MS after grading, replacing the ungraded cap.
+  const gradedExpires = new Date(
+    Date.parse(t) + GRADED_TTL_MS,
+  ).toISOString();
   await env.DB.prepare(
     "UPDATE jobs SET status = ?, completeness = ?, accuracy = ?, " +
       "critique = ?, result_json = ?, receipt = ?, graded_at = ?, " +
-      "claim_expires = NULL WHERE job_id = ?",
+      "expires_at = ?, claim_expires = NULL WHERE job_id = ?",
   )
     .bind(
       "ready",
@@ -1132,10 +1205,11 @@ async function handleResult(request, env) {
       JSON.stringify(stored),
       bundle.receipt,
       t,
+      gradedExpires,
       row.job_id,
     )
     .run();
-  await sendPush(env, { ...row, job_id: row.job_id });
+  await sendPush(env, { ...row, job_id: row.job_id, expires_at: gradedExpires });
   return json({ ok: true, receipt: bundle.receipt });
 }
 

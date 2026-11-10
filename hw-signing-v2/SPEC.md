@@ -73,8 +73,15 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   remains but the page never subscribes, so nothing is sent).
 - One FINAL job per (pkg, audio_sha256): a second final request for the
   same fingerprint is refused (409). Practice jobs are unrestricted.
-- Jobs expire 48 h after creation; on expiry the transcript and result
-  are deleted. Retrieval marks the job retrieved.
+- Job lifetime (2.4.1): an ungraded job expires 7 days after creation;
+  a graded job expires 48 h after grading. (Before 2.4.1 every job
+  expired 48 h after creation, which deleted ungraded submissions
+  whenever grading did not run within 48 h.) On expiry the transcript
+  and result are deleted. Retrieval marks the job retrieved.
+- Retrieval code length (2.4.1): a code is created with at least 8
+  characters (`^[A-Za-z0-9]{8,128}$`, enforced at `POST /jobs` only).
+  Lookup does not re-validate length, so jobs created earlier with
+  shorter codes remain retrievable by status, finalize and retrieved.
 - The submission is ONE file: `submission.zip` containing exactly
   `submission.html` and `submission-audio.wav`, ZIP entries written with
   a fixed timestamp (1980-01-01) so a rebuilt ZIP is byte-identical.
@@ -138,15 +145,18 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   retrieval_code, youtube_token?, youtube_video_id?,
   push_subscription?}`. Validate: package exists, is `open`, content
   hash matches; transcript non-empty and ≤ 200,000 chars; hashes are
-  64-hex; retrieval_code matches `^[A-Za-z0-9]{1,128}$` and is unique
+  64-hex; retrieval_code matches `^[A-Za-z0-9]{8,128}$` and is unique
   for the pkg (by its lookup hash); for `final`, youtube_token
   verifies and its status is `ok` and the token is < 24 h old, and no
   other final job exists for (pkg, audio_sha256). Store the code's
   lookup hash and a salted SHA-256.
-  → `{job_id, created_at, expires_at}` with status `queued`.
+  → `{job_id, created_at, expires_at}` with status `queued`;
+  `expires_at` is creation + 7 days (the ungraded lifetime).
 - `POST /jobs/status` `{pkg, retrieval_code}` → find the job by code
   lookup hash (salted-hash fallback for pre-2.1.0 jobs); return
-  `{status}` and, while `queued` or `claimed`, `queue_ahead`: the
+  `{status}` and `expires_at` (the job's current governing expiry:
+  creation + 7 days while ungraded, graded_at + 48 h once graded) and,
+  while `queued` or `claimed`, `queue_ahead`: the
   number of jobs ahead in the grading queue — every claimed job plus
   every queued job created earlier (for a claimed job, the jobs
   claimed before it); the grading queue is global across packages in
@@ -172,7 +182,7 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   accuracy, critique, injection_flags}` → validate claim is live;
   scores are integers 0–5; critique non-empty ≤ 20,000 chars. Compute
   the result bundle, sign it (below), store, status `ready`,
-  graded_at set. If a push subscription is stored, send the Web Push
+  graded_at set, and `expires_at` reset to graded_at + 48 h. If a push subscription is stored, send the Web Push
   (payload: `{"title":"HW Signing","body":"Your grade and critique are
   ready."}`, TTL = seconds until job expiry, urgency `normal`); push
   failure never fails the result call. → `{ok:true, receipt}`.
@@ -253,7 +263,14 @@ New/changed behaviour:
   `{pkg, course, asg, retrieval_code, kind, youtube_link, created_at,
   expires_at}`. On page load, for each unexpired entry, POST
   /jobs/status and show the queue state or `ready`. Entries are removed on
-  ZIP download or expiry.
+  ZIP download or expiry. Each status response carries the job's
+  current `expires_at`, and the page stores it back into the entry, so
+  an entry's lifetime follows the governing expiry (7 days ungraded,
+  48 h after grading) rather than the value stamped at creation. The
+  stored value is a cache, not a liveness test: the page asks the
+  Worker about every entry — including one whose stored expiry has
+  passed, as a pre-2.4.1 entry's will at 48 h — and drops the entry
+  only when the Worker reports the job expired.
 - Job section UI (2.2.0): no kind choice. The YouTube link field is
   optional at send: an embedded player preview (IFrame API) with a
   duration comparison against the loaded audio, and a Check link

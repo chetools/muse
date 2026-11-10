@@ -312,7 +312,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.0');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.1');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -384,8 +384,11 @@ await test('youtube id: all accepted forms parse; others rejected', () => {
 /* ---------------- retrieval code ---------------- */
 
 await test('retrieval code: rule matches the Worker', () => {
-  assert.ok(RETRIEVAL_CODE_RE.test('7'));
-  assert.ok(RETRIEVAL_CODE_RE.test('abc123'));
+  assert.ok(!RETRIEVAL_CODE_RE.test('7'));
+  assert.ok(!RETRIEVAL_CODE_RE.test('abc123'));
+  assert.ok(!RETRIEVAL_CODE_RE.test('abcd123'));
+  assert.ok(RETRIEVAL_CODE_RE.test('abcd1234'));
+  assert.ok(RETRIEVAL_CODE_RE.test('x'.repeat(128)));
   assert.ok(!RETRIEVAL_CODE_RE.test(''));
   assert.ok(!RETRIEVAL_CODE_RE.test('a b'));
   assert.ok(!RETRIEVAL_CODE_RE.test('code-1234'));
@@ -442,8 +445,9 @@ await test('job payload: bad fields rejected', () => {
   assert.equal(validateJobPayload({ ...base, transcript: 'x'.repeat(200001) }).ok, false);
   assert.equal(validateJobPayload({ ...base, audio_sha256: 'a'.repeat(63) }).ok, false);
   assert.equal(validateJobPayload({ ...base, retrieval_code: '' }).ok, false);
-  assert.equal(validateJobPayload({ ...base, retrieval_code: '7' }).ok, true);
-  assert.equal(validateJobPayload({ ...base, retrieval_code: 'abc' }).ok, true);
+  assert.equal(validateJobPayload({ ...base, retrieval_code: '7' }).ok, false);
+  assert.equal(validateJobPayload({ ...base, retrieval_code: 'abc' }).ok, false);
+  assert.equal(validateJobPayload({ ...base, retrieval_code: 'code1234' }).ok, true);
   assert.equal(validateJobPayload({ ...base, retrieval_code: 'a b' }).ok, false);
   assert.equal(validateJobPayload({ ...base, retrieval_code: 'code-1234' }).ok, false);
   assert.equal(validateJobPayload({ ...base, kind: 'graded' }).ok, false);
@@ -596,13 +600,26 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.0');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.1');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.ok(sw.includes("addEventListener('push'"), 'service worker handles push');
   assert.ok(sw.includes("addEventListener('notificationclick'"), 'service worker handles clicks');
+});
+
+await test('wiring: status expiry is stored back into the job entry (2.4.1)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('entry.expires_at = res.data.expires_at'),
+    'renderJobs keeps the stored expiry in step with the Worker');
+  assert.ok(!main.includes('pruneExpiredEntries(loadJobEntries()'),
+    'renderJobs must not prune on the stored expiry before asking the Worker: ' +
+    'a pre-2.4.1 entry carries creation + 48 h while its job may still be live');
+  assert.ok(main.includes("res.status === 'expired'"),
+    'renderJobs drops an entry when the Worker reports the job expired');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(index.includes('at least 8'), 'the code help states the 8-character minimum');
 });
 
 /* ---------------- duration bands + bundle verification (2.4.0) ---------------- */

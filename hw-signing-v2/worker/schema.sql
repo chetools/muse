@@ -33,8 +33,11 @@ CREATE TABLE IF NOT EXISTS packages (
 -- code_salt), kept so jobs created before the code-only change (their
 -- code_lookup is NULL) can still be found by testing the salted hash.
 -- retrieval_name is a legacy column, stored empty. status: queued /
--- claimed / ready / expired. Jobs expire 48 h after created_at; on
--- expiry transcript, critique, result_json and push_json are nulled.
+-- claimed / ready / expired. An ungraded job expires 7 days after
+-- created_at; a graded job expires 48 h after graded_at, measured
+-- from graded_at (expires_at is also set to that time at grading,
+-- and at creation to created_at + 7 days); on expiry transcript,
+-- critique, result_json and push_json are nulled.
 CREATE TABLE IF NOT EXISTS jobs (
   job_id TEXT PRIMARY KEY,
   pkg TEXT,

@@ -37,7 +37,7 @@ import {
   parseYouTubeVideoId, canonicalWatchUrl, classifyDuration,
   verifyBundleContents,
   validateJobPayload, buildJobPayload, loadJobEntries, addJobEntry,
-  removeJobEntry, pruneExpiredEntries, saveJobEntries,
+  removeJobEntry, saveJobEntries,
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
   finalizeJob, reportDurationStat,
 } from './jobs.js';
@@ -727,8 +727,8 @@ $('submitJobBtn').addEventListener('click', async () => {
       'Sent' + (payload.kind === 'final'
         ? ' with the checked link — submission-ready as soon as it is graded.'
         : ' — when the grade is back, turn it into your Canvas submission from the list below.') +
-      ' The list below updates every 5 seconds while this page is open; the job is kept until ' +
-      new Date(res.expires_at).toLocaleString() + '.';
+      ' The list below updates every 5 seconds while this page is open. ' +
+      'An ungraded job is kept for 7 days; once graded, the grade is kept for 48 hours.';
     renderJobs();
   } catch (err) {
     showError('Sending for grading failed: ' + err.message, err, $('submitJobBtn'));
@@ -988,25 +988,49 @@ function renderJobRow(container, entry, statusInfo) {
 
 async function renderJobs() {
   const box = $('jobsBox');
-  // localStorage hygiene: expired entries are dropped on load — the
-  // Worker has deleted those jobs in any case.
-  const entries = pruneExpiredEntries(loadJobEntries(), Date.now());
-  saveJobEntries(entries);
+  // The stored expires_at is a cache, not the authority: an entry
+  // written before 2.4.1 carries creation + 48 h, while the Worker
+  // now keeps an ungraded job for 7 days. Entries are therefore NOT
+  // pruned on the stored value here; every entry is asked about, and
+  // an entry is dropped only when the Worker reports the job expired
+  // (or the list is saved back with the corrected expiry, below).
+  const entries = loadJobEntries();
   if (!entries.length) {
     box.textContent = 'No jobs sent from this browser yet.';
     refreshFinPanel();
     return;
   }
   box.textContent = '';
+  let entriesDirty = false;
+  const survivors = [];
   for (const entry of entries) {
-    const holder = document.createElement('div');
-    box.append(holder);
     const key = jobKey(entry.pkg, entry.retrieval_code);
-    renderJobRow(holder, entry, jobStates.get(key) || null);
+    let res = null;
     try {
-      const res = await fetchJobStatus(cfg.worker, {
+      res = await fetchJobStatus(cfg.worker, {
         pkg: entry.pkg, retrieval_code: entry.retrieval_code,
       });
+    } catch { /* offline or Worker error: keep the entry, render last known */ }
+    if (res && res.status === 'expired') {
+      // The Worker has deleted the job; drop the entry and its row.
+      entriesDirty = true;
+      readyBundles.delete(key);
+      jobStates.delete(key);
+      continue;
+    }
+    survivors.push(entry);
+    const holder = document.createElement('div');
+    box.append(holder);
+    renderJobRow(holder, entry, jobStates.get(key) || null);
+    if (res) {
+      // The Worker reports the job's current expiry (7 days while
+      // ungraded, 48 hours after grading); keep the stored entry in
+      // step with it.
+      if (res.data && res.data.expires_at &&
+          entry.expires_at !== res.data.expires_at) {
+        entry.expires_at = res.data.expires_at;
+        entriesDirty = true;
+      }
       if (res.status === 'ready' && res.data && res.data.result) {
         readyBundles.set(key, res.data.result);
       }
@@ -1016,11 +1040,12 @@ async function renderJobs() {
       });
       holder.textContent = '';
       renderJobRow(holder, entry, jobStates.get(key));
-    } catch {
-      holder.textContent = '';
-      renderJobRow(holder, entry, jobStates.get(key) || { status: 'queued' });
     }
   }
+  if (!survivors.length && entries.length) {
+    box.textContent = 'No jobs sent from this browser yet.';
+  }
+  if (entriesDirty) saveJobEntries(survivors);
   refreshFinPanel();
 }
 
@@ -1263,7 +1288,7 @@ $('manualBtn').addEventListener('click', async () => {
         kind: res.data.result.youtube_video_sha256 && res.data.result.youtube_video_sha256 !== 'none'
           ? 'final' : 'practice',
         youtube_link: '',
-        created_at: '', expires_at: '',
+        created_at: '', expires_at: (res.data && res.data.expires_at) || '',
       };
       // A final job retrieved manually needs its YouTube link for the
       // HTML; it is not stored anywhere off the original browser, so

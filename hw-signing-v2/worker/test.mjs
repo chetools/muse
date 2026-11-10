@@ -504,10 +504,13 @@ const jobBase = {
   retrieval_code: "correcthorsebattery7",
 };
 r = await call("/jobs", { body: jobBase });
-check("practice job created queued with 48 h expiry", r.status === 200 &&
+check("practice job created queued with 7-day ungraded expiry", r.status === 200 &&
   typeof r.body.job_id === "string" &&
-  Date.parse(r.body.expires_at) - Date.parse(r.body.created_at) === 48 * 3600 * 1000);
+  Date.parse(r.body.expires_at) - Date.parse(r.body.created_at) === 7 * 24 * 3600 * 1000);
 const practiceJob = r.body.job_id;
+
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "short99" } });
+check("retrieval code under 8 characters rejected at creation", r.status === 400);
 
 r = await call("/jobs", { body: { ...jobBase, retrieval_code: "bad code" } });
 check("retrieval code with spaces rejected", r.status === 400);
@@ -515,15 +518,15 @@ r = await call("/jobs", { body: { ...jobBase, retrieval_code: "" } });
 check("empty retrieval code rejected", r.status === 400);
 r = await call("/jobs", { body: jobBase });
 check("duplicate retrieval code for the package rejected", r.status === 409);
-r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox9", pkg_content_sha256: "f".repeat(64) } });
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox99", pkg_content_sha256: "f".repeat(64) } });
 check("package content hash mismatch rejected", r.status === 400);
-r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox9", pkg: "nope v1" } });
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox99", pkg: "nope v1" } });
 check("unknown package rejected", r.status === 404);
-r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox9", pkg: "test-package v2", pkg_content_sha256: pkgHash2 } });
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox99", pkg: "test-package v2", pkg_content_sha256: pkgHash2 } });
 check("job against a closed package rejected", r.status === 409);
-r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox9", transcript: "" } });
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox99", transcript: "" } });
 check("empty transcript rejected", r.status === 400);
-r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox9", audio_sha256: "xyz" } });
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox99", audio_sha256: "xyz" } });
 check("non-hex audio hash rejected", r.status === 400);
 
 // Final jobs and the YouTube gate
@@ -532,11 +535,11 @@ const finalBase = {
   youtube_token: ytOk.body.token, youtube_video_id: ytOk.body.video_id,
   youtube_checked_at: ytOk.body.checked_at,
 };
-r = await call("/jobs", { body: { ...jobBase, kind: "final", retrieval_code: "finalx9" } });
+r = await call("/jobs", { body: { ...jobBase, kind: "final", retrieval_code: "finalx99" } });
 check("final job without a YouTube token rejected", r.status === 400);
 r = await call("/jobs", {
   body: {
-    ...finalBase, retrieval_code: "finalx9",
+    ...finalBase, retrieval_code: "finalx99",
     youtube_token: ytPriv.body.token, youtube_video_id: ytPriv.body.video_id,
     youtube_checked_at: ytPriv.body.checked_at,
   },
@@ -546,7 +549,7 @@ check("final job with a private_or_missing token rejected", r.status === 400);
   const old = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const staleToken = await hmacB64u(env.SIGNING_SECRET, `dQw4w9WgXcQ\nok\n${old}`);
   r = await call("/jobs", {
-    body: { ...finalBase, retrieval_code: "finalx9", youtube_token: staleToken, youtube_checked_at: old },
+    body: { ...finalBase, retrieval_code: "finalx99", youtube_token: staleToken, youtube_checked_at: old },
   });
   check("final job with a token older than 24 h rejected", r.status === 400);
 }
@@ -587,6 +590,18 @@ r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code:
 check("second queued job has 1 job ahead", r.status === 200 && r.body.queue_ahead === 1);
 r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "practicetwo9" } });
 check("third queued job has 2 jobs ahead", r.status === 200 && r.body.queue_ahead === 2);
+
+// A job created before 2.4.1 with a short code remains retrievable:
+// lookup does not re-validate length. Simulate the old row by
+// pointing its lookup hash at a 6-character code.
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "legacycode9", audio_sha256: "6".repeat(64) } });
+const legacyJob = r.body.job_id;
+{
+  const row = db._tables.jobs.find((j) => j.job_id === legacyJob);
+  row.code_lookup = await sha256Hex("test-package v1\ntiny9x");
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "tiny9x" } });
+check("pre-2.4.1 short code still retrieves its job", r.status === 200 && r.body.status === "queued");
 
 // ------------------------------------------------------- grading flow
 r = await call("/grading/pending", { method: "GET" });
@@ -753,28 +768,99 @@ check("job with an expired claim returns to pending", r.status === 200 &&
 r = await call("/grading/claim", { token: GRADING, body: { job_id: leaseJob } });
 check("job with an expired claim can be claimed again", r.status === 200);
 
-// ------------------------------------------------------- job expiry (48 h)
-r = await call("/jobs", { body: { ...jobBase, retrieval_code: "oldone9", audio_sha256: "8".repeat(64) } });
-const oldJob = r.body.job_id;
+// ------------------------------------------------ job expiry (2.4.1)
+// An ungraded job survives past 48 h: simulate a pre-2.4.1 queued job
+// created 49 h ago whose stored expires_at (creation + 48 h) is past.
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "weekend99", audio_sha256: "8".repeat(64) } });
+const weekendJob = r.body.job_id;
 {
-  const row = db._tables.jobs.find((j) => j.job_id === oldJob);
-  row.expires_at = new Date(Date.now() - 1000).toISOString();
+  const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
+  const created = Date.now() - 49 * 3600 * 1000;
+  row.created_at = new Date(created).toISOString();
+  row.expires_at = new Date(created + 48 * 3600 * 1000).toISOString();
 }
-r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "oldone9" } });
-check("expired job reports status expired", r.status === 200 && r.body.status === "expired");
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
+check("queued job aged 49 h is not expired", r.status === 200 && r.body.status === "queued");
 {
-  const row = db._tables.jobs.find((j) => j.job_id === oldJob);
+  const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
+  check("queued status reports the 7-day ungraded expiry", r.status === 200 &&
+    Date.parse(r.body.expires_at) - Date.parse(row.created_at) === 7 * 24 * 3600 * 1000);
+}
+r = await call("/grading/pending", { method: "GET", token: GRADING });
+check("queued job aged 49 h is still pending", r.status === 200 &&
+  r.body.some((j) => j.job_id === weekendJob));
+{
+  const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
+  check("queued job aged 49 h keeps its transcript", row.transcript === jobBase.transcript);
+}
+// Grading it starts the 48 h graded lifetime.
+r = await call("/grading/claim", { token: GRADING, body: { job_id: weekendJob } });
+check("queued job aged 49 h can be claimed", r.status === 200);
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: weekendJob, completeness: 5, accuracy: 4, critique: "Graded after the weekend." },
+});
+check("result for the aged job succeeds", r.status === 200 && r.body.ok === true);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
+  check("grading resets expiry to graded_at + 48 h",
+    Date.parse(row.expires_at) - Date.parse(row.graded_at) === 48 * 3600 * 1000);
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
+check("ready status reports the graded expiry", r.status === 200 && r.body.status === "ready" &&
+  Date.parse(r.body.expires_at) - Date.now() <= 48 * 3600 * 1000);
+// An ungraded job past the 7-day cap does expire.
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "staleone99", audio_sha256: "7".repeat(64) } });
+const staleJob = r.body.job_id;
+{
+  const row = db._tables.jobs.find((j) => j.job_id === staleJob);
+  const created = Date.now() - 8 * 24 * 3600 * 1000;
+  row.created_at = new Date(created).toISOString();
+  row.expires_at = new Date(created + 7 * 24 * 3600 * 1000).toISOString();
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "staleone99" } });
+check("ungraded job aged 8 days reports status expired", r.status === 200 && r.body.status === "expired");
+{
+  const row = db._tables.jobs.find((j) => j.job_id === staleJob);
   check("expiry deletes the transcript and result",
     row.status === "expired" && row.transcript === null && row.result_json === null);
 }
 r = await call("/grading/pending", { method: "GET", token: GRADING });
 check("expired job is not pending", r.status === 200 &&
-  !r.body.some((j) => j.job_id === oldJob));
+  !r.body.some((j) => j.job_id === staleJob));
+// A job graded before 2.4.1 (stored expires_at = creation + 48 h,
+// here in the past) is governed by graded_at + 48 h, not the stored
+// value: graded 10 h ago, it is still live.
+{
+  const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
+  row.graded_at = new Date(Date.now() - 10 * 3600 * 1000).toISOString();
+  row.expires_at = new Date(Date.now() - 1000).toISOString();
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
+check("pre-2.4.1 graded job is governed by graded_at, not the stored expiry",
+  r.status === 200 && r.body.status === "ready" &&
+  Date.parse(r.body.expires_at) - Date.now() > 37 * 3600 * 1000);
+// A graded job expires 48 h after grading.
+{
+  const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
+  row.graded_at = new Date(Date.now() - 49 * 3600 * 1000).toISOString();
+  row.expires_at = new Date(Date.now() - 1000).toISOString();
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
+check("graded job past its graded expiry reports expired", r.status === 200 && r.body.status === "expired");
+{
+  const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
+  check("graded expiry deletes the result",
+    row.status === "expired" && row.result_json === null);
+}
 
 // Final-job uniqueness versus an expired final: an expired final no
 // longer blocks a fresh final for the same fingerprint.
 {
   const row = db._tables.jobs.find((j) => j.job_id === finalJob);
+  // Past every governing expiry: the stored graded expiry, and the
+  // 7-day ungraded cap measured from an 8-day-old creation.
+  row.created_at = new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString();
   row.expires_at = new Date(Date.now() - 1000).toISOString();
   await call("/grading/pending", { method: "GET", token: GRADING }); // runs the sweep
   const rr = await call("/jobs", { body: { ...finalBase, retrieval_code: "finalthree9" } });

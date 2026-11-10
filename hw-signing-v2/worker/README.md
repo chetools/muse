@@ -12,8 +12,9 @@ What it stores, and what it never stores:
 - Jobs: the student's scrubbed transcript, the audio and transcript
   fingerprints, the signed result (grades, critique, receipt), a
   salted hash of the student's retrieval code, and optionally the
-  student's Web Push subscription. Jobs expire 48 h after creation;
-  the transcript and result are then deleted.
+  student's Web Push subscription. An ungraded job expires 7 days
+  after creation; a graded job expires 48 h after grading; the
+  transcript and result are then deleted.
 - Never stored: a student's name, Canvas identity, YouTube link,
   video title or channel name. A retrieval code is stored only as a
   salted SHA-256.
@@ -34,7 +35,7 @@ configuration fails closed (500), a wrong token gets 401.
 | `POST /stats/duration` | — | `{pkg?, context?, audio_s, video_s}` → record one anonymous duration comparison (the student page's audio duration and the YouTube player's duration for a checked link) in `duration_stats`; no video ID, link or student information is accepted or stored; the rows calibrate the page's duration bands |
 | `GET /admin/duration-stats` | ADMIN_TOKEN | the stored comparisons summarised: count, absolute-difference percentiles (p50/p90/p95/p99/max), and the split against the page's current bands |
 | `POST /jobs` | retrieval data | create a grading job → `{job_id, created_at, expires_at}` |
-| `POST /jobs/status` | retrieval code only | `{status}`; while queued/claimed also `queue_ahead` (jobs ahead in the global grading queue); when `ready` the signed result bundle; every wrong code returns the identical 403 |
+| `POST /jobs/status` | retrieval code only | `{status, expires_at}` (`expires_at` is the current governing expiry: creation + 7 days while ungraded, graded_at + 48 h once graded); while queued/claimed also `queue_ahead` (jobs ahead in the global grading queue); when `ready` the signed result bundle; every wrong code returns the identical 403 |
 | `POST /jobs/retrieved` | retrieval code only | mark the job retrieved |
 | `POST /jobs/finalize` | retrieval code + YouTube check fields | turn the job into the final submission job: token verified as at intake, one-final rule applies, a graded job's bundle is re-signed with the video hash |
 | `GET /grading/pending` | GRADING_TOKEN | queued jobs (incl. expired claims): job id, package, kind, creation time, transcript length |
@@ -106,10 +107,14 @@ the push service answers 404/410 is cleared from the job.
 
 - One claim at a time per job; a claim lasts 15 min, after which the
   job returns to the queue.
-- Jobs are deleted (transcript and result) 48 h after creation,
-  retrieved or not. Retrieval before expiry is the student's
-  responsibility; the page keeps the retrieval code in the
-  browser for that window.
+- Jobs are deleted (transcript and result) 7 days after creation if
+  ungraded, or 48 h after grading once graded, retrieved or not.
+  Retrieval before expiry is the student's responsibility; the page
+  keeps the retrieval code in the browser for that window.
+- Retrieval codes are created with at least 8 characters (letters
+  and numbers, at most 128). The minimum is enforced at job creation
+  only; codes created before 2.4.1 with fewer characters still
+  retrieve their jobs.
 - Transcript at most 200,000 characters; critique at most 20,000;
   package text at most 500,000.
 - YouTube check tokens are honoured for 24 h; after that the page
