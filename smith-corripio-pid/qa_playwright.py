@@ -1,11 +1,13 @@
 """Browser QA for the built page: screenshots of every tab at
 1280 px and 390 px, chart-geometry assertions (SVG width equals
 container width, no visible chart overlaps, no horizontal scroll),
-and console-error collection. The sandbox cannot fetch the Pyodide
-CDN, so the live worker boot is not exercised here; the checks run
-against the precomputed default run, which is also the state a
-reader sees before the runtime boots. Run with the marimo-export
-venv python from the project root, with dist/ served on :8911.
+and console-error collection. The checks run against the
+precomputed default run, which is also the state a reader sees
+before the runtime boots; the live worker boot is exercised
+separately by qa_live.py, which serves the page with the shared CDN
+mirror installed (~/workspace/wasm-verify/cdn_mirror.py). Run with
+the marimo-export venv python from the project root, with dist/
+served on :8911.
 """
 import json
 import sys
