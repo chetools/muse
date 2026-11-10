@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Teacher audit app (audit v27) — the single audit app, for
+"""Teacher audit app (audit v28) — the single audit app, for
 HW Signing v2 submissions only. (v24 adds prompt-package
 management to the web front end, in web.py; v25 fixes the
 Packages page's student-link verification to fetch metadata
 only; v26 puts every error beside the control that was used,
 the teacher's rule; v27 keeps the critique's line breaks in
-the wall zoom view; the audit functions here are unchanged
-from v23.)
+the wall zoom view; v28 verifies the transcript checksum of
+packages from webapp 2.4.2 or later against the canonical
+transcript with each chunk's [mm:ss] start marker, and of
+earlier packages against the markerless form.)
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -509,11 +511,35 @@ def split_transcript_line(line):
     return None, line
 
 
-def canonical_transcript(lines):
-    """Canonical transcript text: scrubbed plain text, one chunk per line,
-    LF line endings, no timestamps, no trailing spaces, no trailing LF."""
-    texts = [split_transcript_line(line)[1] for line in lines]
-    return "\n".join(t.rstrip() for t in texts)
+def _version_tuple(text):
+    """'hw-signing-webapp 2.4.2' -> (2, 4, 2); None when unparsable."""
+    if not text:
+        return None
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", str(text))
+    return tuple(int(g) for g in m.groups()) if m else None
+
+
+# Webapp versions from 2.4.2 incorporate each chunk's [mm:ss] start
+# marker into the canonical transcript (the teacher's direction,
+# 2026-11-10); earlier versions' canonical form has no markers.
+MARKED_CANONICAL_FROM = (2, 4, 2)
+
+
+def canonical_transcript(lines, with_markers=False):
+    """Canonical transcript text: scrubbed plain text, one chunk per
+    line, LF line endings, no trailing spaces, no trailing LF. With
+    markers (packages from webapp 2.4.2), each line keeps its chunk's
+    [mm:ss] start marker in total-minutes form, as in the package's
+    transcript lines themselves."""
+    out = []
+    for line in lines:
+        start, text = split_transcript_line(line)
+        text = text.rstrip()
+        if with_markers and start is not None:
+            out.append(f"[{start // 60:02d}:{start % 60:02d}] {text}")
+        else:
+            out.append(text)
+    return "\n".join(out)
 
 
 class PackageParser(html.parser.HTMLParser):
@@ -605,6 +631,10 @@ def parse_package(html_text):
         if key:
             ver[key] = value
     versions = {k: ver.pop(k, None) for k in ("webapp", "model", "glossary")}
+    webapp_v = _version_tuple(versions.get("webapp"))
+    with_markers = (ver.get("v") == "2" and webapp_v is not None
+                    and webapp_v >= MARKED_CANONICAL_FROM)
+    canonical = canonical_transcript(lines, with_markers=with_markers)
 
     def as_int(value):
         try:
@@ -615,7 +645,7 @@ def parse_package(html_text):
     return {
         "transcript_lines": lines,
         "timed_lines": timed,  # [(start_s or None, text)]
-        "canonical_transcript": canonical_transcript(lines),
+        "canonical_transcript": canonical,
         "critique": p.critique_text or "",
         "summary_grades": {k: int(v) for k, v in p.summary_grades.items()},
         "grading_grades": {k: int(v) for k, v in p.grading_grades.items()},
