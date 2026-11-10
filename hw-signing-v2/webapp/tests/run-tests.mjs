@@ -12,7 +12,7 @@ import { parseConfig, buildConfigLink, normaliseWorkerBase } from '../js/config.
 import { sha256Hex } from '../js/hash.js';
 import {
   parseScrubWords, scrubText, scrubChunks, scrubMetadata,
-  canonicalTranscript, legacyCanonicalTranscript, findSuspects, formatDuration,
+  canonicalTranscript, findSuspects, formatDuration,
 } from '../js/transcript.js';
 import {
   VERSIONS, assemblePackage, parsePackageVerification,
@@ -112,17 +112,13 @@ await test('scrub: whole-word only; punctuation spacing repaired', () => {
   assert.equal(text, 'Annette and went home, then left.');
 });
 
-await test('canonical: one chunk per line with its [mm:ss] marker, LF, no trailing spaces or newline', () => {
+await test('canonical: one chunk per line, LF, no trailing spaces or newline', () => {
   const sc = scrubChunks(rawChunks, parseScrubWords('Jordan Lee, jordan'));
   const canon = canonicalTranscript(sc);
   assert.equal(canon,
-    '[00:00] Hi I am and this is my homework\n[00:25] explains the reflux ratio, with watching');
+    'Hi I am and this is my homework\nexplains the reflux ratio, with watching');
   assert.ok(!canon.endsWith('\n'));
   assert.ok(!/ \n/.test(canon));
-  // The pre-2.4.2 markerless form remains available for verifying
-  // bundles graded before the markers were incorporated.
-  assert.equal(legacyCanonicalTranscript(sc),
-    'Hi I am and this is my homework\nexplains the reflux ratio, with watching');
 });
 
 await test('checksum: matches an independent Node recomputation', async () => {
@@ -316,7 +312,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.2');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.1');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -343,7 +339,8 @@ await test('package v2: no v1 receipt or session; transcript recovers canonicall
     '[00:00] Hello world this is the feed',
     '[75:20] later chunk about reflux',
   ]);
-  const recovered = parsed.transcriptLines.join('\n');
+  const recovered = parsed.transcriptLines
+    .map((l) => l.replace(/^\[\d+:\d{2}\] /, '')).join('\n');
   assert.equal(recovered, canonicalTranscript(pkgInput.chunks.map(
     (c) => ({ start: c.start, text: c.text }))));
   const grading = html.slice(html.indexOf('<section id="grading">'), html.indexOf('<section id="verification">'));
@@ -603,7 +600,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.2');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.1');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');

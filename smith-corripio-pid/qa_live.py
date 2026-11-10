@@ -7,7 +7,9 @@ are intercepted and fulfilled from a local curl-fed cache, so the
 worker boot, package load, and live runs execute for real — only the
 transport differs from a reader's browser. Asserts: boot reaches
 "Python runtime ready."; an App Run reproduces the anchor metrics
-(IAE 34.603 % s, overshoot 0.522 %); a Model run returns its table;
+(IAE 34.603 % s, overshoot 0.522 %); changing the set-point step
+with no Run press auto-runs and back (IAE 17.30 % s at step 5 %,
+34.603 % s again at step 10 %); a Model run returns its table;
 a sweep completes with both charts drawn; no console or page errors.
 
 Run with the widget-test venv python from the project root:
@@ -46,6 +48,24 @@ def free_port():
     return port
 
 
+def manual_row_has(value):
+    """JS predicate: the 'Manual tuning' metrics row shows value."""
+    return ("() => { const rows = [...document.querySelectorAll("
+            "'#a-table table.metrics tr')]; const r = rows.find("
+            "x => x.cells[0] && x.cells[0].textContent ==="
+            " 'Manual tuning'); return !!r && r.textContent"
+            ".includes('" + value + "'); }")
+
+
+def set_and_change(page, selector, value):
+    """Set an input's value and dispatch its change event — the
+    programmatic equivalent of a user edit, with no Run press."""
+    page.evaluate(
+        "([s, v]) => { const el = document.querySelector(s);"
+        " el.value = v; el.dispatchEvent(new Event('change')); }",
+        [selector, value])
+
+
 def main():
     port = free_port()
     server = subprocess.Popen(
@@ -80,19 +100,32 @@ def main():
                 "prestart anchors missing: " + table
             report["checks"]["prestart"] = "anchors present"
 
-            # Live run, distinguished from the prestart display by a
-            # halved set-point step: the loop is linear at these
-            # settings, so IAE halves to 17.30 % s.
-            page.fill("#a-sp-step", "5")
+            # Explicit Run, distinguished from the prestart display
+            # by a halved set-point step set with no change event, so
+            # only the button path can produce it: the loop is linear
+            # at these settings, so IAE halves to 17.30 % s.
+            page.evaluate(
+                "document.getElementById('a-sp-step').value = '5'")
             page.click("#a-run")
-            page.wait_for_function(
-                "document.querySelector('#a-table table.metrics')"
-                " && document.querySelector('#a-table table.metrics')"
-                ".textContent.includes('17.30')", timeout=300_000)
+            page.wait_for_function(manual_row_has("17.30"),
+                                   timeout=300_000)
             table = page.eval_on_selector(
                 "#a-table table.metrics", "e => e.textContent")
             report["checks"]["app_live_run"] = table[:200]
             page.screenshot(path=str(QA / "live-app-run.png"))
+
+            # Auto-run: change events alone, no Run press. Back to
+            # step 10 % the Manual row must return to IAE 34.603 % s;
+            # to step 5 % again it must return to 17.30 % s.
+            set_and_change(page, "#a-sp-step", "10")
+            page.wait_for_function(manual_row_has("34.603"),
+                                   timeout=300_000)
+            set_and_change(page, "#a-sp-step", "5")
+            page.wait_for_function(manual_row_has("17.30"),
+                                   timeout=300_000)
+            report["checks"]["app_auto_run"] = \
+                "change-only runs at step 10 % and 5 %"
+            page.screenshot(path=str(QA / "live-app-autorun.png"))
 
             # Model run: fits table appears.
             page.click('[data-tab="model"]')
@@ -120,6 +153,7 @@ def main():
                                  if not x.startswith("SERVED")]
     print(json.dumps(report, indent=1))
     ok = (report["checks"].get("boot") == "ready"
+          and "app_auto_run" in report["checks"]
           and not report["console_errors"]
           and not report["page_errors"]
           and not report["mirror_problems"])

@@ -62,14 +62,6 @@ v27: the wall zoom view's critique panel preserves the
 critique's line breaks (white-space: pre-line), so the numbered
 points appear on separate lines, as they do in the student's
 submission HTML and on the student page.
-
-v28: the canonical transcript of a package from webapp 2.4.2
-or later carries each chunk's [mm:ss] start marker (the
-teacher's direction: time markers in future transcripts), and
-the transcript checksum is verified against that marked form;
-packages from earlier webapp versions keep verifying against
-the markerless form, chosen by the package's own webapp
-version field.
 """
 
 import argparse

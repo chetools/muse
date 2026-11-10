@@ -20,7 +20,7 @@ import { parseConfig, buildConfigLink } from './config.js';
 import { sha256Hex } from './hash.js';
 import {
   parseScrubWords, scrubChunks, scrubMetadata, canonicalTranscript,
-  legacyCanonicalTranscript, findSuspects, formatDuration,
+  findSuspects, formatDuration,
 } from './transcript.js';
 import {
   VERSIONS, AUDIO_FILE_NAME, assemblePackage, formatTranscriptTimestamp,
@@ -793,18 +793,11 @@ async function verifySubmissionParts(entry, bundle, anchor) {
   }
   const scrubbedChunks = scrubChunks(
     record.chunks.map(fromCachedChunk), scrubWords());
-  const [wavSha, markedSha, legacySha, critiqueSha] = await Promise.all([
+  const [wavSha, transcriptSha, critiqueSha] = await Promise.all([
     sha256Hex(wav),
     sha256Hex(canonicalTranscript(scrubbedChunks)),
-    sha256Hex(legacyCanonicalTranscript(scrubbedChunks)),
     sha256Hex(bundle.critique || ''),
   ]);
-  // A bundle graded before 2.4.2 was signed over the markerless
-  // canonical form; accept that form for such a bundle, and the
-  // current marked form otherwise. Either way the hash must equal
-  // the signed checksum exactly.
-  const transcriptSha = legacySha === bundle.transcript_sha256
-    ? legacySha : markedSha;
   const failures = verifyBundleContents(bundle, {
     wavSha256: wavSha, transcriptSha256: transcriptSha,
     critiqueSha256: critiqueSha,

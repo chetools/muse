@@ -57,37 +57,10 @@ export function scrubChunks(chunks, words) {
   }));
 }
 
-// [mm:ss] with total minutes, zero-padded to two digits (can exceed 59) —
-// the same marker form as the submission package's transcript lines, so
-// a canonical line and its package line carry the same marker.
-export function formatChunkMarker(seconds) {
-  const s = Math.max(0, Math.floor(Number(seconds) || 0));
-  const mm = String(Math.floor(s / 60)).padStart(2, '0');
-  const ss = String(s % 60).padStart(2, '0');
-  return '[' + mm + ':' + ss + ']';
-}
-
 // Canonical transcript (plan, Interfaces): scrubbed plain text, one chunk
-// per line, LF line endings, no trailing spaces, and no trailing newline.
-// Chunk whitespace is collapsed so each chunk is one line. Since 2.4.2
-// each line begins with the chunk's [mm:ss] start marker (the teacher's
-// direction, 2026-11-10: time markers in future transcripts), so a point
-// in the transcript — in particular an injection flag — can be located
-// in the recording.
+// per line, LF line endings, no timestamps, no trailing spaces, and no
+// trailing newline. Chunk whitespace is collapsed so each chunk is one line.
 export function canonicalTranscript(scrubbedChunks) {
-  return (scrubbedChunks || [])
-    .map((c) => {
-      const text = String(c.text || '').replace(/\s+/g, ' ').trim();
-      return text ? formatChunkMarker(c.start) + ' ' + text : '';
-    })
-    .filter((line) => line.length > 0)
-    .join('\n');
-}
-
-// The pre-2.4.2 canonical form: the same lines without the markers.
-// Used only to verify a bundle graded before 2.4.2, whose signed
-// transcript checksum was taken over the markerless form.
-export function legacyCanonicalTranscript(scrubbedChunks) {
   return (scrubbedChunks || [])
     .map((c) => String(c.text || '').replace(/\s+/g, ' ').trim())
     .filter((line) => line.length > 0)

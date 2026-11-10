@@ -32,7 +32,6 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
 const worker = (await import(path.join(ROOT, "worker", "worker.js"))).default;
 const jobsMod = await import(path.join(ROOT, "webapp", "js", "jobs.js"));
-const transcriptMod = await import(path.join(ROOT, "webapp", "js", "transcript.js"));
 const pkgMod = await import(path.join(ROOT, "webapp", "js", "package.js"));
 const zipMod = await import(path.join(ROOT, "webapp", "js", "zip.js"));
 
@@ -249,9 +248,7 @@ const CHUNKS = [
   { start: 0, text: "Hello, this is the explanation of the grade distribution set-up." },
   { start: 65, text: "The count of ways uses the multinomial coefficient and Stirling's approximation." },
 ];
-// The transcript the page sends is its canonical transcript: since
-// webapp 2.4.2 each chunk line carries its [mm:ss] start marker.
-const TRANSCRIPT = transcriptMod.canonicalTranscript(CHUNKS);
+const TRANSCRIPT = CHUNKS.map((c) => c.text).join("\n");
 const CRITIQUE =
   "The set-up is stated clearly and the counting argument is exact.\n" +
   "The constraint equations aren't written out, and the Tom & Jerry <sic> remark is wrong.";
