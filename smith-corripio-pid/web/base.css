@@ -1,0 +1,69 @@
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f4f4f2; color: #1a1a1a;
+  font-family: "Source Sans 3", "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 16px; line-height: 1.45; }
+.col { max-width: 75rem; margin: 0 auto; padding: 0 1rem 2rem;
+  background: #fff; min-height: 100vh; }
+header.head { max-width: 75rem; padding: 1.2rem 0 0.4rem; }
+h1 { font-size: 1.7rem; margin: 0.2rem 0; }
+h2 { font-size: 1.25rem; margin: 1rem 0 0.5rem; }
+h3 { font-size: 1.05rem; margin: 0.9rem 0 0.4rem; }
+.intro { max-width: 62ch; }
+.status { color: #555; font-size: 0.92rem; }
+nav.tabs { position: sticky; top: 0; z-index: 60; background: #fff;
+  border-bottom: 2px solid #444; padding: 0.4rem 0; display: flex;
+  flex-wrap: wrap; gap: 0.3rem; }
+nav.tabs .tabbtn, .subbtn { font: inherit; background: #eee; border: 1px
+  solid #bbb; padding: 0.35rem 0.9rem; cursor: pointer; border-radius: 3px; }
+nav.tabs .tabbtn.active, .subbtn.active { background: #24507a; color: #fff;
+  border-color: #24507a; }
+nav.subtabs { padding: 0.6rem 0 0; display: flex; gap: 0.3rem; }
+.layout { display: grid; grid-template-columns: 19rem 1fr; gap: 1.2rem;
+  align-items: start; }
+aside.side { background: #f7f7f5; border: 1px solid #ddd; padding: 0.7rem
+  0.9rem; position: sticky; top: 3.4rem; max-height: calc(100vh - 3.8rem);
+  overflow-y: auto; }
+aside.side label { display: block; margin: 0.45rem 0; font-size: 0.92rem; }
+aside.side label.chk { display: flex; gap: 0.4rem; align-items: baseline; }
+aside.side input[type="number"], aside.side select { width: 100%;
+  font: inherit; padding: 0.25rem; margin-top: 0.15rem; }
+aside.side input[type="checkbox"] { width: auto; }
+button { font: inherit; padding: 0.35rem 0.7rem; cursor: pointer;
+  background: #eee; border: 1px solid #bbb; border-radius: 3px; }
+button.run { background: #24507a; color: #fff; border-color: #24507a; }
+button:disabled { opacity: 0.45; cursor: default; }
+.note { font-size: 0.9rem; color: #444; }
+.stale { color: #8a5a00; font-size: 0.9rem; }
+.main { min-width: 0; }
+.chart { width: 100%; height: 340px; }
+table.metrics { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+table.metrics th, table.metrics td { border: 1px solid #ccc;
+  padding: 0.3rem 0.5rem; text-align: right; }
+table.metrics th:first-child, table.metrics td:first-child { text-align: left; }
+.prose { max-width: 68ch; }
+.prose table { border-collapse: collapse; }
+.prose th, .prose td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; }
+aside.toc nav a { display: block; padding: 0.18rem 0; color: #24507a;
+  text-decoration: none; font-size: 0.94rem; }
+aside.toc nav a.sub { padding-left: 0.9rem; }
+pre.listing { background: #f7f7f5; border: 1px solid #ddd; padding: 0.7rem;
+  overflow-x: auto; font-size: 0.82rem; line-height: 1.4; }
+pre.out { background: #eef3ee; border: 1px solid #cfd8cf; padding: 0.6rem;
+  overflow-x: auto; font-size: 0.88rem; }
+.walkfig { width: 100%; height: 300px; }
+[id] { scroll-margin-top: 4rem; }
+footer { border-top: 1px solid #ddd; margin-top: 2rem; color: #555;
+  font-size: 0.9rem; }
+progress { width: 100%; height: 1rem; }
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2rem 0; }
+a { overflow-wrap: anywhere; }
+table.metrics, .prose table { max-width: 100%; }
+pre.listing { max-width: 100%; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  aside.side { position: static; max-height: none; }
+  .chart { height: 300px; }
+  table.metrics, .prose table { display: block; overflow-x: auto; }
+  .prose { max-width: 100%; }
+}
