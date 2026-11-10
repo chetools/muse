@@ -28,7 +28,9 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
    choice. The teacher's Muse grades it; the Worker signs the result.
 5. The jobs list refreshes every 5 seconds while the page is open — a
    waiting job shows how many jobs are ahead of it — and when the job
-   is ready the page shows the grades and critique. A graded job
+   is ready the page shows the grades and critique. An ungraded job
+   is kept for 7 days; a graded job is kept for 48 hours after
+   grading. A graded job
    without a checked link can then be turned into the Canvas
    submission from the conversion panel (pick the job, check the
    link, confirm; the Worker re-signs the bundle with the video
@@ -76,23 +78,35 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   opening words, not by date alone.
   Scrubbing is applied fresh on every load; cached chunks are never
   scrubbed. Nothing else is stored in IndexedDB.
-- `js/jobs.js` — grading jobs: the retrieval-name rule (format plus
-  blocking of the student's own scrub words), the POST /jobs payload
+- `js/jobs.js` — grading jobs: the retrieval code rule (letters and
+  numbers, at least 8 characters, applied when a job is created;
+  status, finalize and retrieved calls do not apply it, so codes
+  created before 2.4.1 with fewer characters still retrieve), the
+  POST /jobs payload
   mirror of the Worker's validation, the Worker calls (`/youtube-check`,
-  `/jobs`, `/jobs/status`, `/jobs/retrieved`, `/stats/duration`,
-  `GET /` for the VAPID key; fetch injected), the YouTube video-ID
+  `/jobs`, `/jobs/status`, `/jobs/finalize`, `/jobs/retrieved`, `/stats/duration`,
+  `GET /` for service info; fetch injected), the YouTube video-ID
   parser, the duration comparison bands (`classifyDuration`: pass at
   a difference of at most 1 s; confirm — the student's
   played-and-confirmed tick — up to max(2 s, 2% of the audio); block
   beyond), the pre-ZIP bundle verification (`verifyBundleContents`),
   and the
   localStorage entries under `hw-signing.jobs.v2`: `{pkg, course, asg,
-  retrieval_name, retrieval_code, kind, youtube_link, youtube_title,
+  retrieval_code, kind, youtube_link, youtube_title,
   created_at, expires_at}`. The `youtube_link` and `youtube_title`
   fields are held **only** in the
   student's browser so the HTML can be built at ZIP creation on a
-  later visit; they are never sent with the job. Expired entries are
-  pruned on load; an entry is removed when its ZIP is downloaded.
+  later visit; they are never sent with the job. An entry is removed
+  when its ZIP is downloaded, or when the Worker reports the job
+  expired. Each status response carries the job's current
+  `expires_at`, and `main.js` stores it back into the entry, so the
+  entry's lifetime follows the governing expiry (7 days while
+  ungraded, 48 hours after grading). The stored expiry is a cache,
+  not a liveness test: `main.js` asks the Worker about every entry,
+  including one whose stored expiry has passed — a pre-2.4.1 entry
+  carries creation + 48 hours, which the Worker no longer applies to
+  a still-ungraded job — and drops the entry only on an "expired"
+  report.
 - `js/push.js` / `sw.js` — Web Push pieces retained from the pre-2.1.0
   design. Since 2.1.0 the page does not subscribe to push and there is
   no notification: the jobs list auto-refreshes every 5 seconds.
@@ -162,7 +176,7 @@ builds the ZIP from those verified parts.
 
 ## Tests
 
-42 checks, all passing (`node tests/run-tests.mjs`): configuration
+43 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip including `ph`; scrub and canonical form;
 checksum against Node; suspected identifiers; WAV; cache-key rules
 (course/pkg excluded, model/glossary included) and stored-chunk
@@ -170,11 +184,13 @@ round-trip; ZIP byte determinism, fixed timestamp, and an unzip
 round-trip with CRC verification; HTML v2 build/parse round-trip of
 every signed field, absence of the v1 receipt labels, and the `none`
 YouTube hash form; YouTube ID parsing for every accepted URL form;
-retrieval-name format and scrub-word blocking (including the
-2-letter segment rule); job payload build and validation, final-job
+the retrieval code rule (at least 8 characters at creation);
+job payload build and validation, final-job
 token requirement; job API calls against a mock fetch; localStorage
 entry add/replace/remove/prune; VAPID base64url round-trip; and
-wiring guards over `main.js`, `index.html`, and `sw.js`.
+wiring guards over `main.js`, `index.html`, and `sw.js`, including
+the 2.4.1 guard that the status expiry is stored back into the job
+entry.
 
 ## Not run live
 
@@ -204,7 +220,7 @@ logic is Node-tested through `classifyDuration`.
   segment ("al-paso"), not inside longer words ("always-7",
   "final-try"); longer words and collapsed multi-word entries block
   anywhere.
-- **Component version strings**: webapp `hw-signing-webapp 2.0.0`;
+- **Component version strings**: webapp `hw-signing-webapp 2.4.1`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle

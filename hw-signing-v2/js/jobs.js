@@ -12,10 +12,14 @@ import { normaliseWorkerBase } from './config.js';
 export const JOBS_STORAGE_KEY = 'hw-signing.jobs.v2';
 export const TRANSCRIPT_MAX_CHARS = 200000;
 
-// The retrieval code rule, identical to the Worker's validation: letters
-// and numbers only, and a single character is enough — the code is a
-// retrieval aid, not a password.
-export const RETRIEVAL_CODE_RE = /^[A-Za-z0-9]{1,128}$/;
+// The retrieval code creation rule, identical to the Worker's
+// validation: letters and numbers only, at least 8 characters — the
+// code is the only credential for retrieving the grade, so a short
+// code is guessable. The rule is applied only when a job is created
+// (validateJobPayload); status, finalize and retrieved calls do not
+// apply it, so jobs created before 2.4.1 with shorter codes remain
+// retrievable.
+export const RETRIEVAL_CODE_RE = /^[A-Za-z0-9]{8,128}$/;
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
@@ -126,7 +130,7 @@ export function validateJobPayload(body) {
   if (!v.webapp || !v.model || !v.glossary) return fail('Component versions are missing.');
   if (typeof body.retrieval_code !== 'string' ||
       !RETRIEVAL_CODE_RE.test(body.retrieval_code)) {
-    return fail('Enter a retrieval code using letters and numbers only.');
+    return fail('Enter a retrieval code of at least 8 characters, using letters and numbers only.');
   }
   if (body.kind === 'final') {
     if (!body.youtube_token) return fail('A final submission needs the YouTube link checked first.');
@@ -208,8 +212,12 @@ export function removeJobEntry(pkg, retrievalCode, storage) {
   return entries;
 }
 
-// Entries at or past their expiry are dropped; the Worker has deleted
-// the job's transcript and result by then in any case.
+// Storage helper: drop entries at or past their stored expiry. The
+// stored expiry is a cache of the Worker's governing expiry, so this
+// is not the liveness test — renderJobs asks the Worker about every
+// entry and drops it on an "expired" report, because an entry written
+// before 2.4.1 can carry an expiry (creation + 48 h) that the Worker
+// no longer applies to a still-ungraded job.
 export function pruneExpiredEntries(entries, nowMs) {
   const now = typeof nowMs === 'number' ? nowMs : Date.now();
   return (entries || []).filter((e) => {
