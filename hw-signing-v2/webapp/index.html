@@ -101,6 +101,8 @@
   <h3>Recordings saved on this computer</h3>
   <p class="note">Audio and transcripts this page has made, kept in this browser so
   the same recording never has to be transcribed twice — under any course's link.
+  Each entry shows its source file name and the opening words of its transcript,
+  so takes of the same assignment can be told apart.
   Deleting an entry here does not touch your own files.</p>
   <div class="box" id="cacheBox">No recordings saved yet.</div>
 
@@ -150,6 +152,18 @@
     <span class="status" id="ytStatus"></span>
   </div>
   <div id="ytPlayerWrap" hidden><div id="ytPlayer"></div></div>
+  <p class="status" id="ytDurStatus"></p>
+  <div class="row" id="ytConfirmRow" hidden>
+    <label class="check"><input type="checkbox" id="ytConfirmChk"> I played the
+    preview and it is the same recording as the audio in step 2.</label>
+  </div>
+  <p class="note">The check is made against the recording loaded in step 2;
+  loading a different recording voids it. The video's length is compared
+  with the audio's: a difference of at most 1 s passes; a larger difference,
+  up to the larger of 2 s and 2% of the audio, needs your played-and-confirmed
+  tick above; beyond that the link cannot be used for this recording. The two
+  lengths and their difference are recorded anonymously (no link, no name) so
+  these limits can be set from measured data later.</p>
   <p class="note">Send first, decide later. The grade comes back in section 7,
   and any graded job can be turned into your Canvas submission there. If the
   link is added and checked now, the job is submission-ready as soon as it is
@@ -161,12 +175,13 @@
     <label>Retrieval code <input type="text" id="retrievalCode" size="12" autocomplete="off" spellcheck="false"></label>
   </div>
   <p class="note">Pick a code you will remember; do not use anything that
-  identifies you. The code is letters and numbers only, and a single
-  character is enough; it is not a password, so it is shown as you type.
-  It is kept in this browser, so coming back to this page retrieves your
-  grade without typing. On a different browser, the code is how you
-  retrieve it. A code can be used only once per assignment; if yours is
-  already taken, pick another.</p>
+  identifies you. The code is letters and numbers only, at least 8
+  characters; anyone with the code can retrieve the grade, so do not
+  share it. It is shown as you type. It is kept in this browser, so
+  coming back to this page retrieves your grade without typing. On a
+  different browser, the code is how you retrieve it. A code can be
+  used only once per assignment; if yours is already taken, pick
+  another.</p>
   <div class="row">
     <button id="submitJobBtn" class="primary" disabled>Send for grading</button>
     <span class="status" id="jobStatus"></span>
@@ -176,14 +191,22 @@
   <p class="note">Jobs sent from this browser. The list updates every
   5 seconds while this page is open: a waiting job shows how many jobs
   are ahead of it in the grading queue, and grades and critique appear
-  here when they are ready. A job is kept for 48 hours.</p>
+  here when they are ready. A job is kept for 48 hours. For a ready
+  submission, Review and download first verifies the audio and the
+  transcript against the signed grade record and shows exactly what
+  will be packaged — the recording and the checked video — before the
+  ZIP is built.</p>
   <div class="box" id="jobsBox">No jobs sent from this browser yet.</div>
 
   <div id="finPanel" hidden>
     <h3>Turn a graded job into your Canvas submission</h3>
-    <p class="note">Pick the graded job — the latest is selected. It must be
+    <p class="note">Pick the graded job — the latest is selected, and each
+    option shows its grades and recording fingerprint. It must be
     the job for this same recording: the check below previews the video and
-    compares its length with that job's audio, and the submission file is
+    compares its length with that job's audio (at most 1 s passes; a larger
+    difference, up to the larger of 2 s and 2% of the audio, needs your
+    played-and-confirmed tick; beyond that the link cannot be used for that
+    job), and the submission file is
     built from that job's audio and grade. One submission per recording.</p>
     <div class="row">
       <label>Graded job <select id="finJobSel"></select></label>
@@ -196,6 +219,11 @@
       <span class="status" id="finStatus"></span>
     </div>
     <div id="finPlayerWrap" hidden><div id="finPlayer"></div></div>
+    <p class="status" id="finDurStatus"></p>
+    <div class="row" id="finConfirmRow" hidden>
+      <label class="check"><input type="checkbox" id="finConfirmChk"> I played the
+      preview and it is the selected job's recording.</label>
+    </div>
     <div class="row">
       <button id="finConfirmBtn" class="primary" disabled>Turn into my submission</button>
       <span class="status" id="finDone"></span>
