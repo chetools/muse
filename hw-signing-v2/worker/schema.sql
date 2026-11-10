@@ -77,3 +77,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS jobs_code_lookup
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_one_final
   ON jobs (pkg, audio_sha256)
   WHERE kind = 'final' AND status <> 'expired';
+
+-- Anonymous duration comparisons reported by the student page
+-- (POST /stats/duration): the page's audio duration and the YouTube
+-- player's duration for a checked link. No video ID, no link and no
+-- student information is stored — the rows exist so the page's
+-- duration bands (pass at 1 s; confirm up to max(2 s, 2%)) can be
+-- recalibrated from measured same-recording differences, read back
+-- through GET /admin/duration-stats. context is 'send' or 'convert'
+-- (the flow the comparison came from), or 'other'.
+CREATE TABLE IF NOT EXISTS duration_stats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT,
+  pkg TEXT,
+  context TEXT,
+  audio_s REAL,
+  video_s REAL,
+  diff_s REAL,
+  abs_diff_s REAL
+);

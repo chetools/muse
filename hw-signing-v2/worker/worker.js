@@ -24,7 +24,7 @@
 // jobs table keeps only youtube_status ("ok" / "none") and, for final
 // jobs, youtube_video_sha256 (SHA-256 hex of the video ID).
 
-const SERVICE_VERSION = "2.3.0";
+const SERVICE_VERSION = "2.4.0";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 const JOB_TTL_MS = 48 * 60 * 60 * 1000;
@@ -457,11 +457,22 @@ async function handleYoutubeCheck(request, env) {
   const oembedUrl =
     `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
   let status = "private_or_missing";
+  let title = null;
   try {
     const res = await fetch(oembedUrl);
-    // The response body (title, channel name) is discarded unread:
-    // nothing about the link is stored or returned beyond the ID.
-    if (res.status === 200) status = "ok";
+    if (res.status === 200) {
+      status = "ok";
+      // The video's title is returned to the student who supplied
+      // the link, so they can recognise the video as theirs (or see
+      // that it is a different homework's). Nothing about the link —
+      // title included — is stored on the Worker.
+      try {
+        const body = await res.json();
+        if (body && typeof body.title === "string" && body.title.trim()) {
+          title = body.title.trim().slice(0, 200);
+        }
+      } catch { title = null; }
+    }
   } catch {
     status = "private_or_missing";
   }
@@ -470,7 +481,79 @@ async function handleYoutubeCheck(request, env) {
     env.SIGNING_SECRET,
     `${videoId}\n${status}\n${checked_at}`,
   );
-  return json({ video_id: videoId, status, checked_at, token });
+  return json({ video_id: videoId, status, checked_at, token, title });
+}
+
+// POST /stats/duration {pkg?, context?, audio_s, video_s} — one
+// anonymous duration comparison from the student page: the page's
+// audio duration and the YouTube player's duration for a link the
+// student checked. No video ID, no link, no student information is
+// accepted or stored; the row exists so the page's duration bands
+// can be recalibrated from measured same-recording differences.
+// Context is the flow the comparison came from ('send' at job
+// creation, 'convert' at submission conversion); anything else is
+// recorded as 'other'.
+async function handleDurationStat(request, env) {
+  const badDb = requireDb(env);
+  if (badDb) return badDb;
+  const body = await readJson(request);
+  if (!body || typeof body !== "object") {
+    return json({ error: "invalid request body" }, 400);
+  }
+  const audioS = Number(body.audio_s);
+  const videoS = Number(body.video_s);
+  const validDur = (n) => Number.isFinite(n) && n > 0 && n <= 43200;
+  if (!validDur(audioS) || !validDur(videoS)) {
+    return json({ error: "invalid durations" }, 400);
+  }
+  const pkg = typeof body.pkg === "string" ? body.pkg.slice(0, 128) : "";
+  const context = body.context === "send" || body.context === "convert"
+    ? body.context : "other";
+  const diff = Math.round((videoS - audioS) * 1000) / 1000;
+  await env.DB.prepare(
+    "INSERT INTO duration_stats " +
+      "(created_at, pkg, context, audio_s, video_s, diff_s, abs_diff_s) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?)",
+  )
+    .bind(new Date().toISOString(), pkg, context, audioS, videoS, diff,
+      Math.abs(diff))
+    .run();
+  return json({ ok: true });
+}
+
+// GET /admin/duration-stats (ADMIN_TOKEN) — the stored comparisons
+// summarised for threshold calibration: count, percentiles of the
+// absolute difference, and how the rows fall against the page's
+// current bands (pass at 1 s; the confirm tolerance of
+// max(2 s, 2% of the audio); beyond).
+async function handleDurationStats(request, env) {
+  const badAuth = requireToken(request, env, "ADMIN_TOKEN");
+  if (badAuth) return badAuth;
+  const badDb = requireDb(env);
+  if (badDb) return badDb;
+  const { results } = await env.DB.prepare(
+    "SELECT audio_s, abs_diff_s FROM duration_stats ORDER BY abs_diff_s",
+  ).all();
+  const rows = results || [];
+  const abs = rows.map((r) => Number(r.abs_diff_s)).sort((a, b) => a - b);
+  const pct = (p) => (abs.length
+    ? abs[Math.min(abs.length - 1, Math.floor((p / 100) * abs.length))]
+    : null);
+  const bands = { pass_le_1s: 0, confirm_within_tolerance: 0, beyond_tolerance: 0 };
+  for (const r of rows) {
+    const a = Number(r.audio_s);
+    const d = Number(r.abs_diff_s);
+    if (d <= 1.0) bands.pass_le_1s += 1;
+    else if (d <= Math.max(2, 0.02 * a)) bands.confirm_within_tolerance += 1;
+    else bands.beyond_tolerance += 1;
+  }
+  return json({
+    count: rows.length,
+    abs_diff_s: abs.length
+      ? { p50: pct(50), p90: pct(90), p95: pct(95), p99: pct(99), max: abs[abs.length - 1] }
+      : null,
+    bands,
+  });
 }
 
 function validVersions(v) {
@@ -1305,6 +1388,12 @@ export default {
     }
     if (request.method === "POST" && path === "/youtube-check") {
       return handleYoutubeCheck(request, env);
+    }
+    if (request.method === "POST" && path === "/stats/duration") {
+      return handleDurationStat(request, env);
+    }
+    if (request.method === "GET" && path === "/admin/duration-stats") {
+      return handleDurationStats(request, env);
     }
     if (request.method === "POST" && path === "/jobs") {
       return handleJobCreate(request, env);

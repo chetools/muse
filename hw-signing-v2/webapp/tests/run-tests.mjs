@@ -21,10 +21,11 @@ import {
 import { encodeWavPcm16, wavDurationS } from '../js/media.js';
 import { buildVocabulary } from '../js/vocab.js';
 import { PAIRS } from '../chemescribe-base/corrections.js';
-import { cacheKey, cacheHit, toCachedChunk, fromCachedChunk } from '../js/cachekey.js';
+import { cacheKey, cacheHit, toCachedChunk, fromCachedChunk, recordingFirstWords } from '../js/cachekey.js';
 import { crc32, buildZipBytes, ZIP_DOS_DATE, ZIP_DOS_TIME } from '../js/zip.js';
 import {
   RETRIEVAL_CODE_RE, parseYouTubeVideoId, canonicalWatchUrl,
+  classifyDuration, verifyBundleContents, reportDurationStat,
   validateJobPayload, buildJobPayload,
   loadJobEntries, addJobEntry, removeJobEntry, pruneExpiredEntries,
   submitJob, fetchJobStatus, finalizeJob,
@@ -311,7 +312,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.3.3');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.0');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -595,13 +596,92 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.3.3');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.0');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.ok(sw.includes("addEventListener('push'"), 'service worker handles push');
   assert.ok(sw.includes("addEventListener('notificationclick'"), 'service worker handles clicks');
+});
+
+/* ---------------- duration bands + bundle verification (2.4.0) ---------------- */
+
+await test('duration: bands pass / confirm / block, tolerance scales with length', () => {
+  assert.equal(classifyDuration(600, 600.4).band, 'pass');
+  assert.equal(classifyDuration(600, 601.0).band, 'pass');
+  assert.equal(classifyDuration(600, 601.5).band, 'confirm');
+  // 12 s tolerance at 600 s (2% beats the 2 s floor)
+  assert.equal(classifyDuration(600, 611).band, 'confirm');
+  assert.equal(classifyDuration(600, 613).band, 'block');
+  // short recording: the 2 s floor is the tolerance
+  assert.equal(classifyDuration(60, 61.5).band, 'confirm');
+  assert.equal(classifyDuration(60, 62.5).band, 'block');
+  const c = classifyDuration(600, 613);
+  assert.ok(Math.abs(c.diffS - 13) < 1e-9 && Math.abs(c.tolS - 12) < 1e-9);
+});
+
+await test('duration: unknown when either length is missing', () => {
+  assert.equal(classifyDuration(600, 0).band, 'unknown');
+  assert.equal(classifyDuration(600, null).band, 'unknown');
+  assert.equal(classifyDuration(0, 600).band, 'unknown');
+  assert.equal(classifyDuration(600, 0).diffS, null);
+});
+
+await test('bundle verification: exact contents pass; each tamper fails by name', () => {
+  const bundle = {
+    audio_sha256: SHA_A, transcript_sha256: SHA_B, critique_sha256: SHA_C,
+  };
+  const good = { wavSha256: SHA_A, transcriptSha256: SHA_B, critiqueSha256: SHA_C };
+  assert.deepEqual(verifyBundleContents(bundle, good), []);
+  assert.deepEqual(verifyBundleContents(bundle, { ...good, wavSha256: SHA_B }), ['audio']);
+  assert.deepEqual(verifyBundleContents(bundle, { ...good, transcriptSha256: SHA_A }), ['transcript']);
+  assert.deepEqual(verifyBundleContents(bundle, { ...good, critiqueSha256: SHA_A }), ['critique']);
+  assert.equal(verifyBundleContents(null, good).length, 3);
+});
+
+await test('first words: opening words of the corrected chunks, whitespace collapsed', () => {
+  const cached = [
+    { start_s: 0, end_s: 25, raw: 'x', corrected: '  The reflux ratio   is defined as' },
+    { start_s: 25, end_s: 50, raw: 'y', corrected: 'the ratio of liquid returned to product' },
+  ];
+  assert.equal(recordingFirstWords(cached),
+    'The reflux ratio is defined as the ratio of liquid returned to');
+  assert.equal(recordingFirstWords(cached, 4), 'The reflux ratio is');
+  assert.equal(recordingFirstWords([]), '');
+  assert.equal(recordingFirstWords(null), '');
+});
+
+await test('duration stat: posts the two durations and the package label only', async () => {
+  let seen = null;
+  const fetchFn = async (url, opts) => {
+    seen = { url, body: JSON.parse(opts.body) };
+    return { ok: true, status: 200, json: async () => ({ ok: true }) };
+  };
+  const ok = await reportDurationStat('https://w.example', {
+    pkg: 'hw3 v2', context: 'send', audioS: 600, videoS: 600.4,
+  }, fetchFn);
+  assert.equal(ok, true);
+  assert.ok(seen.url.endsWith('/stats/duration'));
+  assert.deepEqual(seen.body, {
+    pkg: 'hw3 v2', context: 'send', audio_s: 600, video_s: 600.4,
+  });
+  const down = async () => { throw new Error('offline'); };
+  assert.equal(await reportDurationStat('https://w.example', {
+    pkg: 'hw3 v2', context: 'send', audioS: 1, videoS: 1,
+  }, down), false);
+});
+
+await test('wiring: duration gate and review elements present in the page', () => {
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  for (const id of ['ytDurStatus', 'ytConfirmRow', 'ytConfirmChk',
+    'finDurStatus', 'finConfirmRow', 'finConfirmChk']) {
+    assert.ok(index.includes('id="' + id + '"'), 'index has ' + id);
+  }
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('clearYtCheck()'), 'recording change voids the link check');
+  assert.ok(!main.includes(': chunks;'), 'no fallback to the on-page transcript at ZIP time');
+  assert.ok(main.includes('verifyBundleContents'), 'ZIP contents verified against the bundle');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed, ' + skipped + ' skipped');

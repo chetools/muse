@@ -30,7 +30,9 @@ configuration fails closed (500), a wrong token gets 401.
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET /` | — | `{service, version, storage:"d1"}`, plus `vapid_public_key` when configured |
-| `POST /youtube-check` | — | `{url}` → parse the video ID (watch / youtu.be / shorts / live / embed), ask YouTube oEmbed server-side, return `{video_id, status, checked_at, token}`; status is `ok` or `private_or_missing`; the token is an HMAC over `video_id\nstatus\nchecked_at`; the oEmbed body is discarded |
+| `POST /youtube-check` | — | `{url}` → parse the video ID (watch / youtu.be / shorts / live / embed), ask YouTube oEmbed server-side, return `{video_id, status, checked_at, token, title}`; status is `ok` or `private_or_missing`; the token is an HMAC over `video_id\nstatus\nchecked_at`; the oEmbed title is returned to the caller so the student can recognise the video — nothing about the link is stored |
+| `POST /stats/duration` | — | `{pkg?, context?, audio_s, video_s}` → record one anonymous duration comparison (the student page's audio duration and the YouTube player's duration for a checked link) in `duration_stats`; no video ID, link or student information is accepted or stored; the rows calibrate the page's duration bands |
+| `GET /admin/duration-stats` | ADMIN_TOKEN | the stored comparisons summarised: count, absolute-difference percentiles (p50/p90/p95/p99/max), and the split against the page's current bands |
 | `POST /jobs` | retrieval data | create a grading job → `{job_id, created_at, expires_at}` |
 | `POST /jobs/status` | retrieval code only | `{status}`; while queued/claimed also `queue_ahead` (jobs ahead in the global grading queue); when `ready` the signed result bundle; every wrong code returns the identical 403 |
 | `POST /jobs/retrieved` | retrieval code only | mark the job retrieved |

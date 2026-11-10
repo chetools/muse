@@ -38,8 +38,19 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   submission afterwards (2.2.0 — there is no Practice/Final choice at
   send time; the decision is made after the grade is seen). The
   link is checked by a separate Worker call that stores nothing about the
-  link (see /youtube-check). The page keeps the link locally and writes
-  it into the HTML at ZIP creation.
+  link (see /youtube-check). The page keeps the link and its title
+  locally and writes the link into the HTML at ZIP creation.
+  The check is bound to the recording loaded when it is made
+  (2.4.0): the page records that recording's audio fingerprint with
+  the check, and choosing or restoring a different recording voids
+  it. The preview's duration comparison has three bands (2.4.0):
+  a difference of at most 1 s passes; up to max(2 s, 2% of the
+  audio) the link may be used only after the student plays the
+  preview and explicitly confirms it is the same recording; beyond
+  that it cannot be used for that recording. A comparison whose
+  video length could not be read is treated as the confirm band.
+  Each reported comparison is also sent to the Worker as an
+  anonymous duration statistic (see /stats/duration).
 - Audio handling: video or audio input is normalised to the 16 kHz mono
   WAV. The WAV and the corrected (pre-scrub) transcript chunks are cached
   in IndexedDB under the key (audio_sha256, model version, glossary
@@ -82,6 +93,10 @@ Tables (SQL in `worker/schema.sql`):
   status TEXT, trial_json TEXT, override_reason TEXT, created_at TEXT,
   PRIMARY KEY(pkg, version))` — one row per package version; the `pkg`
   identifier used in links is `"<name> v<version>"`.
+- `duration_stats(id INTEGER PRIMARY KEY AUTOINCREMENT, created_at
+  TEXT, pkg TEXT, context TEXT, audio_s REAL, video_s REAL, diff_s
+  REAL, abs_diff_s REAL)` — anonymous duration comparisons from the
+  student page (2.4.0); no video ID, link or student information.
 - `jobs(job_id TEXT PRIMARY KEY, pkg TEXT, retrieval_name TEXT,
   code_lookup TEXT, code_salt TEXT, code_hash TEXT, kind TEXT, status TEXT,
   transcript TEXT, audio_sha256 TEXT, transcript_sha256 TEXT,
@@ -102,10 +117,22 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   shorts, live, embed forms; reject anything else 400). Call YouTube
   oEmbed (`https://www.youtube.com/oembed?url=<watch url>&format=json`)
   server-side; 200 → `status:"ok"`, any other status →
-  `status:"private_or_missing"`. Discard the response body. Return
-  `{video_id, status, checked_at, token}` where `token` is base64url
+  `status:"private_or_missing"`. Return
+  `{video_id, status, checked_at, token, title}` where `token` is base64url
   HMAC-SHA-256 over `video_id\nstatus\nchecked_at` keyed by
-  SIGNING_SECRET. Nothing is stored.
+  SIGNING_SECRET, and `title` is the oEmbed title (or null) returned
+  to the caller so the student can recognise the video. Nothing is
+  stored.
+- `POST /stats/duration` `{pkg?, context?, audio_s, video_s}` → record
+  one anonymous duration comparison in the `duration_stats` table
+  (created_at, pkg, context — `send`/`convert`, else `other` — the two
+  durations, the signed and absolute differences). No video ID, link
+  or student information is accepted or stored. Durations must be
+  finite and in (0, 43200]. → `{ok:true}`.
+- `GET /admin/duration-stats` (ADMIN_TOKEN) → `{count, abs_diff_s:
+  {p50, p90, p95, p99, max}, bands:{pass_le_1s,
+  confirm_within_tolerance, beyond_tolerance}}` over the stored
+  comparisons, for recalibrating the page's duration bands.
 - `POST /jobs` — body: `{pkg, pkg_content_sha256, kind, transcript,
   audio_sha256, transcript_sha256, versions:{webapp,model,glossary},
   retrieval_code, youtube_token?, youtube_video_id?,
@@ -205,11 +232,14 @@ RFC 8291 example vector or a self-decrypt in the test.
 New/changed behaviour:
 - `js/cache.js` — IndexedDB (`hw-signing-v2`): store `recordings` keyed
   by `audio_sha256` holding `{audio_sha256, model, glossary, wavBlob,
-  chunks:[{start_s,end_s,raw,corrected}], duration_s, created_at}`.
+  chunks:[{start_s,end_s,raw,corrected}], duration_s, created_at,
+  source_name}` (source_name added 2.4.0).
   Functions: `cacheGet(sha, model, glossary)`, `cachePutChunk(...)`,
   `cacheComplete(...)`, `cacheList()`, `cacheDelete(sha)`. A hit
-  requires model AND glossary match. The recordings list UI shows date,
-  duration, size and a Delete button per entry. Nothing else is stored
+  requires model AND glossary match. The recordings list UI shows the
+  source file name, date, duration, size, the transcript's opening
+  words and a Delete button per entry (name and words scrubbed with
+  the current removal list). Nothing else is stored
   in IndexedDB.
 - Transcription: after extraction and fingerprinting, check the cache.
   Hit → load chunks, skip transcription, show "transcript restored from
@@ -226,29 +256,47 @@ New/changed behaviour:
   ZIP download or expiry.
 - Job section UI (2.2.0): no kind choice. The YouTube link field is
   optional at send: an embedded player preview (IFrame API) with a
-  duration comparison against the loaded audio (warn beyond
-  max(2 s, 2%)), and a Check link button → POST /youtube-check to the
-  Worker. A job sent with an `ok` check is a final job
+  duration comparison against the loaded audio, and a Check link
+  button → POST /youtube-check to the Worker. A job sent with an `ok`
+  check is a final job
   (submission-ready when graded); a job sent without one is graded
   identically and can be converted later. Retrieval code field only.
-  The duration comparison and preview are the page's pre-packaging
+  Duration bands and the recording binding (2.4.0): the comparison
+  passes at a difference of at most 1 s; up to max(2 s, 2% of the
+  audio) it needs the student's played-and-confirmed tick; beyond
+  that the link cannot be used for this recording and Send stays
+  disabled until the link is fixed or cleared. The check carries the
+  loaded recording's fingerprint, and changing the recording voids
+  it. The check response's video title is shown at check time and
+  kept in the local job entry. The duration comparison and preview
+  are the page's pre-packaging
   consistency checks; a true acoustic fingerprint comparison cannot
   run in the browser, because the page cannot read the video's audio
   track — sameness of recording is established by the audit's
   acoustic cross-check on the submitted ZIP.
 - Conversion UI (section 7): a panel listing the graded non-final
-  jobs (the latest selected by default; rows also carry a "Turn into
-  my submission" button that selects the job). The student picks the
+  jobs (the latest selected by default; each option shows its
+  grades and recording fingerprint). The student picks the
   job for the same recording, enters the link, checks it (preview +
   duration comparison against THAT job's audio, from its cache
-  record), and confirms → POST /jobs/finalize; the row then offers
+  record, under the same three bands), and confirms → POST
+  /jobs/finalize; the row then offers
   the submission ZIP.
 - Submit → POST /jobs; on success save the localStorage entry and show
   the queued state.
 - Retrieval: when a job is `ready`, show grades and critique (status is
   shown automatically; grades display after a click, per the earlier
-  decision) and offer **Download submission ZIP** (final jobs): build
-  `submission.html` v2 and zip it with the WAV.
+  decision) and offer **Review and download submission ZIP** (final
+  jobs, 2.4.0): the review first recomputes the SHA-256 of the exact
+  WAV bytes and of the canonical transcript built from the job
+  recording's own cached chunks — with no fallback to the transcript
+  on the page — plus the critique hash, and blocks unless all equal
+  the signed bundle's hashes (a transcript mismatch error names the
+  removal list as the usual cause); it then shows a panel identifying
+  what will be packaged (course/assignment, grades, recording file
+  name, duration, fingerprint and opening words, video title and
+  link, each marked verified), whose button builds `submission.html`
+  v2 and zips it with the WAV.
 - `js/package.js` — HTML format v2: same three sections as v1, with the
   verification section extended by labelled lines: `Format version: 2`,
   `Job: <job_id>`, `Prompt package content SHA-256: <hash>`,

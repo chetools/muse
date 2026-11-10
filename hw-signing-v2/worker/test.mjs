@@ -14,7 +14,7 @@ import worker from "./worker.js";
 // keys, UNIQUE(pkg, code_lookup) on jobs, and the jobs_one_final
 // partial unique index (one live final per pkg + audio fingerprint).
 function createDb() {
-  const tables = { packages: [], jobs: [] };
+  const tables = { packages: [], jobs: [], duration_stats: [] };
 
   function resolveToken(tok, args, ptr) {
     tok = tok.trim();
@@ -455,6 +455,42 @@ const ytBad = await call("/youtube-check", { body: { url: "https://example.com/w
 check("non-YouTube URL rejected", ytBad.status === 400);
 const ytBadId = await call("/youtube-check", { body: { url: "https://www.youtube.com/watch?v=tooshort" } });
 check("bad video id rejected", ytBadId.status === 400);
+check("youtube-check returns the video title for recognition, stores nothing",
+  ytOk.body.title === "x" && ytPriv.body.title === null &&
+  !("title" in (db._tables.jobs[0] || {})));
+
+// ------------------------------------------------------- duration stats
+const stat1 = await call("/stats/duration", {
+  body: { pkg: "test-package v1", context: "send", audio_s: 600, video_s: 600.4 },
+});
+check("duration stat accepted", stat1.status === 200 && stat1.body.ok === true);
+await call("/stats/duration", {
+  body: { pkg: "test-package v1", context: "convert", audio_s: 600, video_s: 601.5 },
+});
+await call("/stats/duration", {
+  body: { pkg: "test-package v1", context: "whatever", audio_s: 100, video_s: 120 },
+});
+check("duration stats stored with computed differences, unknown context normalised",
+  db._tables.duration_stats.length === 3 &&
+  Math.abs(db._tables.duration_stats[0].diff_s - 0.4) < 1e-9 &&
+  db._tables.duration_stats[2].context === "other" &&
+  !("video_id" in db._tables.duration_stats[0]));
+const statBad = await call("/stats/duration", {
+  body: { audio_s: -5, video_s: 100 },
+});
+check("duration stat rejects invalid durations", statBad.status === 400 &&
+  db._tables.duration_stats.length === 3);
+const statNoAuth = await call("/admin/duration-stats", { method: "GET" });
+check("duration stats summary requires the admin token", statNoAuth.status === 401);
+const statSum = await call("/admin/duration-stats", {
+  method: "GET", token: env.ADMIN_TOKEN,
+});
+check("duration stats summary: count, percentiles, band split",
+  statSum.status === 200 && statSum.body.count === 3 &&
+  Math.abs(statSum.body.abs_diff_s.max - 20) < 1e-9 &&
+  statSum.body.bands.pass_le_1s === 1 &&
+  statSum.body.bands.confirm_within_tolerance === 1 &&
+  statSum.body.bands.beyond_tolerance === 1);
 
 // ------------------------------------------------------- job creation
 const jobBase = {
