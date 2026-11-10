@@ -24,7 +24,7 @@
 // jobs table keeps only youtube_status ("ok" / "none") and, for final
 // jobs, youtube_video_sha256 (SHA-256 hex of the video ID).
 
-const SERVICE_VERSION = "2.4.1";
+const SERVICE_VERSION = "2.4.2";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 // Job lifetime (2.4.1): an ungraded job is kept for up to
@@ -690,8 +690,10 @@ async function handleJobCreate(request, env) {
   // (Review fix F3.) The shared understanding with the webapp:
   // body.transcript IS the webapp's canonical transcript string —
   // canonicalTranscript() in webapp js/transcript.js collapses each
-  // scrubbed chunk's whitespace to a single line, drops empty chunks,
-  // and joins with "\n" (LF, no trailing newline) — and the webapp
+  // scrubbed chunk's whitespace to a single line, prefixes it with
+  // the chunk's [mm:ss] start marker (since webapp 2.4.2; earlier
+  // versions sent no markers), drops empty chunks, and joins with
+  // "\n" (LF, no trailing newline) — and the webapp
   // sets transcript_sha256 to the SHA-256 hex of exactly that string
   // (webapp js/main.js: sha256Hex(canonical())). The recompute is
   // therefore over the received string itself.

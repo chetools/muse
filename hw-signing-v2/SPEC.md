@@ -82,6 +82,16 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   characters (`^[A-Za-z0-9]{8,128}$`, enforced at `POST /jobs` only).
   Lookup does not re-validate length, so jobs created earlier with
   shorter codes remain retrievable by status, finalize and retrieved.
+- Canonical transcript (2.4.2): each line of the canonical transcript
+  begins with the chunk's [mm:ss] start marker in total-minutes form
+  (e.g. [75:20]), the same marker the submission package's transcript
+  lines carry — the teacher's direction (2026-11-10) that future
+  transcripts incorporate time markers, so an injection flag's [mm:ss]
+  names a place in the transcript as well as in the recording. Before
+  2.4.2 the canonical form had no markers. The audit app chooses the
+  form by the package's own webapp version field; the student page
+  accepts either form when verifying a bundle for packaging, so a job
+  graded before 2.4.2 still packages.
 - The submission is ONE file: `submission.zip` containing exactly
   `submission.html` and `submission-audio.wav`, ZIP entries written with
   a fixed timestamp (1980-01-01) so a rebuilt ZIP is byte-identical.

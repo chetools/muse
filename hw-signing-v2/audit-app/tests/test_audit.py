@@ -137,10 +137,11 @@ def make_wav(path):
 
 def build_html_v2(chunks, audio_sha, completeness=4, accuracy=4,
                   critique=CRITIQUE, youtube_link=YOUTUBE,
-                  ver_completeness=None, ver_accuracy=None):
+                  ver_completeness=None, ver_accuracy=None,
+                  webapp_version=None, marked=False):
     """A v2 package HTML, signed as the grading Worker signs it."""
     lines = transcript_lines(chunks)
-    canonical = audit.canonical_transcript(lines)
+    canonical = audit.canonical_transcript(lines, with_markers=marked)
     transcript_sha = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     critique_sha = hashlib.sha256(critique.encode("utf-8")).hexdigest()
     yt_sha = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
@@ -176,7 +177,7 @@ def build_html_v2(chunks, audio_sha, completeness=4, accuracy=4,
 <dt>Job</dt><dd>{JOB_ID}</dd>
 <dt>Prompt package</dt><dd>{PKG}</dd>
 <dt>Prompt package content SHA-256</dt><dd>{PKG_CONTENT_SHA}</dd>
-<dt>Webapp version</dt><dd>{VERSIONS['webapp']}</dd>
+<dt>Webapp version</dt><dd>{webapp_version or VERSIONS['webapp']}</dd>
 <dt>Model version</dt><dd>{VERSIONS['model']}</dd>
 <dt>Glossary version</dt><dd>{VERSIONS['glossary']}</dd>
 <dt>YouTube link</dt><dd>{youtube_link}</dd>
@@ -322,6 +323,35 @@ def main():
           and body["t"] == GRADED_AT,
           "verify-grade body carries the bundle fields, grades taken "
           "from the HTML")
+
+    # 2b. A package from webapp 2.4.2, whose signed transcript
+    # checksum covers the canonical form with [mm:ss] markers,
+    # verifies against the marked form; the same package signed
+    # over the markerless form fails.
+    marked_html = build_html_v2(
+        CHUNKS, audio_sha, webapp_version="hw-signing-webapp 2.4.2",
+        marked=True)
+    marked_path = tmp / "submission-marked.html"
+    marked_path.write_text(marked_html, encoding="utf-8")
+    rep_m = audit.check_package(audio_path, marked_path, cfg,
+                                post_fn=transport_for(TEST_SECRET, []))
+    check(rep_m["transcript_checksum_ok"],
+          "marked package (webapp 2.4.2): transcript checksum ok "
+          "against the marked canonical form")
+    parsed_m = audit.parse_package(marked_html)
+    check(parsed_m["canonical_transcript"].split("\n")[0]
+          .startswith("[00:00] "),
+          "marked package: canonical transcript keeps the chunk markers")
+    unmarked_html = build_html_v2(
+        CHUNKS, audio_sha, webapp_version="hw-signing-webapp 2.4.2",
+        marked=False)
+    unmarked_path = tmp / "submission-unmarked.html"
+    unmarked_path.write_text(unmarked_html, encoding="utf-8")
+    rep_u = audit.check_package(audio_path, unmarked_path, cfg,
+                                post_fn=transport_for(TEST_SECRET, []))
+    check(rep_u["transcript_checksum_ok"] is False,
+          "2.4.2 package signed over the markerless form fails the "
+          "transcript checksum")
 
     # 3. Tamper: the shown grade edited in the HTML spans.
     edited = html_text.replace(
