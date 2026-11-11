@@ -1,6 +1,7 @@
 // Minimal deterministic ZIP writer (SPEC, Webapp section).
 //
-// The submission is one file, submission.zip, holding exactly
+// The submission is one ZIP file (downloaded under a per-job name
+// since 2.4.4 — see submissionZipName below), holding exactly
 // submission.html and submission-audio.wav. Entries are STORED (no
 // compression), written in the caller's order, and every header field
 // that could vary between runs is fixed: DOS date/time is 1980-01-01
@@ -122,3 +123,48 @@ export function buildZip(entries) {
 export const SUBMISSION_ZIP_NAME = 'submission.zip';
 export const ZIP_ENTRY_HTML = 'submission.html';
 export const ZIP_ENTRY_AUDIO = 'submission-audio.wav';
+
+// The name the submission ZIP is downloaded under (2.4.4): distinct
+// per job, so two downloads in one folder cannot be confused when the
+// student picks a file for Canvas. Form:
+//   C<course number>H<homework number>-G<total grade>-Y<HHMM>-<YYMMDD>.zip
+// e.g. C4061H5-G7-Y1905-261110.zip — course 4061, homework 5, grade
+// 7 of 10 (completeness + accuracy), YouTube link checked at 19:05
+// local time on 2026-11-10. Only the course/homework numbers are
+// taken from the teacher's labels. The Y time is the job's YouTube
+// check time when the entry kept one, otherwise the grading time;
+// shown in the student's local time. The name is a property of the
+// job, so re-downloading a job gives the same name. This is only the
+// download file name: the ZIP's bytes and its two entry names are
+// unchanged, and any segment whose data is missing is omitted, with
+// SUBMISSION_ZIP_NAME as the fallback when nothing is known.
+export function submissionZipName(fields) {
+  const f = fields || {};
+  const digits = (s) => {
+    const m = String(s == null ? '' : s).match(/\d+/g);
+    return m ? m.join('') : '';
+  };
+  const pad = (n, w) => String(n).padStart(w, '0');
+  const parts = [];
+  const course = digits(f.course);
+  const hw = digits(f.asg);
+  if (course || hw) parts.push('C' + course + 'H' + hw);
+  const total = Number(f.completeness) + Number(f.accuracy);
+  if (Number.isFinite(total) &&
+      f.completeness != null && f.accuracy != null) {
+    parts.push('G' + total);
+  }
+  let when = null;
+  for (const v of [f.youtubeCheckedAt, f.gradedAt]) {
+    if (v) {
+      const d = v instanceof Date ? v : new Date(v);
+      if (!Number.isNaN(d.getTime())) { when = d; break; }
+    }
+  }
+  if (when) {
+    parts.push('Y' + pad(when.getHours(), 2) + pad(when.getMinutes(), 2) +
+      '-' + pad(when.getFullYear() % 100, 2) +
+      pad(when.getMonth() + 1, 2) + pad(when.getDate(), 2));
+  }
+  return parts.length ? parts.join('-') + '.zip' : SUBMISSION_ZIP_NAME;
+}
