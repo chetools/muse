@@ -41,7 +41,7 @@ import {
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
   finalizeJob, reportDurationStat,
 } from './jobs.js';
-import { buildZip, SUBMISSION_ZIP_NAME, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
+import { buildZip, submissionZipName, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
 
 const $ = (id) => document.getElementById(id);
 const cfg = parseConfig(window.location.search);
@@ -720,6 +720,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       kind: payload.kind,
       youtube_link: payload.kind === 'final' ? $('ytLink').value.trim() : '',
       youtube_title: payload.kind === 'final' && ytCheck ? ytCheck.title : '',
+      youtube_checked_at: payload.kind === 'final' && ytCheck ? ytCheck.checkedAt : '',
       created_at: res.created_at,
       expires_at: res.expires_at,
     });
@@ -893,7 +894,11 @@ async function doDownloadZip(entry, bundle, review, anchor) {
     { name: ZIP_ENTRY_HTML, data: new TextEncoder().encode(html) },
     { name: ZIP_ENTRY_AUDIO, data: parts.wav },
   ]);
-  downloadBlob(zip, SUBMISSION_ZIP_NAME);
+  downloadBlob(zip, submissionZipName({
+    course: entry.course, asg: entry.asg,
+    completeness: bundle.completeness, accuracy: bundle.accuracy,
+    youtubeCheckedAt: entry.youtube_checked_at, gradedAt: bundle.t,
+  }));
   zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
   try {
     await markJobRetrieved(cfg.worker, {
@@ -1242,6 +1247,7 @@ $('finConfirmBtn').addEventListener('click', async () => {
       cand.entry.kind = 'final';
       cand.entry.youtube_link = $('finLink').value.trim();
       cand.entry.youtube_title = finCheck.title || '';
+      cand.entry.youtube_checked_at = finCheck.checkedAt;
     } else {
       const entries = loadJobEntries();
       const e = entries.find((x) => x.pkg === cand.entry.pkg &&
@@ -1250,6 +1256,7 @@ $('finConfirmBtn').addEventListener('click', async () => {
         e.kind = 'final';
         e.youtube_link = $('finLink').value.trim();
         e.youtube_title = finCheck.title || '';
+        e.youtube_checked_at = finCheck.checkedAt;
         saveJobEntries(entries);
       }
     }
