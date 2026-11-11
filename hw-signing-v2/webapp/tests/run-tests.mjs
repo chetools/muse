@@ -22,7 +22,7 @@ import { encodeWavPcm16, wavDurationS } from '../js/media.js';
 import { buildVocabulary } from '../js/vocab.js';
 import { PAIRS } from '../chemescribe-base/corrections.js';
 import { cacheKey, cacheHit, toCachedChunk, fromCachedChunk, recordingFirstWords } from '../js/cachekey.js';
-import { crc32, buildZipBytes, ZIP_DOS_DATE, ZIP_DOS_TIME } from '../js/zip.js';
+import { crc32, buildZipBytes, ZIP_DOS_DATE, ZIP_DOS_TIME, submissionZipName } from '../js/zip.js';
 import {
   RETRIEVAL_CODE_RE, parseYouTubeVideoId, canonicalWatchUrl,
   classifyDuration, verifyBundleContents, reportDurationStat,
@@ -268,6 +268,39 @@ await test('zip: round-trip — entries in order, contents and CRC intact', () =
   assert.equal(crc32(new TextEncoder().encode('123456789')), 0xCBF43926);
 });
 
+await test('zip name: course, homework, total grade and YouTube check time', () => {
+  // Dates are constructed locally so the expectation holds in any
+  // timezone: the name uses local time.
+  const name = submissionZipName({
+    course: 'CHE 4061', asg: 'HW5', completeness: 4, accuracy: 3,
+    youtubeCheckedAt: new Date(2026, 10, 10, 19, 5),
+  });
+  assert.equal(name, 'C4061H5-G7-Y1905-261110.zip');
+});
+
+await test('zip name: falls back to the grading time when no check time was kept', () => {
+  const graded = new Date(2026, 10, 9, 8, 30);
+  assert.equal(
+    submissionZipName({ course: 'CHE3025', asg: 'HW 3', completeness: 5, accuracy: 5, youtubeCheckedAt: '', gradedAt: graded }),
+    'C3025H3-G10-Y0830-261109.zip');
+  assert.equal(
+    submissionZipName({ course: 'CHE3025', asg: 'HW 3', completeness: 5, accuracy: 5, youtubeCheckedAt: 'not a date', gradedAt: graded }),
+    'C3025H3-G10-Y0830-261109.zip');
+});
+
+await test('zip name: zero-padded time and date fields', () => {
+  const name = submissionZipName({
+    course: 'CHE 4061', asg: 'HW5', completeness: 4, accuracy: 3,
+    youtubeCheckedAt: new Date(2026, 0, 5, 9, 3),
+  });
+  assert.equal(name, 'C4061H5-G7-Y0903-260105.zip');
+});
+
+await test('zip name: no data at all gives the plain fallback name', () => {
+  assert.equal(submissionZipName({}), 'submission.zip');
+  assert.equal(submissionZipName(), 'submission.zip');
+});
+
 /* ---------------- HTML package v2 ---------------- */
 
 const bundle = {
@@ -316,7 +349,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.3');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.4');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -603,7 +636,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.3');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.4');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
