@@ -92,9 +92,17 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   form by the package's own webapp version field; the student page
   accepts either form when verifying a bundle for packaging, so a job
   graded before 2.4.2 still packages.
-- The submission is ONE file: `submission.zip` containing exactly
+- The submission is ONE file: a ZIP containing exactly
   `submission.html` and `submission-audio.wav`, ZIP entries written with
   a fixed timestamp (1980-01-01) so a rebuilt ZIP is byte-identical.
+  The file is downloaded under a per-job name (webapp 2.4.4):
+  `C<course number>H<homework number>-G<total grade>-Y<HHMM>-<YYMMDD>.zip`,
+  where the numbers are taken from the course and assignment labels,
+  the grade is completeness + accuracy, and Y is the time and date of
+  the job's YouTube link check in the student's local time (the
+  grading time when no check time was kept). The download name is not
+  part of the signed record; the audit app accepts any .zip file name
+  and verifies the contents.
 - Grade of record: the signed grade stands for clean packages; a grade
   the teacher enters in the audit app overrides it (existing v21 rule).
 
