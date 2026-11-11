@@ -456,6 +456,22 @@ def main():
     status, subs = call("GET", "/api/submissions")
     check(status == 200 and len(subs) == 1 and subs[0]["downloaded"],
           "submissions view joins Canvas list with local downloads")
+    check("submitted_at" in subs[0]
+          and subs[0]["course_name"] == "CHE 1234"
+          and subs[0]["assignment_name"] == "HW1",
+          "submissions view rows carry course, homework and a "
+          "submitted-date field for the v29 view controls (the "
+          "fixture row is the local fallback, whose date is None; "
+          "the wall check below pins the Canvas date itself)")
+    status, dash_v29 = call("GET", "/", raw=True)
+    check(all(b'id="' + i + b'"' in dash_v29 for i in
+              (b"fcourse", b"fhw", b"fstudent", b"ffrom", b"fto",
+               b"fexam", b"fgraded", b"fsort", b"fdir", b"fgroup",
+               b"freset", b"fcount"))
+          and b"function arrangeS" in dash_v29
+          and b"<th>Submitted</th>" in dash_v29,
+          "dashboard carries the v29 select/sort/filter/group "
+          "controls and a Submitted column")
     chk = subs[0]["check"]
     check(chk["internally_consistent"] and chk["receipt_ok"]
           and chk["estimated_grades"] == {"completeness": 4, "accuracy": 4},
@@ -620,6 +636,24 @@ def main():
           and real_rows[0]["completeness"] == 4
           and real_rows[0]["score"] == 8,
           "wall data carries the real package (composite grade 8/10)")
+    check(real_rows[0]["course_name"] == "CHE 1234"
+          and real_rows[0]["assignment_name"] == "HW1"
+          and real_rows[0]["submitted_at"] == "2026-11-08T10:00:00Z",
+          "wall data carries course, homework and submitted date "
+          "as separate fields (v29 view controls)")
+    check(demo_rows[0]["course_name"] is None
+          and demo_rows[0]["assignment_name"] is None
+          and demo_rows[0]["submitted_at"] is None,
+          "wall demo students carry empty view fields (v29)")
+    status, wall_v29 = call("GET", "/wall", raw=True)
+    check(all(b'id="' + i + b'"' in wall_v29 for i in
+              (b"fcourse", b"fhw", b"fstudent", b"ffrom", b"fto",
+               b"fexam", b"fgraded", b"fsort", b"fdir", b"fgroup",
+               b"freset", b"fcount"))
+          and b"function arrangeW" in wall_v29
+          and b"ta-view-v1" in wall_v29 and b"ta-view-v1" in dash_v29,
+          "video wall carries the same v29 view controls, sharing "
+          "the stored view with the dashboard")
     status, out = call("POST", "/api/final-grade",
                        {"user_id": "demo-t", "score": 7})
     status, walldata = call("GET", "/api/wall")
@@ -803,6 +837,58 @@ def main():
     check(len(row222) == 1 and row222[0]["student_score"] == 8
           and not row222[0]["check"],
           "grades show from the downloaded package before any check runs")
+
+    # 9. v31: local-first views and the parallel scan. With every
+    # Canvas fetcher rigged to raise and count, the ?local=1 views
+    # must still serve the downloaded packages from disk — names,
+    # labels and dates from the package index — and must not call
+    # Canvas at all.
+    check(web.SCAN_TTL_S == 600,
+          "scan cache lasts 600 s, the automatic pass interval (v31)")
+    _calls = {"n": 0}
+
+    def _boom(*a, **k):
+        _calls["n"] += 1
+        raise RuntimeError("Canvas must not be called for ?local=1")
+
+    _keep = (web.fetch_courses, web.fetch_assignments,
+             web.fetch_submissions_for, web.fetch_roster_maps)
+    web.fetch_courses = _boom
+    web.fetch_assignments = _boom
+    web.fetch_submissions_for = _boom
+    web.fetch_roster_maps = _boom
+    try:
+        status, lsubs = call("GET", "/api/submissions?local=1")
+        status_w, lwall = call("GET", "/api/wall?local=1")
+    finally:
+        (web.fetch_courses, web.fetch_assignments,
+         web.fetch_submissions_for, web.fetch_roster_maps) = _keep
+    lrow = [r for r in lsubs if r["user_id"] == "222"] \
+        if status == 200 else []
+    check(status == 200 and _calls["n"] == 0 and len(lrow) == 1
+          and lrow[0]["downloaded"] is True
+          and lrow[0]["user_name"] == "Roe, John"
+          and lrow[0]["course_name"] == "CHE 1234"
+          and lrow[0]["assignment_name"] == "HW1"
+          and lrow[0]["submitted_at"] == "2026-11-08T11:00:00Z"
+          and lrow[0]["student_score"] == 8,
+          "local submissions view serves downloaded packages from "
+          "disk (index names, labels, date, package grades) with "
+          "no Canvas call (v31)")
+    lstu = [s for s in lwall["students"] if s.get("user_id") == "222"] \
+        if status_w == 200 else []
+    check(status_w == 200 and len(lstu) == 1
+          and lstu[0]["name"] == "Roe, John"
+          and lstu[0]["score"] == 8
+          and lstu[0]["email"] == ""
+          and len(lstu[0]["transcript"]) > 0,
+          "local wall view serves downloaded takes from disk "
+          "with grades and transcript, no roster call (v31)")
+    dash31 = call("GET", "/", raw=True)[1]
+    wall31 = call("GET", "/wall", raw=True)[1]
+    check(b"?local=1" in dash31 and b"?local=1" in wall31,
+          "both pages ask for the local prefill first (v31)")
+
 
     # 8e. Time marks: add, export grouped text, edit note, delete.
     status, store = call("POST", "/api/marks", {
@@ -1211,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/27.0",
-          "user agent bumped to 27.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/34.0",
+          "user agent bumped to 34.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -1645,6 +1731,673 @@ def main():
     status, out = call("GET", "/api/hw-packages")
     check(status == 400 and "no grading admin token" in out["error"],
           "with no token saved, package management stops")
+
+    # 9. v31: the parallel scan (the local-first views are
+    # checked in section 8d, while the downloads exist).
+    # The scan fetches submissions for independent targets in
+    # parallel: six targets at 0.4 s each would take 2.4 s one by
+    # one; the parallel scan must land well under that and still
+    # return every row.
+    import time as _t31
+    _keep2 = (web.fetch_courses, web.fetch_assignments,
+              web.fetch_submissions_for)
+    web.fetch_courses = lambda cfg: [
+        {"id": 101, "name": "CHE 1234", "workflow_state": "available",
+         "enrollments": [{"type": "teacher"}]}]
+    web.fetch_assignments = lambda cfg, cid: [
+        {"id": 300 + i, "name": f"HW{i}", "points_possible": 10,
+         "published": True} for i in range(6)]
+
+    def _slow_subs(cfg, cid, aid):
+        _t31.sleep(0.4)
+        return [{"user_id": 500 + aid, "workflow_state": "submitted",
+                 "attempt": 1, "submitted_at": "2026-11-08T10:00:00Z",
+                 "user": {"id": 500 + aid, "name": f"S{aid}"},
+                 "attachments": [{"filename": "submission.zip"}]}]
+
+    web.fetch_submissions_for = _slow_subs
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    try:
+        t0 = _t31.monotonic()
+        idx31 = web.canvas_submission_index(cfg_live)
+        elapsed = _t31.monotonic() - t0
+    finally:
+        (web.fetch_courses, web.fetch_assignments,
+         web.fetch_submissions_for) = _keep2
+        web._SCAN["targets"] = []
+        web._SCAN["at"] = 0.0
+        web._SCAN["subs"] = {}
+    check(len(idx31) == 6 and elapsed < 1.6,
+          f"scan fetches target submissions in parallel "
+          f"(6 x 0.4 s in {elapsed:.2f} s, all rows returned) (v31)")
+
+
+    # 11. v32: hover panel, redownload tool, previous attempts.
+    # Stubs: one course/homework; student 333 with three attempts
+    # (two earlier ZIP packages), student 444 current only.
+    import time as _t32
+    zip333a1 = make_zip_bytes(
+        build_html(audit.sha256_file(wav_tmp)), wav_bytes)
+    # Attempt 1 carries a different critique so its zoom/panel
+    # data is distinguishable from the current attempt's.
+    html_a1 = build_html(audit.sha256_file(wav_tmp)).replace(
+        CRITIQUE, "attempt one critique: the feed tray is missing")
+    zip333a1 = make_zip_bytes(html_a1, wav_bytes)
+    SUBS32 = [{
+        "id": 9300, "user_id": 333, "workflow_state": "submitted",
+        "attempt": 3, "submitted_at": "2026-11-10T10:00:00Z",
+        "user": {"id": 333, "name": "Attempts, Amy"},
+        "attachments": [{"filename": "submission.zip",
+                         "url": "mem://cur333",
+                         "size": len(zip222)}]}, {
+        "id": 9400, "user_id": 444, "workflow_state": "submitted",
+        "attempt": 1, "submitted_at": "2026-11-10T11:00:00Z",
+        "user": {"id": 444, "name": "Single, Sam"},
+        "attachments": [{"filename": "submission.zip",
+                         "url": "mem://cur444",
+                         "size": len(zip222)}]}]
+    HIST32 = [{
+        "id": 9300, "user_id": 333, "workflow_state": "submitted",
+        "attempt": 3, "submitted_at": "2026-11-10T10:00:00Z",
+        "user": {"id": 333, "name": "Attempts, Amy"},
+        "attachments": SUBS32[0]["attachments"],
+        "submission_history": [
+            {"id": 9300, "attempt": 1,
+             "submitted_at": "2026-11-08T10:00:00Z",
+             "attachments": [{"filename": "submission.zip",
+                              "url": "mem://a1-333",
+                              "size": len(zip333a1)}]},
+            {"id": 9300, "attempt": 2,
+             "submitted_at": "2026-11-09T10:00:00Z",
+             "attachments": [{"filename": "notes.pdf",
+                              "url": "mem://a2-333"}]},
+            {"id": 9300, "attempt": 3,
+             "submitted_at": "2026-11-10T10:00:00Z",
+             "attachments": SUBS32[0]["attachments"]}]}, {
+        "id": 9400, "user_id": 444, "workflow_state": "submitted",
+        "attempt": 1, "submitted_at": "2026-11-10T11:00:00Z",
+        "user": {"id": 444, "name": "Single, Sam"},
+        "attachments": SUBS32[1]["attachments"],
+        "submission_history": [
+            {"id": 9400, "attempt": 1,
+             "submitted_at": "2026-11-10T11:00:00Z",
+             "attachments": SUBS32[1]["attachments"]}]}]
+    _keep32 = (web.fetch_courses, web.fetch_assignments,
+               web.fetch_submissions_for,
+               web.fetch_submissions_for_history, web.fetch_bytes_web)
+    web.fetch_courses = lambda cfg: [
+        {"id": 101, "name": "CHE 1234", "course_code": "CHE1234",
+         "workflow_state": "available",
+         "enrollments": [{"type": "teacher"}]}]
+    web.fetch_assignments = lambda cfg, cid: [
+        {"id": 202, "name": "HW1", "points_possible": 10,
+         "published": True}] if cid == 101 else []
+    web.fetch_submissions_for = lambda cfg, cid, aid: \
+        SUBS32 if (cid, aid) == (101, 202) else []
+    web.fetch_submissions_for_history = lambda cfg, cid, aid: \
+        HIST32 if (cid, aid) == (101, 202) else []
+    web.fetch_bytes_web = lambda cfg, url: \
+        {"mem://cur333": zip222, "mem://cur444": zip222,
+         "mem://a1-333": zip333a1}[url]
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
+    web.clear_history_cache()   # v34: stubs swapped; drop cached walks
+    cfg32 = web.load_web_config()
+
+    # (a) Page wiring: hover panel + redownload panel present.
+    status, wall32 = call("GET", "/wall", raw=True)
+    check(status == 200
+          and all(b'id="' + i + b'"' in wall32 for i in
+                  (b"hoverpanel", b"hpcard", b"hpmarks", b"hpcritique",
+                   b"hptrans", b"attbtn", b"attstatus"))
+          and b"function selectTile" in wall32
+          and b"function renderHoverPanel" in wall32
+          and b"syncHoverSelection" in wall32
+          and wall32.count(b'class="hpanel"') == 3,
+          "wall carries the hover side panel (card, marks, "
+          "critique, transcript), the attempts toggle and the "
+          "selection logic (v32)")
+    status, dash32 = call("GET", "/", raw=True)
+    check(status == 200
+          and all(b'id="' + i + b'"' in dash32 for i in
+                  (b"rdcourse", b"rdhw", b"rdstudent", b"rdfrom",
+                   b"rdto", b"rdexam", b"rdgraded", b"rdforce",
+                   b"rddo", b"rdestimate", b"rdprogress", b"rdresult"))
+          and b'name="rdscope"' in dash32,
+          "dashboard section 2 carries the redownload panel with "
+          "its filters, scope radios, force and estimate line (v32)")
+
+    # (b) Estimate, uncalibrated: nothing downloaded for these
+    # students yet, so both packages are to-fetch at the assumed
+    # rate; then a filtered estimate for one student only.
+    stats_file = data_dir / "download-stats.json"
+    stats_saved = stats_file.read_bytes() if stats_file.exists() \
+        else None
+    if stats_file.exists():
+        stats_file.unlink()
+    status, est = call("POST", "/api/redownload-estimate", {})
+    mb = len(zip222)
+    check(status == 200 and est["packages"] == 2
+          and est["to_fetch"] == 2 and est["present"] == 0
+          and est["bytes"] == 2 * mb and est["calibrated"] is False
+          and est["rate_bps"] == audit.ASSUMED_DOWNLOAD_RATE_BPS
+          and abs(est["seconds"] - 2 * mb
+                  / audit.ASSUMED_DOWNLOAD_RATE_BPS) < 1e-6,
+          "redownload estimate: both packages to fetch at the "
+          "assumed rate, marked uncalibrated (v32)")
+    status, est1 = call("POST", "/api/redownload-estimate",
+                        {"student": "Amy"})
+    check(status == 200 and est1["packages"] == 1
+          and est1["to_fetch"] == 1 and est1["bytes"] == mb,
+          "redownload estimate honours the student filter (v32)")
+    status, estp = call("POST", "/api/redownload-estimate",
+                        {"student": "Amy", "scope": "previous"})
+    check(status == 200 and estp["packages"] == 2
+          and estp["bytes"] == mb + len(zip333a1),
+          "redownload estimate with previous scope counts the "
+          "earlier ZIP attempt and skips the non-ZIP one (v32)")
+
+    # (c) Run the tool for Amy only, previous scope; poll to done.
+    status, started = call("POST", "/api/redownload",
+                           {"student": "Amy", "scope": "previous"})
+    check(status == 200 and started.get("started") is True,
+          "redownload run starts (v32)")
+    deadline = _t32.monotonic() + 30
+    st32 = {}
+    while _t32.monotonic() < deadline:
+        status, st32 = call("GET", "/api/redownload/status")
+        if not st32.get("running"):
+            break
+        _t32.sleep(0.1)
+    unit333 = data_dir / "downloads" / "101" / "202" / "333"
+    check(not st32.get("running") and st32.get("downloaded") == 2
+          and (unit333 / "submission.html").exists()
+          and (unit333 / "attempt-1" / "submission.html").exists()
+          and not (unit333 / "attempt-2").exists()
+          and not (data_dir / "downloads" / "101" / "202" / "444")
+          .exists()
+          and st32.get("seconds") is not None
+          and st32.get("estimate", {}).get("to_fetch") == 2,
+          "redownload run fetches only the filtered student's "
+          "current + previous packages, and its closing state "
+          "carries the actual time beside the estimate (v32)")
+    check(stats_file.exists()
+          and len(audit.load_download_stats(cfg32)) >= 1,
+          "the finished run leaves a calibration record (v32)")
+    status, est2 = call("POST", "/api/redownload-estimate",
+                        {"student": "Amy", "scope": "previous"})
+    check(status == 200 and est2["to_fetch"] == 0
+          and est2["present"] == 2 and est2["calibrated"] is True,
+          "after the run the same selection estimates zero to "
+          "fetch, all present, now calibrated (v32)")
+    status, estf = call("POST", "/api/redownload-estimate",
+                        {"student": "Amy", "force": True})
+    check(status == 200 and estf["to_fetch"] == 1,
+          "force marks a present, unchanged package as to-fetch "
+          "(v32)")
+
+    # (d) Wall rows carry attempt; attempts rows for the unit.
+    status, walldata32 = call("GET", "/api/wall")
+    row333 = [s for s in walldata32["students"]
+              if s.get("user_id") == "333"]
+    check(len(row333) == 1 and row333[0]["attempt"] == 3,
+          "wall rows carry the current attempt number (v32)")
+    status, att = call("GET", "/api/wall/attempts?key=101_202_333")
+    arows = att["attempts"]
+    check(status == 200 and len(arows) == 2
+          and [r["attempt_no"] for r in arows] == [1, 3]
+          and arows[0]["is_current"] is False
+          and arows[1]["is_current"] is True
+          and arows[0]["attempt_label"].startswith("Attempt 1")
+          and "previous" in arows[0]["attempt_label"]
+          and "current" in arows[1]["attempt_label"],
+          "attempts rows: ordered by attempt, labelled, current "
+          "flagged (v32)")
+    check("attempt one critique" in arows[0]["critique"]
+          and arows[0]["score"] == 8
+          and arows[0]["final_score"] is None
+          and arows[0]["integrity"] == "not checked"
+          and len(arows[0]["transcript"]) > 0,
+          "attempts zoom data: a previous attempt shows its own "
+          "grades, critique and transcript, no final, not "
+          "checked (v32)")
+
+    # (e) On-demand attempts fetch for Sam (nothing extra), and
+    # cleanup of Amy's unit removes her attempt folder, attempt
+    # watermark and attempt video.
+    status, att444 = call("POST", "/api/wall/attempts/fetch",
+                          {"key": "101_202_444"})
+    check(status == 200 and len(att444["attempts"]) == 1
+          and att444["attempts"][0]["is_current"] is True,
+          "attempts fetch on demand returns the single-attempt "
+          "student's current row (v32)")
+    vid = data_dir / "videos" / "101_202_333-attempt-1.mp4"
+    vid.parent.mkdir(parents=True, exist_ok=True)
+    vid.write_bytes(b"0" * 32)
+    out = web.selective_cleanup(cfg32, ["101_202_333"])
+    state32 = json.loads((data_dir / "download-state.json")
+                         .read_text(encoding="utf-8"))
+    check(out["units"] == 1 and not unit333.exists()
+          and not vid.exists()
+          and not any(k.startswith("101:202:333")
+                      for k in state32),
+          "cleanup of a unit removes its attempt folders, "
+          "attempt watermark and attempt video (v32)")
+
+    (web.fetch_courses, web.fetch_assignments,
+     web.fetch_submissions_for, web.fetch_submissions_for_history,
+     web.fetch_bytes_web) = _keep32
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
+    if stats_saved is None:
+        stats_file.unlink(missing_ok=True)
+    else:
+        stats_file.write_bytes(stats_saved)
+
+    # 12. v33: table attempt rows, table → wall selection and
+    # focus wiring, hover-panel layout fix. Students: Pat (555,
+    # three ZIP attempts with distinct grades), Quinn (666,
+    # single attempt), Rita (777, three attempts on Canvas,
+    # current only downloaded at first).
+    def graded_zip33(comp, acc, critique):
+        h = build_html(audit.sha256_file(wav_tmp))
+        h = h.replace(CRITIQUE, critique)
+        h = h.replace('<span data-grade="completeness">4</span>',
+                      f'<span data-grade="completeness">{comp}</span>')
+        h = h.replace('<span data-grade="accuracy">4</span>',
+                      f'<span data-grade="accuracy">{acc}</span>')
+        h = h.replace("<dt>Completeness</dt><dd>4</dd>",
+                      f"<dt>Completeness</dt><dd>{comp}</dd>")
+        h = h.replace("<dt>Accuracy</dt><dd>4</dd>",
+                      f"<dt>Accuracy</dt><dd>{acc}</dd>")
+        return make_zip_bytes(h, wav_bytes)
+
+    zip_pat_a1 = graded_zip33(
+        3, 2, "attempt one critique: the feed tray is missing")
+    zip_pat_a2 = graded_zip33(
+        2, 2, "attempt two critique: the reflux ratio is off")
+
+    def _sub33(uid, name, att_url):
+        return {"id": 9500 + uid, "user_id": uid,
+                "workflow_state": "submitted", "attempt": 3,
+                "submitted_at": "2026-11-10T09:00:00Z",
+                "user": {"id": uid, "name": name},
+                "attachments": [{"filename": "submission.zip",
+                                 "url": att_url,
+                                 "size": len(zip222)}]}
+
+    SUBS33 = [_sub33(555, "Previous, Pat", "mem://cur555"),
+              {"id": 10666, "user_id": 666,
+               "workflow_state": "submitted", "attempt": 1,
+               "submitted_at": "2026-11-10T08:00:00Z",
+               "user": {"id": 666, "name": "Single, Quinn"},
+               "attachments": [{"filename": "submission.zip",
+                                "url": "mem://cur666",
+                                "size": len(zip222)}]},
+              _sub33(777, "Recent, Rita", "mem://cur777")]
+
+    def _hist33(sub, pairs):
+        h = dict(sub)
+        h["submission_history"] = [
+            {"id": sub["id"], "attempt": n,
+             "submitted_at": f"2026-11-0{7 + n}T09:00:00Z",
+             "attachments": [{"filename": "submission.zip",
+                              "url": url, "size": 1}]}
+            for n, url in pairs]
+        return h
+
+    HIST33 = [
+        _hist33(SUBS33[0], [(1, "mem://a1-555"), (2, "mem://a2-555"),
+                            (3, "mem://cur555")]),
+        _hist33(SUBS33[1], [(1, "mem://cur666")]),
+        _hist33(SUBS33[2], [(1, "mem://a1-777"), (2, "mem://a2-777"),
+                            (3, "mem://cur777")])]
+    # Quinn's history entry carries attempt 1 only, as in Canvas.
+    HIST33[1]["submission_history"][0]["submitted_at"] = \
+        "2026-11-10T08:00:00Z"
+    _keep33 = (web.fetch_courses, web.fetch_assignments,
+               web.fetch_submissions_for,
+               web.fetch_submissions_for_history, web.fetch_bytes_web)
+    web.fetch_courses = lambda cfg: [
+        {"id": 101, "name": "CHE 1234", "course_code": "CHE1234",
+         "workflow_state": "available",
+         "enrollments": [{"type": "teacher"}]}]
+    web.fetch_assignments = lambda cfg, cid: [
+        {"id": 202, "name": "HW1", "points_possible": 10,
+         "published": True}] if cid == 101 else []
+    web.fetch_submissions_for = lambda cfg, cid, aid: \
+        SUBS33 if (cid, aid) == (101, 202) else []
+    web.fetch_submissions_for_history = lambda cfg, cid, aid: \
+        HIST33 if (cid, aid) == (101, 202) else []
+    web.fetch_bytes_web = lambda cfg, url: {
+        "mem://cur555": zip222, "mem://a1-555": zip_pat_a1,
+        "mem://a2-555": zip_pat_a2, "mem://cur666": zip222,
+        "mem://cur777": zip222, "mem://a1-777": zip_pat_a1,
+        "mem://a2-777": zip_pat_a2}[url]
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
+    web.clear_history_cache()   # v34: stubs swapped; drop cached walks
+
+    def run_redownload33(body):
+        status, started = call("POST", "/api/redownload", body)
+        check(status == 200 and started.get("started") is True,
+              f"redownload starts for {body} (v33 setup)")
+        deadline = _t32.monotonic() + 30
+        st = {}
+        while _t32.monotonic() < deadline:
+            status, st = call("GET", "/api/redownload/status")
+            if not st.get("running"):
+                break
+            _t32.sleep(0.1)
+        return st
+
+    st = run_redownload33({"student": "Pat", "scope": "previous"})
+    unit555 = data_dir / "downloads" / "101" / "202" / "555"
+    check(st.get("downloaded") == 3
+          and (unit555 / "attempt-1" / "submission.html").exists()
+          and (unit555 / "attempt-2" / "submission.html").exists(),
+          "setup: Pat's current + two previous attempts downloaded "
+          "(v33)")
+    run_redownload33({"student": "Rita", "scope": "current"})
+    unit777 = data_dir / "downloads" / "101" / "202" / "777"
+    check((unit777 / "submission.html").exists()
+          and not list(unit777.glob("attempt-*")),
+          "setup: Rita's current attempt only (v33)")
+
+    # (a) Default payload unchanged; attempts payload on request.
+    status, rows33 = call("GET", "/api/submissions")
+    pat = next(r for r in rows33 if r["user_id"] == "555")
+    check("attempts" not in pat and "attempts_missing" not in pat,
+          "submissions payload carries no attempt data unless "
+          "requested (v33)")
+    status, rows33a = call("GET", "/api/submissions?attempts=1")
+    by33 = {r["user_id"]: r for r in rows33a}
+    pat, rita, quinn = by33["555"], by33["777"], by33["666"]
+    check([a["attempt_no"] for a in pat["attempts"]] == [1, 2]
+          and [a["score"] for a in pat["attempts"]] == [5, 4]
+          and pat["attempts_missing"] == 0
+          and pat["attempt"] == 3 and pat["student_score"] == 8,
+          "table attempt rows: previous attempts on disk with "
+          "their own signed grades, canonical row untouched (v33)")
+    check(rita["attempts"] == [] and rita["attempts_missing"] == 2,
+          "not-downloaded note counts the previous attempts "
+          "Canvas holds but disk does not (v33)")
+    check(quinn["attempts"] == [] and quinn["attempts_missing"] == 0,
+          "single-attempt student has no attempt rows and no "
+          "note (v33)")
+    status, rows33l = call("GET",
+                           "/api/submissions?local=1&attempts=1")
+    patl = next(r for r in rows33l if r["user_id"] == "555")
+    check(len(patl["attempts"]) == 2,
+          "attempt rows are disk-local: the local prefill carries "
+          "them too (v33)")
+
+    # (b) Page wiring: dashboard selection + attempts control,
+    # wall selection mode, focus deep link, hover-panel fix.
+    status, dash33 = call("GET", "/", raw=True)
+    check(status == 200
+          and all(b'id="' + i + b'"' in dash33 for i in
+                  (b"fattempts", b"selcount", b"selview", b"selclear"))
+          and b'class="selbox"' in dash33
+          and b"ta-wall-selection-v1" in dash33
+          and b"/wall?focus=" in dash33
+          and b'class="attrow"' in dash33
+          and b"previous attempt(s) not downloaded" in dash33,
+          "dashboard carries the selection ticks, the View "
+          "selected button, the Attempts control and the attempt "
+          "row rendering (v33)")
+    status, wall33 = call("GET", "/wall", raw=True)
+    check(status == 200
+          and b'id="selbar"' in wall33
+          and b"SELMODE" in wall33
+          and b"Clear selection" in wall33
+          and b"function maybeFocus" in wall33
+          and b"ATTKEEP" in wall33
+          and b"height:calc(100vh - 140px)" in wall33
+          and b"#hoverpanel .panel-body{flex:1}" in wall33,
+          "wall carries the selection banner, the focus deep "
+          "link and the definite-height hover panel (v33)")
+
+    (web.fetch_courses, web.fetch_assignments,
+     web.fetch_submissions_for, web.fetch_submissions_for_history,
+     web.fetch_bytes_web) = _keep33
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
+
+    # ---------------------------------------------------------
+    # 13. v34: the redownload POST returns promptly — planning
+    # moves into the run thread and shows a planning phase; one
+    # target's history failure is counted and the run continues;
+    # one cached history walk serves estimate, run and the wall
+    # fetch; non-ZIP previous attempts are reported, and a
+    # previous attempt whose ZIP is rejected is reported from
+    # the record on later runs and never re-fetched. Slow stub:
+    # each history walk takes ~1.2 s per target, three targets.
+    import copy
+    _buf34 = io.BytesIO()
+    with zipfile.ZipFile(_buf34, "w", zipfile.ZIP_STORED) as z:
+        z.writestr("submission.html", "<html>bad</html>")
+        z.writestr("submission-audio.wav", wav_bytes)
+        z.writestr("extra.txt", "x")
+    BADZIP34 = _buf34.getvalue()
+    GOODZIP34 = make_zip_bytes("<html>slow</html>", wav_bytes)
+
+    def _sub34(uid, name, attempt, sid, url, when):
+        return {"id": sid, "user_id": uid, "attempt": attempt,
+                "workflow_state": "submitted", "submitted_at": when,
+                "user": {"id": uid, "name": name},
+                "attachments": [{"filename": "pkg.zip", "url": url,
+                                 "size": len(GOODZIP34)}]}
+
+    SLOW1 = _sub34(111, "Slow One", 1, 9101, "mem://s1",
+                   "2026-11-01T00:00:00Z")
+    SLOW2 = _sub34(222, "Slow Two", 1, 9102, "mem://s2",
+                   "2026-11-01T00:00:00Z")
+    BROKEN3 = _sub34(333, "Broken Three", 1, 9103, "mem://s3",
+                     "2026-11-01T00:00:00Z")
+    FRED = _sub34(444, "Format Fred", 3, 9106, "mem://f3",
+                  "2026-11-03T00:00:00Z")
+    FRED_HIST = [dict(FRED, submission_history=[
+        {"attempt": 1, "submitted_at": "2026-11-01T00:00:00Z",
+         "id": 9104,
+         "attachments": [{"filename": "fred.wav",
+                          "url": "mem://f1.wav"},
+                         {"filename": "fred.html",
+                          "url": "mem://f1.html"}]},
+        {"attempt": 2, "submitted_at": "2026-11-02T00:00:00Z",
+         "id": 9105,
+         "attachments": [{"filename": "pkg.zip",
+                          "url": "mem://f2bad",
+                          "size": len(BADZIP34)}]},
+        {"attempt": 3, "submitted_at": "2026-11-03T00:00:00Z",
+         "id": 9106,
+         "attachments": [{"filename": "pkg.zip", "url": "mem://f3",
+                          "size": len(GOODZIP34)}]}])]
+    SCAN34 = {(101, 202): [SLOW1, FRED], (101, 203): [SLOW2],
+              (101, 204): [BROKEN3]}
+    HIST34 = {(101, 202): [dict(SLOW1, submission_history=[]),
+                           *FRED_HIST],
+              (101, 203): [dict(SLOW2, submission_history=[])]}
+    HIST_CALLS34 = {"n": 0}
+    FETCH34 = {}
+
+    def hist34(cfg_, cid, aid):
+        HIST_CALLS34["n"] += 1
+        if (cid, aid) == (101, 204):
+            raise RuntimeError("history boom")
+        time.sleep(1.2)
+        return copy.deepcopy(HIST34.get((cid, aid), []))
+
+    def bytes34(cfg_, url):
+        FETCH34[url] = FETCH34.get(url, 0) + 1
+        return BADZIP34 if url == "mem://f2bad" else GOODZIP34
+
+    _keep34 = (web.fetch_courses, web.fetch_assignments,
+               web.fetch_submissions_for,
+               web.fetch_submissions_for_history, web.fetch_bytes_web)
+    web.fetch_courses = lambda cfg: [
+        {"id": 101, "name": "CHE 1234", "course_code": "CHE1234",
+         "workflow_state": "available",
+         "enrollments": [{"type": "teacher"}]}]
+    web.fetch_assignments = lambda cfg, cid: [
+        {"id": 202, "name": "HW1", "points_possible": 10,
+         "published": True},
+        {"id": 203, "name": "HW2", "points_possible": 10,
+         "published": True},
+        {"id": 204, "name": "HW3", "points_possible": 10,
+         "published": True}] if cid == 101 else []
+    web.fetch_submissions_for = lambda cfg, cid, aid: \
+        copy.deepcopy(SCAN34.get((cid, aid), []))
+    web.fetch_submissions_for_history = hist34
+    web.fetch_bytes_web = bytes34
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
+    web.clear_history_cache()
+    cfg34 = web.load_web_config()
+
+    def wait_redl34():
+        phases = []
+        deadline = time.time() + 60
+        st = {}
+        while time.time() < deadline:
+            _, st = call("GET", "/api/redownload/status")
+            if st.get("phase"):
+                phases.append(st["phase"])
+            if not st.get("running"):
+                return st, phases
+            time.sleep(0.15)
+        raise AssertionError("redownload run did not finish")
+
+    # (a) The slow-stub run: prompt POST, planning phase, the
+    # broken target counted, the others downloaded.
+    t0 = time.monotonic()
+    status, started34 = call("POST", "/api/redownload",
+                             {"scope": "previous"})
+    post_s = time.monotonic() - t0
+    check(status == 200 and started34.get("started") is True
+          and post_s < 1.0,
+          "redownload POST returns promptly with slow history "
+          f"stubs (took {post_s:.2f} s of ~3.6 s of walks) (v34)")
+    st34, phases34 = wait_redl34()
+    check("planning" in phases34,
+          "the run's status passes through a planning phase (v34)")
+    dl34 = Path(cfg34["data_dir"]) / "downloads"
+    check(st34.get("target_errors") == 1
+          and "1 assignment(s) could not be read"
+          in st34.get("summary", "")
+          and (dl34 / "101" / "202" / "111"
+               / "submission.html").exists()
+          and (dl34 / "101" / "203" / "222"
+               / "submission.html").exists(),
+          "one target's history failure is counted in the closing "
+          "summary and the run completes the other targets (v34)")
+    check(HIST_CALLS34["n"] == 4,
+          "one history walk per target serves plan and run "
+          "(3 walks + 1 retry of the failed target, not three "
+          f"walks per target; got {HIST_CALLS34['n']}) (v34)")
+
+    # (b) The format student: estimate lists the non-package
+    # attempt; the run reports it and the rejected ZIP.
+    status, e34a = call("POST", "/api/redownload-estimate",
+                        {"scope": "previous", "student": "format"})
+    nif34a = e34a.get("not_in_format") or []
+    check(len(nif34a) == 1 and nif34a[0]["attempt"] == 1
+          and nif34a[0]["holds"] == "audio + html files, no ZIP"
+          and e34a.get("rejected") == 1
+          and e34a.get("packages") == 1
+          and e34a.get("to_fetch") == 0,
+          "estimate lists the two-file previous attempt as not "
+          "in package format (with what it holds) and the "
+          "rejected attempt from the record, neither in the "
+          "fetch set (v34)")
+    call("POST", "/api/redownload",
+         {"scope": "previous", "student": "format"})
+    st34b, _ = wait_redl34()
+    check("not in package format" in st34b.get("summary", "")
+          and "rejected" in st34b.get("summary", "")
+          and FETCH34.get("mem://f2bad") == 1
+          and (dl34 / "101" / "202" / "444"
+               / "submission.html").exists(),
+          "run reports the not-in-format attempt and the "
+          "rejected ZIP, and downloads the valid current "
+          "attempt (v34)")
+    state34 = json.loads((Path(cfg34["data_dir"])
+                          / "download-state.json").read_text())
+    check(state34.get("101:202:444:attempt-2", {})
+          .get("rejected") is True,
+          "the rejected mark is in download-state.json for the "
+          "failed previous attempt (v34)")
+
+    # (c) Second estimate + run: the rejected attempt is
+    # reported from the record and never re-fetched.
+    status, e34b = call("POST", "/api/redownload-estimate",
+                        {"scope": "previous", "student": "format"})
+    check(e34b.get("rejected") == 1 and e34b.get("packages") == 1
+          and e34b.get("to_fetch") == 0,
+          "second estimate reports the rejected attempt from "
+          "the record and excludes it from the fetch set (v34)")
+    call("POST", "/api/redownload",
+         {"scope": "previous", "student": "format"})
+    wait_redl34()
+    check(FETCH34.get("mem://f2bad") == 1,
+          "a second run fetches zero bytes for the rejected "
+          "attempt (v34)")
+
+    # (d) The wall's attempts fetch shares the same cached walk.
+    n_hist34 = HIST_CALLS34["n"]
+    web.fetch_unit_attempts(cfg34, "101_202_444")
+    check(HIST_CALLS34["n"] == n_hist34,
+          "the wall's attempts fetch reuses the cached history "
+          "walk (v34)")
+
+    # (e) The table's accounting distinguishes the causes from
+    # local records only.
+    status, rows34 = call("GET", "/api/submissions?attempts=1")
+    fred34 = next(r for r in rows34 if r["user_id"] == "444")
+    check(fred34.get("attempts_missing") == 0
+          and fred34.get("attempts_not_format") == 1
+          and fred34.get("attempts_rejected") == 1,
+          "table attempts accounting: 0 not downloaded, 1 not "
+          "in package format, 1 rejected (v34)")
+
+    # (f) Page wiring for the three v34 items.
+    status, dash34 = call("GET", "/", raw=True)
+    check(status == 200 and b'id="selall"' in dash34
+          and b"window.toggleSelAll" in dash34
+          and b"function syncSelAll" in dash34
+          and b"not in package format (no ZIP)" in dash34,
+          "dashboard carries the select-all-that-appear header "
+          "tick and the split attempt note (v34)")
+    status, wall34 = call("GET", "/wall", raw=True)
+    check(status == 200 and b'data-hpanel="critique"' in wall34
+          and b"data-hcollapse" in wall34
+          and b"ta-wall-hover-v1" in wall34
+          and b"function toggleHoverSection" in wall34
+          and b"#hoverpanel .hpanel.collapsed{flex:0 0 auto}"
+          in wall34,
+          "wall carries the collapsible hover-panel sections "
+          "with persisted state (v34)")
+
+    (web.fetch_courses, web.fetch_assignments,
+     web.fetch_submissions_for, web.fetch_submissions_for_history,
+     web.fetch_bytes_web) = _keep34
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
+    web.clear_history_cache()
 
     server.shutdown()
     worker.shutdown()

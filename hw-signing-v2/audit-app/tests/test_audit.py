@@ -738,6 +738,255 @@ def main():
     check(audit.mmss(65) == "01:05" and audit.mmss(600) == "10:00",
           "mmss formats flag times")
 
+
+    # 9b. v32: pre-fetch watermark skip, per-attempt storage,
+    # user filter, download-rate stats and the pure estimate.
+    fetch_count = {"n": 0}
+
+    def counting_bytes(_cfg, url):
+        fetch_count["n"] += 1
+        return zip_bytes
+
+    def hist_submissions(_cfg):
+        # One student, attempt 3 current; history holds attempts
+        # 1 (ZIP package), 2 (no ZIP — skipped) and 3 (the current
+        # attempt again — not duplicated).
+        return [{
+            "id": 9100, "user_id": 4242, "attempt": 3,
+            "workflow_state": "submitted",
+            "submitted_at": "2026-11-10T05:00:00Z",
+            "user": {"id": 4242, "name": "History Student"},
+            "attachments": [
+                {"filename": "C4242H1-G8-Y1000-261110.zip",
+                 "url": "fixture://cur", "size": len(zip_bytes)}],
+            "submission_history": [
+                {"id": 9100, "attempt": 1,
+                 "submitted_at": "2026-11-08T05:00:00Z",
+                 "attachments": [
+                     {"filename": "C4242H1-G5-Y0900-261108.zip",
+                      "url": "fixture://a1", "size": len(zip_bytes)}]},
+                {"id": 9100, "attempt": 2,
+                 "submitted_at": "2026-11-09T05:00:00Z",
+                 "attachments": [
+                     {"filename": "notes.pdf",
+                      "url": "fixture://a2"}]},
+                {"id": 9100, "attempt": 3,
+                 "submitted_at": "2026-11-10T05:00:00Z",
+                 "attachments": [
+                     {"filename": "C4242H1-G8-Y1000-261110.zip",
+                      "url": "fixture://cur", "size": len(zip_bytes)}]},
+            ],
+        }]
+
+    hfolder = Path(cfg["data_dir"]) / "downloads" / "4242"
+    recs = audit.download_packages(cfg, hist_submissions, counting_bytes,
+                                   include_history=True)
+    cur = [r for r in recs if r.get("current_attempt")]
+    prev = [r for r in recs if not r.get("current_attempt")
+            and not r.get("not_in_format")]
+    nif = [r for r in recs if r.get("not_in_format")]
+    check(len(recs) == 3 and len(cur) == 1 and len(prev) == 1
+          and len(nif) == 1 and nif[0]["attempt"] == 2
+          and nif[0]["holds"] == "notes.pdf"
+          and prev[0]["attempt"] == 1
+          and (hfolder / "submission.html").exists()
+          and (hfolder / "attempt-1" / "submission.html").exists()
+          and (hfolder / "attempt-1" / "package.zip").exists()
+          and not (hfolder / "attempt-2").exists()
+          and fetch_count["n"] == 2,
+          "history download: current attempt canonical, attempt 1 "
+          "in attempt-1/, the non-ZIP attempt 2 reported "
+          "not-in-format (reporting v34), history's copy of the "
+          "current attempt not duplicated (v32)")
+    state = json.loads((Path(cfg["data_dir"]) / "download-state.json")
+                       .read_text(encoding="utf-8"))
+    check(state.get("4242", {}).get("attempt") == 3
+          and state.get("4242:attempt-1", {}).get("attempt") == 1,
+          "history download: watermark keys the current attempt as "
+          "before and a previous attempt under <key>:attempt-<n> "
+          "(v32)")
+    fetch_count["n"] = 0
+    recs2 = audit.download_packages(cfg, hist_submissions,
+                                    counting_bytes, include_history=True)
+    pkg2 = [r for r in recs2 if not r.get("not_in_format")]
+    check(fetch_count["n"] == 0
+          and len(pkg2) == 2
+          and all(r.get("skipped") for r in pkg2)
+          and len(recs2) == 3,
+          "pre-fetch watermark check: a second history run fetches "
+          "no bytes at all for unchanged, present packages (v32)")
+    recs3 = audit.download_packages(cfg, hist_submissions,
+                                    counting_bytes, include_history=True,
+                                    force=True)
+    check(fetch_count["n"] == 2
+          and not any(r.get("skipped") for r in recs3),
+          "force re-fetches present, unchanged packages (v32)")
+    recs4 = audit.download_packages(cfg, hist_submissions,
+                                    counting_bytes, user_ids={"9999"})
+    check(recs4 == [] and fetch_count["n"] == 2,
+          "user filter: students outside the selection are not "
+          "considered (v32)")
+
+    # The pre-fetch rule also governs the plain latest-only path
+    # (student 555 was downloaded in section 7): a fetch counter
+    # proves no bytes move for the unchanged package.
+    fetch_count["n"] = 0
+    recs5 = audit.download_packages(cfg, fake_submissions,
+                                    counting_bytes)
+    check(fetch_count["n"] == 0 and recs5
+          and recs5[0].get("skipped") is True
+          and recs5[0].get("fetched_bytes") == 0,
+          "pre-fetch watermark check: the unchanged current "
+          "package is skipped without a fetch (v32)")
+
+    # Download-rate stats: write, read back, aggregate; a pass
+    # that fetched nothing records nothing.
+    stats_path = Path(cfg["data_dir"]) / "download-stats.json"
+    if stats_path.exists():
+        stats_path.unlink()
+    check(audit.load_download_stats(cfg) == []
+          and audit.effective_download_rate([]) is None,
+          "download stats: none recorded yet reads as uncalibrated "
+          "(v32)")
+    audit.record_download_stat(cfg, 4_000_000, 2.0, at="t1")
+    audit.record_download_stat(cfg, 0, 5.0, at="ignored")
+    audit.record_download_stat(cfg, 2_000_000, 2.0, at="t2")
+    stats = audit.load_download_stats(cfg)
+    check(len(stats) == 2
+          and audit.effective_download_rate(stats) == 1_500_000.0,
+          "download stats: records persist and the effective rate "
+          "is total bytes / total seconds (v32)")
+
+    # Estimate math (pure): counts, bytes and the widened range.
+    items = [{"size": 3_000_000, "needs_fetch": True},
+             {"size": 1_000_000, "needs_fetch": True},
+             {"size": 9_000_000, "needs_fetch": False}]
+    est = audit.estimate_download(items, 2_000_000)
+    check(est["packages"] == 3 and est["to_fetch"] == 2
+          and est["present"] == 1 and est["bytes"] == 4_000_000
+          and est["seconds"] == 2.0 and est["seconds_low"] == 1.6
+          and abs(est["seconds_high"] - 2.6) < 1e-9,
+          "estimate math: fetch counts, byte total and the "
+          "[0.8, 1.3] range over the point estimate (v32)")
+    est_u = audit.estimate_download(items, None)
+    check(est_u["rate_bps"] == audit.ASSUMED_DOWNLOAD_RATE_BPS,
+          "estimate math: no calibration selects the assumed rate "
+          "(v32)")
+
+    # 9c. v34: non-ZIP previous attempts are reported, and a
+    # previous attempt whose ZIP fails extraction leaves a
+    # rejected mark that later runs report without re-fetching. A
+    # current attempt's rejected ZIP is never marked, so a later
+    # pass retries it.
+    check(audit.describe_attempt_files([]) == "no files"
+          and audit.describe_attempt_files(
+              [{"filename": "rec.wav"}, {"filename": "page.html"}])
+          == "audio + html files, no ZIP"
+          and audit.describe_attempt_files(
+              [{"filename": "essay.pdf"}, {"filename": "data.csv"}])
+          == "essay.pdf, data.csv",
+          "describe_attempt_files: no files / the v1 two-file form / "
+          "other files listed by name (v34)")
+
+    def subs34(_cfg):
+        return [{"user": {"id": 4343, "name": "Format Fred"},
+                 "attempt": 3, "submitted_at": "2026-09-03T00:00:00Z",
+                 "id": 7761,
+                 "attachments": [
+                     {"filename": "pkg.zip",
+                      "url": "https://x/pkg34-3.zip"}],
+                 "submission_history": [
+                     {"attempt": 1,
+                      "submitted_at": "2026-09-01T00:00:00Z",
+                      "id": 7759,
+                      "attachments": [
+                          {"filename": "fred.wav",
+                           "url": "https://x/fred.wav"},
+                          {"filename": "fred.html",
+                           "url": "https://x/fred.html"}]},
+                     {"attempt": 2,
+                      "submitted_at": "2026-09-02T00:00:00Z",
+                      "id": 7760,
+                      "attachments": [
+                          {"filename": "pkg.zip",
+                           "url": "https://x/pkg34-2-bad.zip"}]},
+                     {"attempt": 3,
+                      "submitted_at": "2026-09-03T00:00:00Z",
+                      "id": 7761,
+                      "attachments": [
+                          {"filename": "pkg.zip",
+                           "url": "https://x/pkg34-3.zip"}]}]}]
+
+    fetch34 = {"n": 0}
+
+    def bytes34(cfg_, url):
+        fetch34["n"] += 1
+        if url.endswith("pkg34-2-bad.zip"):
+            return bad_zip
+        return zip_bytes
+
+    recs34 = audit.download_packages(cfg, subs34, bytes34,
+                                     subdir="c7_a7", key_prefix="7:77",
+                                     include_history=True)
+    nif34 = [r for r in recs34 if r.get("not_in_format")]
+    err34 = [r for r in recs34 if r.get("error")]
+    ok34 = [r for r in recs34 if r.get("audio_path")
+            and not r.get("skipped")]
+    check(len(nif34) == 1 and nif34[0]["attempt"] == 1
+          and nif34[0]["holds"] == "audio + html files, no ZIP"
+          and nif34[0]["fetched_bytes"] == 0
+          and len(err34) == 1 and err34[0].get("rejected") is True
+          and err34[0]["attempt"] == 2
+          and len(ok34) == 1 and ok34[0]["attempt"] == 3
+          and fetch34["n"] == 2,
+          "history run reports the two-file attempt as "
+          "not-in-format, the invalid-ZIP attempt as rejected, and "
+          "downloads the valid current attempt (v34)")
+    st34 = json.loads((Path(cfg["data_dir"])
+                       / "download-state.json").read_text())
+    check(st34.get("7:77:4343:attempt-2", {}).get("rejected") is True
+          and "7:77:4343:attempt-1" not in st34,
+          "the rejected mark is watermarked for the failed previous "
+          "attempt only (v34)")
+    fetch34["n"] = 0
+    recs34b = audit.download_packages(cfg, subs34, bytes34,
+                                      subdir="c7_a7", key_prefix="7:77",
+                                      include_history=True)
+    rej34 = [r for r in recs34b if r.get("rejected")]
+    check(fetch34["n"] == 0 and len(rej34) == 1
+          and rej34[0].get("skipped") is True
+          and rej34[0]["attempt"] == 2,
+          "a second run fetches zero bytes for the rejected attempt "
+          "and reports it as rejected from the record (v34)")
+
+    # A rejected ZIP on the CURRENT attempt is never watermarked.
+    def subs34c(_cfg):
+        return [{"user": {"id": 4545, "name": "Current Carol"},
+                 "attempt": 1, "submitted_at": "2026-09-04T00:00:00Z",
+                 "id": 7770,
+                 "attachments": [
+                     {"filename": "pkg.zip",
+                      "url": "https://x/pkg34c-bad.zip"}]}]
+
+    fetch34c = {"n": 0}
+
+    def bytes34c(cfg_, url):
+        fetch34c["n"] += 1
+        return bad_zip
+
+    audit.download_packages(cfg, subs34c, bytes34c,
+                            subdir="c8_a8", key_prefix="8:88")
+    st34c = json.loads((Path(cfg["data_dir"])
+                        / "download-state.json").read_text())
+    check("8:88:4545" not in st34c,
+          "a current attempt's rejected ZIP leaves no watermark "
+          "mark (v34)")
+    audit.download_packages(cfg, subs34c, bytes34c,
+                            subdir="c8_a8", key_prefix="8:88")
+    check(fetch34c["n"] == 2,
+          "a current attempt's rejected ZIP is retried on the next "
+          "run (v34)")
+
     # 10. Cleanup refuses without confirmation, and deletes with it.
     try:
         audit.cleanup(cfg, confirm=False)

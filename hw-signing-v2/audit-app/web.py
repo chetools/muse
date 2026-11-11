@@ -70,6 +70,38 @@ the transcript checksum is verified against that marked form;
 packages from earlier webapp versions keep verifying against
 the markerless form, chosen by the package's own webapp
 version field.
+
+v29: the submissions table and the video wall (the collage)
+share one set of view controls: select a course or a homework,
+filter by student text, a submitted-date range, examined or
+not, and graded or not; sort by course, student, date,
+homework, examined or grade; and group by any of those.
+"Graded" means a grade is present — the signed grade from the
+package or a teacher final grade. The wall data now carries
+course, homework and submitted date as separate fields, and
+the table gains a Submitted column. The chosen view is kept
+in the browser (localStorage) and applies on both pages, so a
+selection made in the table is the selection on the wall.
+
+v31: both views are local-first, and the Canvas scan is
+parallel. Previously the submissions table and the video wall
+waited on a live Canvas scan before showing anything: the
+scan is one courses call, an assignments call per scanned
+course, then a submissions call for every published
+assignment in those courses, and it ran sequentially with a
+120 s cache, so most page loads re-walked Canvas on a
+connection that drops calls. Now /api/submissions and
+/api/wall accept ?local=1 and answer from disk only — the
+downloaded packages, the stored checks, finals and examined
+marks, and the names, labels and submitted dates in
+package-index.json (which now also stores submitted_at) —
+and each page paints that first, then replaces it with the
+full view. The scan itself fetches assignments and
+submissions SCAN_WORKERS calls at a time, its cache lasts
+600 s (the automatic pass interval), the wall's roster calls
+are cached with the scan, the wall parses each package's
+HTML once, and the table parses a package's grades only when
+no stored check already holds them.
 """
 
 import argparse
@@ -772,8 +804,53 @@ def fetch_submissions_for(cfg, course_id, assignment_id):
                      params={"include[]": "user", "per_page": 100})
 
 
+def fetch_submissions_for_history(cfg, course_id, assignment_id):
+    """Submissions with their submission_history (v32): every
+    attempt of each student, each history entry a submission
+    object with its own attempt, submitted_at and attachments.
+    On demand only — the ordinary fetch stays latest-only."""
+    url = (f"{api_base(cfg)}/courses/{course_id}"
+           f"/assignments/{assignment_id}/submissions")
+    return http_json(url, token=cfg["canvas_token"],
+                     params={"include[]": ["user", "submission_history"],
+                             "per_page": 100})
+
+
 def fetch_bytes_web(cfg, url):
     return http_bytes(url, token=cfg["canvas_token"])
+
+
+# ------------------------------------------------- history cache
+#
+# v34: one submission_history walk per assignment target serves
+# the redownload estimate, the redownload run and the wall's
+# attempts fetch. Before v34 each of the three fetched the history
+# separately — three slow walks per target (each bounded by the
+# 120 s HTTP timeout) inside what looked like one button press.
+# The cache lives for the scan cache's TTL and is dropped wherever
+# the scan cache is dropped (tests swap the fetchers per phase).
+
+_HIST = {}
+_HIST_LOCK = threading.Lock()
+
+
+def fetch_history_cached(cfg, course_id, assignment_id):
+    """fetch_submissions_for_history through the shared cache."""
+    key = (str(course_id), str(assignment_id))
+    now = time.time()
+    with _HIST_LOCK:
+        hit = _HIST.get(key)
+        if hit and now - hit[0] < SCAN_TTL_S:
+            return hit[1]
+    subs = fetch_submissions_for_history(cfg, course_id, assignment_id)
+    with _HIST_LOCK:
+        _HIST[key] = (now, subs)
+    return subs
+
+
+def clear_history_cache():
+    with _HIST_LOCK:
+        _HIST.clear()
 
 
 def fetch_roster_maps(cfg, course_id=None):
@@ -820,9 +897,18 @@ def unit_key(course_id, assignment_id, user_id):
     return f"{course_id}_{assignment_id}_{user_id}"
 
 
-_SCAN = {"at": 0.0, "targets": [], "subs": {}}
+_SCAN = {"at": 0.0, "targets": [], "subs": {}, "rosters": {}}
 _SCAN_LOCK = threading.Lock()
-SCAN_TTL_S = 120  # seconds a discovery scan is reused by the views
+# Seconds a discovery scan is reused by the views. 600 matches
+# the automatic pass interval: a view never needs Canvas data
+# fresher than the last pass, and the previous 120 s made most
+# page loads re-walk every course and assignment on Canvas.
+SCAN_TTL_S = 600
+# How many Canvas calls a scan runs at once (v31). The scan is a
+# fan-out of independent per-course / per-assignment calls; run
+# sequentially, its wall-clock time was the sum of every call's
+# latency on a connection that drops calls.
+SCAN_WORKERS = 6
 
 
 def scan_targets(cfg, force=False):
@@ -839,14 +925,23 @@ def scan_targets(cfg, force=False):
         if not force and _SCAN["targets"] \
                 and now - _SCAN["at"] < SCAN_TTL_S:
             return list(_SCAN["targets"])
-    targets = []
-    for c in scan_courses(cfg):
+    courses = scan_courses(cfg)
+
+    def assignments_of(c):
         try:
-            assignments = fetch_assignments(cfg, c["id"])
+            return c, fetch_assignments(cfg, c["id"])
         except Exception as e:  # noqa: BLE001 - logged, course skipped
             log_activity("auto", f"course {c.get('name')}: assignment "
                                  f"list failed — {type(e).__name__}: {e}")
-            continue
+            return c, []
+
+    if len(courses) > 1:
+        with ThreadPoolExecutor(max_workers=SCAN_WORKERS) as pool:
+            per_course = list(pool.map(assignments_of, courses))
+    else:
+        per_course = [assignments_of(c) for c in courses]
+    targets = []
+    for c, assignments in per_course:
         for a in assignments:
             if a.get("published") is False:
                 continue
@@ -859,6 +954,7 @@ def scan_targets(cfg, force=False):
         _SCAN["targets"] = targets
         _SCAN["at"] = now
         _SCAN["subs"] = {}
+        _SCAN["rosters"] = {}
     return list(targets)
 
 
@@ -873,6 +969,47 @@ def scan_submissions(cfg, target):
     with _SCAN_LOCK:
         _SCAN["subs"][key] = subs
     return subs
+
+
+def prefetch_submissions(cfg, targets):
+    """Fill the scan's submission cache for every target at once,
+    SCAN_WORKERS calls in flight (v31). Failures are not cached:
+    the caller's sequential pass retries that target and applies
+    its own per-target skip, exactly as before."""
+    with _SCAN_LOCK:
+        missing = [t for t in targets
+                   if (t["course_id"], t["assignment_id"])
+                   not in _SCAN["subs"]]
+    if len(missing) <= 1:
+        return
+
+    def fetch(t):
+        try:
+            return t, fetch_submissions_for(cfg, t["course_id"],
+                                            t["assignment_id"])
+        except Exception:  # noqa: BLE001 - retried by the caller
+            return t, None
+
+    with ThreadPoolExecutor(max_workers=SCAN_WORKERS) as pool:
+        for t, subs in pool.map(fetch, missing):
+            if subs is not None:
+                with _SCAN_LOCK:
+                    _SCAN["subs"][(t["course_id"],
+                                   t["assignment_id"])] = subs
+
+
+def roster_map_cached(cfg, course_id):
+    """fetch_roster_maps with the scan's cache (v31): the wall
+    asked Canvas for sections + enrollments on every load. The
+    cache lives and dies with the scan (see scan_targets)."""
+    with _SCAN_LOCK:
+        hit = _SCAN["rosters"].get(course_id)
+    if hit is not None:
+        return hit
+    roster = fetch_roster_maps(cfg, course_id)
+    with _SCAN_LOCK:
+        _SCAN["rosters"][course_id] = roster
+    return roster
 
 
 def store_get(store, key, user_id=None):
@@ -937,7 +1074,10 @@ def update_package_index(cfg, rows):
                  "course_id": r.get("course_id"),
                  "course_name": r.get("course_name"),
                  "assignment_id": r.get("assignment_id"),
-                 "assignment_name": r.get("assignment_name")}
+                 "assignment_name": r.get("assignment_name"),
+                 # Carried since v31 so the local-first prefill can
+                 # show the submitted date without asking Canvas.
+                 "submitted_at": r.get("submitted_at")}
         if idx.get(key) != entry:
             idx[key] = entry
             changed = True
@@ -1242,7 +1382,17 @@ AUTO_INTERVAL_S = 600  # seconds between automatic passes
 def _log_download_record(rec):
     name = rec.get("user_name") or f"student {rec.get('user_id')}"
     where = f" [{rec['target_label']}]" if rec.get("target_label") else ""
-    if "error" in rec:
+    if rec.get("not_in_format"):
+        log_activity(
+            "download",
+            f"attempt {rec.get('attempt')} for {name}{where} is not "
+            f"a package ({rec.get('holds')}) — not downloaded")
+    elif rec.get("rejected") and rec.get("skipped"):
+        log_activity(
+            "download",
+            f"attempt {rec.get('attempt')} for {name}{where}: "
+            "package ZIP rejected on an earlier run — not fetched")
+    elif "error" in rec:
         log_activity("download", f"submission for {name}{where}: {rec['error']}")
     elif rec.get("skipped"):
         log_activity("download",
@@ -1264,12 +1414,652 @@ def download_target(cfg, target, force=False):
     subs = fetch_submissions_for(cfg, cid, aid)
     with _SCAN_LOCK:
         _SCAN["subs"][(cid, aid)] = subs
-    return audit.download_packages(
+    t0 = time.monotonic()
+    records = audit.download_packages(
         cfg,
         fetch_submissions_fn=lambda c: subs,
         fetch_bytes_fn=fetch_bytes_web, force=force,
         progress_fn=progress, subdir=f"{cid}/{aid}",
         key_prefix=f"{cid}:{aid}")
+    record_pass_stats(cfg, records, time.monotonic() - t0)
+    return records
+
+
+def record_pass_stats(cfg, records, seconds):
+    """Leave one calibration record for a finished download pass
+    (v32): the bytes actually fetched and the wall time, which
+    the redownload tool's estimate divides by. A pass that
+    fetched nothing records nothing."""
+    nbytes = sum(r.get("fetched_bytes", 0) for r in records or [])
+    if nbytes > 0 and seconds > 0:
+        try:
+            audit.record_download_stat(
+                cfg, nbytes, seconds,
+                at=datetime.now(timezone.utc).isoformat())
+        except Exception:  # noqa: BLE001 - calibration is advisory
+            pass
+
+def _integrity_text(check):
+    """The wall's one-line integrity state for a stored check
+    (shared by wall_students and the attempts rows, v32)."""
+    check = check or {}
+    if check.get("injection_suspected"):
+        flags = check.get("injection_flags") or []
+        return ("injection flag @ " + audit.mmss(flags[0]["at_s"])
+                if flags else "injection flag")
+    if check and (not check.get("internally_consistent", True)
+                  or check.get("youtube_id_ok") is False):
+        return "integrity FAILED"
+    if (check.get("youtube") or {}).get("youtube_flag"):
+        return "YouTube mismatch"
+    if check:
+        return "clean"
+    return "not checked"
+
+
+# ---------------------------------------------------------------- redownload
+#
+# The Redownload tool (v32), in dashboard section 2: a filtered,
+# on-demand download pass. Its filters reuse the shared view
+# semantics (course and homework by name, student text, submitted
+# date range, examined, graded); its scope adds previous attempts;
+# its Force option re-fetches even present, unchanged packages.
+# Before a run it shows an estimate (audit.estimate_download over
+# the resolved selection, divided by this computer's measured
+# download rate once calibration records exist); the run itself is
+# a background thread whose progress the panel polls.
+
+REDL_STATE = {"running": False, "done": 0, "total": 0,
+              "bytes_done": 0, "bytes_total": 0, "started_at": None,
+              "seconds": None, "summary": "", "estimate": None,
+              "downloaded": 0, "skipped": 0, "errors": 0,
+              "phase": "", "targets_done": 0, "targets_total": 0,
+              "target_errors": 0, "rejected": 0, "not_in_format": []}
+_REDL_LOCK = threading.Lock()
+
+
+def _rd_norm_filters(body):
+    body = body or {}
+    return {
+        "course": str(body.get("course") or ""),
+        "hw": str(body.get("hw") or ""),
+        "student": str(body.get("student") or "").strip().lower(),
+        "from": str(body.get("from") or ""),
+        "to": str(body.get("to") or ""),
+        "exam": body.get("exam") if body.get("exam") in
+                ("all", "examined", "unexamined") else "all",
+        "graded": body.get("graded") if body.get("graded") in
+                  ("all", "graded", "ungraded") else "all",
+        "scope": "previous" if body.get("scope") == "previous"
+                 else "current",
+        "force": bool(body.get("force")),
+    }
+
+
+def _rd_date_ok(submitted_at, f):
+    if not f["from"] and not f["to"]:
+        return True
+    if not submitted_at:
+        return False
+    day = str(submitted_at)[:10]
+    if f["from"] and day < f["from"]:
+        return False
+    if f["to"] and day > f["to"]:
+        return False
+    return True
+
+
+def _rd_needs(state, folder, wkey, attempt, submitted_at, sub_id,
+              force):
+    """Whether one package must be fetched: mirrors the download
+    code's pre-fetch skip (watermark attempt + submitted_at +
+    submission id, and the three files on disk)."""
+    if force:
+        return True
+    mark = state.get(wkey)
+    if not mark:
+        return True
+    if mark.get("attempt") != attempt \
+            or mark.get("submitted_at") != submitted_at \
+            or mark.get("submission_id") != sub_id:
+        return True
+    return not ((folder / "package.zip").exists()
+                and (folder / "submission.html").exists()
+                and (folder / "submission-audio.wav").exists())
+
+
+def _record_attempt_formats(cfg, entries):
+    """Merge one history walk's non-package attempts into
+    attempt-formats.json: {unit_key: {attempt_no: holds}} (v34).
+    This is how the submissions table later knows a missing
+    previous attempt was never in package format — knowledge the
+    redownload tool already paid a history walk for, kept locally
+    so the table itself never fetches."""
+    if not entries:
+        return
+    path = _state_file(cfg, "attempt-formats.json")
+    data = read_json_file(path, {})
+    changed = False
+    for key, att_map in entries.items():
+        cur = data.setdefault(key, {})
+        for att_no, holds in att_map.items():
+            if cur.get(att_no) != holds:
+                cur[att_no] = holds
+                changed = True
+    if not changed:
+        return
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, indent=1), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def redownload_plan(cfg, f):
+    """Resolve a redownload selection to package items (one per
+    student attempt in scope) plus the per-target student sets the
+    run downloads. Examined / graded follow the stores and the
+    package grades, as the views define them.
+
+    v34: the history walk comes from the shared cache, and the
+    plan also returns the previous attempts that are not in
+    package format ("not_in_format": student, attempt, what the
+    attempt holds) and those already recorded as rejected
+    ("rejected"), so the estimate and the run's summary can show
+    them instead of dropping them silently."""
+    require_canvas(cfg)
+    checks = results_store(cfg)
+    finals = finals_store(cfg)
+    examined = examined_store(cfg)
+    state = read_json_file(_state_file(cfg, "download-state.json"), {})
+    dl_root = audit.data_dir(cfg) / "downloads"
+    local = {p["key"]: p for p in downloaded_packages(cfg)}
+    items = []
+    not_in_format = []
+    rejected = []
+    fmt_entries = {}
+    by_target = {}
+    want_prev = f["scope"] == "previous"
+    for t in scan_targets(cfg):
+        if f["course"] and (t.get("course_name") or "") != f["course"]:
+            continue
+        if f["hw"] and (t.get("assignment_name") or "") != f["hw"]:
+            continue
+        cid, aid = t["course_id"], t["assignment_id"]
+        hist_by_user = {}
+        if want_prev:
+            try:
+                for hs in fetch_history_cached(cfg, cid, aid):
+                    huid = str(hs.get("user_id")
+                               or (hs.get("user") or {}).get("id") or "")
+                    if not huid:
+                        continue
+                    hist = hs.get("submission_history") or []
+                    hist_by_user[huid] = hist
+                    # Format knowledge for the table: every
+                    # earlier attempt of every student in this
+                    # target, not just the filtered selection.
+                    cur_att = hs.get("attempt")
+                    for h in hist:
+                        if not isinstance(h, dict):
+                            continue
+                        ha = h.get("attempt")
+                        if ha is None or ha == cur_att:
+                            continue
+                        hatts = h.get("attachments") or []
+                        if any(a["filename"].lower().endswith(".zip")
+                               for a in hatts):
+                            continue
+                        fmt_entries.setdefault(
+                            unit_key(cid, aid, huid), {})[str(ha)] = \
+                            audit.describe_attempt_files(hatts)
+            except Exception:  # noqa: BLE001 - history is an add-on;
+                hist_by_user = {}  # the estimate then covers current
+        for sub in scan_submissions(cfg, t):
+            user = sub.get("user") or {}
+            uid = str(sub.get("user_id") or user.get("id") or "")
+            if not uid:
+                continue
+            atts = sub.get("attachments") or []
+            zip_att = next((a for a in atts
+                            if a["filename"].lower().endswith(".zip")),
+                           None)
+            if not zip_att:
+                continue
+            name = user.get("name") or ""
+            if f["student"] and f["student"] not in name.lower() \
+                    and f["student"] not in uid.lower():
+                continue
+            if not _rd_date_ok(sub.get("submitted_at"), f):
+                continue
+            key = unit_key(cid, aid, uid)
+            check = store_get(checks, key, uid)
+            graded = (
+                grades_total((check or {}).get("estimated_grades"))
+                is not None
+                or final_score(store_get(finals, key, uid)) is not None
+                or (key in local and bool(_package_grades(local[key]))))
+            if f["graded"] == "graded" and not graded:
+                continue
+            if f["graded"] == "ungraded" and graded:
+                continue
+            is_examined = store_has(examined, key, uid)
+            if f["exam"] == "examined" and not is_examined:
+                continue
+            if f["exam"] == "unexamined" and is_examined:
+                continue
+            folder = dl_root / str(cid) / str(aid) / uid
+            base = {"key": key, "course_id": cid, "assignment_id": aid,
+                    "course_name": t.get("course_name"),
+                    "assignment_name": t.get("assignment_name"),
+                    "user_id": uid, "user_name": name}
+            items.append({**base, "attempt": sub.get("attempt"),
+                          "current": True,
+                          "submitted_at": sub.get("submitted_at"),
+                          "size": zip_att.get("size") or 0,
+                          "needs_fetch": _rd_needs(
+                              state, folder, f"{cid}:{aid}:{uid}",
+                              sub.get("attempt"),
+                              sub.get("submitted_at"), sub.get("id"),
+                              f["force"])})
+            entry = by_target.setdefault(
+                (cid, aid), {"target": t, "user_ids": set()})
+            entry["user_ids"].add(uid)
+            if want_prev:
+                seen = {sub.get("attempt")}
+                for h in hist_by_user.get(uid) or []:
+                    if not isinstance(h, dict):
+                        continue
+                    ha = h.get("attempt")
+                    if ha is None or ha in seen:
+                        continue
+                    seen.add(ha)
+                    hatts = h.get("attachments") or []
+                    hzip = next((a for a in hatts if a["filename"]
+                                 .lower().endswith(".zip")), None)
+                    if not hzip:
+                        # Not a package attempt: counted and
+                        # listed, never downloaded (v34).
+                        not_in_format.append(
+                            {**base, "attempt": ha, "current": False,
+                             "submitted_at": h.get("submitted_at"),
+                             "holds": audit.describe_attempt_files(
+                                 hatts)})
+                        continue
+                    wkey = f"{cid}:{aid}:{uid}:attempt-{ha}"
+                    stored_h = state.get(wkey) or {}
+                    if not f["force"] and stored_h.get("rejected") \
+                            and stored_h.get("attempt") == ha \
+                            and stored_h.get("submitted_at") \
+                            == h.get("submitted_at") \
+                            and stored_h.get("submission_id") \
+                            == (h.get("id") or sub.get("id")):
+                        # Rejected on an earlier run and on
+                        # record: reported, never fetched (v34).
+                        rejected.append(
+                            {**base, "attempt": ha, "current": False,
+                             "submitted_at": h.get("submitted_at")})
+                        continue
+                    items.append({**base, "attempt": ha,
+                                  "current": False,
+                                  "submitted_at": h.get("submitted_at"),
+                                  "size": hzip.get("size") or 0,
+                                  "needs_fetch": _rd_needs(
+                                      state, folder / f"attempt-{ha}",
+                                      wkey,
+                                      ha, h.get("submitted_at"),
+                                      h.get("id") or sub.get("id"),
+                                      f["force"])})
+    _record_attempt_formats(cfg, fmt_entries)
+    targets = [{"target": v["target"],
+                "user_ids": sorted(v["user_ids"])}
+               for v in by_target.values()]
+    return {"items": items, "targets": targets,
+            "not_in_format": not_in_format, "rejected": rejected}
+
+
+def redownload_estimate(cfg, body):
+    f = _rd_norm_filters(body)
+    plan = redownload_plan(cfg, f)
+    stats = audit.load_download_stats(cfg)
+    est = audit.estimate_download(
+        plan["items"], audit.effective_download_rate(stats))
+    est["calibrated"] = bool(stats)
+    if not stats:
+        est["assumed_rate_bps"] = audit.ASSUMED_DOWNLOAD_RATE_BPS
+    est["scope"] = f["scope"]
+    est["not_in_format"] = [
+        {"user_name": n.get("user_name"), "attempt": n.get("attempt"),
+         "holds": n.get("holds")} for n in plan["not_in_format"]]
+    est["rejected"] = len(plan["rejected"])
+    return est
+
+
+def start_redownload(cfg, body):
+    """Start a redownload run and return at once (v34).
+
+    Before v34 this handler ran the estimate and the plan
+    synchronously — with "Include previous attempts" that is two
+    full history walks (one uncached history call per target, each
+    bounded by the 120 s HTTP timeout) before the run thread
+    fetched the history a third time, so on a slow connection the
+    button's own request hung for minutes and the panel looked
+    frozen. Now the POST only arms the state and spawns the
+    thread; planning (one cached walk per target, shared with the
+    estimate the page already made) happens inside it, and the
+    status reports a "planning" phase with the targets walked so
+    far. A target whose history fetch or download fails is
+    logged and counted, and the run continues with the next
+    target — before v34 one such failure stopped the whole run."""
+    f = _rd_norm_filters(body)
+    with _REDL_LOCK:
+        if REDL_STATE["running"]:
+            return {"started": False, "already_running": True}
+        REDL_STATE.update({
+            "running": True, "phase": "planning",
+            "targets_done": 0, "targets_total": 0,
+            "done": 0, "total": 0,
+            "bytes_done": 0, "bytes_total": 0,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "t0": time.monotonic(), "seconds": None, "summary": "",
+            "estimate": None,
+            "downloaded": 0, "skipped": 0, "errors": 0,
+            "target_errors": 0, "rejected": 0, "not_in_format": []})
+
+    def run():
+        t0 = time.monotonic()
+        nif_seen = set()
+        try:
+            plan = redownload_plan(cfg, f)
+            with _REDL_LOCK:
+                # The plan's not-in-format list covers the whole
+                # selection even if a later target fails.
+                REDL_STATE["not_in_format"] = [
+                    {"user_name": n.get("user_name"),
+                     "attempt": n.get("attempt"),
+                     "holds": n.get("holds")}
+                    for n in plan["not_in_format"]]
+                REDL_STATE["rejected"] = len(plan["rejected"])
+                nif_seen = {(n["user_name"], n["attempt"])
+                            for n in REDL_STATE["not_in_format"]}
+            stats = audit.load_download_stats(cfg)
+            est = audit.estimate_download(
+                plan["items"], audit.effective_download_rate(stats))
+            with _REDL_LOCK:
+                REDL_STATE["total"] = est["to_fetch"]
+                REDL_STATE["bytes_total"] = est["bytes"]
+                REDL_STATE["estimate"] = {
+                    k: est[k] for k in
+                    ("seconds_low", "seconds_high", "to_fetch",
+                     "bytes", "present", "packages")}
+                REDL_STATE["targets_total"] = len(plan["targets"])
+                REDL_STATE["phase"] = "running"
+            for entry in plan["targets"]:
+                t = entry["target"]
+                cid, aid = t["course_id"], t["assignment_id"]
+                label = (f"{t.get('course_name')} / "
+                         f"{t.get('assignment_name')}")
+
+                def progress(rec, label=label):
+                    _log_download_record({**rec, "target_label": label})
+                    with _REDL_LOCK:
+                        if rec.get("not_in_format"):
+                            k = (rec.get("user_name"),
+                                 rec.get("attempt"))
+                            if k not in nif_seen:
+                                nif_seen.add(k)
+                                REDL_STATE["not_in_format"].append(
+                                    {"user_name": rec.get("user_name"),
+                                     "attempt": rec.get("attempt"),
+                                     "holds": rec.get("holds")})
+                        elif "error" in rec:
+                            REDL_STATE["errors"] += 1
+                            if rec.get("rejected"):
+                                # Newly rejected this run; the
+                                # plan's count covered only the
+                                # ones already on record.
+                                REDL_STATE["rejected"] += 1
+                        elif rec.get("skipped"):
+                            # A rejected skip was counted from
+                            # the plan; it is not "unchanged".
+                            if not rec.get("rejected"):
+                                REDL_STATE["skipped"] += 1
+                        else:
+                            REDL_STATE["downloaded"] += 1
+                            REDL_STATE["done"] += 1
+                        REDL_STATE["bytes_done"] += \
+                            rec.get("fetched_bytes", 0)
+
+                try:
+                    if f["scope"] == "previous":
+                        subs = fetch_history_cached(cfg, cid, aid)
+                        audit.download_packages(
+                            cfg,
+                            fetch_submissions_fn=lambda c, s=subs: s,
+                            fetch_bytes_fn=fetch_bytes_web,
+                            force=f["force"],
+                            progress_fn=progress, subdir=f"{cid}/{aid}",
+                            key_prefix=f"{cid}:{aid}",
+                            user_ids=entry["user_ids"],
+                            include_history=True)
+                    else:
+                        subs = scan_submissions(cfg, t)
+                        audit.download_packages(
+                            cfg,
+                            fetch_submissions_fn=lambda c, s=subs: s,
+                            fetch_bytes_fn=fetch_bytes_web,
+                            force=f["force"],
+                            progress_fn=progress, subdir=f"{cid}/{aid}",
+                            key_prefix=f"{cid}:{aid}",
+                            user_ids=entry["user_ids"])
+                except Exception as e:  # noqa: BLE001 - one target
+                    # must not stop the run (v34)
+                    log_activity(
+                        "download",
+                        f"redownload: {label} failed — "
+                        f"{type(e).__name__}: {e}; continuing")
+                    with _REDL_LOCK:
+                        REDL_STATE["target_errors"] += 1
+                with _REDL_LOCK:
+                    REDL_STATE["targets_done"] += 1
+            secs = time.monotonic() - t0
+            with _REDL_LOCK:
+                REDL_STATE["seconds"] = secs
+                REDL_STATE["phase"] = "finished"
+                summary = (
+                    f"{REDL_STATE['downloaded']} downloaded, "
+                    f"{REDL_STATE['skipped']} unchanged, "
+                    f"{REDL_STATE['errors']} failed")
+                if REDL_STATE["target_errors"]:
+                    summary += (f"; {REDL_STATE['target_errors']} "
+                                "assignment(s) could not be read")
+                if REDL_STATE["not_in_format"]:
+                    summary += (f"; {len(REDL_STATE['not_in_format'])} "
+                                "previous attempt(s) not in package "
+                                "format")
+                if REDL_STATE["rejected"]:
+                    summary += (f"; {REDL_STATE['rejected']} previous "
+                                "attempt(s) rejected (ZIP on record)")
+                REDL_STATE["summary"] = summary
+                nbytes = REDL_STATE["bytes_done"]
+            try:
+                audit.record_download_stat(
+                    cfg, nbytes, secs,
+                    at=datetime.now(timezone.utc).isoformat())
+            except Exception:  # noqa: BLE001 - calibration is advisory
+                pass
+        except Exception as e:  # noqa: BLE001 - reported in the panel
+            with _REDL_LOCK:
+                REDL_STATE["phase"] = "finished"
+                REDL_STATE["summary"] = (
+                    f"redownload stopped early: {type(e).__name__}: {e}")
+        finally:
+            with _REDL_LOCK:
+                REDL_STATE["running"] = False
+            log_activity("download", "redownload finished — "
+                                     f"{REDL_STATE['summary']}")
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"started": True}
+
+
+def redownload_status():
+    with _REDL_LOCK:
+        st = {k: v for k, v in REDL_STATE.items() if k != "t0"}
+        t0 = REDL_STATE.get("t0")
+    if st.get("running") and t0 is not None:
+        elapsed = time.monotonic() - t0
+        st["elapsed_s"] = elapsed
+        bd, bt = st.get("bytes_done", 0), st.get("bytes_total", 0)
+        if bd > 0 and elapsed > 0 and bt > bd:
+            st["remaining_s"] = (bt - bd) / (bd / elapsed)
+        elif bt <= bd:
+            st["remaining_s"] = 0.0
+        else:
+            est = st.get("estimate") or {}
+            st["remaining_s"] = (est.get("seconds_low", 0)
+                                 + est.get("seconds_high", 0)) / 2
+    elif st.get("seconds") is not None:
+        st["elapsed_s"] = st["seconds"]
+    return st
+
+
+# ---------------------------------------------------------------- wall attempts
+
+
+def attempt_video_path(cfg, key, attempt_no):
+    """The wall video file of one previous attempt (v32): the
+    current attempt's is youtube_video_path(cfg, key)."""
+    return audit.data_dir(cfg) / "videos" / f"{key}-attempt-{attempt_no}.mp4"
+
+
+def _split_unit_key(key):
+    parts = str(key).split("_")
+    if len(parts) < 3:
+        return None
+    return parts[0], parts[1], "_".join(parts[2:])
+
+
+def wall_attempts(cfg, key):
+    """Attempt rows for one submission unit, from disk (v32): the
+    current attempt (canonical folder) plus every attempt-<n>
+    folder, ordered by attempt number. Each row parses its own
+    submission.html, so zooming an attempt tile shows that
+    attempt's grades, critique and transcript. Grades of record,
+    finals and checks stay with the current attempt: previous
+    rows carry no final and read "not checked"."""
+    split = _split_unit_key(key)
+    if not split:
+        return []
+    cid, aid, uid = split
+    folder = audit.data_dir(cfg) / "downloads" / cid / aid / uid
+    if not folder.is_dir():
+        return []
+    idx = package_index(cfg).get(key) or {}
+    state = read_json_file(_state_file(cfg, "download-state.json"), {})
+    checks = results_store(cfg)
+    name = idx.get("user_name") or f"Student {uid}"
+    context = " · ".join(x for x in (idx.get("course_name"),
+                                     idx.get("assignment_name")) if x)
+
+    def make(subfolder, attempt_no, submitted_at, current, sid):
+        html_path = subfolder / "submission.html"
+        if not html_path.exists():
+            return None
+        html_text = html_path.read_text(encoding="utf-8")
+        parsed = audit.parse_package(html_text)
+        ver = parsed["verification"]
+        grades = parsed["grading_grades"] or parsed["summary_grades"]
+        if current:
+            local = youtube_video_file(cfg, key, uid)
+            integrity = _integrity_text(store_get(checks, key, uid))
+            examined = store_has(examined_store(cfg), key, uid)
+            final = final_score(store_get(finals_store(cfg), key, uid))
+        else:
+            local = attempt_video_path(cfg, key, attempt_no)
+            integrity = "not checked"
+            examined = False
+            final = None
+        return {"id": sid, "unit_key": key, "user_id": uid,
+                "name": name, "context": context,
+                "course_name": idx.get("course_name"),
+                "assignment_name": idx.get("assignment_name"),
+                "submitted_at": submitted_at,
+                "attempt": attempt_no, "attempt_no": attempt_no,
+                "is_current": current,
+                "attempt_label": (
+                    (f"Attempt {attempt_no}" if attempt_no is not None
+                     else "Current attempt")
+                    + (" · current" if current else " · previous")),
+                "source": "canvas",
+                "video_url": f"/media/local/{local.name}"
+                             if local.exists() else None,
+                "youtube": ver.get("youtube_link"),
+                "downloaded": local.exists(),
+                "duration_s": ver.get("duration_s"),
+                "completeness": grades.get("completeness"),
+                "accuracy": grades.get("accuracy"),
+                "score": grades_total(grades),
+                "examined": examined, "final_score": final,
+                "integrity": integrity,
+                "critique": _grading_text(html_text),
+                "transcript": [{"t": t, "text": text}
+                               for t, text in parsed["timed_lines"]
+                               if t is not None]}
+
+    rows = []
+    mark = state.get(f"{cid}:{aid}:{uid}") or {}
+    cur = make(folder, mark.get("attempt"),
+               mark.get("submitted_at") or idx.get("submitted_at"),
+               True, key)
+    if cur:
+        rows.append(cur)
+    for sub in sorted(folder.glob("attempt-*")):
+        if not sub.is_dir():
+            continue
+        try:
+            n = int(sub.name.split("-", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        m = state.get(f"{cid}:{aid}:{uid}:attempt-{n}") or {}
+        row = make(sub, n, m.get("submitted_at"), False, f"{key}::a{n}")
+        if row:
+            rows.append(row)
+    rows.sort(key=lambda r: (r["attempt_no"] is None,
+                             r["attempt_no"] or 0))
+    return rows
+
+
+def fetch_unit_attempts(cfg, key):
+    """Download one unit's attempts on demand (v32): the history
+    fetch for its assignment, restricted to this student, with
+    previous attempts stored per attempt. Returns the rows."""
+    split = _split_unit_key(key)
+    if not split:
+        raise ValueError("unknown submission")
+    cid, aid, uid = split
+    target = next((t for t in scan_targets(cfg)
+                   if str(t["course_id"]) == cid
+                   and str(t["assignment_id"]) == aid), None)
+    if target is None:
+        raise ValueError("that course / homework is not in the "
+                         "current scan")
+    subs = fetch_history_cached(cfg, int(cid), int(aid))
+    audit.download_packages(
+        cfg, fetch_submissions_fn=lambda c: subs,
+        fetch_bytes_fn=fetch_bytes_web, subdir=f"{cid}/{aid}",
+        key_prefix=f"{cid}:{aid}", user_ids={uid}, include_history=True)
+    existing = package_index(cfg).get(key) or {}
+    update_package_index(cfg, [{
+        "key": key,
+        "user_name": existing.get("user_name"),
+        "course_id": int(cid),
+        "course_name": existing.get("course_name")
+                       or target.get("course_name"),
+        "assignment_id": int(aid),
+        "assignment_name": existing.get("assignment_name")
+                           or target.get("assignment_name"),
+        "submitted_at": existing.get("submitted_at")}])
+    return wall_attempts(cfg, key)
+
 
 
 def pending_work(cfg):
@@ -1730,6 +2520,19 @@ def selective_cleanup(cfg, keys, include_exports=False,
         if skey and skey in state:
             del state[skey]
             state_dirty = True
+        if skey:
+            # Attempt watermarks (v32) belong to the unit: the
+            # attempt-<n> folders went with the folder rmtree
+            # above, and their marks and wall videos go too.
+            for k in [k for k in state if k.startswith(skey + ":")]:
+                del state[k]
+                state_dirty = True
+            vids = audit.data_dir(cfg) / "videos"
+            if vids.exists():
+                for vf in vids.glob(f"{key}-attempt-*.mp4*"):
+                    freed += vf.stat().st_size
+                    removed_files += 1
+                    vf.unlink()
         if sole and uid in state:
             del state[uid]
             state_dirty = True
@@ -1875,6 +2678,12 @@ def load_demo_students(cfg, finals=None, examined=None):
             out.append({**st, "video_url": "/media/demo/" + st["video_file"],
                         "youtube": None, "downloaded": True,
                         "score": grades_total(st),
+                        # View fields (v29): test examples belong to
+                        # no course or homework and carry no date,
+                        # unless a future demo set supplies them.
+                        "course_name": st.get("course_name"),
+                        "assignment_name": st.get("assignment_name"),
+                        "submitted_at": st.get("submitted_at"),
                         "examined": st["id"] in (examined or {}),
                         "final_score": final_score(
                             (finals or {}).get(st["id"]))})
@@ -1894,55 +2703,67 @@ def _grading_text(html_text):
     return text[:2000]
 
 
-def wall_students(cfg):
+def wall_students(cfg, local_only=False):
     """Students for the video wall: real downloaded packages first
     (video = the locally downloaded YouTube file when present), then
-    the demo set."""
+    the demo set. With local_only=True (v31) no Canvas call is made
+    at all: names, labels and dates come from the local package
+    index and roster emails are left blank — the prefill the page
+    paints before the live view lands."""
     checks = results_store(cfg)
     finals = finals_store(cfg)
     examined = examined_store(cfg)
     videos_dir = audit.data_dir(cfg) / "videos"
     out = []
-    index = canvas_submission_index(cfg)
+    pkgs = downloaded_packages(cfg)
+    if local_only:
+        stored = package_index(cfg)
+        index = [{"key": k, "user_name": v.get("user_name"),
+                  "course_name": v.get("course_name"),
+                  "assignment_name": v.get("assignment_name"),
+                  "submitted_at": v.get("submitted_at")}
+                 for k, v in stored.items()]
+    else:
+        index = canvas_submission_index(cfg)
     names = {r["key"]: r.get("user_name") for r in index}
     context = {r["key"]: " · ".join(x for x in (r.get("course_name"),
                                                 r.get("assignment_name"))
                                     if x) for r in index}
+    # Separate view fields (v29) so the wall can select, sort,
+    # filter and group by course, homework and submitted date,
+    # as the submissions table does.
+    courses = {r["key"]: r.get("course_name") for r in index}
+    assignments = {r["key"]: r.get("assignment_name") for r in index}
+    submitted = {r["key"]: r.get("submitted_at") for r in index}
+    attempts = {r["key"]: r.get("attempt") for r in index}
     rosters = {}
-    for cid in {p["course_id"] for p in downloaded_packages(cfg)}:
-        if not cid:
-            continue
-        try:
-            rosters[cid] = fetch_roster_maps(cfg, cid)
-        except Exception:  # noqa: BLE001 - email is decoration for marks
-            rosters[cid] = {}
-    for pkg in downloaded_packages(cfg):
+    if not local_only:
+        for cid in {p["course_id"] for p in pkgs}:
+            if not cid:
+                continue
+            try:
+                rosters[cid] = roster_map_cached(cfg, cid)
+            except Exception:  # noqa: BLE001 - email is decoration for marks
+                rosters[cid] = {}
+    for pkg in pkgs:
         uid = pkg["user_id"]
         key = pkg["key"]
         roster = rosters.get(pkg["course_id"]) or {}
-        parsed = audit.parse_package(
-            Path(pkg["html_path"]).read_text(encoding="utf-8"))
+        html_text = Path(pkg["html_path"]).read_text(encoding="utf-8")
+        parsed = audit.parse_package(html_text)
         ver = parsed["verification"]
         grades = parsed["grading_grades"] or parsed["summary_grades"]
         check = store_get(checks, key, uid) or {}
-        if check.get("injection_suspected"):
-            _flags = check.get("injection_flags") or []
-            integrity = ("injection flag @ " + audit.mmss(_flags[0]["at_s"])
-                         if _flags else "injection flag")
-        elif check and (not check.get("internally_consistent", True)
-                        or check.get("youtube_id_ok") is False):
-            integrity = "integrity FAILED"
-        elif (check.get("youtube") or {}).get("youtube_flag"):
-            integrity = "YouTube mismatch"
-        elif check:
-            integrity = "clean"
-        else:
-            integrity = "not checked"
+        integrity = _integrity_text(check)
         local = youtube_video_file(cfg, key, uid)
         out.append({
             "id": key, "user_id": uid,
             "name": names.get(key) or f"Student {uid}",
             "context": context.get(key) or "",
+            "course_name": courses.get(key),
+            "assignment_name": assignments.get(key),
+            "submitted_at": submitted.get(key),
+            "attempt": attempts.get(key),
             "email": (roster.get(uid) or {}).get("email")
                      or (roster.get(uid) or {}).get("sis_login_id") or "",
             "source": "canvas",
@@ -1957,8 +2778,7 @@ def wall_students(cfg):
             "examined": store_has(examined, key, uid),
             "final_score": final_score(store_get(finals, key, uid)),
             "integrity": integrity,
-            "critique": _grading_text(
-                Path(pkg["html_path"]).read_text(encoding="utf-8")),
+            "critique": _grading_text(html_text),
             "transcript": [{"t": t, "text": text}
                            for t, text in parsed["timed_lines"]
                            if t is not None],
@@ -2025,7 +2845,21 @@ main{max-width:1180px;margin:0 auto;padding:16px 20px 60px}
 section{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 18px;margin:14px 0}
 h2{font-size:16px;margin:0 0 10px} h3{font-size:14px;margin:14px 0 6px}
 label{display:block;font-size:13px;margin:8px 0 3px}
-input[type=text],input[type=password],input[type=number],select{width:100%;max-width:520px;padding:7px 9px;border:1px solid #bbb;border-radius:5px;font-size:14px;box-sizing:border-box}
+input[type=text],input[type=password],input[type=number],input[type=date],select{width:100%;max-width:520px;padding:7px 9px;border:1px solid #bbb;border-radius:5px;font-size:14px;box-sizing:border-box}
+#viewctl{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:end;margin:12px 0 4px}
+.rdctl{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:end;margin:10px 0 4px}
+.rdctl label{margin:0;font-size:12px;color:#555}
+.rdctl select,.rdctl input{width:auto;max-width:230px;display:block;margin-top:3px}
+#viewctl label{margin:0;font-size:12px;color:#555}
+#viewctl select,#viewctl input{width:auto;max-width:230px;display:block;margin-top:3px}
+#viewctl button{margin:0}
+tr.grouprow td{background:#eef1ea;font-weight:600;border-bottom:1px solid #cfd4c8}
+tr.attrow td{background:#fafaf7;color:#444}
+tr.attrow td.attname{padding-left:26px}
+tr.attnote td{background:#fafaf7;color:#666;font-size:12px;padding-left:26px}
+td .stuname{color:#243b53;font-weight:600;text-decoration:none}
+td .stuname:hover{text-decoration:underline}
+#selbar2{margin:8px 0 2px}
 button{background:#243b53;color:#fff;border:0;border-radius:5px;padding:8px 14px;font-size:14px;cursor:pointer;margin:4px 6px 4px 0}
 button.secondary{background:#e8e8e4;color:#1c1c1a;border:1px solid #bbb}
 button.danger{background:#8f2d2d}
@@ -2078,11 +2912,46 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <button id="checkall">Run integrity checks</button>
 <button class="secondary" id="exportcoded">Export coded grading sections</button>
 <span id="exportresult"></span> <span id="dlresult"></span></p>
+<h3>Redownload submissions</h3>
+<p class="mut">Fetch a filtered selection again — packages missing or damaged on this computer, or everything in the selection with Force. Previous attempts are fetched only when the scope includes them; the automatic passes stay latest-only. The estimate covers package download and extraction only.</p>
+<div class="rdctl">
+<label>Course <select id="rdcourse"><option value="">All courses</option></select></label>
+<label>Homework <select id="rdhw"><option value="">All homework</option></select></label>
+<label>Student <input type="text" id="rdstudent" placeholder="name or ID contains…"></label>
+<label>Submitted from <input type="date" id="rdfrom"></label>
+<label>to <input type="date" id="rdto"></label>
+<label>Examined <select id="rdexam"><option value="all">All</option><option value="unexamined">Not examined</option><option value="examined">Examined</option></select></label>
+<label>Graded <select id="rdgraded"><option value="all">All</option><option value="graded">Graded</option><option value="ungraded">Not graded</option></select></label>
+</div>
+<p style="margin:6px 0">Scope:
+<label style="display:inline"><input type="radio" name="rdscope" value="current" checked style="width:auto"> Current attempt only</label>
+<label style="display:inline"><input type="radio" name="rdscope" value="previous" style="width:auto"> Include previous attempts</label>
+<label style="display:inline"><input type="checkbox" id="rdforce" style="width:auto"> Force — re-fetch even when present and unchanged</label></p>
+<p><button id="rddo">Redownload selected</button> <span id="rdresult"></span></p>
+<p class="mut" id="rdestimate"></p>
+<p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
 <p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
+<div id="viewctl">
+<label>Course <select id="fcourse"><option value="">All courses</option></select></label>
+<label>Homework <select id="fhw"><option value="">All homework</option></select></label>
+<label>Student <input type="text" id="fstudent" placeholder="name or ID contains…"></label>
+<label>Submitted from <input type="date" id="ffrom"></label>
+<label>to <input type="date" id="fto"></label>
+<label>Examined <select id="fexam"><option value="all">All</option><option value="unexamined">Not examined</option><option value="examined">Examined</option></select></label>
+<label>Graded <select id="fgraded"><option value="all">All</option><option value="graded">Graded</option><option value="ungraded">Not graded</option></select></label>
+<label>Sort by <select id="fsort"><option value="examined">Examined</option><option value="student">Student</option><option value="date">Date submitted</option><option value="course">Course</option><option value="hw">Homework</option><option value="grade">Grade</option></select></label>
+<button class="secondary" id="fdir" title="reverse the sort direction">Ascending ↑</button>
+<label>Group by <select id="fgroup"><option value="none">No grouping</option><option value="course">Course</option><option value="hw">Homework</option><option value="date">Date submitted</option><option value="examined">Examined</option><option value="graded">Graded</option></select></label>
+<label>Attempts <select id="fattempts"><option value="latest">Latest only</option><option value="previous">Include previous</option></select></label>
+<button class="secondary" id="freset">Reset view</button>
+<span class="mut" id="fcount"></span>
+</div>
+<p id="selbar2"><span class="mut" id="selcount">No students ticked</span> <button class="secondary" id="selview" disabled>View selected on wall</button> <button class="secondary" id="selclear" disabled>Clear ticks</button> <span class="mut">Tick students to open exactly those on the video wall; click a student's name to open the wall zoomed on that student.</span></p>
+<p class="mut">Select, sort, filter and group the submissions below — the same view applies on the video wall, and the choice is kept in this browser. “Graded” means a grade is present: the signed grade from the package, or a final grade you entered. Sorting by Examined lists the not-yet-examined first (ascending). Attempts set to “Include previous” adds a subordinate row for each earlier attempt already downloaded, under its submission; nothing is downloaded from here — use the Redownload tool above with “Include previous attempts” for the rest.</p>
 <p class="mut" id="subshint"></p>
-<table><thead><tr><th>Student</th><th>Canvas state</th><th>Downloaded</th>
+<table><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
 <th>Integrity</th><th>Grade</th>
 <th>Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
 <p class="mut">Final grade: pre-filled from the student's grade when integrity is clean (audit v2). Edit it and Save; an edited value is the teacher's. A flagged submission stays blank until you enter a final grade.</p>
@@ -2290,8 +3159,169 @@ $("testconn").onclick=async ()=>{
 };
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function fmtT(s){ if(s==null||isNaN(s)) return ""; s=Math.round(s); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
+// ---- Shared submission view (v29): select / sort / filter /
+// group by course, student, date, homework, examined and graded.
+// The same stored view drives the video wall; "graded" means a
+// grade is present (the signed grade, or a teacher final grade).
+const VIEWKEY="ta-view-v1";
+const VIEWDEF={course:"",hw:"",student:"",from:"",to:"",exam:"all",graded:"all",sort:"examined",dir:1,group:"none"};
+let VIEW={...VIEWDEF};
+try{ const v=JSON.parse(localStorage.getItem(VIEWKEY)||"null"); if(v) VIEW={...VIEWDEF,...v}; }catch(e){}
+let VIEWLIST=[];
+function saveView(){ try{ localStorage.setItem(VIEWKEY,JSON.stringify(VIEW)); }catch(e){} }
+// ---- Table → wall selection + attempts mode (v33) ----
+// Ticked unit keys are kept in this browser; "View selected on
+// wall" activates the hand-off and /wall then shows exactly the
+// ticked units until its Clear selection control is used.
+const SELKEY="ta-wall-selection-v1";
+let SEL=new Set(), SELACTIVE=false;
+try{ const v=JSON.parse(localStorage.getItem(SELKEY)||"null");
+  if(v&&Array.isArray(v.keys)){ SEL=new Set(v.keys); SELACTIVE=!!v.active; } }catch(e){}
+function saveSel(){ try{ localStorage.setItem(SELKEY,JSON.stringify({keys:[...SEL],active:SELACTIVE})); }catch(e){} }
+let ATTMODE="latest";
+try{ ATTMODE=localStorage.getItem("ta-table-attempts-v1")||"latest"; }catch(e){}
+if(ATTMODE!=="previous") ATTMODE="latest";
+function renderSelBar(){
+  const n=SEL.size;
+  $("selcount").textContent= n? n+" student(s) ticked" : "No students ticked";
+  $("selview").disabled=!n; $("selclear").disabled=!n;
+}
+window.toggleSel=(key,on)=>{ if(on) SEL.add(key); else SEL.delete(key); saveSel(); renderSelBar(); syncSelAll(); };
+// Select all that appear (v34): the header tick covers exactly
+// the rows the current view shows (VIEWLIST, after filters and
+// grouping). Ticking when some shown rows are unticked ticks
+// them all; ticking when every shown row is ticked unticks the
+// shown ones. Ticks on rows outside the current view are kept.
+function syncSelAll(){
+  const el=$("selall"); if(!el) return;
+  const shown=VIEWLIST.map(s=>s.id);
+  const n=shown.filter(id=>SEL.has(id)).length;
+  el.checked= shown.length>0 && n===shown.length;
+  el.indeterminate= n>0 && n<shown.length;
+}
+window.toggleSelAll=(on)=>{
+  VIEWLIST.forEach(s=>{ if(on) SEL.add(s.id); else SEL.delete(s.id); });
+  saveSel(); renderSubs();
+};
+function isGradedS(s){ return s.student_score!=null || s.final_score!=null; }
+function effGradeS(s){ return s.final_score ?? s.student_score; }
+function nameOfS(s){ return s.user_name || ("Student "+s.user_id); }
+function cmpRank(a,b){ return a<b?-1:a>b?1:0; }
+function dayLabelS(ts){ if(!ts) return "No date"; const d=new Date(ts);
+  return isNaN(d)? "No date" : d.toLocaleDateString(undefined,{weekday:"short",year:"numeric",month:"short",day:"numeric"}); }
+function groupLabelS(s){
+  switch(VIEW.group){
+    case "course": return s.course_name || "No course";
+    case "hw": return s.assignment_name || "No homework";
+    case "date": return dayLabelS(s.submitted_at);
+    case "examined": return s.examined? "Examined":"Not examined";
+    case "graded": return isGradedS(s)? "Graded":"Not graded";
+  } return "";
+}
+function groupRankS(s){
+  switch(VIEW.group){
+    case "examined": return s.examined?1:0;
+    case "graded": return isGradedS(s)?1:0;
+    case "date": { const t=Date.parse(s.submitted_at||"");
+      return isNaN(t)? Number.POSITIVE_INFINITY : -Math.floor(t/86400000); }
+    case "course": return (s.course_name||"￿").toLowerCase();
+    case "hw": return (s.assignment_name||"￿").toLowerCase();
+  } return 0;
+}
+function sortValS(s){
+  switch(VIEW.sort){
+    case "student": return nameOfS(s).toLowerCase();
+    case "course": return (s.course_name||"").toLowerCase();
+    case "hw": return (s.assignment_name||"").toLowerCase();
+    case "examined": return s.examined?1:0;
+    case "date": { const t=Date.parse(s.submitted_at||""); return isNaN(t)? null:t; }
+    case "grade": return effGradeS(s);
+  } return 0;
+}
+function cmpSortS(a,b){
+  const va=sortValS(a), vb=sortValS(b);
+  if(va==null && vb==null) return 0;
+  if(va==null) return 1; if(vb==null) return -1;
+  return cmpRank(va,vb)*VIEW.dir;
+}
+function matchesS(s){
+  if(VIEW.course && (s.course_name||"")!==VIEW.course) return false;
+  if(VIEW.hw && (s.assignment_name||"")!==VIEW.hw) return false;
+  if(VIEW.student){ const q=VIEW.student.toLowerCase();
+    if(!nameOfS(s).toLowerCase().includes(q)
+       && !String(s.user_id).toLowerCase().includes(q)) return false; }
+  if(VIEW.from || VIEW.to){ const t=Date.parse(s.submitted_at||"");
+    if(isNaN(t)) return false;
+    if(VIEW.from && t<new Date(VIEW.from+"T00:00:00").getTime()) return false;
+    if(VIEW.to && t>new Date(VIEW.to+"T23:59:59.999").getTime()) return false; }
+  if(VIEW.exam==="examined" && !s.examined) return false;
+  if(VIEW.exam==="unexamined" && s.examined) return false;
+  if(VIEW.graded==="graded" && !isGradedS(s)) return false;
+  if(VIEW.graded==="ungraded" && isGradedS(s)) return false;
+  return true;
+}
+function arrangeS(list){
+  const out=list.filter(matchesS);
+  out.sort((a,b)=>{
+    if(VIEW.group!=="none"){ const c=cmpRank(groupRankS(a),groupRankS(b)); if(c) return c; }
+    const c=cmpSortS(a,b); if(c) return c;
+    return cmpRank(nameOfS(a).toLowerCase(), nameOfS(b).toLowerCase());
+  });
+  return out;
+}
+function fmtDateS(ts){ if(!ts) return "—"; const d=new Date(ts);
+  return isNaN(d)? "—" : d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"})+
+    " "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); }
+function setOptsS(id, vals, allLabel, cur){
+  const el=$(id); if(!el) return cur;
+  const all=(cur && !vals.includes(cur))? [...vals,cur] : vals;
+  el.innerHTML='<option value="">'+allLabel+"</option>"+
+    all.map(x=>'<option value="'+esc(x)+'"'+(x===cur?" selected":"")+">"+esc(x)+"</option>").join("");
+  return cur;
+}
+function syncViewOptionsS(){
+  const courses=[...new Set(SUBS.map(s=>s.course_name).filter(Boolean))].sort();
+  VIEW.course=setOptsS("fcourse",courses,"All courses",VIEW.course);
+  const hws=[...new Set(SUBS.filter(s=>!VIEW.course || s.course_name===VIEW.course)
+    .map(s=>s.assignment_name).filter(Boolean))].sort();
+  VIEW.hw=setOptsS("fhw",hws,"All homework",VIEW.hw);
+}
+function paintViewControlsS(){
+  const set=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value=v; };
+  set("fcourse",VIEW.course); set("fhw",VIEW.hw); set("fstudent",VIEW.student);
+  set("ffrom",VIEW.from); set("fto",VIEW.to); set("fexam",VIEW.exam);
+  set("fgraded",VIEW.graded); set("fsort",VIEW.sort); set("fgroup",VIEW.group);
+  const d=$("fdir"); if(d) d.textContent=VIEW.dir===1? "Ascending ↑":"Descending ↓";
+  const fa=$("fattempts"); if(fa) fa.value=ATTMODE;
+}
+function bindViewS(){
+  $("fcourse").onchange=e=>{ VIEW.course=e.target.value; saveView(); renderSubs(); };
+  $("fhw").onchange=e=>{ VIEW.hw=e.target.value; saveView(); renderSubs(); };
+  $("fstudent").oninput=e=>{ VIEW.student=e.target.value; saveView(); renderSubs(); };
+  $("ffrom").onchange=e=>{ VIEW.from=e.target.value; saveView(); renderSubs(); };
+  $("fto").onchange=e=>{ VIEW.to=e.target.value; saveView(); renderSubs(); };
+  $("fexam").onchange=e=>{ VIEW.exam=e.target.value; saveView(); renderSubs(); };
+  $("fgraded").onchange=e=>{ VIEW.graded=e.target.value; saveView(); renderSubs(); };
+  $("fsort").onchange=e=>{ VIEW.sort=e.target.value;
+    VIEW.dir=(VIEW.sort==="date"||VIEW.sort==="grade")? -1:1; saveView(); renderSubs(); };
+  $("fdir").onclick=()=>{ VIEW.dir=-VIEW.dir; saveView(); renderSubs(); };
+  $("fgroup").onchange=e=>{ VIEW.group=e.target.value; saveView(); renderSubs(); };
+  $("freset").onclick=()=>{ VIEW={...VIEWDEF}; saveView(); renderSubs(); };
+  $("fattempts").onchange=e=>{ ATTMODE=e.target.value==="previous"? "previous":"latest";
+    try{ localStorage.setItem("ta-table-attempts-v1",ATTMODE); }catch(err){}
+    refreshSubs(); };
+  $("selview").onclick=()=>{ if(!SEL.size) return; SELACTIVE=true; saveSel();
+    window.location="/wall?sel=1"; };
+  $("selclear").onclick=()=>{ SEL=new Set(); SELACTIVE=false; saveSel(); renderSubs(); };
+  $("selall").onchange=e=>toggleSelAll(e.target.checked);
+}
 function renderSubs(){
-  $("subs").innerHTML=SUBS.map(s=>{
+  syncViewOptionsS(); paintViewControlsS();
+  VIEWLIST=arrangeS(SUBS);
+  const gcounts={};
+  if(VIEW.group!=="none") VIEWLIST.forEach(s=>{ const g=groupLabelS(s); gcounts[g]=(gcounts[g]||0)+1; });
+  let lastGroup=null;
+  $("subs").innerHTML=VIEWLIST.map(s=>{
     const c=s.check||{};
     const integ = !s.downloaded ? '<span class="badge">—</span>' :
       (c.error ? '<span class="badge bad">check failed</span>' :
@@ -2310,7 +3340,14 @@ function renderSubs(){
     const flg = flags ? '<br><span class="badge warn">'+esc(flags)+"</span>" : "";
     const fin = s.final_score ?? s.suggested_score;
     const ctx = (s.course_name||s.assignment_name) ? '<br><span class="mut">'+esc(s.course_name||"")+(s.assignment_name? " · "+esc(s.assignment_name):"")+"</span>" : "";
-    return "<tr><td>"+esc(s.user_name)+'<br><span class="mut">'+esc(s.user_id)+"</span>"+ctx+"</td>"+
+    let ghead="";
+    if(VIEW.group!=="none"){ const g=groupLabelS(s);
+      if(g!==lastGroup){ lastGroup=g;
+        ghead='<tr class="grouprow"><td colspan="9">'+esc(g)+' <span class="mut">· '+gcounts[g]+" shown</span></td></tr>"; } }
+    let out=ghead+"<tr>"+
+    '<td><input type="checkbox" class="selbox" style="width:auto" data-key="'+esc(s.id)+'"'+(SEL.has(s.id)?" checked":"")+"></td>"+
+    '<td><a class="stuname" href="/wall?focus='+encodeURIComponent(s.id)+'">'+esc(nameOfS(s))+'</a><br><span class="mut">'+esc(s.user_id)+"</span>"+ctx+"</td>"+
+    "<td>"+fmtDateS(s.submitted_at)+"</td>"+
     "<td>"+esc(s.workflow_state||"")+"<br><span class='mut'>attempt "+esc(s.attempt??"")+"</span></td>"+
     "<td>"+(s.downloaded?badge(true,"yes",""):'<span class="badge">no</span>')+"</td>"+
     "<td>"+integ+gsig+yt+flg+"</td>"+
@@ -2320,16 +3357,68 @@ function renderSubs(){
     '<td><input type="checkbox" style="width:auto" '+(s.examined?"checked":"")+
     ' onchange="toggleExamined(\''+s.id+'\',this.checked)">'+
     "</td></tr>";
+    if(ATTMODE==="previous"){
+      // Subordinate rows for the earlier attempts on disk,
+      // newest first, travelling with their unit's row (v33).
+      // The canonical row above is untouched: finals, examined
+      // and stored checks stay with the current attempt.
+      const atts=[...(s.attempts||[])].sort(
+        (a,b)=>(b.attempt_no||0)-(a.attempt_no||0));
+      out+=atts.map(a=>'<tr class="attrow"><td></td>'+
+        '<td class="attname">Attempt '+esc(a.attempt_no)+' · '+esc(fmtDateS(a.submitted_at))+'</td>'+
+        "<td>"+fmtDateS(a.submitted_at)+"</td>"+
+        '<td><span class="mut">attempt '+esc(a.attempt_no)+"</span></td>"+
+        "<td>"+badge(true,"yes","")+"</td>"+
+        '<td><span class="mut">not checked</span></td>'+
+        "<td>"+(a.score==null?"—":a.score+" / 10")+"</td>"+
+        '<td><span class="mut">—</span></td>'+
+        '<td><a href="/wall?focus='+encodeURIComponent(s.id)+'&attempt='+esc(a.attempt_no)+'">View →</a></td></tr>').join("");
+      // The not-on-disk note (v33), split by cause where the
+      // local records know it (v34): still downloadable, never
+      // in package format, or a rejected package ZIP.
+      const noteparts=[];
+      if(s.attempts_missing>0)
+        noteparts.push(esc(s.attempts_missing)+
+          ' previous attempt(s) not downloaded — use the Redownload tool with "Include previous attempts"');
+      if(s.attempts_not_format>0)
+        noteparts.push(esc(s.attempts_not_format)+
+          ' previous attempt(s) not in package format (no ZIP) — cannot be downloaded');
+      if(s.attempts_rejected>0)
+        noteparts.push(esc(s.attempts_rejected)+
+          ' previous attempt(s) with a rejected package ZIP — see the Redownload tool');
+      if(noteparts.length)
+        out+='<tr class="attnote"><td></td><td colspan="8">'+
+          noteparts.join("; ")+'.</td></tr>';
+    }
+    return out;
   }).join("");
-  $("subshint").textContent = SUBS.length ? "" :
-    (!(STATUS&&STATUS.token_set)
+  document.querySelectorAll(".selbox").forEach(b=>
+    b.onchange=()=>toggleSel(b.dataset.key, b.checked));
+  renderSelBar(); syncSelAll();
+  $("fcount").textContent = SUBS.length
+    ? "Showing "+VIEWLIST.length+" of "+SUBS.length+" submission(s)"+
+      (VIEW.group!=="none"? " · grouped by "+VIEW.group : "")
+    : "";
+  $("subshint").textContent = SUBS.length
+    ? (VIEWLIST.length ? "" :
+       "No submissions match the current view — change the selections above, or Reset view.")
+    : (!(STATUS&&STATUS.token_set)
       ? "Nothing is listed because no Canvas token is saved yet. Save one in Setup and the automatic scan of your published courses fills this list in."
       : "Canvas returned no submissions in the scanned courses yet.");
 }
-async function refreshSubs(){
-  SUBS=await api("/api/submissions");
+async function refreshSubs(local){
+  // local=true asks for the disk-only prefill (v31): the
+  // downloaded submissions paint at once, with no Canvas call,
+  // and the full refresh that follows replaces them.
+  let surl="/api/submissions"+(local?"?local=1":"");
+  if(ATTMODE==="previous") surl+=(local?"&attempts=1":"?attempts=1");
+  SUBS=await api(surl);
   snapSave("subs",SUBS);
   renderSubs();
+  rdSyncOptions();
+  if(!RDINIT && !local){ RDINIT=true; rdEstimate(); }
+  if(local && VIEWLIST.length)
+    $("subshint").textContent="Showing the submissions already on this computer — refreshing from Canvas…";
 }
 window.saveFinal=async uid=>{
   const v=$("fc_"+uid).value;
@@ -2374,6 +3463,72 @@ $("refresh").onclick=refreshSubs;
 $("download").onclick=async ()=>{ const r=await api("/api/download",{}); $("dlresult").textContent="Download: "+r.downloaded+" new/changed, "+r.skipped+" unchanged"+(r.errors?", "+r.errors+" failed":"")+"."; await loadStatus(); await refreshSubs(); };
 $("checkall").onclick=async ()=>{ const r=await api("/api/check-all",{}); $("dlresult").textContent="Integrity checks: "+r.checked+" OK"+(r.errors?(", "+r.errors+" failed (see the row)"):"")+" of "+r.total+" downloaded submission(s)."; await refreshSubs(); };
 $("exportcoded").onclick=async ()=>{ const r=await api("/api/export",{}); $("exportresult").textContent=r.count+" coded files in "+r.export_dir+" (mapping stays in the data folder)."; };
+// ---- Redownload tool (v32) ----
+let RD={course:"",hw:""}, RDT=null, RDP=null, RDINIT=false;
+function fmtDur(s){ s=Math.max(0,Math.round(s)); if(s<60) return s+" s"; const m=Math.floor(s/60), r=s%60; return m+" min"+(r? " "+r+" s":""); }
+function rdFilters(){ return {course:RD.course, hw:RD.hw,
+  student:$("rdstudent").value, from:$("rdfrom").value, to:$("rdto").value,
+  exam:$("rdexam").value, graded:$("rdgraded").value,
+  scope:(document.querySelector('input[name="rdscope"]:checked')||{}).value||"current",
+  force:$("rdforce").checked}; }
+function rdSyncOptions(){
+  const courses=[...new Set(SUBS.map(s=>s.course_name).filter(Boolean))].sort();
+  $("rdcourse").innerHTML='<option value="">All courses</option>'+courses.map(c=>'<option value="'+esc(c)+'"'+(c===RD.course?" selected":"")+">"+esc(c)+"</option>").join("");
+  const hws=[...new Set(SUBS.filter(s=>!RD.course || s.course_name===RD.course).map(s=>s.assignment_name).filter(Boolean))].sort();
+  $("rdhw").innerHTML='<option value="">All homework</option>'+hws.map(c=>'<option value="'+esc(c)+'"'+(c===RD.hw?" selected":"")+">"+esc(c)+"</option>").join("");
+}
+async function rdEstimate(){
+  if(!(STATUS&&STATUS.token_set)){ $("rdestimate").textContent="Save a Canvas token in Setup to estimate a redownload."; return; }
+  try{
+    const e=await api("/api/redownload-estimate", rdFilters());
+    const mb=(e.bytes/1048576).toFixed(1);
+    const t= e.to_fetch===0? "nothing to fetch" : "≈ "+fmtDur(e.seconds_low)+"–"+fmtDur(e.seconds_high);
+    $("rdestimate").textContent="Selection: "+e.packages+" package(s) — "+e.to_fetch+" to fetch ("+mb+" MB), "+e.present+" already present. Estimated time: "+t+
+      (e.calibrated? " (rate measured on this computer)" : " (uncalibrated — assumed rate "+(e.assumed_rate_bps/1000000).toFixed(1)+" MB/s; the first run calibrates it)")+"."+
+      ((e.not_in_format&&e.not_in_format.length)? " Not in package format (not downloaded): "+
+        e.not_in_format.map(n=>esc(n.user_name||"")+" attempt "+esc(n.attempt)+" ("+esc(n.holds||"")+")").join(", ")+"." : "")+
+      (e.rejected? " "+e.rejected+" previous attempt(s) already rejected (ZIP on record) — not fetched." : "");
+  }catch(err){ $("rdestimate").textContent="Estimate unavailable: "+String(err.message||err); }
+}
+function rdSchedule(){ clearTimeout(RDT); RDT=setTimeout(rdEstimate, 250); }
+$("rdcourse").onchange=e=>{ RD.course=e.target.value; rdSyncOptions(); rdSchedule(); };
+$("rdhw").onchange=e=>{ RD.hw=e.target.value; rdSchedule(); };
+$("rdstudent").oninput=rdSchedule;
+$("rdfrom").onchange=rdSchedule; $("rdto").onchange=rdSchedule;
+$("rdexam").onchange=rdSchedule; $("rdgraded").onchange=rdSchedule;
+document.querySelectorAll('input[name="rdscope"]').forEach(r=>r.onchange=rdSchedule);
+$("rdforce").onchange=rdSchedule;
+$("rddo").onclick=async ()=>{
+  $("rddo").disabled=true; $("rdresult").textContent="";
+  try{
+    const r=await api("/api/redownload", rdFilters());
+    $("rdresult").textContent= r.already_running? "A redownload is already running." : "Redownload started.";
+    rdPoll();
+  }catch(e){ $("rdresult").textContent=String(e.message||e); $("rddo").disabled=false; }
+};
+function rdPoll(){
+  clearInterval(RDP);
+  RDP=setInterval(async ()=>{
+    try{
+      const r=await fetch("/api/redownload/status"); const st=await r.json();
+      if(st.running){
+        $("rdprogress").textContent= st.phase==="planning"
+          ? "Planning: reading the selected assignments (incl. previous attempts)… "+Math.round(st.elapsed_s||0)+" s elapsed"
+          : "Downloading: "+st.done+" of "+st.total+" package(s) · "+
+            (st.bytes_done/1048576).toFixed(1)+" of "+(st.bytes_total/1048576).toFixed(1)+" MB · "+
+            Math.round(st.elapsed_s||0)+" s elapsed · ≈ "+fmtDur(st.remaining_s||0)+" remaining";
+      } else {
+        clearInterval(RDP);
+        const e=st.estimate||{};
+        $("rdprogress").textContent="";
+        if(st.summary) $("rdresult").textContent="Done: "+st.summary+" — actual "+fmtDur(st.seconds||0)+
+          " (estimate was "+fmtDur(e.seconds_low||0)+"–"+fmtDur(e.seconds_high||0)+").";
+        $("rddo").disabled=false;
+        await loadStatus(); await refreshSubs(); rdEstimate();
+      }
+    }catch(e){ /* the next tick retries */ }
+  }, 1000);
+}
 async function refreshCounts(){
   // Light status refresh after a background pass: updates only the
   // Setup counts line, never the form, so it cannot disturb
@@ -2432,10 +3587,12 @@ function restoreSnapshots(){
   if(sb){ SUBS=sb; renderSubs();
     $("subshint").textContent="Showing the submissions list as it was when you last saw this page — refreshing…"; }
 }
+bindViewS();
 restoreSnapshots();
 window.addEventListener("pageshow",e=>{
   if(e.persisted){ refreshSubs(); loadTargets(); updateCourseBadges(); }
 });
+refreshSubs(true).catch(()=>{});
 loadStatus().then(()=>{ refreshSubs(); pollActivity(); }).catch(()=>{});
 </script></body></html>
 """
@@ -2463,6 +3620,11 @@ button{background:#33506e;color:#fff;border:0;border-radius:5px;padding:8px 13px
 button.secondary{background:#39424e}
 button:disabled{opacity:.45}
 select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;padding:6px}
+#viewctl{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:end;margin:4px 0 10px}
+#viewctl label{font-size:12px;color:#9fb0bd}
+#viewctl select,#viewctl input{display:block;margin-top:3px;background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;padding:6px;color-scheme:dark}
+#viewctl button{margin:0}
+.ghead{grid-column:1/-1;background:#20262e;border:1px solid #39424e;border-radius:6px;padding:7px 12px;font-weight:600;font-size:14px}
 #zoom{display:none}
 #zoomwrap{display:flex;gap:16px;flex-wrap:wrap;height:calc(100vh - 185px);min-height:430px}
 #zoomvid{flex:2;min-width:320px;height:100%;min-height:0;display:flex;flex-direction:column;background:#000;border-radius:8px;overflow:hidden}
@@ -2484,6 +3646,20 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 .chunk:hover{background:#2a323c}.chunk.active{background:#33506e}
 .chunk .t{color:#9fc3e8;font-size:12px;margin-right:6px}
 #novideo{aspect-ratio:16/9;background:#0c0f12;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#9fb0bd;font-size:13px;text-align:center;padding:10px}
+.tile.sel{outline:2px solid #9fc3e8;outline-offset:-2px}
+#wallwrap{display:flex;gap:12px;align-items:flex-start}
+#wallwrap .grid{flex:1;min-width:0}
+#hoverpanel{flex:0 0 340px;width:340px;position:sticky;top:12px;height:calc(100vh - 140px);max-height:calc(100vh - 140px);display:flex;flex-direction:column;gap:8px;min-height:0}
+#hoverpanel .hpanel{flex:1 1 0;background:#1e242c;border:1px solid #39424e;border-radius:8px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#hoverpanel .panel-body{flex:1}
+#hoverpanel .panel-head{cursor:pointer}
+#hoverpanel .hpanel.collapsed{flex:0 0 auto}
+#hoverpanel .hpanel.collapsed .panel-body{display:none}
+#hpcard{background:#1e242c;border:1px solid #39424e;border-radius:8px;padding:10px 14px;flex:none}
+#znovideo{aspect-ratio:16/9;background:#0c0f12;border-radius:5px;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;color:#9fb0bd;font-size:13px;text-align:center;padding:10px}
+#selbar{background:#243b53;color:#fff;border-radius:8px;padding:9px 14px;margin:0 0 10px}
+#selbar button{margin-left:10px}
+@media (max-width:900px){#wallwrap{flex-direction:column}#hoverpanel{flex:none;width:100%;position:static;height:auto;max-height:none}#hoverpanel .hpanel{flex:none}#hoverpanel .panel-body{max-height:40vh}}
 </style></head><body>
 <header><h1>Video Wall</h1><a href="/">← back to audit</a>
 <span class="mut">A screenful of students at a time. All showing videos scrub together; tiles are muted — hover a tile to hear it, zoom into one to listen and mark times. To scrub with the mouse: hold the <strong>right</strong> mouse button on a video and drag left/right — every showing video moves together and the hovered one keeps the sound (one tile width of travel = the whole take). The right-click menu is off on the wall for this.</span></header>
@@ -2523,11 +3699,36 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
   </div>
 </div>
 <div id="wall">
+  <div id="selbar" style="display:none"></div>
+  <div id="viewctl">
+  <label>Course <select id="fcourse"><option value="">All courses</option></select></label>
+  <label>Homework <select id="fhw"><option value="">All homework</option></select></label>
+  <label>Student <input type="text" id="fstudent" placeholder="name or ID contains…"></label>
+  <label>Submitted from <input type="date" id="ffrom"></label>
+  <label>to <input type="date" id="fto"></label>
+  <label>Examined <select id="fexam"><option value="all">All</option><option value="unexamined">Not examined</option><option value="examined">Examined</option></select></label>
+  <label>Graded <select id="fgraded"><option value="all">All</option><option value="graded">Graded</option><option value="ungraded">Not graded</option></select></label>
+  <label>Sort by <select id="fsort"><option value="examined">Examined</option><option value="student">Student</option><option value="date">Date submitted</option><option value="course">Course</option><option value="hw">Homework</option><option value="grade">Grade</option></select></label>
+  <button class="secondary" id="fdir" title="reverse the sort direction">Ascending ↑</button>
+  <label>Group by <select id="fgroup"><option value="none">No grouping</option><option value="course">Course</option><option value="hw">Homework</option><option value="date">Date submitted</option><option value="examined">Examined</option><option value="graded">Graded</option></select></label>
+  <button class="secondary" id="freset">Reset view</button>
+  <span class="mut" id="fcount"></span>
+  </div>
+  <p class="mut" style="margin-top:0">Select, sort, filter and group the takes below — the same view applies in the submissions table, and the choice is kept in this browser. “Graded” means a grade is present: the signed grade, or a final grade you entered. Sorting by Examined lists the not-yet-examined first (ascending).</p>
   <p><label>Zoom <input type="range" id="tilesize" min="220" max="680" step="20" value="340" style="vertical-align:middle;width:200px"></label> <span class="mut" id="zoomlabel"></span>
   <button class="secondary" id="prevp">← Prev</button> <span id="pageinfo"></span> <button class="secondary" id="nextp">Next →</button>
   <span class="mut" id="wallcount"></span>
-  <button class="secondary" id="exportmarks">Export marks (.txt)</button> <span class="mut" id="markcount"></span></p>
+  <button class="secondary" id="exportmarks">Export marks (.txt)</button> <span class="mut" id="markcount"></span>
+  <button class="secondary" id="attbtn" style="display:none">All attempts</button> <span class="mut" id="attstatus"></span></p>
+  <div id="wallwrap">
   <div class="grid" id="grid"></div>
+  <aside id="hoverpanel" aria-label="Selected take details">
+    <div id="hpcard"></div>
+    <section class="hpanel" data-hpanel="marks"><div class="panel-head"><h3>Time marks</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hpmarks"></div></div></section>
+    <section class="hpanel" data-hpanel="critique"><div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><p id="hpcritique" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div></section>
+    <section class="hpanel" data-hpanel="transcript"><div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hptrans"></div></div></section>
+  </aside>
+  </div>
 </div>
 </main>
 <div id="master">
@@ -2544,21 +3745,142 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 <script>
 const $=id=>document.getElementById(id);
 let STUDENTS=[], page=0, zoomId=null, raf=null, MARKS={}, SCRUB=null;
+// ---- Shared submission view (v29): select / sort / filter /
+// group by course, student, date, homework, examined and graded.
+// The same stored view drives the dashboard's submissions table;
+// "graded" means a grade is present (the signed grade, or a
+// teacher final grade).
+const VIEWKEY="ta-view-v1";
+const VIEWDEF={course:"",hw:"",student:"",from:"",to:"",exam:"all",graded:"all",sort:"examined",dir:1,group:"none"};
+let VIEW={...VIEWDEF};
+try{ const v=JSON.parse(localStorage.getItem(VIEWKEY)||"null"); if(v) VIEW={...VIEWDEF,...v}; }catch(e){}
+let VIEWLIST=[];
+// ---- Table → wall selection hand-off (v33): when the
+// dashboard's "View selected on wall" activated a ticked set,
+// the wall shows exactly those units; the shared view's filters
+// are overridden (its sort still orders the selection) until
+// Clear selection is used.
+const SELKEY="ta-wall-selection-v1";
+let SELMODE=false, SELSET=new Set();
+try{ const v=JSON.parse(localStorage.getItem(SELKEY)||"null");
+  if(v&&v.active&&Array.isArray(v.keys)&&v.keys.length){ SELMODE=true; SELSET=new Set(v.keys); } }catch(e){}
+function saveSelW(){ try{ localStorage.setItem(SELKEY,JSON.stringify({keys:[...SELSET],active:SELMODE})); }catch(e){} }
+function saveView(){ try{ localStorage.setItem(VIEWKEY,JSON.stringify(VIEW)); }catch(e){} }
+function isGradedW(s){ return s.score!=null || s.final_score!=null; }
+function effGradeW(s){ return s.final_score ?? s.score; }
+function cmpRank(a,b){ return a<b?-1:a>b?1:0; }
+function dayLabelW(ts){ if(!ts) return "No date"; const d=new Date(ts);
+  return isNaN(d)? "No date" : d.toLocaleDateString(undefined,{weekday:"short",year:"numeric",month:"short",day:"numeric"}); }
+function groupLabelW(s){
+  switch(VIEW.group){
+    case "course": return s.course_name || (s.source==="demo"? "Test examples":"No course");
+    case "hw": return s.assignment_name || (s.source==="demo"? "Test examples":"No homework");
+    case "date": return dayLabelW(s.submitted_at);
+    case "examined": return s.examined? "Examined":"Not examined";
+    case "graded": return isGradedW(s)? "Graded":"Not graded";
+  } return "";
+}
+function groupRankW(s){
+  switch(VIEW.group){
+    case "examined": return s.examined?1:0;
+    case "graded": return isGradedW(s)?1:0;
+    case "date": { const t=Date.parse(s.submitted_at||"");
+      return isNaN(t)? Number.POSITIVE_INFINITY : -Math.floor(t/86400000); }
+    case "course": return (s.course_name || (s.source==="demo"? "￾":"￿")).toLowerCase();
+    case "hw": return (s.assignment_name || (s.source==="demo"? "￾":"￿")).toLowerCase();
+  } return 0;
+}
+function sortValW(s){
+  switch(VIEW.sort){
+    case "student": return (s.name||"").toLowerCase();
+    case "course": return (s.course_name||"").toLowerCase();
+    case "hw": return (s.assignment_name||"").toLowerCase();
+    case "examined": return s.examined?1:0;
+    case "date": { const t=Date.parse(s.submitted_at||""); return isNaN(t)? null:t; }
+    case "grade": return effGradeW(s);
+  } return 0;
+}
+function cmpSortW(a,b){
+  const va=sortValW(a), vb=sortValW(b);
+  if(va==null && vb==null) return 0;
+  if(va==null) return 1; if(vb==null) return -1;
+  return cmpRank(va,vb)*VIEW.dir;
+}
+function matchesW(s){
+  if(VIEW.course && (s.course_name||"")!==VIEW.course) return false;
+  if(VIEW.hw && (s.assignment_name||"")!==VIEW.hw) return false;
+  if(VIEW.student){ const q=VIEW.student.toLowerCase();
+    if(!(s.name||"").toLowerCase().includes(q)
+       && !String(s.user_id??s.id).toLowerCase().includes(q)) return false; }
+  if(VIEW.from || VIEW.to){ const t=Date.parse(s.submitted_at||"");
+    if(isNaN(t)) return false;
+    if(VIEW.from && t<new Date(VIEW.from+"T00:00:00").getTime()) return false;
+    if(VIEW.to && t>new Date(VIEW.to+"T23:59:59.999").getTime()) return false; }
+  if(VIEW.exam==="examined" && !s.examined) return false;
+  if(VIEW.exam==="unexamined" && s.examined) return false;
+  if(VIEW.graded==="graded" && !isGradedW(s)) return false;
+  if(VIEW.graded==="ungraded" && isGradedW(s)) return false;
+  return true;
+}
+function arrangeW(list){
+  const out=list.filter(matchesW);
+  out.sort((a,b)=>{
+    if(VIEW.group!=="none"){ const c=cmpRank(groupRankW(a),groupRankW(b)); if(c) return c; }
+    const c=cmpSortW(a,b); if(c) return c;
+    return cmpRank((a.name||"").toLowerCase(), (b.name||"").toLowerCase());
+  });
+  return out;
+}
+function setOptsW(id, vals, allLabel, cur){
+  const el=$(id); if(!el) return cur;
+  const all=(cur && !vals.includes(cur))? [...vals,cur] : vals;
+  el.innerHTML='<option value="">'+allLabel+"</option>"+
+    all.map(x=>'<option value="'+esc(x)+'"'+(x===cur?" selected":"")+">"+esc(x)+"</option>").join("");
+  return cur;
+}
+function syncViewOptionsW(){
+  const courses=[...new Set(STUDENTS.map(s=>s.course_name).filter(Boolean))].sort();
+  VIEW.course=setOptsW("fcourse",courses,"All courses",VIEW.course);
+  const hws=[...new Set(STUDENTS.filter(s=>!VIEW.course || s.course_name===VIEW.course)
+    .map(s=>s.assignment_name).filter(Boolean))].sort();
+  VIEW.hw=setOptsW("fhw",hws,"All homework",VIEW.hw);
+}
+function paintViewControlsW(){
+  const set=(id,v)=>{ const el=$(id); if(el && document.activeElement!==el) el.value=v; };
+  set("fcourse",VIEW.course); set("fhw",VIEW.hw); set("fstudent",VIEW.student);
+  set("ffrom",VIEW.from); set("fto",VIEW.to); set("fexam",VIEW.exam);
+  set("fgraded",VIEW.graded); set("fsort",VIEW.sort); set("fgroup",VIEW.group);
+  const d=$("fdir"); if(d) d.textContent=VIEW.dir===1? "Ascending ↑":"Descending ↓";
+}
+function bindViewW(){
+  $("fcourse").onchange=e=>{ VIEW.course=e.target.value; saveView(); page=0; render(); };
+  $("fhw").onchange=e=>{ VIEW.hw=e.target.value; saveView(); page=0; render(); };
+  $("fstudent").oninput=e=>{ VIEW.student=e.target.value; saveView(); page=0; render(); };
+  $("ffrom").onchange=e=>{ VIEW.from=e.target.value; saveView(); page=0; render(); };
+  $("fto").onchange=e=>{ VIEW.to=e.target.value; saveView(); page=0; render(); };
+  $("fexam").onchange=e=>{ VIEW.exam=e.target.value; saveView(); page=0; render(); };
+  $("fgraded").onchange=e=>{ VIEW.graded=e.target.value; saveView(); page=0; render(); };
+  $("fsort").onchange=e=>{ VIEW.sort=e.target.value;
+    VIEW.dir=(VIEW.sort==="date"||VIEW.sort==="grade")? -1:1; saveView(); page=0; render(); };
+  $("fdir").onclick=()=>{ VIEW.dir=-VIEW.dir; saveView(); render(); };
+  $("fgroup").onchange=e=>{ VIEW.group=e.target.value; saveView(); page=0; render(); };
+  $("freset").onclick=()=>{ VIEW={...VIEWDEF}; saveView(); page=0; render(); };
+}
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function fmt(s){if(s==null||isNaN(s))return "--:--";s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");}
 let CAP=6;
 function capacity(){
   const wpx=parseInt($("tilesize").value||"340"), gap=12;
   const main=document.querySelector("main");
-  const availW=(main? main.clientWidth:1200)-32;
+  const availW=(main? main.clientWidth:1200)-32-(window.innerWidth>900? 352:0);
   const cols=Math.max(1,Math.floor((availW+gap)/(wpx+gap)));
   const tileH=wpx*9/16+66;
   const rows=Math.max(1,Math.floor((window.innerHeight-215+gap)/(tileH+gap)));
   return cols*rows;
 }
 function pageSize(){return CAP;}
-function pages(){return Math.max(1,Math.ceil(STUDENTS.length/pageSize()));}
-function showing(){return STUDENTS.slice(page*pageSize(), page*pageSize()+pageSize());}
+function pages(){return Math.max(1,Math.ceil(VIEWLIST.length/pageSize()));}
+function showing(){return VIEWLIST.slice(page*pageSize(), page*pageSize()+pageSize());}
 function vids(){return [...document.querySelectorAll("#grid video")];}
 function frac(v){return v.duration? v.currentTime/v.duration : 0;}
 function claimAudio(v){ document.querySelectorAll("video").forEach(o=>{ if(o!==v) o.muted=true; }); }
@@ -2574,27 +3896,13 @@ async function markExamined(id, via){
   try{ await fetch("/api/examined",{method:"POST",headers:{"content-type":"application/json"},
     body:JSON.stringify({id:id,examined:true,via:via})}); }catch(e){}
 }
-function render(){
-  CAP=capacity();
-  if(page>pages()-1) page=pages()-1;
-  const sh=showing();
-  $("grid").style.gridTemplateColumns = "repeat(auto-fill,minmax("+parseInt($("tilesize").value||"340")+"px,1fr))";
-  $("zoomlabel").textContent=CAP+" per screen at this size";
-  $("grid").innerHTML=sh.map(s=>{
-    const g= s.score==null? "—" : s.score+" / 10";
-    const fin= s.final_score!=null? ' · final '+s.final_score+" / 10" : "";
-    return '<div class="tile" data-id="'+esc(s.id)+'">'+
-    (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_url)+'"></video>'
-      : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
-    '<div class="nm">'+esc(s.name)+'</div>'+
-    (s.context? '<div class="mut">'+esc(s.context)+'</div>':"")+
-    '<span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
-    '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
-    '<span class="badge">grade '+g+fin+'</span>'+
-    '<span data-exam="'+esc(s.id)+'">'+(s.examined? '<span class="badge ok">examined ✓</span>' : '')+'</span>'+
-    '<span class="badge pct" id="pct_'+esc(s.id)+'">0% · '+fmt(s.duration_s)+'</span>'+
-    (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
-    '</div>';}).join("");
+function bindTiles(){
+  // Tile bindings shared by the student wall and the attempts
+  // wall (v32). Hovering a tile selects it for the side panel
+  // (a tap selects it too, on the way to opening the zoom view);
+  // the panel itself never touches playback or audio.
+  document.querySelectorAll(".tile").forEach(t=>{
+    t.addEventListener("mouseenter",()=>selectTile(t.dataset.id)); });
   document.querySelectorAll(".tile").forEach(t=>t.onclick=e=>{
     if(e.target.dataset.dl) return; openZoom(t.dataset.id);});
   document.querySelectorAll(".tile video").forEach(v=>{
@@ -2623,7 +3931,8 @@ function render(){
     e.stopPropagation(); b.disabled=true; b.textContent="Downloading…";
     try{ const r=await fetch("/api/videos/download",{method:"POST",headers:{"content-type":"application/json"},
       body:JSON.stringify({id:b.dataset.dl})}); const j=await r.json();
-      if(!r.ok) throw new Error(j.error); await load(); }
+      if(!r.ok) throw new Error(j.error);
+      if(ATT.on && ATT.key) await loadAttempts(ATT.key); else await load(); }
     catch(err){ const msg=String(err.message||err);
       // The error appears beside this button, where the teacher
       // is looking (and in the header line as well).
@@ -2632,10 +3941,232 @@ function render(){
       if(!sib||!sib.classList.contains("err")){ sib=document.createElement("p"); sib.className="err"; b.after(sib); }
       sib.textContent=msg; if(sib.scrollIntoView) sib.scrollIntoView({block:"nearest"});
       b.disabled=false; b.textContent="Download at medium resolution (480p)"; }});
+}
+let HOVER={id:null, cache:{}};
+let ATT={on:false, key:null, rows:[]};
+// ATTKEEP (v33): a focus deep link may open the attempts view
+// for a unit the shared view has not narrowed to; while it is
+// set, render() does not clear the attempts view for that.
+let ATTKEEP=false;
+function currentTiles(){ return ATT.on? ATT.rows : showing(); }
+function findTile(id){
+  return STUDENTS.find(x=>x.id===id) || ATT.rows.find(x=>x.id===id) || null;
+}
+function selectTile(id){
+  const s=findTile(id); if(!s) return;
+  HOVER.id=id;
+  if(!HOVER.cache[id]) HOVER.cache[id]=s;
+  renderHoverPanel();
+  document.querySelectorAll(".tile").forEach(t=>
+    t.classList.toggle("sel", t.dataset.id===id));
+}
+function renderHoverPanel(){
+  // The wall's side panel (v32): the selected tile's text
+  // information in the zoom view's form — student card, time
+  // marks, critique, transcript — while the collage stays up.
+  // Text only: selecting never changes which tile plays or is
+  // audible. The zoom view's per-student data (the wall payload,
+  // plus the marks store) is the source, cached per student.
+  const s=HOVER.id? findTile(HOVER.id):null;
+  if(!s){
+    $("hpcard").innerHTML='<p class="mut" style="margin:2px 0">No takes in the current view.</p>';
+    $("hpmarks").innerHTML=""; $("hpcritique").textContent="—";
+    $("hptrans").innerHTML=""; return;
+  }
+  if(!HOVER.cache[s.id]) HOVER.cache[s.id]=s;
+  const d=HOVER.cache[s.id];
+  $("hpcard").innerHTML=
+    '<p style="margin:2px 0"><strong>'+esc(d.name)+'</strong></p>'+
+    (d.context? '<p class="mut" style="margin:2px 0">'+esc(d.context)+'</p>':"")+
+    (d.submitted_at? '<p class="mut" style="margin:2px 0">submitted '+esc(dayLabelW(d.submitted_at))+'</p>':"")+
+    (d.attempt!=null && !d.attempt_label? '<p class="mut" style="margin:2px 0">attempt '+esc(d.attempt)+'</p>':"")+
+    (d.attempt_label? '<p class="mut" style="margin:2px 0">'+esc(d.attempt_label)+'</p>':"")+
+    '<p style="margin:4px 0"><span class="badge '+(d.source==="demo"?"demo":"")+'">'+esc(d.source==="demo"?"DEMO":d.source)+'</span>'+
+    '<span class="badge '+(d.integrity==="clean"?"ok":d.integrity==="not checked"?"":"bad")+'">'+esc(d.integrity)+'</span>'+
+    (d.examined? '<span class="badge ok">examined ✓</span>':"")+"</p>"+
+    "<p style='margin:4px 0'><strong>Grade:</strong> "+(d.score==null?"—":esc(d.score)+" / 10")+
+    (d.completeness!=null? ' <span class="mut">(completeness '+esc(d.completeness)+", accuracy "+esc(d.accuracy)+")</span>":"")+
+    (d.final_score!=null? ' · <strong>final '+esc(d.final_score)+" / 10</strong>":"")+"</p>"+
+    (d.youtube? '<p style="margin:2px 0"><a href="'+esc(d.youtube)+'" target="_blank" rel="noopener" style="color:#9fc3e8">Open on YouTube ↗</a></p>':"");
+  const marks=(MARKS[d.id]&&MARKS[d.id].marks)||[];
+  $("hpmarks").innerHTML= marks.length
+    ? marks.map(m=>'<div class="chunk"><span class="t">'+fmt(m.t)+'</span>'+esc(m.note||"")+"</div>").join("")
+    : '<p class="mut" style="margin:0">No time marks.</p>';
+  $("hpcritique").textContent=d.critique||"—";
+  $("hptrans").innerHTML=(d.transcript&&d.transcript.length)
+    ? d.transcript.map(c=>'<div class="chunk"><span class="t">'+fmt(c.t)+'</span>'+esc(c.text)+"</div>").join("")
+    : '<p class="mut" style="margin:0">No transcript.</p>';
+}
+function syncHoverSelection(){
+  const tiles=currentTiles();
+  if(!tiles.length){ HOVER.id=null; renderHoverPanel(); return; }
+  if(!tiles.some(s=>s.id===HOVER.id)) selectTile(tiles[0].id);
+  else selectTile(HOVER.id);
+}
+// Collapsible hover-panel sections (v34): the same collapse the
+// zoom view's panels have, in the simpler form the fixed-height
+// column needs — a collapsed section is its title bar only and
+// the sections still expanded share the freed height. The
+// student card is not a section and never collapses. State is
+// wall-local (ta-wall-hover-v1) and restored on load.
+const HPKEY="ta-wall-hover-v1";
+let HPCOLLAPSED=new Set();
+try{ const hv=JSON.parse(localStorage.getItem(HPKEY)||"[]");
+  if(Array.isArray(hv)) HPCOLLAPSED=new Set(hv); }catch(e){}
+function applyHoverCollapsed(){
+  document.querySelectorAll("#hoverpanel .hpanel").forEach(p=>{
+    const off=HPCOLLAPSED.has(p.dataset.hpanel);
+    p.classList.toggle("collapsed", off);
+    const b=p.querySelector("[data-hcollapse]");
+    if(b) b.textContent= off? "▸":"▾";
+  });
+}
+function toggleHoverSection(name){
+  if(HPCOLLAPSED.has(name)) HPCOLLAPSED.delete(name);
+  else HPCOLLAPSED.add(name);
+  try{ localStorage.setItem(HPKEY,JSON.stringify([...HPCOLLAPSED])); }catch(e){}
+  applyHoverCollapsed();
+}
+document.querySelectorAll("#hoverpanel .hpanel").forEach(p=>{
+  const head=p.querySelector(".panel-head");
+  head.addEventListener("click", e=>{
+    if(e.target.closest("button")) return;
+    toggleHoverSection(p.dataset.hpanel);
+  });
+  const btn=p.querySelector("[data-hcollapse]");
+  if(btn) btn.addEventListener("click", ()=>toggleHoverSection(p.dataset.hpanel));
+});
+applyHoverCollapsed();
+function narrowedUnit(){
+  // Exactly one student and one homework in the current view
+  // (test examples excluded) — the attempts toggle's condition.
+  if(VIEW.group!=="none") return null;
+  const rows=VIEWLIST.filter(s=>s.source!=="demo");
+  if(!rows.length) return null;
+  if(new Set(rows.map(s=>s.user_id??s.id)).size!==1) return null;
+  if(new Set(rows.map(s=>s.assignment_name)).size!==1) return null;
+  return rows[0];
+}
+function syncAttBtn(){
+  const b=$("attbtn"); if(!b) return;
+  if(ATT.on){ b.style.display=""; b.textContent="Back to all students"; return; }
+  const u=narrowedUnit();
+  b.style.display=u? "":"none";
+  b.textContent="All attempts";
+}
+async function openAttempts(key){
+  $("attstatus").textContent="Loading attempts…";
+  try{
+    let r=await fetch("/api/wall/attempts?key="+encodeURIComponent(key));
+    let j=await r.json();
+    let rows=j.attempts||[];
+    if(rows.length<=1){
+      // Previous attempts are not on disk yet: fetch them on
+      // demand, beside the toggle that asked.
+      $("attstatus").textContent="Fetching previous attempts from Canvas…";
+      r=await fetch("/api/wall/attempts/fetch",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:key})});
+      j=await r.json(); if(!r.ok) throw new Error(j.error||"fetch failed");
+      rows=j.attempts||[];
+    }
+    ATT={on:true, key:key, rows:rows};
+    HOVER.id=null;
+    $("attstatus").textContent=rows.length+ " attempt(s) for this homework";
+    render();
+  }catch(e){ $("attstatus").textContent=String(e.message||e); }
+}
+async function loadAttempts(key){
+  const r=await fetch("/api/wall/attempts?key="+encodeURIComponent(key));
+  const j=await r.json(); ATT.rows=j.attempts||[]; render();
+}
+$("attbtn").onclick=()=>{
+  if(ATT.on){ ATT={on:false, key:null, rows:[]}; ATTKEEP=false; HOVER.id=null;
+    $("attstatus").textContent=""; render(); return; }
+  const u=narrowedUnit(); if(u) openAttempts(u.id);
+};
+function render(){
+  syncViewOptionsW(); paintViewControlsW();
+  if(SELMODE){
+    // A ticked selection from the table overrides the shared
+    // view's filters and grouping; its sort still applies (v33).
+    VIEWLIST=STUDENTS.filter(s=>SELSET.has(s.id));
+    VIEWLIST.sort((a,b)=>{ const c=cmpSortW(a,b); if(c) return c;
+      return cmpRank((a.name||"").toLowerCase(),(b.name||"").toLowerCase()); });
+    const sb=$("selbar");
+    sb.style.display="";
+    sb.innerHTML="Showing your "+VIEWLIST.length+" selected student(s) ticked in the submissions table"+
+      (SELSET.size>VIEWLIST.length? " — "+(SELSET.size-VIEWLIST.length)+" ticked unit(s) are not on the wall (not downloaded)":"")+
+      ". The view filters above are overridden while a selection is shown."+
+      '<button class="secondary" id="selclearw">Clear selection</button>';
+    $("selclearw").onclick=()=>{ SELMODE=false; saveSelW(); render(); };
+  } else {
+    VIEWLIST=arrangeW(STUDENTS);
+    $("selbar").style.display="none";
+  }
+  if(ATT.on && !ATTKEEP){ const u=narrowedUnit();
+    if(!u || u.id!==ATT.key){ ATT={on:false, key:null, rows:[]}; }
+  }
+  syncAttBtn();
+  if(ATT.on){ renderAttemptTiles(); return; }
+  CAP=capacity();
+  if(page>pages()-1) page=pages()-1;
+  if(page<0) page=0;
+  const sh=showing();
+  const gcounts={};
+  if(VIEW.group!=="none") VIEWLIST.forEach(s=>{ const g=groupLabelW(s); gcounts[g]=(gcounts[g]||0)+1; });
+  const prevLast=(page>0 && VIEWLIST.length)? VIEWLIST[Math.min(page*pageSize()-1, VIEWLIST.length-1)] : null;
+  let lastGroup=null;
+  $("grid").style.gridTemplateColumns = "repeat(auto-fill,minmax("+parseInt($("tilesize").value||"340")+"px,1fr))";
+  $("zoomlabel").textContent=CAP+" per screen at this size";
+  $("grid").innerHTML=sh.map(s=>{
+    const g= s.score==null? "—" : s.score+" / 10";
+    const fin= s.final_score!=null? ' · final '+s.final_score+" / 10" : "";
+    let ghead="";
+    if(VIEW.group!=="none"){ const gl=groupLabelW(s);
+      if(gl!==lastGroup){ const cont=lastGroup===null && prevLast && groupLabelW(prevLast)===gl;
+        lastGroup=gl;
+        ghead='<div class="ghead">'+esc(gl)+' <span class="mut">· '+gcounts[gl]+" shown"+(cont?" · continued":"")+"</span></div>"; } }
+    return ghead+'<div class="tile" data-id="'+esc(s.id)+'">'+
+    (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_url)+'"></video>'
+      : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
+    '<div class="nm">'+esc(s.name)+'</div>'+
+    (s.context? '<div class="mut">'+esc(s.context)+'</div>':"")+
+    (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
+    '<span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
+    '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
+    '<span class="badge">grade '+g+fin+'</span>'+
+    '<span data-exam="'+esc(s.id)+'">'+(s.examined? '<span class="badge ok">examined ✓</span>' : '')+'</span>'+
+    '<span class="badge pct" id="pct_'+esc(s.id)+'">0% · '+fmt(s.duration_s)+'</span>'+
+    (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
+    '</div>';}).join("");
+  bindTiles();
   $("pageinfo").textContent="Screen "+(page+1)+" of "+pages();
-  $("wallcount").textContent=STUDENTS.length+" students ("+STUDENTS.filter(s=>s.source==="demo").length+" demo)";
+  $("wallcount").textContent=VIEWLIST.length+" of "+STUDENTS.length+" students shown ("+VIEWLIST.filter(s=>s.source==="demo").length+" demo shown)"+(SELMODE? " · selection from the table — the view filters are overridden":"");
+  $("fcount").textContent=VIEWLIST.length? "" : (STUDENTS.length? "No takes match the current view — change the selections above, or Reset view." : "");
   $("prevp").disabled=page<=0; $("nextp").disabled=page>=pages()-1;
   setSpeed(); updateMaster();
+  syncHoverSelection();
+}
+function renderAttemptTiles(){
+  const g=$("grid");
+  g.style.gridTemplateColumns="repeat(auto-fill,minmax("+parseInt($("tilesize").value||"340")+"px,1fr))";
+  g.innerHTML=ATT.rows.map(s=>{
+    const gr= s.score==null? "—" : s.score+" / 10";
+    return '<div class="tile" data-id="'+esc(s.id)+'">'+
+    (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_url)+'"></video>'
+      : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
+    '<div class="nm">'+esc(s.name)+'</div>'+
+    '<div><span class="badge '+(s.is_current?"ok":"warn")+'">'+esc(s.attempt_label)+'</span>'+
+    '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
+    '<span class="badge">grade '+gr+'</span></div>'+
+    (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
+    (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
+    '</div>';}).join("");
+  bindTiles();
+  $("pageinfo").textContent="Attempts view";
+  const nm=ATT.rows.length? ATT.rows[0].name : "";
+  $("wallcount").textContent=ATT.rows.length+" attempt(s) of "+nm+" for this homework";
+  $("fcount").textContent="";
+  syncHoverSelection();
 }
 function setFracAll(f){
   vids().forEach(v=>{ if(v.duration) v.currentTime=f*v.duration; });
@@ -2746,7 +4277,8 @@ document.addEventListener("keydown",e=>{
 $("prevp").onclick=()=>{ if(page>0){ page--; render(); } };
 $("nextp").onclick=()=>{ if(page<pages()-1){ page++; render(); } };
 function openZoom(id, opts){
-  const s=STUDENTS.find(x=>x.id===id); if(!s||!s.video_url) return;
+  const s=STUDENTS.find(x=>x.id===id) || ATT.rows.find(x=>x.id===id);
+  if(!s) return;
   markExamined(id,"zoom");
   opts=opts||{};
   // Playback state transfers with the student being followed, so
@@ -2763,28 +4295,61 @@ function openZoom(id, opts){
   }
   zoomId=id;
   $("wall").style.display="none"; $("master").style.display="none"; $("zoom").style.display="block";
-  $("zoomtitle").innerHTML="<strong>"+esc(s.name)+"</strong>";
+  $("zoomtitle").innerHTML="<strong>"+esc(s.name)+"</strong>"+(s.attempt_label? ' <span class="mut">'+esc(s.attempt_label)+"</span>":"");
   const zv=$("zv");
-  if(zv.getAttribute("src")!==s.video_url) zv.src=s.video_url;
-  claimAudio(zv); zv.muted=false;
-  const startAt=()=>{ zv.currentTime=f*(zv.duration||0);
-    if(playing){ const p=zv.play(); if(p) p.catch(()=>{}); } };
-  zv.onloadedmetadata=startAt;
-  if(zv.readyState>=1) startAt();
-  ZFPS=30; zFpsDone=false; $("fpsinfo").textContent="";
-  zv.onplay=()=>{ claimAudio(zv); measureFps(); };
+  const hasVid=!!s.video_url;
+  $("zvwrap").style.display=hasVid? "":"none";
+  $("zbar").style.display=hasVid? "":"none";
+  let znv=$("znovideo");
+  if(hasVid){
+    if(znv) znv.style.display="none";
+    if(zv.getAttribute("src")!==s.video_url) zv.src=s.video_url;
+    claimAudio(zv); zv.muted=false;
+    const startAt=()=>{ zv.currentTime=f*(zv.duration||0);
+      if(playing){ const p=zv.play(); if(p) p.catch(()=>{}); } };
+    zv.onloadedmetadata=startAt;
+    if(zv.readyState>=1) startAt();
+    ZFPS=30; zFpsDone=false; $("fpsinfo").textContent="";
+    zv.onplay=()=>{ claimAudio(zv); measureFps(); };
+  } else {
+    // No downloaded video (v33): the zoom still opens — student
+    // card, critique and transcript as usual — with the tile's
+    // no-video presentation and its download button where the
+    // player would be. A focus deep link lands here too.
+    zv.pause();
+    if(!znv){ znv=document.createElement("div"); znv.id="znovideo";
+      $("zoomvid").appendChild(znv); }
+    znv.style.display="";
+    znv.innerHTML="<span>YouTube take not downloaded yet</span>"+
+      (s.source==="demo"? "" :
+       '<button class="secondary" id="zdl">Download at medium resolution (480p)</button>');
+    const zb=$("zdl");
+    if(zb) zb.onclick=async()=>{ zb.disabled=true; zb.textContent="Downloading…";
+      try{ const r=await fetch("/api/videos/download",{method:"POST",headers:{"content-type":"application/json"},
+          body:JSON.stringify({id:s.id})});
+        const j=await r.json(); if(!r.ok) throw new Error(j.error);
+        zoomId=null;
+        if(ATT.on && ATT.key) await loadAttempts(ATT.key); else await load();
+        openZoom(s.id);
+      }catch(err){ $("werr").textContent=String(err.message||err);
+        zb.disabled=false; zb.textContent="Download at medium resolution (480p)"; } };
+  }
   lastAct=-1;
   $("studentcard").innerHTML=
     '<p style="margin:2px 0"><span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
     (s.youtube? ' <a href="'+esc(s.youtube)+'" target="_blank" rel="noopener" style="color:#9fc3e8">Open on YouTube ↗</a>':"")+"</p>"+
     "<p style='margin:6px 0'><strong>Student grade:</strong> "+(s.score==null?"—":esc(s.score)+" / 10")+"</p>"+
-    '<p style="margin:6px 0"><label><strong>Teacher final grade:</strong> '+
-    '<input class="fin2" type="number" min="0" max="10" step="1" id="zgrade" value="'+(s.final_score!=null? esc(s.final_score):"")+'" placeholder="'+(s.score!=null? esc(s.score):"0–10")+'"></label> '+
-    '<button class="secondary" id="zgradesave">Save grade</button> <span class="mut" id="zgrademsg"></span></p>';
-  $("zgrade").addEventListener("input",()=>{ $("zgrade").dataset.dirty="1"; });
-  $("zgrade").addEventListener("keydown",e=>{ e.stopPropagation(); });
-  $("zgradesave").onclick=()=>saveZoomGrade(false);
+    (s.is_current===false
+      ? '<p class="mut" style="margin:6px 0">'+esc(s.attempt_label||"Previous attempt")+" — the grade of record stays with the current attempt; this view is read-only.</p>"
+      : '<p style="margin:6px 0"><label><strong>Teacher final grade:</strong> '+
+        '<input class="fin2" type="number" min="0" max="10" step="1" id="zgrade" value="'+(s.final_score!=null? esc(s.final_score):"")+'" placeholder="'+(s.score!=null? esc(s.score):"0–10")+'"></label> '+
+        '<button class="secondary" id="zgradesave">Save grade</button> <span class="mut" id="zgrademsg"></span></p>');
+  if($("zgrade")){
+    $("zgrade").addEventListener("input",()=>{ $("zgrade").dataset.dirty="1"; });
+    $("zgrade").addEventListener("keydown",e=>{ e.stopPropagation(); });
+    $("zgradesave").onclick=()=>saveZoomGrade(false);
+  }
   $("zcritique").textContent=s.critique||"—";
   $("ztrans").innerHTML=
     (s.transcript||[]).map((c,i)=>'<div class="chunk" data-i="'+i+'" data-t="'+c.t+'"><span class="t">'+fmt(c.t)+'</span>'+esc(c.text)+"</div>").join("");
@@ -2821,7 +4386,10 @@ async function switchStudent(dir){
   // without a further click when the current one was playing.
   if(!zoomId) return;
   await saveZoomGrade(true);
-  const playable=STUDENTS.filter(x=>x.video_url);
+  // Prev / next follows the current view (v29); if the zoomed
+  // student is outside it, fall back to every playable take.
+  let playable=VIEWLIST.filter(x=>x.video_url);
+  if(!playable.some(x=>x.id===zoomId)) playable=STUDENTS.filter(x=>x.video_url);
   if(playable.length<2) return;
   const i=playable.findIndex(x=>x.id===zoomId);
   const nxt=playable[(i+dir+playable.length)%playable.length];
@@ -2979,13 +4547,52 @@ $("backbtn").onclick=()=>{
     if(tv){ claimAudio(tv); tv.muted=false; const p=tv.play(); if(p) p.catch(()=>{}); }
   }
 };
+// ---- Focus deep link (v33): /wall?focus=<unit key> opens the
+// zoom view on that unit once its data has loaded (the table's
+// student-name links); &attempt=<n> opens the unit's attempts
+// view with that attempt's zoom open (the table's previous-
+// attempt View links). Honoured once, from the prefill if the
+// unit is already on disk, otherwise after the full load.
+const FOCUSQ=new URLSearchParams(location.search);
+let focusDone=false;
+async function maybeFocus(){
+  if(focusDone) return;
+  const key=FOCUSQ.get("focus");
+  if(!key){ focusDone=true; return; }
+  const s=STUDENTS.find(x=>x.id===key);
+  if(!s) return; // not loaded yet; the full load retries
+  focusDone=true;
+  const att=FOCUSQ.get("attempt");
+  if(att){
+    ATTKEEP=true;
+    await openAttempts(key);
+    const row=ATT.rows.find(r=>String(r.attempt_no)===String(att))
+      || ATT.rows.find(r=>r.is_current);
+    if(row) openZoom(row.id);
+  } else {
+    openZoom(key);
+  }
+}
 async function load(){
+  // Disk-only prefill first (v31): the downloaded takes paint
+  // at once, with no Canvas call; the full load that follows
+  // replaces the data (and leaves an open zoom view alone).
+  try{
+    const r0=await fetch("/api/wall?local=1"); const j0=await r0.json();
+    if(r0.ok && !STUDENTS.length){ STUDENTS=j0.students; render();
+      if(STUDENTS.length) $("wallcount").textContent+=" — refreshing from Canvas…"; }
+  }catch(e){ /* the full load below reports any real failure */ }
+  maybeFocus();
   const r=await fetch("/api/wall"); const j=await r.json();
   if(!r.ok){ $("werr").textContent=j.error; return; }
-  STUDENTS=j.students; render();
+  STUDENTS=j.students;
+  if(!zoomId) render();
   const mr=await fetch("/api/marks");
   if(mr.ok){ MARKS=await mr.json(); updateMarkCount(); }
+  renderHoverPanel();
+  maybeFocus();
 }
+bindViewW();
 load(); loop();
 </script></body></html>
 """
@@ -3532,7 +5139,13 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/cleanup/inventory":
             self._send(200, cleanup_inventory(cfg))
         elif u.path == "/api/wall":
-            self._send(200, {"students": wall_students(cfg)})
+            self._send(200, {"students": wall_students(
+                cfg, local_only=q.get("local") == ["1"])})
+        elif u.path == "/api/wall/attempts":
+            self._send(200, {"attempts": wall_attempts(
+                cfg, (q.get("key") or [""])[0])})
+        elif u.path == "/api/redownload/status":
+            self._send(200, redownload_status())
         elif u.path == "/api/marks":
             self._send(200, marks_store(cfg))
         elif u.path == "/api/marks.txt":
@@ -3589,7 +5202,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, fetch_assignments(
                 cfg, int(q["course_id"][0])))
         elif u.path == "/api/submissions":
-            self._send(200, submissions_view(cfg))
+            self._send(200, submissions_view(
+                cfg, local_only=q.get("local") == ["1"],
+                attempts=q.get("attempts") == ["1"]))
         elif u.path == "/api/targets":
             if not cfg.get("canvas_token"):
                 raise ValueError("no Canvas token saved yet (Setup step 1)")
@@ -3883,8 +5498,44 @@ class Handler(BaseHTTPRequestHandler):
                     del store[sid]
                 save_marks(cfg, store)
             self._send(200, store)
+        elif u.path == "/api/redownload-estimate":
+            require_canvas(cfg)
+            self._send(200, redownload_estimate(cfg, body))
+        elif u.path == "/api/redownload":
+            require_canvas(cfg)
+            self._send(200, start_redownload(cfg, body))
+        elif u.path == "/api/wall/attempts/fetch":
+            require_canvas(cfg)
+            self._send(200, {"attempts": fetch_unit_attempts(
+                cfg, str(body.get("key") or ""))})
         elif u.path == "/api/videos/download":
             sid = str(body.get("id") or "")
+            if "::a" in sid:
+                # A previous attempt's tile (v32): its video file is
+                # named for the attempt, and its YouTube link comes
+                # from that attempt's own package.
+                ukey, _, anum = sid.partition("::a")
+                student = next((s for s in wall_attempts(cfg, ukey)
+                                if s["id"] == sid), None)
+                if not student:
+                    raise ValueError("unknown attempt id")
+                if student.get("downloaded"):
+                    self._send(200, {"already": True})
+                elif not student.get("youtube"):
+                    raise ValueError(
+                        "that attempt has no YouTube link")
+                else:
+                    log_activity("video", "video download started — "
+                                          f"{student['name']} "
+                                          f"(attempt {anum})")
+                    res = download_youtube_medium(
+                        cfg, f"{ukey}-attempt-{anum}",
+                        student["youtube"])
+                    log_activity("video", "video downloaded — "
+                                          f"{student['name']} "
+                                          f"(attempt {anum})")
+                    self._send(200, res)
+                return
             student = next((s for s in wall_students(cfg)
                             if s["id"] == sid), None)
             if not student:
@@ -3931,7 +5582,9 @@ def canvas_submission_index(cfg):
     if not cfg.get("canvas_token"):
         return []
     out = []
-    for t in scan_targets(cfg):
+    targets = scan_targets(cfg)
+    prefetch_submissions(cfg, targets)
+    for t in targets:
         try:
             subs = scan_submissions(cfg, t)
         except Exception:  # noqa: BLE001 - the view degrades per target
@@ -3976,22 +5629,57 @@ def _package_grades(pkg):
         return {}
 
 
-def submissions_view(cfg):
+def submissions_view(cfg, local_only=False, attempts=False):
+    """Rows for the submissions table. With local_only=True (v31)
+    no Canvas call is made at all: the rows are the downloaded
+    packages only, with names, labels and dates from the local
+    package index — the prefill the page paints before the live
+    view lands. The full view is unchanged.
+
+    With attempts=True (v33, the table's Include-previous mode)
+    each downloaded row also carries its previous attempts ON
+    DISK — attempt number, submitted date and that package's own
+    signed grades, parsed by wall_attempts so the table and the
+    wall can never disagree — plus attempts_missing: how many of
+    the unit's earlier Canvas attempts are not on disk and still
+    downloadable. v34 splits the rest of the not-on-disk count
+    into attempts_not_format (known locally, from the redownload
+    tool's recorded history walks in attempt-formats.json, to
+    have held no ZIP) and attempts_rejected (a rejected mark in
+    download-state.json), so the table's note can say why an
+    attempt can never arrive. Both read local records only — the
+    table load never fetches. Attempt data is disk-local, so it
+    is attached in local mode too and the prefill shows the
+    attempt rows at once. The default load (attempts=False) pays
+    none of this cost."""
     checks = results_store(cfg)
     finals = finals_store(cfg)
     examined = examined_store(cfg)
     local = {p["key"]: p for p in downloaded_packages(cfg)}
-    pkg_grades = {k: _package_grades(p) for k, p in local.items()}
-    targets = {(t["course_id"], t["assignment_id"]): t
-               for t in scan_targets(cfg)} if cfg.get("canvas_token") \
-        else {}
+    pkg_grades = {}
+
+    def grades_of(key):
+        # Package grades are parsed on demand, only for rows with
+        # no stored check result — the full view used to parse
+        # every package's HTML even when a check already held the
+        # grades.
+        if key not in pkg_grades:
+            pkg_grades[key] = _package_grades(local[key]) \
+                if key in local else {}
+        return pkg_grades[key]
+
+    targets = {}
+    if not local_only and cfg.get("canvas_token"):
+        targets = {(t["course_id"], t["assignment_id"]): t
+                   for t in scan_targets(cfg)}
+    index = package_index(cfg)
 
     def extra(key, uid):
         check = store_get(checks, key, uid)
         student = grades_total((check or {}).get("estimated_grades")) \
             if check else None
         if student is None:
-            student = grades_total(pkg_grades.get(key))
+            student = grades_total(grades_of(key))
         return {"check": check,
                 "student_score": student,
                 "examined": store_has(examined, key, uid),
@@ -4000,28 +5688,78 @@ def submissions_view(cfg):
 
     rows = []
     seen = set()
-    for s in canvas_submission_index(cfg):
-        if not s.get("complete"):
-            # Only submissions that meet the ZIP requirement are
-            # considered; every other submission (ordinary homework
-            # files, quizzes, v1 two-file uploads) is ignored
-            # entirely — no row, no download, no log line.
-            continue
-        key = s["key"]
-        seen.add(key)
-        rows.append({**s, "id": key, "downloaded": key in local,
-                     **extra(key, s["user_id"])})
+    if not local_only:
+        for s in canvas_submission_index(cfg):
+            if not s.get("complete"):
+                # Only submissions that meet the ZIP requirement are
+                # considered; every other submission (ordinary homework
+                # files, quizzes, v1 two-file uploads) is ignored
+                # entirely — no row, no download, no log line.
+                continue
+            key = s["key"]
+            seen.add(key)
+            rows.append({**s, "id": key, "downloaded": key in local,
+                         **extra(key, s["user_id"])})
     for key, p in local.items():
         if key not in seen:
             t = targets.get((p["course_id"], p["assignment_id"])) or {}
+            ix = index.get(key) or {}
             rows.append({"user_id": p["user_id"], "id": key, "key": key,
                          "course_id": p["course_id"],
-                         "course_name": t.get("course_name"),
+                         "course_name": t.get("course_name")
+                         or ix.get("course_name"),
                          "assignment_id": p["assignment_id"],
-                         "assignment_name": t.get("assignment_name"),
-                         "user_name": None,
+                         "assignment_name": t.get("assignment_name")
+                         or ix.get("assignment_name"),
+                         "user_name": ix.get("user_name"),
                          "workflow_state": None, "attempt": None,
+                         "submitted_at": ix.get("submitted_at"),
                          "downloaded": True, **extra(key, p["user_id"])})
+    if attempts:
+        fmt_map = read_json_file(
+            _state_file(cfg, "attempt-formats.json"), {})
+        dl_state = read_json_file(
+            _state_file(cfg, "download-state.json"), {})
+        for r in rows:
+            r["attempts"] = []
+            r["attempts_missing"] = 0
+            r["attempts_not_format"] = 0
+            r["attempts_rejected"] = 0
+            if not r.get("downloaded"):
+                continue
+            arows = wall_attempts(cfg, r["id"])
+            prev = [a for a in arows if not a["is_current"]]
+            cur_no = next((a["attempt_no"] for a in arows
+                           if a["is_current"]), None)
+            total = r.get("attempt") or cur_no
+            r["attempts"] = [{
+                "id": a["id"], "attempt_no": a["attempt_no"],
+                "submitted_at": a["submitted_at"],
+                "score": a["score"],
+                "completeness": a["completeness"],
+                "accuracy": a["accuracy"]} for a in prev]
+            if total:
+                on_disk = {a["attempt_no"] for a in prev}
+                known = fmt_map.get(r["id"]) or {}
+                r["attempts_not_format"] = sum(
+                    1 for n in known
+                    if isinstance(n, str) and n.isdigit()
+                    and int(n) < total and int(n) not in on_disk)
+                split = _split_unit_key(r["id"])
+                if split:
+                    prefix = (f"{split[0]}:{split[1]}:{split[2]}"
+                              ":attempt-")
+                    r["attempts_rejected"] = sum(
+                        1 for k, v in dl_state.items()
+                        if k.startswith(prefix)
+                        and isinstance(v, dict) and v.get("rejected")
+                        and str(v.get("attempt")).isdigit()
+                        and int(v["attempt"]) < total
+                        and int(v["attempt"]) not in on_disk)
+                r["attempts_missing"] = max(
+                    0, (total - 1) - len(prev)
+                    - r["attempts_not_format"]
+                    - r["attempts_rejected"])
     # Unexamined first (the teacher's queue), then by name.
     rows.sort(key=lambda r: (1 if r.get("examined") else 0,
                              (r.get("user_name") or r["user_id"]).lower()))

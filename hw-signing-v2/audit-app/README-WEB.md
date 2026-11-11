@@ -18,6 +18,206 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v34 (2026-11-11) — redownload freeze fix, format reporting, collapsible hover sections, select all that appear
+
+- **Redownload no longer freezes with "Include previous
+  attempts".** The Start request returns at once; the selection
+  is planned inside the run, and the progress line shows a
+  planning phase while the assignments are read. One history
+  walk per assignment now serves the estimate, the run and the
+  wall's attempts fetch (a cache with the scan's 600 s
+  lifetime) — before, each of the three fetched the history
+  separately, inside what looked like one button press. A
+  homework whose history cannot be read no longer stops the
+  run: it is logged, counted in the closing summary ("N
+  assignment(s) could not be read"), and the run continues
+  with the next homework.
+- **Previous attempts that are not in the package format are
+  reported, not dropped.** The estimate and the run's closing
+  summary count and list them (student, attempt, what the
+  attempt holds instead — "audio + html files, no ZIP", "no
+  files", or the file names). They are still never downloaded:
+  the two-file form is not a package. The submissions table's
+  attempt note uses the same knowledge where it is already on
+  this computer (recorded by earlier redownload walks in
+  `attempt-formats.json`): it now distinguishes "not
+  downloaded" from "not in package format (no ZIP) — cannot be
+  downloaded" and "rejected package ZIP".
+- **A previous attempt whose ZIP is rejected is not re-fetched
+  forever.** The rejection is recorded in
+  `download-state.json` (the attempt's listing fields, the
+  ZIP's SHA-256 and a rejected flag); later runs report it
+  from the record and fetch nothing for it. Force still
+  retries it. A current attempt's rejected ZIP is unchanged:
+  no mark is left, and the next pass retries it.
+- **The wall's hover panel sections collapse.** Time marks,
+  Critique and Transcript each collapse like the zoom view's
+  panels: click a section's head or its ▾ button and the
+  section shrinks to its title bar while the others share the
+  freed height; click again to restore. The choice is kept in
+  this browser (localStorage `ta-wall-hover-v1`). The student
+  card does not collapse.
+- **The submissions table has a header tick** — "select all
+  that appear". It ticks exactly the submissions currently
+  shown under the active view (filters and grouping), and
+  unticks the shown ones when all of them are already ticked;
+  part-shown reads as the in-between (indeterminate) state.
+  Ticks on submissions outside the current view are kept, and
+  the tick writes through the same selection store as the
+  per-row ticks, so "View selected on wall" opens exactly the
+  ticked set.
+
+## v33 (2026-11-11) — hover panel fix, table → wall selection and focus, table attempt rows
+
+- **Hover panel fix.** In v32 the wall's side panel showed
+  the student card but its Time marks, Critique and
+  Transcript panels collapsed to hairlines: the panel had a
+  maximum height but no definite height, so its three
+  flexible sections had nothing to share out. The panel now
+  has a definite height (the viewport height less the page
+  furniture), the three sections share it, and each section
+  body fills its section and scrolls. At phone width the
+  panel stacks below the grid with each body capped, as the
+  zoom panels are. The same fix covers the attempts wall,
+  which shares the panel.
+- **Table → wall selection.** Each submissions-table row
+  carries a tick. "View selected on wall" (above the table,
+  with the tick count) opens the video wall showing exactly
+  the ticked students; a banner there states the count and
+  offers Clear selection, which restores the ordinary
+  shared-view wall. While a selection is shown, the wall's
+  view filters and grouping are overridden (its sort still
+  orders the selection). Ticks are kept in this browser.
+- **Focused student view.** Clicking a student's name in
+  the table opens the wall with that student's zoom view
+  open — video, critique and transcript as usual. If the
+  take's video has not been downloaded, the zoom opens with
+  the no-video presentation and its download button where
+  the player would be. A previous attempt's View link (next
+  item) opens the attempts collage with that attempt's zoom
+  open.
+- **Table attempt rows.** The table's view controls gain
+  an Attempts choice: "Latest only" (as before) or
+  "Include previous". In Include-previous mode each
+  submission gains a subordinate row for every earlier
+  attempt already on disk — current attempt first, then
+  previous attempts newest first — showing that attempt's
+  own signed grade. Finals, examined ticks and stored
+  checks stay with the current attempt's row, which is
+  unchanged. When Canvas holds more earlier attempts than
+  are on disk, a note row states how many are not
+  downloaded and points at the Redownload tool. Nothing is
+  downloaded from the table itself; the attempt data is
+  disk-local, so the local prefill shows the rows too.
+
+## v32 (2026-11-11) — wall hover panel, redownload tool, previous attempts
+
+- **Hover panel on the video wall.** A fixed side column sits
+  beside the collage (the grid shrinks; nothing is overlaid).
+  It shows the selected tile's student card, time marks,
+  critique and transcript — the same panels as the zoom view.
+  Hovering a tile selects it; a tap selects it too; the panel
+  keeps the last hovered tile when the mouse leaves, and
+  defaults to the first tile in the current view order. The
+  panel is text only: it never changes which tile plays or
+  is audible. On a phone-width screen it stacks below the
+  grid.
+- **Redownload tool** (dashboard, under the Download /
+  integrity-check controls). Filters work like the shared
+  view: course, homework, student text, submitted-date
+  range, Examined, Graded. A scope choice decides whether
+  previous attempts are included, and Force re-fetches even
+  packages that are present and unchanged. Before a run, an
+  estimate line shows how many packages would be fetched,
+  how many are already present, the total MB and an
+  estimated time range. The rate comes from recent downloads
+  on this computer, recorded in `download-stats.json` in the
+  data folder; until the first run there is no record, the
+  estimate uses an assumed 2,000,000 bytes/s and is marked
+  uncalibrated. During a run the panel shows packages and MB
+  done, elapsed time and a remaining estimate that follows
+  the achieved rate; the closing line reports the actual
+  time beside the estimate and updates the calibration
+  record. The estimate covers package download and
+  extraction only.
+- **A check before fetching.** Whether a package needs
+  fetching is now decided from the Canvas listing — attempt
+  number and submitted time compared against the stored
+  watermark — before any package bytes are downloaded, so
+  unchanged, present packages cost no download. The
+  automatic passes keep their behaviour; only the wasted
+  bytes are gone.
+- **Previous attempts.** Narrow the wall view to one student
+  and one homework and an **All attempts** button appears.
+  It switches the collage to that student's attempts for the
+  homework, ordered by attempt number, each tile labelled
+  "Attempt n · date" and marked current or previous; if the
+  earlier packages are not on this computer yet, the button
+  fetches them first (progress and errors appear beside the
+  button). The redownload tool's "Include previous
+  attempts" scope fetches them the same way. Storage: the
+  current attempt keeps its existing folder; a previous
+  attempt n lives in an `attempt-<n>/` subfolder with its
+  own package and extracted files, and its watermark key
+  gains `:attempt-<n>`. An attempt tile's video downloads on
+  demand like any wall video, keyed per attempt, and zooming
+  an attempt tile shows that attempt's own grades, critique
+  and transcript. Boundaries: the grade of record, teacher
+  final grades, examined ticks, stored checks and the
+  gradebook export stay keyed to the current attempt only;
+  previous attempts never overwrite them. Deleting a unit in
+  Cleanup removes its attempt folders, attempt watermarks
+  and attempt videos with it.
+
+## v31 (2026-11-11) — local-first views, parallel scan
+
+- The submissions table and the video wall no longer wait
+  for Canvas before showing anything. Both pages first ask
+  for the **local view** (`?local=1`): the downloaded
+  submissions and takes, with their stored checks, final
+  grades, examined ticks, and the names, course / homework
+  labels and submitted dates kept in `package-index.json` —
+  all read from this computer, in milliseconds. The full
+  Canvas view then loads behind it and replaces it, adding
+  submissions not yet downloaded. While the local view is
+  up, the table says "Showing the submissions already on
+  this computer — refreshing from Canvas…".
+- The Canvas scan itself is faster: assignment lists and
+  per-assignment submission lists are fetched six calls at
+  a time instead of one after another, the scan cache now
+  lasts 10 minutes (the automatic pass interval) instead of
+  2, the wall's roster lookups are cached with the scan,
+  the wall parses each submission's HTML once instead of
+  twice, and the table reads a package's grades only when
+  no stored check already holds them.
+- Nothing about the data changes: the same rows and tiles
+  appear, with the same grades and marks. What changes is
+  only how long the first paint takes, and how much Canvas
+  traffic a page load causes.
+
+## v29 (2026-11-10) — select, sort, filter and group the submissions
+
+- The submissions table (dashboard section 2) and the video
+  wall share one set of view controls: **select** a course or
+  a homework; **filter** by student name or ID, a submitted-
+  date range, examined or not, and graded or not; **sort** by
+  course, student, date submitted, homework, examined or
+  grade (with an ascending / descending button); and **group**
+  by course, homework, date, examined or graded, with a
+  heading and a count for each group.
+- "Graded" means a grade is present — the signed grade from
+  the package, or a final grade entered by the teacher.
+  Sorting by Examined lists the not-yet-examined first
+  (ascending), as before.
+- The table gains a **Submitted** column; the wall data now
+  carries course, homework and submitted date as separate
+  fields, and each tile shows its submitted date.
+- The chosen view is kept in the browser and applies on both
+  pages: a selection made in the table is the selection on
+  the wall. **Reset view** restores the default (no filters,
+  no grouping, not-yet-examined first). On the wall, Prev /
+  Next student in the zoom view follows the current view.
+
 ## v27 (2026-11-09) — critique line breaks kept on the wall
 
 - The video wall's zoom view now preserves the critique's

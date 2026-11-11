@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Teacher audit app (audit v28) — the single audit app, for
+"""Teacher audit app (audit v31) — the single audit app, for
 HW Signing v2 submissions only. (v24 adds prompt-package
 management to the web front end, in web.py; v25 fixes the
 Packages page's student-link verification to fetch metadata
@@ -8,7 +8,12 @@ the teacher's rule; v27 keeps the critique's line breaks in
 the wall zoom view; v28 verifies the transcript checksum of
 packages from webapp 2.4.2 or later against the canonical
 transcript with each chunk's [mm:ss] start marker, and of
-earlier packages against the markerless form.)
+earlier packages against the markerless form; v29 adds the
+shared select / sort / filter / group controls to the
+submissions table and the video wall; v31 is a web.py-only
+change — the audit functions here are unchanged apart from
+the version and User-Agent — making both views local-first
+with a parallel Canvas scan.)
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -108,7 +113,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/27.0"
+USER_AGENT = "HWSigning-Teacher-Audit/34.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -249,13 +254,53 @@ def fetch_submissions(cfg):
     return out
 
 
+def fetch_submissions_history(cfg):
+    """All submissions for the configured assignment, each with its
+    submission_history (every attempt, each a submission object
+    with its own attempt, submitted_at and attachments),
+    following Canvas pagination. Read-only. Used only on demand
+    (v32): the ordinary fetch stays latest-only."""
+    base = cfg["canvas_base_url"].rstrip("/")
+    url = (f"{base}/api/v1/courses/{cfg['course_id']}"
+           f"/assignments/{cfg['assignment_id']}/submissions")
+    params = {"include[]": ["user", "submission_history"],
+              "per_page": 100}
+    out = []
+    while url:
+        page, url = http_get_json(url, token=cfg["canvas_token"],
+                                  params=params)
+        params = None
+        out.extend(page)
+    return out
+
+
 def fetch_bytes(cfg, url):
     return http_get_bytes(url, token=cfg["canvas_token"])
 
 
+_AUDIO_SUFFIXES = (".wav", ".mp3", ".m4a", ".webm", ".ogg")
+
+
+def describe_attempt_files(attachments):
+    """A compact description of what a non-package attempt holds
+    (v34), for the redownload tool's reporting: "no files" when it
+    holds nothing, "audio + html files, no ZIP" for the v1
+    two-file form, otherwise the file names themselves. Pure —
+    unit-tested."""
+    names = [str(a.get("filename") or "") for a in attachments or []]
+    names = [n for n in names if n]
+    if not names:
+        return "no files"
+    low = [n.lower() for n in names]
+    if any(n.endswith(_AUDIO_SUFFIXES) for n in low) \
+            and any(n.endswith((".html", ".htm")) for n in low):
+        return "audio + html files, no ZIP"
+    return ", ".join(names)
+
+
 def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
                       force=False, progress_fn=None, subdir=None,
-                      key_prefix=""):
+                      key_prefix="", user_ids=None, include_history=False):
     """Download the ZIP package of each student's most recent attempt.
 
     Qualifying rule (v23): an attempt qualifies only when it holds
@@ -269,6 +314,18 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
     produces a record carrying an "error" and no extracted files,
     and is not watermarked, so a later pass retries it.
 
+    Skip rule (v32): a package whose stored watermark already
+    matches the listing's submission id, submitted_at and attempt
+    — and whose three files are on disk — is skipped WITHOUT
+    fetching its bytes. (Before v32 the bytes were fetched first
+    and the SHA-256 compared; the redownload tool's time estimate
+    depends on present packages costing no download.) When the
+    listing fields do not settle it, the bytes are fetched and the
+    full watermark, SHA-256 included, decides as before. Records
+    carry "fetched_bytes": how many ZIP bytes this call actually
+    downloaded (0 for a pre-fetch skip), which the web app's
+    download-rate calibration reads.
+
     The watermark is rewritten (temp file + rename) after each
     package, not only at the end: if the run is interrupted — page
     closed, app stopped — the finished packages stay marked and the
@@ -280,9 +337,33 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
     their watermark keys are "<key_prefix>:<user_id>", so the same
     student in several assignments never collides. Both default to
     the original flat layout (the CLI's single-assignment use).
+
+    user_ids (v32), when given, restricts the run to those students
+    (the redownload tool's filtered selection).
+
+    include_history (v32), when the fetched submissions carry a
+    submission_history, also downloads every earlier attempt of
+    each student. The current attempt keeps the canonical folder
+    and watermark key; an earlier attempt n goes into the unit
+    folder's attempt-<n>/ subfolder, watermarked under
+    "<key>:attempt-<n>". Automatic passes never set this — they
+    stay latest-only; the history fetch happens on demand only.
+
+    v34, on the history path only: an earlier attempt that holds
+    no ZIP is still not downloaded (the v23 rule stands), but it
+    now produces a "not_in_format" record saying what the attempt
+    holds instead (describe_attempt_files), so the redownload
+    tool can report it rather than dropping it silently. And an
+    earlier attempt whose ZIP fails extraction leaves a rejected
+    mark in the watermark (listing fields + ZIP SHA-256 +
+    "rejected": true): later runs skip fetching it and report it
+    as rejected from the record, instead of re-fetching bytes
+    that can never succeed. A current attempt is unchanged — its
+    failed ZIP is never marked, so a later pass retries it.
     """
     fetch_submissions_fn = fetch_submissions_fn or fetch_submissions
     fetch_bytes_fn = fetch_bytes_fn or fetch_bytes
+    wanted = None if user_ids is None else {str(u) for u in user_ids}
     root = data_dir(cfg)
     dl_dir = root / "downloads"
     dl_dir.mkdir(exist_ok=True)
@@ -305,6 +386,7 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
                 progress_fn(rec)
             except Exception:  # noqa: BLE001 - progress never breaks work
                 pass
+
     for sub in fetch_submissions_fn(cfg):
         if sub.get("workflow_state") in (None, "unsubmitted"):
             if not sub.get("attachments"):
@@ -313,59 +395,236 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
         user_id = str(sub.get("user_id") or user.get("id") or "")
         if not user_id:
             continue
-        attachments = sub.get("attachments") or []
-        zip_att = next(
-            (a for a in attachments
-             if a["filename"].lower().endswith(".zip")), None)
-        if not zip_att:
-            # Not an HW Signing v22 package: the scan also walks
-            # every ordinary assignment in the teacher's courses,
-            # and a submission that does not hold a ZIP file is
-            # simply not considered — no record, no log line (the
-            # teacher's direction, 2026-11-08, carried into v22).
+        if wanted is not None and user_id not in wanted:
             continue
-        zip_bytes = fetch_bytes_fn(cfg, zip_att["url"])
-        zip_sha = hashlib.sha256(zip_bytes).hexdigest()
-        key = f"{key_prefix}:{user_id}" if key_prefix else user_id
-        mark = {"submission_id": sub.get("id"),
-                "submitted_at": sub.get("submitted_at"),
-                "attempt": sub.get("attempt"),
-                "zip_sha256": zip_sha}
-        folder = dl_dir / subdir / user_id if subdir else dl_dir / user_id
-        zip_path = folder / "package.zip"
-        audio_path = folder / "submission-audio.wav"
-        html_path = folder / "submission.html"
-        if not force and state.get(key) == mark and zip_path.exists() \
-                and audio_path.exists() and html_path.exists():
-            emit({"user_id": user_id,
-                  "user_name": user.get("name"),
+        # Attempt items: earlier attempts (oldest first) when the
+        # history is included, then the current attempt, which
+        # keeps the canonical folder and key.
+        items = []
+        if include_history:
+            seen = {sub.get("attempt")}
+            for h in sub.get("submission_history") or []:
+                if not isinstance(h, dict):
+                    continue
+                ha = h.get("attempt")
+                if ha is None or ha in seen:
+                    continue
+                seen.add(ha)
+                items.append({
+                    "attempt": ha,
+                    "submitted_at": h.get("submitted_at"),
+                    "attachments": h.get("attachments") or [],
+                    "submission_id": h.get("id") or sub.get("id"),
+                    "current": False})
+            items.sort(key=lambda a: a["attempt"]
+                       if isinstance(a["attempt"], int) else 0)
+        items.append({
+            "attempt": sub.get("attempt"),
+            "submitted_at": sub.get("submitted_at"),
+            "attachments": sub.get("attachments") or [],
+            "submission_id": sub.get("id"), "current": True})
+        base_folder = dl_dir / subdir / user_id if subdir \
+            else dl_dir / user_id
+        base_key = f"{key_prefix}:{user_id}" if key_prefix else user_id
+        for item in items:
+            attachments = item["attachments"]
+            zip_att = next(
+                (a for a in attachments
+                 if a["filename"].lower().endswith(".zip")), None)
+            if not zip_att:
+                # Not an HW Signing v22 package: the scan also walks
+                # every ordinary assignment in the teacher's courses,
+                # and a submission (or an earlier attempt) that does
+                # not hold a ZIP file is simply not considered — no
+                # record, no log line (the teacher's direction,
+                # 2026-11-08, carried into v22). v34 exception: on
+                # the on-demand history path, an EARLIER attempt is
+                # reported (not downloaded) so the redownload tool
+                # can show why its previous-attempt count differs
+                # from Canvas. The current attempt keeps the
+                # silent rule, as do all non-history runs.
+                if include_history and not item["current"]:
+                    emit({"user_id": user_id,
+                          "user_name": user.get("name"),
+                          "not_in_format": True,
+                          "holds": describe_attempt_files(attachments),
+                          "attempt": item["attempt"],
+                          "submitted_at": item["submitted_at"],
+                          "fetched_bytes": 0,
+                          "current_attempt": False})
+                continue
+            is_current = item["current"]
+            folder = base_folder if is_current else \
+                base_folder / f"attempt-{item['attempt']}"
+            key = base_key if is_current else \
+                f"{base_key}:attempt-{item['attempt']}"
+            zip_path = folder / "package.zip"
+            audio_path = folder / "submission-audio.wav"
+            html_path = folder / "submission.html"
+            listing = {"submission_id": item["submission_id"],
+                       "submitted_at": item["submitted_at"],
+                       "attempt": item["attempt"]}
+            stored = state.get(key)
+            present = zip_path.exists() and audio_path.exists() \
+                and html_path.exists()
+            if not force and not is_current and stored is not None \
+                    and stored.get("rejected") and \
+                    all(stored.get(k) == v for k, v in listing.items()):
+                # v34: this earlier attempt's ZIP was rejected on
+                # an earlier run and the rejection is on record —
+                # report it from the record, fetch nothing. (A
+                # forced run falls through and retries it.)
+                emit({"user_id": user_id,
+                      "user_name": user.get("name"),
+                      "zip_path": str(zip_path),
+                      "skipped": True, "rejected": True,
+                      "fetched_bytes": 0,
+                      "current_attempt": is_current, **stored})
+                continue
+            if not force and stored is not None and present and \
+                    all(stored.get(k) == v for k, v in listing.items()):
+                emit({"user_id": user_id,
+                      "user_name": user.get("name"),
+                      "audio_path": str(audio_path),
+                      "html_path": str(html_path),
+                      "zip_path": str(zip_path),
+                      "skipped": True, "fetched_bytes": 0,
+                      "current_attempt": is_current, **stored})
+                continue
+            zip_bytes = fetch_bytes_fn(cfg, zip_att["url"])
+            zip_sha = hashlib.sha256(zip_bytes).hexdigest()
+            mark = {**listing, "zip_sha256": zip_sha}
+            if not force and stored == mark and present:
+                emit({"user_id": user_id,
+                      "user_name": user.get("name"),
+                      "audio_path": str(audio_path),
+                      "html_path": str(html_path),
+                      "zip_path": str(zip_path),
+                      "skipped": True,
+                      "fetched_bytes": len(zip_bytes),
+                      "current_attempt": is_current, **mark})
+                continue
+            folder.mkdir(parents=True, exist_ok=True)
+            zip_path.write_bytes(zip_bytes)
+            try:
+                extract_package_zip(zip_bytes, folder)
+            except ValueError as e:
+                # A malformed or hostile ZIP is kept as package.zip
+                # for the record, nothing is extracted from it, and
+                # the failure is reported on the record (the web app
+                # logs records carrying an "error"). v34: for an
+                # earlier attempt the rejection is also watermarked
+                # (rejected mark), so later runs report it from the
+                # record instead of re-fetching bytes that can never
+                # succeed; a current attempt is never marked, so a
+                # later pass retries it as before.
+                rec = {"user_id": user_id,
+                       "user_name": user.get("name"),
+                       "zip_path": str(zip_path),
+                       "error": f"package ZIP rejected: {e}",
+                       "fetched_bytes": len(zip_bytes),
+                       "current_attempt": is_current, **mark}
+                if not is_current:
+                    rec["rejected"] = True
+                    state[key] = {**mark, "rejected": True}
+                    save_state()
+                emit(rec)
+                continue
+            state[key] = mark
+            save_state()
+            emit({"user_id": user_id, "user_name": user.get("name"),
                   "audio_path": str(audio_path),
                   "html_path": str(html_path),
                   "zip_path": str(zip_path),
-                  "skipped": True, **mark})
-            continue
-        folder.mkdir(parents=True, exist_ok=True)
-        zip_path.write_bytes(zip_bytes)
-        try:
-            extract_package_zip(zip_bytes, folder)
-        except ValueError as e:
-            # A malformed or hostile ZIP is kept as package.zip for
-            # the record, nothing is extracted from it, and the
-            # failure is reported on the record (the web app logs
-            # records carrying an "error").
-            emit({"user_id": user_id,
-                  "user_name": user.get("name"),
-                  "zip_path": str(zip_path),
-                  "error": f"package ZIP rejected: {e}", **mark})
-            continue
-        state[key] = mark
-        save_state()
-        emit({"user_id": user_id, "user_name": user.get("name"),
-              "audio_path": str(audio_path),
-              "html_path": str(html_path),
-              "zip_path": str(zip_path), **mark})
+                  "fetched_bytes": len(zip_bytes),
+                  "current_attempt": is_current, **mark})
     save_state()
     return records
+
+
+# ------------------------------------------------- download rate stats
+#
+# The redownload tool (v32) shows a time estimate before it runs.
+# The rate behind it is measured, not assumed: every finished
+# download pass leaves one record (bytes fetched, seconds taken)
+# in download-stats.json in the data folder, and the estimate
+# divides by the aggregate rate of the recent records. Until the
+# first record exists the estimate uses ASSUMED_DOWNLOAD_RATE_BPS
+# and is marked uncalibrated by the caller.
+
+ASSUMED_DOWNLOAD_RATE_BPS = 2_000_000   # bytes/second, ~16 Mbit/s
+DOWNLOAD_STATS_KEEP = 20
+ESTIMATE_LOW_FACTOR = 0.8     # the range is estimate x [0.8, 1.3]
+ESTIMATE_HIGH_FACTOR = 1.3
+
+
+def load_download_stats(cfg):
+    """Recent download-pass records [{bytes, seconds, at}], oldest
+    first; [] when none has been recorded (or the file is bad)."""
+    path = data_dir(cfg) / "download-stats.json"
+    if not path.exists():
+        return []
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return []
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        try:
+            out.append({"bytes": int(r["bytes"]),
+                        "seconds": float(r["seconds"]),
+                        "at": r.get("at")})
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
+def record_download_stat(cfg, nbytes, seconds, at=None):
+    """Append one finished pass to the calibration record (temp
+    file + rename, like the watermark). Non-positive measurements
+    are ignored — a pass that fetched nothing says nothing about
+    the connection's rate."""
+    if not nbytes or not seconds or nbytes <= 0 or seconds <= 0:
+        return load_download_stats(cfg)
+    stats = load_download_stats(cfg)
+    stats.append({"bytes": int(nbytes), "seconds": float(seconds),
+                  "at": at})
+    stats = stats[-DOWNLOAD_STATS_KEEP:]
+    path = data_dir(cfg) / "download-stats.json"
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(stats, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
+    return stats
+
+
+def effective_download_rate(stats):
+    """Aggregate bytes/second over the calibration records, or
+    None when there are none (the estimate is then uncalibrated)."""
+    total_b = sum(r["bytes"] for r in stats)
+    total_s = sum(r["seconds"] for r in stats)
+    if not stats or total_b <= 0 or total_s <= 0:
+        return None
+    return total_b / total_s
+
+
+def estimate_download(items, rate_bps):
+    """Pure estimate for a redownload selection. items are dicts
+    with "size" (the Canvas attachment's byte size) and
+    "needs_fetch". Returns the counts, the bytes to fetch, the
+    rate used, and a seconds range (the point estimate widened by
+    ESTIMATE_LOW_FACTOR / ESTIMATE_HIGH_FACTOR). rate_bps=None
+    selects the assumed rate; the caller marks that case
+    uncalibrated."""
+    fetch = [i for i in items if i.get("needs_fetch")]
+    total = sum(int(i.get("size") or 0) for i in fetch)
+    rate = rate_bps or ASSUMED_DOWNLOAD_RATE_BPS
+    secs = total / rate if total else 0.0
+    return {"packages": len(items), "to_fetch": len(fetch),
+            "present": len(items) - len(fetch), "bytes": total,
+            "rate_bps": rate,
+            "seconds": secs,
+            "seconds_low": secs * ESTIMATE_LOW_FACTOR,
+            "seconds_high": secs * ESTIMATE_HIGH_FACTOR}
 
 
 # ---------------------------------------------------------------- package ZIP
