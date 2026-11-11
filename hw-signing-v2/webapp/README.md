@@ -35,7 +35,12 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
    submission from the conversion panel (pick the job, check the
    link, confirm; the Worker re-signs the bundle with the video
    hash), and
-   for a final job builds `submission.zip` — one file for Canvas.
+   for a final job builds the submission ZIP — one file for Canvas,
+   downloaded under a per-job name (2.4.4):
+   `C<course>H<homework>-G<total grade>-Y<HHMM>-<YYMMDD>.zip`, the Y
+   segment being the job's YouTube link check time (grading time for
+   jobs whose entry kept none). The ZIP's bytes and entry names are
+   unchanged.
 
 ## Layout
 
@@ -220,7 +225,7 @@ logic is Node-tested through `classifyDuration`.
   segment ("al-paso"), not inside longer words ("always-7",
   "final-try"); longer words and collapsed multi-word entries block
   anywhere.
-- **Component version strings**: webapp `hw-signing-webapp 2.4.3`;
+- **Component version strings**: webapp `hw-signing-webapp 2.4.4`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle
