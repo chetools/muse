@@ -168,10 +168,15 @@ export function buildJobPayload(state) {
 
 /* ---------------- localStorage job entries ----------------
  * A list of { pkg, course, asg, retrieval_code, kind,
- * youtube_link, youtube_title, created_at, expires_at }.
+ * youtube_link, youtube_title, youtube_checked_at, created_at,
+ * expires_at }.
  * youtube_title is the title the Worker returned at the link check,
  * kept locally so the student can recognise the video again at ZIP
- * time; it is never sent with the job. youtube_link is held only
+ * time; it is never sent with the job. youtube_checked_at (2.4.4) is
+ * the link check's time, kept locally for the same reason: the ZIP
+ * download name carries it. It is never sent with the job either —
+ * at send and finalize time it travels only inside the check token
+ * the Worker verifies. youtube_link is held only
  * here, on the student's own browser, so the HTML can be built at ZIP
  * creation on a later visit; it is never sent to the Worker with the
  * job. (SPEC names the other fields; the link field is the local
