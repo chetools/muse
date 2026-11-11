@@ -1,5 +1,6 @@
-"""Page driver: the only Python the page calls, at build time
-(prestart payloads) and live in the browser (Pyodide worker).
+"""Page driver: the only Python the page calls, live in the
+browser (Pyodide worker); also executed at build time by the
+build's boot compile guard.
 
 Every function takes and returns JSON-plain data (lists, floats,
 strings). Symbols follow pid_core.py: Kp process gain
@@ -306,19 +307,25 @@ def sweep_run(p, progress=None):
         out["slices"][param] = [_metrics_plain(m) for m in res]
     kcf = list(np.geomspace(0.25, 4.0, 15))
     tif = list(np.geomspace(0.25, 4.0, 15))
-    grid = pc.sweep_2d(plant, base, kcf, tif,
-                       progress=(lambda a, b: progress(
-                           0.75 + 0.25 * a / max(b, 1))) if progress else None,
-                       **sim_kw)
-    # Optimum over the heat-map grid, with the full metric set.
-    flat = [(grid[i][j], i, j) for i in range(15) for j in range(15)]
-    _v, i0, j0 = min(flat)
-    opt = pc.simulate(plant, base[0] * kcf[j0], base[1] * tif[i0], base[2],
-                      **kw)
-    out["heat"] = {"kc_factors": kcf, "ti_factors": tif, "IAE": grid,
-                   "opt": {"Kc": base[0] * kcf[j0], "Ti": base[1] * tif[i0],
-                           "Td": base[2],
-                           "metrics": _metrics_plain(opt["metrics"])}}
+    grids = pc.sweep_2d(plant, base, kcf, tif,
+                        progress=(lambda a, b: progress(
+                            0.75 + 0.25 * a / max(b, 1))) if progress else None,
+                        **sim_kw)
+    # Optimum over each criterion's heat-map grid, with the full
+    # metric set simulated at that criterion's optimum point.
+    opts = {}
+    for crit in ("IAE", "ITAE"):
+        grid = grids[crit]
+        flat = [(grid[i][j], i, j) for i in range(15) for j in range(15)]
+        _v, i0, j0 = min(flat)
+        opt = pc.simulate(plant, base[0] * kcf[j0], base[1] * tif[i0],
+                          base[2], **kw)
+        opts[crit] = {"Kc": base[0] * kcf[j0], "Ti": base[1] * tif[i0],
+                      "Td": base[2],
+                      "metrics": _metrics_plain(opt["metrics"])}
+    out["heat"] = {"kc_factors": kcf, "ti_factors": tif,
+                   "IAE": grids["IAE"], "ITAE": grids["ITAE"],
+                   "opt": opts}
     if progress:
         progress(1.0)
     return out

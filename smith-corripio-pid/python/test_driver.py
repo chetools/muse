@@ -117,3 +117,33 @@ def test_validation_model_fields(patch, field):
     with pytest.raises(ValueError) as exc:
         driver.handle("model", p)
     assert field in str(exc.value)
+
+
+def test_sweep_payload_has_both_criteria_and_optima():
+    # The heat payload carries both criterion grids and one
+    # optimum per criterion; each optimum is the argmin of its own
+    # grid, and its metrics match an app_run at the same point
+    # (same simulate() call through the shared _sim_kw).
+    out = driver.handle("sweep", dict(APP))
+    heat = out["heat"]
+    assert {"kc_factors", "ti_factors", "IAE", "ITAE", "opt"} <= \
+        set(heat)
+    assert set(heat["opt"]) == {"IAE", "ITAE"}
+    kcf, tif = heat["kc_factors"], heat["ti_factors"]
+    for crit in ("IAE", "ITAE"):
+        grid = heat[crit]
+        assert len(grid) == 15 and all(len(r) == 15 for r in grid)
+        flat = [(grid[i][j], i, j) for i in range(15)
+                for j in range(15)]
+        _v, i0, j0 = min(flat)
+        opt = heat["opt"][crit]
+        assert opt["Kc"] == pytest.approx(APP["Kc"] * kcf[j0])
+        assert opt["Ti"] == pytest.approx(APP["Ti"] * tif[i0])
+        assert opt["Td"] == pytest.approx(APP["Td"])
+        run = driver.handle("app_run", dict(
+            APP, Kc=opt["Kc"], Ti=opt["Ti"], Td=opt["Td"]))
+        for key in ("IAE", "ITAE"):
+            assert opt["metrics"][key] == pytest.approx(
+                run["metrics"][key], rel=0.01)
+    # Slices still carry the full metric set per point.
+    assert {"IAE", "ITAE"} <= set(out["slices"]["Kc"][0])

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from pid_core import (smith_corripio, ziegler_nichols, half_rule,
                       simulate, step_response, fit_fopdt, sweep_1d,
-                      peak_sensitivity)
+                      sweep_2d, peak_sensitivity)
 
 FOPTD = {"kind": "fopdt", "Kp": 1.0, "tau": 10.0, "theta": 2.0}
 
@@ -157,6 +157,28 @@ def test_sweep_runs_and_optimum_bracketed():
     iaes = [r["IAE"] for r in res]
     assert all(np.isfinite(iaes))
     assert min(iaes) <= iaes[4]  # centre (factor 1) not required optimal, sanity only
+
+
+def test_sweep_2d_returns_both_criterion_grids():
+    # sweep_2d returns {"IAE", "ITAE"} grids from the same batch
+    # pass; at the centre point (both factors 1.0, index 7 of 15)
+    # each grid equals the scalar simulate() value of that
+    # criterion within the batch tolerance of 2 % (measured:
+    # IAE 0.1 %, ITAE 1.4 %).
+    Kc, Ti, Td = smith_corripio(1.0, 10.0, 2.0, "PID", "setpoint")
+    kcf = list(np.geomspace(0.25, 4.0, 15))
+    tif = list(np.geomspace(0.25, 4.0, 15))
+    grids = sweep_2d(FOPTD, (Kc, Ti, Td), kcf, tif, Tf=0.1 * Td,
+                     horizon=120.0)
+    assert set(grids) == {"IAE", "ITAE"}
+    for key in ("IAE", "ITAE"):
+        assert len(grids[key]) == 15
+        assert all(len(row) == 15 for row in grids[key])
+        assert all(np.isfinite(v) for row in grids[key] for v in row)
+    one = simulate(FOPTD, Kc, Ti, Td, Tf=0.1 * Td, horizon=120.0)
+    for key in ("IAE", "ITAE"):
+        assert grids[key][7][7] == pytest.approx(one["metrics"][key],
+                                                 rel=0.02)
 
 
 def test_batch_matches_scalar():

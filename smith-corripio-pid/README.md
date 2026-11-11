@@ -14,6 +14,10 @@ Build (marimo-export venv carries markdown-it and pygments):
 
 Tests: `python -m pytest python/test_pid_core.py` (couette venv).
 Browser QA: serve dist/ on port 8911, then
-`~/workspace/.venvs/marimo-export/bin/python qa_playwright.py`.
+`~/workspace/.venvs/marimo-export/bin/python qa_playwright.py`
+(geometry against the live-booted page, via the CDN mirror);
+`~/workspace/.venvs/widget-test/bin/python qa_live.py` (live runs)
+and `~/workspace/.venvs/widget-test/bin/python qa_failstate.py`
+(runtime-failure state, no mirror).
 Output: dist/smith-corripio-pid-standalone-v1.html plus the
 MoLab notebook copy dist/walkthrough_molab.py.

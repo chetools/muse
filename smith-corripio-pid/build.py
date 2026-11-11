@@ -2,11 +2,13 @@
 
 Single entry point: renders Theory from web/theory.md, the Code
 listings from the Python files on disk, the walkthrough from
-python/walkthrough.py (via the skill runner), the precomputed
-default runs (via python/driver.py), and the worker source with
-the Python modules embedded; then runs the boot compile guard on
-the built page. Fails loudly on any unfilled placeholder,
-unrendered mathematics, listing drift, or citation defect.
+python/walkthrough.py (via the skill runner), and the worker
+source with the Python modules embedded; then runs the boot
+compile guard on the built page. No run is computed at build
+time for display: the page opens empty and computes live in the
+browser once the Pyodide runtime is ready. Fails loudly on any
+unfilled placeholder, unrendered mathematics, listing drift, or
+citation defect.
 """
 import base64
 import html as html_mod
@@ -32,11 +34,6 @@ from walkthrough import CELLS  # noqa: E402
 
 DEFAULT_APP = {"Kp": 1.0, "tau": 10.0, "theta": 2.0, "mode": "PID",
                "input_type": "setpoint"}
-DEFAULT_MODEL = {"family": "lags_equal", "Kp": 1.0, "n_lags": 3,
-                 "tau_each": 5.0, "tau1": 10.0, "tau2": 3.0,
-                 "tau_n": 6.0, "zeta": 0.35, "theta0": 1.0,
-                 "man_tau": 8.0, "man_theta": 4.0, "noise_on": False,
-                 "noise_level": 0.2, "sample_dt": 1.0}
 
 
 class MathPool:
@@ -188,16 +185,6 @@ def walkthrough_html(pool, toc):
     return "\n".join(parts)
 
 
-def prestart():
-    tun = driver.handle("tuning", dict(DEFAULT_APP))
-    app_p = dict(DEFAULT_APP, Kc=tun["Kc"], Ti=tun["Ti"], Td=tun["Td"],
-                 Tf_ratio=0.10)
-    app = driver.handle("app_run", app_p)
-    model = driver.handle("model", dict(DEFAULT_MODEL))
-    sweep = driver.handle("sweep", app_p)
-    return {"tuning": tun, "app": app, "model": model, "sweep": sweep}
-
-
 def worker_source():
     core = (PY / "pid_core.py").read_text()
     drv = (PY / "driver.py").read_text()
@@ -257,8 +244,6 @@ def build():
     total = theory_html.count('class="katex"') + walk_html.count('class="katex"')
     if total != len(pool.items):
         raise SystemExit(f"KaTeX span count {total} != {len(pool.items)}")
-    pre = prestart()
-    print("prestart IAE (% s) =", round(pre["app"]["metrics"]["IAE"], 3))
     repl = {
         "BASE_CSS": (WEB / "base.css").read_text(),
         "KATEX_CSS": katex_css(),
@@ -271,7 +256,6 @@ def build():
         "MOLAB_URL": MOLAB_URL,
         "WALK_TOC": toc_html(walk_toc),
         "WALK_HTML": walk_html,
-        "PRESTART": json.dumps(pre),
         "WORKER_JS": worker_source(),
         "APP_JS": (WEB / "app.js").read_text(),
     }

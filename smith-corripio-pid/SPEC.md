@@ -68,9 +68,12 @@ with the amendments below. This file is the build contract.
   set-point step with tight limits.
 
 ## Sweep (Q6, Q7, Q8)
-- Primary criterion IAE in %*s; also ITAE, overshoot in %,
-  settling time in s, MV travel in %, peak sensitivity (optimum
-  flagged infeasible above 2.0).
+- Sweep criteria IAE (default) in %*s and ITAE in %*s^2: both are
+  computed for every run, and the reader selects which one the
+  slices, the heat map and the optimum display and optimise
+  (switching re-renders from the same payload, no re-run). Also
+  reported per run: overshoot in %, settling time in s, MV travel
+  in %, peak sensitivity (optimum flagged infeasible above 2.0).
 - 1-D slices for Kc, Ti, Td at 0.25x–4x the Smith and Corripio
   value, log spacing, 25 points; 2-D heat map Kc x Ti, 15 x 15,
   Td fixed; click a point to load it. Full 3-D grid on demand only.

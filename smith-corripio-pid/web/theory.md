@@ -233,12 +233,15 @@ For a run with error record $e(t)$ (%), duration $T$ (s) and
 output record $u(t)$ (%):
 
 - The integral of absolute error is
-  $\mathrm{IAE} = \int_0^T |e|\, dt$ (% s). It is the primary
-  sweep criterion.
+  $\mathrm{IAE} = \int_0^T |e|\, dt$ (% s).
 - The integral of time-weighted absolute error is
   $\mathrm{ITAE} = \int_0^T t\, |e|\, dt$ (% s$^2$). It penalises
   errors that persist late in the run, the criterion the Smith
   and Corripio correlations were fitted to.
+- The Sweep tab computes both IAE and ITAE for every run in a
+  sweep. Its criterion selector chooses which of the two the
+  slices, the heat map and the stated optimum display and
+  optimise; IAE is the default selection.
 - The overshoot (%) is the largest excursion of $y$ beyond the
   set-point step, divided by the step size, times 100.
 - The settling time (s) is the last time at which $|e|$ exceeds

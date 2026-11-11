@@ -601,8 +601,11 @@ def sweep_1d(plant, base, param, factors, **sim_kw):
 
 
 def sweep_2d(plant, base, kc_factors, ti_factors, **sim_kw):
-    """2-D sweep over Kc x Ti (Td fixed at base). Returns a 2-D list
-    of IAE values in %*s, shaped (len(ti_factors), len(kc_factors))."""
+    """2-D sweep over Kc x Ti (Td fixed at base). Returns a dict
+    {"IAE": grid, "ITAE": grid}: IAE values in %*s and ITAE values
+    in %*s^2, each shaped (len(ti_factors), len(kc_factors)). Both
+    grids come from the same pass — the batch and scalar metric
+    sets already carry both fields."""
     progress = sim_kw.pop("progress", None)
     Kc0, Ti0, Td0 = base
     if plant["kind"] == "fopdt" and sim_kw.get("form", "ideal") == "ideal":
@@ -619,23 +622,29 @@ def sweep_2d(plant, base, kc_factors, ti_factors, **sim_kw):
             u_max=sim_kw.get("u_max", 100.0), slew=sim_kw.get("slew"),
             anti_windup=sim_kw.get("anti_windup", "none"),
             b_weight=sim_kw.get("b_weight", 1.0), progress=progress)
-        grid, idx = [], 0
+        grids = {"IAE": [], "ITAE": []}
+        idx = 0
         for _ in ti_factors:
-            row = []
+            rows = {"IAE": [], "ITAE": []}
             for _ in kc_factors:
-                row.append(res[idx]["IAE"]); idx += 1
-            grid.append(row)
-        return grid
-    grid = []
+                for key in grids:
+                    rows[key].append(res[idx][key])
+                idx += 1
+            for key in grids:
+                grids[key].append(rows[key])
+        return grids
+    grids = {"IAE": [], "ITAE": []}
     total = len(kc_factors) * len(ti_factors)
     done = 0
     for ft in ti_factors:
-        row = []
+        rows = {"IAE": [], "ITAE": []}
         for fk in kc_factors:
             sim = simulate(plant, Kc0 * fk, Ti0 * ft, Td0, **sim_kw)
-            row.append(sim["metrics"]["IAE"])
+            for key in grids:
+                rows[key].append(sim["metrics"][key])
             done += 1
             if progress:
                 progress(done, total)
-        grid.append(row)
-    return grid
+        for key in grids:
+            grids[key].append(rows[key])
+    return grids

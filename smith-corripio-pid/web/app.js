@@ -1,9 +1,9 @@
 "use strict";
 // Display and messaging only. Every number on this page is computed
-// by the Python driver in the Pyodide worker (or precomputed at
-// build time by the same driver).
+// live by the Python driver in the Pyodide worker; nothing is
+// computed at build time for display, and the panels stay empty
+// until the runtime is ready and the first live runs complete.
 const $ = (id) => document.getElementById(id);
-const PRE = JSON.parse($("prestart-data").textContent);
 const LEGEND = { x: 1.02, y: 1.0, xanchor: "left", yanchor: "top" };
 
 function resizeCharts() {
@@ -38,9 +38,8 @@ function initWorker() {
     const blob = new Blob([window.WORKER_SRC], { type: "text/javascript" });
     worker = new Worker(URL.createObjectURL(blob));
   } catch (e) {
-    $("boot-status").textContent =
-      "The Python runtime could not start. The precomputed default " +
-      "run remains displayed.";
+    runtimeFailed = true;
+    $("boot-status").textContent = "The Python runtime failed to load.";
     return;
   }
   worker.onmessage = (ev) => {
@@ -52,15 +51,20 @@ function initWorker() {
         "#m-dual-half, #m-dual-ls, #s-load-opt, #s-load-click")
         .forEach((b) => { if (b.id !== "s-load-opt" &&
                             b.id !== "s-load-click") b.disabled = false; });
+      // First live results, with no click and no input change: the
+      // App runs with the Smith and Corripio tuning for the current
+      // plant inputs (refreshTuning fills Kc, Ti, Td and runs), and
+      // the Model runs once through its auto-run scheduler. The
+      // Sweep is stale from boot and follows its own rule below.
+      refreshTuning("SC");
+      modelAuto.schedule();
       // A sweep marked stale while its panel was on screen runs now.
       if (sweepStale && !$("panel-sweep").hidden) sweepAuto.schedule();
     } else if (d.type === "progress") {
       if (progressCb) progressCb(d.frac);
     } else if (d.type === "fatal") {
       runtimeFailed = true;
-      $("boot-status").textContent =
-        "The Python runtime failed to load. The precomputed default " +
-        "run remains displayed.";
+      $("boot-status").textContent = "The Python runtime failed to load.";
     } else if (pending.has(d.id)) {
       const p = pending.get(d.id);
       pending.delete(d.id);
@@ -69,9 +73,7 @@ function initWorker() {
   };
   worker.onerror = () => {
     runtimeFailed = true;
-    $("boot-status").textContent =
-      "The Python runtime failed to load. The precomputed default " +
-      "run remains displayed.";
+    $("boot-status").textContent = "The Python runtime failed to load.";
   };
 }
 
@@ -81,8 +83,9 @@ function initWorker() {
 // coalesce, and a change arriving while a run is in flight schedules
 // exactly one follow-up run, which reads the latest inputs when it
 // starts. Scheduling is gated on the runtime being ready — before
-// boot (or after a failed boot) a change only marks the display
-// stale, exactly as it did before auto-run existed.
+// boot (or after a failed boot) a change schedules nothing and
+// marks nothing: there is no displayed run to be stale against
+// until the first live run has been shown.
 function makeAutoRunner(fn, debounceMs) {
   let timer = null, running = false, again = false;
   async function kick() {
@@ -168,6 +171,7 @@ function metricsTable(rows) {
 // ------------------------------------------------------------- App tab
 let overlays = [];   // {name, res, metrics}
 let lastSpans = [];
+let appDisplayed = false;  // a live run is on screen (stale note armed)
 function appPayload(extra) {
   const tfOff = $("a-tf-off").checked;
   const p = {
@@ -224,6 +228,7 @@ function renderApp() {
   $("a-table").innerHTML = overlays.length
     ? metricsTable(overlays.map((o) => ({ name: o.name, metrics: o.metrics })))
     : "";
+  appDisplayed = overlays.length > 0;
   $("a-stale").hidden = true;
 }
 async function runAppAs(name) {
@@ -277,7 +282,7 @@ $("a-preset").addEventListener("change", () => {
     appInputsChanged();
   }
 });
-function markStale() { $("a-stale").hidden = false; }
+function markStale() { if (appDisplayed) $("a-stale").hidden = false; }
 // Every computational input and select auto-runs on change; the
 // display toggles are excluded — they only re-render the last run.
 const DISPLAY_ONLY = ["a-show-pv", "a-show-mv", "a-show-e", "a-show-pid"];
@@ -407,7 +412,7 @@ $("m-use-ls").addEventListener("click", () => useForTuning("ls"));
 
 // ------------------------------------------------------------- Sweep tab
 let sweepRes = null, clickedPoint = null;
-let sweepStale = false;
+let sweepStale = true;   // no sweep exists yet: stale from boot
 // An App input change reaches the sweep in one of two ways: while
 // the Sweep panel is visible it schedules an automatic re-sweep;
 // while hidden it only marks the results stale (the note says so),
@@ -415,41 +420,54 @@ let sweepStale = false;
 function noteSweepImpact() {
   if (!$("panel-sweep").hidden) { sweepAuto.schedule(); return; }
   sweepStale = true;
-  $("s-note").textContent = "App inputs have changed since these " +
-    "sweeps were computed. The sweep runs again when this panel " +
-    "is shown.";
+  $("s-note").textContent = "The sweep is not current for the " +
+    "current App inputs. It runs again when this panel is shown.";
 }
 const sweepAuto = makeAutoRunner(runSweep, 800);
+// Display criterion for the Sweep tab: "IAE" (default) or "ITAE".
+// Both are in every sweep payload, so switching is a re-render
+// only — it never re-runs the sweep and is not wired to the
+// auto-run machinery.
+let sweepCrit = "IAE";
+const CRIT_UNITS = { IAE: "% s", ITAE: "% s²" };
 function renderSweep() {
   if (!sweepRes) return;
+  const crit = sweepCrit, unit = CRIT_UNITS[crit];
+  $("sweep-slices-h").textContent = "One-dimensional slices — " + crit +
+    " (" + unit + ") against factor";
+  $("sweep-heat-h").textContent = "Heat map — " + crit + " (" + unit +
+    ") over Kc and Ti factors";
   for (const param of ["Kc", "Ti", "Td"]) {
     const rows = sweepRes.slices[param];
     plot($("s-chart-" + param),
-      [{ x: sweepRes.factors, y: rows.map((r) => r.IAE),
-         mode: "lines+markers", name: "IAE (% s)" },
-       { x: [1], y: [rows[12].IAE], mode: "markers",
+      [{ x: sweepRes.factors, y: rows.map((r) => r[crit]),
+         mode: "lines+markers", name: crit + " (" + unit + ")" },
+       { x: [1], y: [rows[12][crit]], mode: "markers",
          name: "Smith and Corripio point", marker: { size: 11, symbol: "x" } }],
       { xaxis: { title: param + " factor (dimensionless)", type: "log",
           tickvals: [0.25, 0.5, 1, 2, 4],
           ticktext: ["0.25", "0.5", "1", "2", "4"] },
-        yaxis: { title: "IAE (% s)" }, title: "Slice over " + param });
+        yaxis: { title: crit + " (" + unit + ")" },
+        title: "Slice over " + param });
   }
   const heat = sweepRes.heat;
   plot($("s-chart-heat"),
     [{ type: "heatmap", x: heat.kc_factors, y: heat.ti_factors,
-       z: heat.IAE, colorscale: "Viridis",
-       colorbar: { title: "IAE (% s)" }, name: "IAE (% s)" },
+       z: heat[crit], colorscale: "Viridis",
+       colorbar: { title: crit + " (" + unit + ")" },
+       name: crit + " (" + unit + ")" },
      { x: [1], y: [1], mode: "markers", name: "Smith and Corripio point",
        marker: { size: 13, symbol: "x", color: "white" } }],
     { xaxis: { title: "Kc factor (dimensionless)", type: "log",
         tickvals: [0.25, 0.5, 1, 2, 4], ticktext: ["0.25", "0.5", "1", "2", "4"] },
       yaxis: { title: "Ti factor (dimensionless)", type: "log",
         tickvals: [0.25, 0.5, 1, 2, 4], ticktext: ["0.25", "0.5", "1", "2", "4"] },
-      title: "IAE over Kc and Ti factors (click a cell to inspect)" });
-  const o = heat.opt, m = o.metrics;
+      title: crit + " over Kc and Ti factors (click a cell to inspect)" });
+  const o = heat.opt[crit], m = o.metrics;
   $("s-opt").innerHTML = "<p>Kc = " + o.Kc.toFixed(3) + ", Ti = " +
-    o.Ti.toFixed(2) + " s, Td = " + o.Td.toFixed(3) + " s<br>IAE = " +
-    m.IAE.toFixed(2) + " % s, overshoot = " + m.overshoot_pct.toFixed(2) +
+    o.Ti.toFixed(2) + " s, Td = " + o.Td.toFixed(3) + " s<br>" + crit +
+    " = " + m[crit].toFixed(2) + " " + unit + ", overshoot = " +
+    m.overshoot_pct.toFixed(2) +
     " %, Ms = " + (m.Ms === null ? "—" : m.Ms.toFixed(2)) +
     (m.Ms > 2.0 ? " — flagged infeasible (Ms above 2.0)" : "") +
     (m.saturated ? "<br>This optimum run reaches an output limit." : "") +
@@ -460,13 +478,20 @@ function renderSweep() {
     if (pt.curveNumber !== 0) return;
     const base = appPayload();
     clickedPoint = { Kc: base.Kc * pt.x, Ti: base.Ti * pt.y, Td: base.Td,
-                     IAE: pt.z };
+                     crit: sweepCrit, value: pt.z };
     $("s-click").innerHTML = "<p>Kc = " + clickedPoint.Kc.toFixed(3) +
-      ", Ti = " + clickedPoint.Ti.toFixed(2) + " s, IAE = " +
-      pt.z.toFixed(2) + " % s</p>";
+      ", Ti = " + clickedPoint.Ti.toFixed(2) + " s, " + sweepCrit +
+      " = " + pt.z.toFixed(2) + " " + CRIT_UNITS[sweepCrit] + "</p>";
     $("s-load-click").disabled = !worker;
   });
 }
+$("s-crit").addEventListener("change", () => {
+  sweepCrit = $("s-crit").value;
+  clickedPoint = null;
+  $("s-click").innerHTML = "";
+  $("s-load-click").disabled = true;
+  renderSweep();
+});
 async function runSweep() {
   if (!worker) return;
   sweepStale = false;
@@ -492,7 +517,7 @@ function loadIntoApp(pt) {
   runAppAs("Sweep point");
 }
 $("s-load-opt").addEventListener("click", () => {
-  if (sweepRes) loadIntoApp(sweepRes.heat.opt);
+  if (sweepRes) loadIntoApp(sweepRes.heat.opt[sweepCrit]);
 });
 $("s-load-click").addEventListener("click", () => {
   if (clickedPoint) loadIntoApp(clickedPoint);
@@ -515,22 +540,12 @@ function renderWalkFigs() {
   });
 }
 
-// ------------------------------------------------------------- prestart
-function initFromPrestart() {
-  const t = PRE.tuning;
-  $("a-Kc").value = t.Kc.toFixed(4);
-  $("a-Ti").value = t.Ti.toFixed(4);
-  $("a-Td").value = t.Td.toFixed(4);
-  overlays = [{ name: "Smith and Corripio (precomputed)",
-                res: PRE.app, metrics: PRE.app.metrics }];
-  lastSpans = PRE.app.limited_spans || [];
-  renderApp();
-  modelRes = PRE.model;
-  renderModel();
-  sweepRes = PRE.sweep;
-  renderSweep();
-}
-initFromPrestart();
+// ------------------------------------------------------------- init
+// Nothing is displayed on load: no metrics, no chart traces, no
+// sweep. The worker boot drives the first live runs (see the
+// "ready" handler in initWorker).
+$("s-note").textContent = "The sweep is not current for the " +
+  "current App inputs. It runs again when this panel is shown.";
 initWorker();
 routeHash();
 window.addEventListener("resize", resizeCharts);
