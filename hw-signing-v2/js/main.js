@@ -37,10 +37,12 @@ import {
   parseYouTubeVideoId, canonicalWatchUrl, classifyDuration,
   verifyBundleContents,
   validateJobPayload, buildJobPayload, loadJobEntries, addJobEntry,
-  removeJobEntry, saveJobEntries,
+  removeJobEntry, saveJobEntries, kindFromResultBundle,
+  duplicateJobEntry,
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
   finalizeJob, reportDurationStat,
 } from './jobs.js';
+import { computeFingerprint } from './fingerprint.js';
 import { buildZip, submissionZipName, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
 
 const $ = (id) => document.getElementById(id);
@@ -58,6 +60,9 @@ let transcriptionComplete = false;
 let confirmed = false;
 let vocabulary = null;
 let ytCheck = null;         // { videoId, token, checkedAt, title, audioSha256 } after an ok check
+let chromaprint = null;     // raw Chromaprint as base64 (2.6.0), or null when none computed
+let chromaprintSha = null;  // audioSha the stored fingerprint was computed from
+let chromaprintPending = null; // in-flight computeFingerprint promise, if any
 let ytDur = null;           // duration comparison for the step-6 check:
 // { band, diffS, tolS, audioS, videoS } once the preview reports the
 // video's length; null until then (treated as band 'unknown').
@@ -228,6 +233,30 @@ function setAudioMeta() {
     ' · SHA-256 ' + audioSha;
 }
 
+// Compute the Chromaprint (2.6.0) once from the normalised WAV's own
+// int16 samples — the same samples the audio SHA-256 is computed
+// over — and keep it in state for the job payload. Runs in the
+// background after normalisation; a failure leaves chromaprint null
+// and the job is sent without it. Never awaited by the media stage:
+// the submit handler awaits the in-flight promise, if any, before
+// building the payload.
+async function refreshFingerprint() {
+  if (!wavBytes || wavBytes.length <= 44 || !audioSha) return;
+  if (audioSha === chromaprintSha) return;
+  if (chromaprintPending) { await chromaprintPending; return; }
+  const sha = audioSha;
+  const samples = new Int16Array(
+    wavBytes.buffer, wavBytes.byteOffset + 44, (wavBytes.length - 44) / 2);
+  const p = computeFingerprint(samples);
+  chromaprintPending = p;
+  const res = await p;
+  if (chromaprintPending !== p) return; // superseded by a newer recording
+  chromaprintPending = null;
+  if (sha !== audioSha) return; // the recording changed meanwhile
+  chromaprint = res ? res.rawBase64 : null;
+  chromaprintSha = sha;
+}
+
 // Adopt a complete cache record as the current recording: WAV bytes
 // from the stored blob, chunks from the store (pre-scrub; scrubbing
 // re-derives the view), no transcription needed.
@@ -249,6 +278,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
   clearYtCheck();
   const file = ev.target.files && ev.target.files[0];
   pcm = null; wavBytes = null; audioSha = null; durationS = 0;
+  chromaprint = null; chromaprintSha = null; chromaprintPending = null;
   chunks = []; windowsDoneBase = 0;
   transcriptionComplete = false;
   confirmed = false; $('confirmChk').checked = false;
@@ -287,6 +317,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
       updateRunEnabled();
       refreshDerived();
     }
+    refreshFingerprint();
   } catch (err) {
     $('mediaStatus').textContent = 'That file could not be decoded.';
     showError('The chosen file could not be decoded as audio or video by this browser.', err, $('mediaFile'));
@@ -332,8 +363,10 @@ async function renderCacheList() {
         audioSha = entry.audio_sha256;
         sourceName = record.source_name || '';
         pcm = null;
+        chromaprint = null; chromaprintSha = null; chromaprintPending = null;
         updateRunEnabled();
         await adoptCacheRecord(record, 'Recording restored from this computer.');
+        refreshFingerprint();
       } catch (err) { showError('The saved recording could not be restored.', err, restoreBtn); }
     });
     const delBtn = document.createElement('button');
@@ -680,6 +713,25 @@ $('ytCheckBtn').addEventListener('click', async () => {
   updateJobEnabled();
 });
 
+// The queue state or grades of a duplicate response, for the
+// status line, when no alias was created and so no job row exists to
+// show them. Uses only the phrasings the jobs list already uses.
+function duplicateStatusText(res) {
+  if (res.status === 'ready' && res.result) {
+    return 'Completeness: ' + res.result.completeness + '/5 · Accuracy: ' +
+      res.result.accuracy + '/5';
+  }
+  if (res.status === 'claimed') return 'being graded now';
+  if (res.status === 'queued') {
+    const ahead = res.queue_ahead;
+    return typeof ahead === 'number'
+      ? (ahead === 0 ? 'waiting — next in the grading queue'
+        : 'waiting — ' + ahead + (ahead === 1 ? ' job' : ' jobs') + ' ahead')
+      : 'waiting';
+  }
+  return res.status || '';
+}
+
 $('submitJobBtn').addEventListener('click', async () => {
   clearError();
   $('submitJobBtn').disabled = true;
@@ -695,6 +747,11 @@ $('submitJobBtn').addEventListener('click', async () => {
     }
     const transcript = canonical();
     const transcriptSha = await sha256Hex(transcript);
+    // The fingerprint is computed in the background after
+    // normalisation; wait for it here so the job carries it when it
+    // is ready. A failure leaves chromaprint null and the job is
+    // sent without it.
+    if (chromaprintPending) await chromaprintPending;
     const payload = buildJobPayload({
       pkg: cfg.pkg,
       pkgContentSha256: cfg.ph,
@@ -702,6 +759,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       transcript,
       audioSha256: audioSha,
       transcriptSha256: transcriptSha,
+      chromaprint,
       versions: VERSIONS,
       retrievalCode: $('retrievalCode').value,
       youtubeToken: ytCheck ? ytCheck.token : null,
@@ -712,6 +770,45 @@ $('submitJobBtn').addEventListener('click', async () => {
     if (!check.ok) throw new Error(check.reason);
     $('jobStatus').textContent = 'Sending for grading…';
     const res = await submitJob(cfg.worker, payload);
+    const sentText =
+      'Sent' + (payload.kind === 'final'
+        ? ' with the checked link — submission-ready as soon as it is graded.'
+        : ' — when the grade is back, turn it into your Canvas submission from the list below.') +
+      ' The list below updates every 5 seconds while this page is open. ' +
+      'An ungraded job is kept for 7 days; once graded, the grade is kept for 180 days.';
+    if (res.duplicate) {
+      // The recording already has a live job under this prompt
+      // package version: no new job was created. The entry is filed
+      // under the submitted code (the alias), so the existing job
+      // renders through the normal jobs-list path below — queue
+      // state while queued or claimed, grades and critique when
+      // ready — and finalize and ZIP work from it exactly as from
+      // the original entry. When no alias was created the code does
+      // not retrieve this job, so no entry is stored under it and
+      // the grade or queue state from the response is shown in the
+      // status line instead.
+      const aliasEntry = duplicateJobEntry(res, {
+        pkg: cfg.pkg,
+        course: cfg.course,
+        asg: cfg.asg,
+        retrieval_code: payload.retrieval_code,
+        kind: payload.kind,
+        youtube_link: payload.kind === 'final' ? $('ytLink').value.trim() : '',
+        youtube_title: payload.kind === 'final' && ytCheck ? ytCheck.title : '',
+        youtube_checked_at: payload.kind === 'final' && ytCheck ? ytCheck.checkedAt : '',
+      });
+      if (aliasEntry) {
+        addJobEntry(aliasEntry);
+        const key = jobKey(cfg.pkg, payload.retrieval_code);
+        jobStates.set(key, { status: res.status, queue_ahead: res.queue_ahead });
+        if (res.result) readyBundles.set(key, res.result);
+        $('jobStatus').textContent = sentText;
+      } else {
+        $('jobStatus').textContent = duplicateStatusText(res);
+      }
+      renderJobs();
+      return;
+    }
     addJobEntry({
       pkg: cfg.pkg,
       course: cfg.course,
@@ -724,12 +821,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       created_at: res.created_at,
       expires_at: res.expires_at,
     });
-    $('jobStatus').textContent =
-      'Sent' + (payload.kind === 'final'
-        ? ' with the checked link — submission-ready as soon as it is graded.'
-        : ' — when the grade is back, turn it into your Canvas submission from the list below.') +
-      ' The list below updates every 5 seconds while this page is open. ' +
-      'An ungraded job is kept for 7 days; once graded, the grade is kept for 48 hours.';
+    $('jobStatus').textContent = sentText;
     renderJobs();
   } catch (err) {
     showError('Sending for grading failed: ' + err.message, err, $('submitJobBtn'));
@@ -832,8 +924,13 @@ async function verifySubmissionParts(entry, bundle, anchor) {
   }
   // The HTML's YouTube link comes from local keeping only; cross-check
   // it against the signed bundle: the SHA-256 of its video ID must
-  // equal the bundle's youtube_video_sha256.
-  const link = entry.youtube_link || '';
+  // equal the bundle's youtube_video_sha256. A stored entry normally
+  // carries the link from send time, but an alias entry filed for an
+  // existing final job by a practice resubmission has none — no link
+  // was sent — so fall back to the link field in step 6, which the
+  // student re-enters there. The signed check below still proves it
+  // is the video checked for this job.
+  const link = entry.youtube_link || $('ytLink').value.trim() || '';
   const videoId = parseYouTubeVideoId(link);
   if (!videoId) {
     showError('The YouTube link kept on this browser is missing. Re-enter it in step 6 and download again from the job list after re-checking.', null, anchor);
@@ -843,6 +940,27 @@ async function verifySubmissionParts(entry, bundle, anchor) {
   if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== videoIdSha) {
     showError('The YouTube link kept on this browser is not the video that was checked for this job.', null, anchor);
     return null;
+  }
+  if (!entry.youtube_link) {
+    // Keep the re-entered link with the entry so the next click does
+    // not need it again. Only a stored entry is updated; a manually
+    // retrieved job is not in the stored list. The title and check
+    // time come from the step-6 check when it was made for this
+    // job's recording.
+    const entries = loadJobEntries();
+    const e = entries.find((x) => x.pkg === entry.pkg &&
+      x.retrieval_code === entry.retrieval_code);
+    if (e) {
+      entry.youtube_link = link;
+      e.youtube_link = link;
+      if (ytCheck && ytCheck.audioSha256 === bundle.audio_sha256) {
+        entry.youtube_title = ytCheck.title || '';
+        entry.youtube_checked_at = ytCheck.checkedAt;
+        e.youtube_title = ytCheck.title || '';
+        e.youtube_checked_at = ytCheck.checkedAt;
+      }
+      saveJobEntries(entries);
+    }
   }
   return { wav, scrubbedChunks, record, videoId };
 }
@@ -1045,6 +1163,16 @@ async function renderJobs() {
       }
       if (res.status === 'ready' && res.data && res.data.result) {
         readyBundles.set(key, res.data.result);
+        // The ready bundle is authoritative for the job's kind: an
+        // alias entry filed while the job was still queued carries
+        // the submitted kind, which may not be the existing job's
+        // kind. Correct it from the bundle so the ZIP button and
+        // the conversion panel see the job as it is.
+        const trueKind = kindFromResultBundle(res.data.result);
+        if (entry.kind !== trueKind) {
+          entry.kind = trueKind;
+          entriesDirty = true;
+        }
       }
       jobStates.set(key, {
         status: res.status,
