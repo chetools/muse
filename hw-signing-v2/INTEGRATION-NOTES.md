@@ -1,5 +1,9 @@
 # Integration notes — mismatches found in builder reports, to reconcile at integration
 
+## E2E fixture (2026-11-12)
+
+- **RESOLVED (e2e failed 2/14 from a fresh clone).** `integration/e2e.mjs` read its package from `webapp/packages/grade-distribution-pt1-v2.md`, a file that is never in the repo because real packages are never published; the 2.6.0 build ran it only with a `/tmp` fixture. The suite now reads the committed fixture `integration/fixtures/e2e-package.md` (fixed package format, pkg `grade-distribution-pt1`, marked test-only, standing grading rules verbatim). Verified locally 2026-11-12: baseline 2/14, after the fix 14/14, no `/tmp` fixture.
+
 ## Independent-review fixes (2026-11-09)
 
 - **F1 — RESOLVED (claim race).** `handleClaim`'s claim is now the

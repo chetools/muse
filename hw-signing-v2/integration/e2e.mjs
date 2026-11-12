@@ -314,7 +314,7 @@ let pkgId, pkgHash, jobId, bundle, htmlText, zipBytes;
 
 await step("admin: pkg_admin create (v2 fixture package)", async () => {
   const out = await runNode(pkgAdmin, ["create",
-    path.join(ROOT, "webapp", "packages", "grade-distribution-pt1-v2.md")]);
+    path.join(ROOT, "integration", "fixtures", "e2e-package.md")]);
   const rec = JSON.parse(out);
   assert(rec.pkg && rec.content_sha256, "create returned no pkg/hash: " + out);
   assert(rec.status === "draft", "new package is not draft: " + rec.status);
