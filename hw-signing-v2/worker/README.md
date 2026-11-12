@@ -34,7 +34,7 @@ configuration fails closed (500), a wrong token gets 401.
 | `POST /youtube-check` | — | `{url}` → parse the video ID (watch / youtu.be / shorts / live / embed), ask YouTube oEmbed server-side, return `{video_id, status, checked_at, token, title}`; status is `ok` or `private_or_missing`; the token is an HMAC over `video_id\nstatus\nchecked_at`; the oEmbed title is returned to the caller so the student can recognise the video — nothing about the link is stored |
 | `POST /stats/duration` | — | `{pkg?, context?, audio_s, video_s}` → record one anonymous duration comparison (the student page's audio duration and the YouTube player's duration for a checked link) in `duration_stats`; no video ID, link or student information is accepted or stored; the rows calibrate the page's duration bands |
 | `GET /admin/duration-stats` | ADMIN_TOKEN | the stored comparisons summarised: count, absolute-difference percentiles (p50/p90/p95/p99/max), and the split against the page's current bands |
-| `POST /jobs` | retrieval data | create a grading job → `{job_id, created_at, expires_at}` |
+| `POST /jobs` | retrieval data | create a grading job → `{job_id, created_at, expires_at, pkg}`; `pkg` is the version the job is graded under (see the replacement check below) |
 | `POST /jobs/status` | retrieval code only | `{status, expires_at}` (`expires_at` is the current governing expiry: creation + 7 days while ungraded, graded_at + 48 h once graded); while queued/claimed also `queue_ahead` (jobs ahead in the global grading queue); when `ready` the signed result bundle; every wrong code returns the identical 403 |
 | `POST /jobs/retrieved` | retrieval code only | mark the job retrieved |
 | `POST /jobs/finalize` | retrieval code + YouTube check fields | turn the job into the final submission job: token verified as at intake, one-final rule applies, a graded job's bundle is re-signed with the video hash |
@@ -53,6 +53,19 @@ plus `draft → retired`. Moving to `trialled` requires
 `override_reason`, which is stored on the package. Jobs are accepted
 only against `open` packages, and the content hash in the job request
 must match the stored package text.
+
+Replacement check (2.5.0): at job creation the Worker verifies the
+request's hash against the requested version, then grades the job
+under the newest `open` version of the same package name when a
+newer one exists — whether or not the requested version is still
+open, so an issued link keeps working after its version is closed
+in favour of a replacement. The job row, the grading claim and the
+signed receipt all name the resolved version. Retrieval is
+unchanged from the student's side: the code lookup hash is computed
+from the requested pkg string and the job is found by that lookup
+alone. A consequence to keep in mind: opening a newer version
+repoints every earlier link for that package name, so two versions
+of one name cannot serve different courses at once.
 
 Job creation rules: kind is `practice` or `final`; the transcript is
 non-empty and at most 200,000 characters; the retrieval code matches

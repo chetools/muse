@@ -161,15 +161,25 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
 - `POST /jobs` — body: `{pkg, pkg_content_sha256, kind, transcript,
   audio_sha256, transcript_sha256, versions:{webapp,model,glossary},
   retrieval_code, youtube_token?, youtube_video_id?,
-  push_subscription?}`. Validate: package exists, is `open`, content
-  hash matches; transcript non-empty and ≤ 200,000 chars; hashes are
-  64-hex; retrieval_code matches `^[A-Za-z0-9]{8,128}$` and is unique
-  for the pkg (by its lookup hash); for `final`, youtube_token
-  verifies and its status is `ok` and the token is < 24 h old, and no
-  other final job exists for (pkg, audio_sha256). Store the code's
-  lookup hash and a salted SHA-256.
-  → `{job_id, created_at, expires_at}` with status `queued`;
-  `expires_at` is creation + 7 days (the ungraded lifetime).
+  push_subscription?}`. Validate: package exists and the content
+  hash matches that version's stored hash; the job is then resolved
+  to the newest `open` version of the same package name when a newer
+  one exists (the replacement check, worker 2.5.0) — resolution
+  applies whether or not the requested version is still open, and
+  the job is stored, graded and signed under the resolved version;
+  with no newer open version, the requested version must itself be
+  `open`. Retrieval stays keyed to the requested version: the code
+  lookup hash is computed from the requested pkg string, and jobs
+  are found by that lookup alone. Transcript non-empty and
+  ≤ 200,000 chars; hashes are 64-hex; retrieval_code matches
+  `^[A-Za-z0-9]{8,128}$` and is unique for the pkg (by its lookup
+  hash); for `final`, youtube_token verifies and its status is `ok`
+  and the token is < 24 h old, and no other final job exists for
+  (pkg, audio_sha256) under the resolved or the requested version.
+  Store the code's lookup hash and a salted SHA-256.
+  → `{job_id, created_at, expires_at, pkg}` with status `queued`;
+  `pkg` is the resolved package version; `expires_at` is creation
+  + 7 days (the ungraded lifetime).
 - `POST /jobs/status` `{pkg, retrieval_code}` → find the job by code
   lookup hash (salted-hash fallback for pre-2.1.0 jobs); return
   `{status}` and `expires_at` (the job's current governing expiry:

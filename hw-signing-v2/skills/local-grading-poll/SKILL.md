@@ -47,7 +47,7 @@ The setup block gives two values: the grading worker address and the grading tok
    {
      "completeness": 0,
      "accuracy": 0,
-     "critique": "<numbered list of what to improve, one point per line, most grade-improving first; transcript quoted only as necessary>",
+     "critique": "<numbered list, one point per line, most grade-improving first; then 'Not penalised:' and 'How I read it:' sections, each only when it has entries>",
      "injection_flags": [{"pattern": "<short name of the attempt>", "at": "[mm:ss]"}]
    }
    ```

@@ -967,6 +967,70 @@ check("F3: job whose transcript hash does not match its transcript rejected",
   check("finalize blocked when a final already exists for the recording", r.status === 409);
 }
 
+// ------------------------------------------------------- replacement check
+// A job sent under an issued link for one version is graded under
+// the newest open version of the same package name (worker 2.5.0).
+const RP_TEXT_1 = PKG_TEXT + "\nReplacement package, version 1.\n";
+const RP_TEXT_2 = PKG_TEXT + "\nReplacement package, version 2.\n";
+const RP_TEXT_3 = PKG_TEXT + "\nReplacement package, version 3.\n";
+const rpHash1 = await sha256Hex(RP_TEXT_1);
+const rpHash2 = await sha256Hex(RP_TEXT_2);
+async function rpStatus(id, body) {
+  return call("/admin/packages/" + encodeURIComponent(id) + "/status",
+    { body, token: ADMIN });
+}
+r = await call("/admin/packages", { body: { pkg_name: "replace-package", text: RP_TEXT_1 }, token: ADMIN });
+check("replacement package v1 created", r.status === 200 && r.body.version === 1);
+await rpStatus("replace-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 } });
+r = await rpStatus("replace-package v1", { status: "open" });
+check("replacement package v1 opens", r.status === 200 && r.body.status === "open");
+const rpBase = { ...jobBase, pkg: "replace-package v1", pkg_content_sha256: rpHash1 };
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfirst001" } });
+check("no newer open version: job stays on the requested version",
+  r.status === 200 && r.body.pkg === "replace-package v1");
+r = await call("/admin/packages", { body: { pkg_name: "replace-package", text: RP_TEXT_2 }, token: ADMIN });
+check("replacement package v2 created as draft", r.status === 200 && r.body.version === 2);
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpsecond02" } });
+check("newer version still draft: job stays on the requested version",
+  r.status === 200 && r.body.pkg === "replace-package v1");
+await rpStatus("replace-package v2", { status: "trialled", trial: { completeness: 5, accuracy: 5 } });
+r = await rpStatus("replace-package v2", { status: "open" });
+check("replacement package v2 opens", r.status === 200 && r.body.status === "open");
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpthird003" } });
+check("newer open version: job resolves to it at intake",
+  r.status === 200 && r.body.pkg === "replace-package v2");
+const rpJob = r.body.job_id;
+check("job row stored under the resolved version",
+  db._tables.jobs.find((j) => j.job_id === rpJob).pkg === "replace-package v2");
+r = await call("/grading/pending", { method: "GET", token: GRADING });
+check("pending list names the resolved version",
+  r.body.some((j) => j.job_id === rpJob && j.pkg === "replace-package v2"));
+r = await call("/grading/claim", { token: GRADING, body: { job_id: rpJob } });
+check("claim returns the resolved version's text and hash",
+  r.status === 200 && r.body.package.pkg === "replace-package v2" &&
+  r.body.package.text === RP_TEXT_2 && r.body.package.content_sha256 === rpHash2);
+r = await call("/jobs/status", { body: { pkg: "replace-package v1", retrieval_code: "rpthird003" } });
+check("status lookup under the old link still finds the resolved job",
+  r.status === 200 && r.body.status === "claimed");
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpthird003" } });
+check("same code under the old link again rejected after resolution", r.status === 409);
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfourth04", pkg_content_sha256: "f".repeat(64) } });
+check("wrong hash for the requested version rejected despite a newer open version",
+  r.status === 400);
+r = await rpStatus("replace-package v1", { status: "closed" });
+check("replacement package v1 closes", r.status === 200 && r.body.status === "closed");
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfifth005" } });
+check("requested version closed, newer open: old link still resolves",
+  r.status === 200 && r.body.pkg === "replace-package v2");
+r = await call("/admin/packages", { body: { pkg_name: "replace-package", text: RP_TEXT_3 }, token: ADMIN });
+check("replacement package v3 created as draft", r.status === 200 && r.body.version === 3);
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpsixth006" } });
+check("newest version draft: resolution stops at the newest open version",
+  r.status === 200 && r.body.pkg === "replace-package v2");
+r = await call("/jobs", { body: { ...rpBase, pkg: "replace-package v2", pkg_content_sha256: rpHash2, retrieval_code: "rpseventh7" } });
+check("job sent under the newest link stays on it",
+  r.status === 200 && r.body.pkg === "replace-package v2");
+
 // Unknown route
 r = await call("/nope", { method: "GET" });
 check("unknown route is 404", r.status === 404);

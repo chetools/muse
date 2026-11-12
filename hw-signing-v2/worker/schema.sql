@@ -22,7 +22,12 @@ CREATE TABLE IF NOT EXISTS packages (
   PRIMARY KEY (pkg, version)
 );
 
--- One row per grading job. The transcript is the student's scrubbed
+-- One row per grading job. pkg is the package version the job is
+-- graded under: the version in the student's link, or, since worker
+-- 2.5.0, the newest open version of that package name at intake
+-- when a newer one exists (code_lookup is still computed from the
+-- link's pkg string, and retrieval finds the job by that lookup
+-- alone). The transcript is the student's scrubbed
 -- transcript; no name, Canvas identity or YouTube link is stored.
 -- youtube_status is only the check outcome ("ok" / "none");
 -- youtube_video_sha256 is the SHA-256 hex of the YouTube video ID

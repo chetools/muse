@@ -24,7 +24,7 @@
 // jobs table keeps only youtube_status ("ok" / "none") and, for final
 // jobs, youtube_video_sha256 (SHA-256 hex of the video ID).
 
-const SERVICE_VERSION = "2.4.2";
+const SERVICE_VERSION = "2.5.0";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 // Job lifetime (2.4.1): an ungraded job is kept for up to
@@ -706,19 +706,44 @@ async function handleJobCreate(request, env) {
   const nowIso = now.toISOString();
   await sweep(env, nowIso);
 
-  const pkgRow = await getPackageRow(env, parsed.name, parsed.version);
-  if (!pkgRow) return json({ error: "unknown package" }, 404);
-  if (pkgRow.status !== "open") {
-    return json({ error: "package is not open" }, 409);
-  }
+  const requestedRow = await getPackageRow(env, parsed.name, parsed.version);
+  if (!requestedRow) return json({ error: "unknown package" }, 404);
   if (
     !timingSafeEqual(
-      pkgRow.content_sha256.toLowerCase(),
+      requestedRow.content_sha256.toLowerCase(),
       body.pkg_content_sha256.toLowerCase(),
     )
   ) {
     return json({ error: "package content hash mismatch" }, 400);
   }
+
+  // Replacement check (worker 2.5.0): a job sent under an issued
+  // link for one version is graded under the newest OPEN version of
+  // the same package name, when a newer one exists. The hash is
+  // verified against the requested version first, so the check
+  // upgrades only a genuine issued link; it applies whether or not
+  // the requested version is still open, so an old link keeps
+  // working after its version is closed in favour of a replacement.
+  // The job is stored under the resolved version: the grading
+  // claim, the signed receipt and the package job counts all name
+  // the package that actually grades it. Retrieval stays keyed to
+  // the requested version — code_lookup below is computed from the
+  // link's pkg string, and jobByRetrieval finds the job by that
+  // lookup alone.
+  const newestOpen = await env.DB.prepare(
+    "SELECT * FROM packages WHERE pkg = ? AND status = ? " +
+      "ORDER BY version DESC LIMIT 1",
+  )
+    .bind(parsed.name, "open")
+    .first();
+  let pkgRow = requestedRow;
+  if (newestOpen && newestOpen.version > requestedRow.version) {
+    pkgRow = newestOpen;
+  }
+  if (pkgRow.status !== "open") {
+    return json({ error: "package is not open" }, 409);
+  }
+  const resolvedFull = `${pkgRow.pkg} v${pkgRow.version}`;
 
   // YouTube gate for final jobs. The check token is an HMAC over
   // video_id / status / checked_at, so the page returns all three;
@@ -752,21 +777,33 @@ async function handleJobCreate(request, env) {
   }
 
   const codeLookup = await codeLookupFor(parsed.full, body.retrieval_code);
+  // The lookup embeds the requested pkg string while the job row is
+  // stored under the resolved version, so the clash check — like
+  // retrieval — keys on the lookup alone.
   const codeClash = await env.DB.prepare(
-    "SELECT job_id FROM jobs WHERE pkg = ? AND code_lookup = ?",
+    "SELECT job_id FROM jobs WHERE code_lookup = ?",
   )
-    .bind(parsed.full, codeLookup)
+    .bind(codeLookup)
     .first();
   if (codeClash) {
     return json({ error: "retrieval code already used for this package" }, 409);
   }
 
   if (body.kind === "final") {
-    const priorFinal = await findLiveFinal(
+    let priorFinal = await findLiveFinal(
       env,
-      parsed.full,
+      resolvedFull,
       body.audio_sha256.toLowerCase(),
     );
+    if (!priorFinal && resolvedFull !== parsed.full) {
+      // A final stored under the requested version before the
+      // replacement check existed still counts.
+      priorFinal = await findLiveFinal(
+        env,
+        parsed.full,
+        body.audio_sha256.toLowerCase(),
+      );
+    }
     if (priorFinal) {
       return json({ error: "a final job already exists for this recording" }, 409);
     }
@@ -787,7 +824,7 @@ async function handleJobCreate(request, env) {
     )
       .bind(
         jobId,
-        parsed.full,
+        resolvedFull,
         "",
         codeLookup,
         codeSalt,
@@ -825,11 +862,18 @@ async function handleJobCreate(request, env) {
     // live final per audio fingerprint) or the jobs_code_lookup index
     // (one job per retrieval code per package). (Review fix F2.)
     if (body.kind === "final") {
-      const priorFinal = await findLiveFinal(
+      let priorFinal = await findLiveFinal(
         env,
-        parsed.full,
+        resolvedFull,
         body.audio_sha256.toLowerCase(),
       );
+      if (!priorFinal && resolvedFull !== parsed.full) {
+        priorFinal = await findLiveFinal(
+          env,
+          parsed.full,
+          body.audio_sha256.toLowerCase(),
+        );
+      }
       if (priorFinal) {
         return json(
           { error: "a final job already exists for this recording" },
@@ -839,7 +883,12 @@ async function handleJobCreate(request, env) {
     }
     return json({ error: "retrieval code already used for this package" }, 409);
   }
-  return json({ job_id: jobId, created_at: nowIso, expires_at: expiresIso });
+  return json({
+    job_id: jobId,
+    created_at: nowIso,
+    expires_at: expiresIso,
+    pkg: resolvedFull,
+  });
 }
 
 // Shared auth for /jobs/status and /jobs/retrieved. Retrieval is by
@@ -858,10 +907,14 @@ async function jobByRetrieval(env, body) {
     return json({ error: "invalid retrieval code" }, 403);
   }
   const lookup = await codeLookupFor(body.pkg, body.retrieval_code);
+  // The lookup hash embeds the pkg string of the link the job was
+  // created under, while the job row is stored under the package
+  // version that grades it (the newest open version at intake,
+  // worker 2.5.0) — so the lookup alone is the key, not the pair.
   const row = await env.DB.prepare(
-    "SELECT * FROM jobs WHERE pkg = ? AND code_lookup = ?",
+    "SELECT * FROM jobs WHERE code_lookup = ?",
   )
-    .bind(body.pkg, lookup)
+    .bind(lookup)
     .first();
   if (row) return row;
   const legacy = await env.DB.prepare("SELECT * FROM jobs WHERE pkg = ?")
