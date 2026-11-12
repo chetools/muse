@@ -29,7 +29,9 @@ import {
   validateJobPayload, buildJobPayload,
   loadJobEntries, addJobEntry, removeJobEntry, pruneExpiredEntries,
   submitJob, fetchJobStatus, finalizeJob,
+  kindFromResultBundle, duplicateJobEntry,
 } from '../js/jobs.js';
+import { encodeRawFingerprint, decodeRawFingerprint } from '../js/fingerprint.js';
 import { urlBase64ToUint8Array, uint8ArrayToUrlBase64 } from '../js/push.js';
 
 let passed = 0, failed = 0, skipped = 0;
@@ -506,8 +508,7 @@ await test('job calls: submit posts to /jobs; status maps 403 to forbidden', asy
   assert.equal(st.data, null);
 });
 
-await test('job calls: finalize posts the check to /jobs/finalize', async () => {
-  const seen = [];
+await test('job calls: finalize posts the check to /jobs/finalize', async () => {  const seen = [];
   const mockOk = async (url, opts) => {
     seen.push({ url, body: JSON.parse(opts.body) });
     return { ok: true, status: 200, json: async () => ({ ok: true, receipt: 'r1' }) };
@@ -523,6 +524,168 @@ await test('job calls: finalize posts the check to /jobs/finalize', async () => 
   const mock409 = async () => ({ ok: false, status: 409, json: async () => ({ error: 'a final job already exists for this recording' }) });
   await assert.rejects(() => finalizeJob('https://g.example.workers.dev', payload, mock409),
     /a final job already exists/);
+});
+
+/* ---------------- Chromaprint base64 + duplicate responses (2.6.0) ---------------- */
+
+await test('fingerprint base64: raw items round-trip, little-endian', () => {
+  const items = new Uint32Array([0, 1, 0x12345678, 0xffffffff, 0x00000080]);
+  const encoded = encodeRawFingerprint(items);
+  assert.deepEqual(decodeRawFingerprint(encoded), items);
+  // Independent check: the bytes are little-endian uint32.
+  const rawBytes = Buffer.from(encoded, 'base64');
+  assert.equal(rawBytes.length, 20);
+  assert.equal(rawBytes.readUInt32LE(8), 0x12345678);
+  assert.equal(rawBytes.readUInt32LE(12), 0xffffffff);
+  // A single item encodes with padding.
+  assert.equal(encodeRawFingerprint(new Uint32Array([1])), 'AQAAAA==');
+  assert.deepEqual(decodeRawFingerprint('AQAAAA=='), new Uint32Array([1]));
+});
+
+await test('fingerprint base64: invalid input decodes to null', () => {
+  assert.equal(decodeRawFingerprint(''), null);
+  assert.equal(decodeRawFingerprint(null), null);
+  assert.equal(decodeRawFingerprint('AQ=='), null); // one byte: not whole uint32 items
+  assert.equal(decodeRawFingerprint('####'), null);
+  assert.equal(decodeRawFingerprint('AQAA'), null); // 3 bytes: not divisible by 4
+  assert.equal(decodeRawFingerprint('AQAAAA==AQAA'), null); // padding mid-string
+  assert.equal(encodeRawFingerprint(new Uint32Array([])), '');
+});
+
+await test('job payload: chromaprint included when present, omitted when null', () => {
+  const fp = encodeRawFingerprint(new Uint32Array([1, 2, 3]));
+  const withFp = buildJobPayload({ ...jobState, chromaprint: fp });
+  assert.equal(withFp.chromaprint, fp);
+  assert.equal(validateJobPayload(withFp).ok, true);
+  const withoutFp = buildJobPayload({ ...jobState, chromaprint: null });
+  assert.ok(!('chromaprint' in withoutFp));
+  const unset = buildJobPayload(jobState);
+  assert.ok(!('chromaprint' in unset));
+  assert.equal(validateJobPayload(unset).ok, true);
+});
+
+const readyDupBundle = {
+  v: 2, job_id: 'job-old', audio_sha256: SHA_A, transcript_sha256: SHA_B,
+  pkg: 'hw3 v2', pkg_content_sha256: SHA_C, completeness: 4, accuracy: 3,
+  critique: 'Good.', critique_sha256: SHA_C, youtube_video_sha256: 'e'.repeat(64),
+  t: '2026-11-10T10:00:00.000Z', receipt: 'r-old',
+};
+const practiceDupBundle = { ...readyDupBundle, youtube_video_sha256: 'none' };
+
+await test('job calls: submit returns a duplicate response instead of throwing', async () => {
+  const queued = async () => ({
+    ok: true, status: 200, json: async () => ({
+      duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
+      pkg: 'hw3 v2', status: 'queued', queue_ahead: 2, alias_created: true,
+    }),
+  });
+  const out = await submitJob('https://g.example.workers.dev', buildJobPayload(jobState), queued);
+  assert.equal(out.duplicate, true);
+  assert.equal(out.job_id, 'job-old');
+  assert.equal(out.queue_ahead, 2);
+  const ready = async () => ({
+    ok: true, status: 200, json: async () => ({
+      duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
+      pkg: 'hw3 v2', status: 'ready', result: readyDupBundle, alias_created: true,
+    }),
+  });
+  const outReady = await submitJob('https://g.example.workers.dev', buildJobPayload(jobState), ready);
+  assert.equal(outReady.status, 'ready');
+  assert.deepEqual(outReady.result, readyDupBundle);
+});
+
+await test('duplicate entry: alias stored under the submitted code; kind follows the existing job', () => {
+  const submitted = {
+    pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3',
+    retrieval_code: 'newcode99', kind: 'practice',
+    youtube_link: '', youtube_title: '', youtube_checked_at: '',
+  };
+  const finalSubmitted = {
+    ...submitted, kind: 'final',
+    youtube_link: 'https://www.youtube.com/watch?v=abc123XYZ_-',
+    youtube_title: 'T', youtube_checked_at: '2026-11-10T09:00:00.000Z',
+  };
+  // Ready final job: the entry is final, under the submitted code.
+  const finalEntry = duplicateJobEntry({
+    duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
+    pkg: 'hw3 v2', status: 'ready', result: readyDupBundle, alias_created: true,
+  }, finalSubmitted);
+  assert.equal(finalEntry.retrieval_code, 'newcode99');
+  assert.equal(finalEntry.kind, 'final');
+  assert.equal(finalEntry.youtube_link, 'https://www.youtube.com/watch?v=abc123XYZ_-');
+  assert.equal(finalEntry.youtube_title, 'T');
+  assert.equal(finalEntry.created_at, 't0');
+  // Ready practice job submitted as final: the existing job is
+  // practice, so the entry is practice and keeps no link.
+  const practiceEntry = duplicateJobEntry({
+    duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
+    pkg: 'hw3 v2', status: 'ready', result: practiceDupBundle, alias_created: true,
+  }, finalSubmitted);
+  assert.equal(practiceEntry.kind, 'practice');
+  assert.equal(practiceEntry.youtube_link, '');
+  // Queued job: no result yet, so the submitted kind stands.
+  const queuedEntry = duplicateJobEntry({
+    duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
+    pkg: 'hw3 v2', status: 'queued', queue_ahead: 1, alias_created: true,
+  }, submitted);
+  assert.equal(queuedEntry.kind, 'practice');
+  // Stored under the submitted code in localStorage.
+  const store = fakeStorage();
+  addJobEntry(finalEntry, store);
+  const entries = loadJobEntries(store);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].retrieval_code, 'newcode99');
+  assert.equal(entries[0].kind, 'final');
+});
+
+await test('duplicate entry: alias_created false stores nothing', () => {
+  const submitted = {
+    pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3',
+    retrieval_code: 'takencode1', kind: 'practice',
+    youtube_link: '', youtube_title: '', youtube_checked_at: '',
+  };
+  assert.equal(duplicateJobEntry({
+    duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
+    pkg: 'hw3 v2', status: 'ready', result: readyDupBundle, alias_created: false,
+  }, submitted), null);
+  assert.equal(duplicateJobEntry(null, submitted), null);
+  assert.equal(duplicateJobEntry({ duplicate: false }, submitted), null);
+  assert.equal(kindFromResultBundle(readyDupBundle), 'final');
+  assert.equal(kindFromResultBundle(practiceDupBundle), 'practice');
+  assert.equal(kindFromResultBundle(null), 'practice');
+});
+
+await test('wiring: fingerprint computed after normalisation; duplicate handled in the submit path', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes("import { computeFingerprint } from './fingerprint.js'"),
+    'main imports the fingerprint module');
+  assert.ok(main.includes('refreshFingerprint()'), 'fingerprint computed after normalisation');
+  assert.ok(main.includes('chromaprint,'), 'payload carries the fingerprint');
+  assert.ok(main.includes('if (res.duplicate)'), 'submit branches on a duplicate response');
+  assert.ok(main.includes('duplicateJobEntry(res,'), 'alias entry built from the duplicate response');
+  assert.ok(main.includes('duplicateStatusText(res)'), 'grade/queue shown when no alias was created');
+  assert.ok(main.includes('kindFromResultBundle(res.data.result)'),
+    'ready bundle corrects an alias entry kind');
+  // The one 'dedup' in the page is the pre-existing duration-stats
+  // comment; this change adds no new text about dedup, regrading,
+  // or itself anywhere in the page wiring.
+  const dedupLines = main.split('\n').filter((l) => /dedup/i.test(l));
+  assert.deepEqual(dedupLines.map((l) => l.trim()), [
+    '// reported to the Worker, deduplicated in localStorage, so the',
+  ]);
+  const jobs = readFileSync(new URL('../js/jobs.js', import.meta.url), 'utf8');
+  assert.ok(jobs.includes('if (data && data.duplicate) return data;'),
+    'submitJob returns a duplicate response instead of throwing');
+});
+
+await test('wiring: ZIP review falls back to the step-6 link field for a final entry with no stored link', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes("entry.youtube_link || $('ytLink').value.trim()"),
+    'verifySubmissionParts falls back to the live step-6 link field');
+  assert.ok(main.includes('Keep the re-entered link with the entry'),
+    're-entered link is kept with the stored entry');
+  assert.ok(main.includes('ytCheck.audioSha256 === bundle.audio_sha256'),
+    'step-6 check title/time kept only when the check was for this job');
 });
 
 await test('wiring: conversion panel present; no practice/final radios', () => {

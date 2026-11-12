@@ -39,10 +39,14 @@ CREATE TABLE IF NOT EXISTS packages (
 -- code_lookup is NULL) can still be found by testing the salted hash.
 -- retrieval_name is a legacy column, stored empty. status: queued /
 -- claimed / ready / expired. An ungraded job expires 7 days after
--- created_at; a graded job expires 48 h after graded_at, measured
--- from graded_at (expires_at is also set to that time at grading,
--- and at creation to created_at + 7 days); on expiry transcript,
--- critique, result_json and push_json are nulled.
+-- created_at; a graded job expires 180 days after graded_at (2.6.0;
+-- 48 h before 2.6.0), measured from graded_at (expires_at is also
+-- set to that time at grading, and at creation to created_at + 7
+-- days); on expiry transcript, critique, result_json and push_json
+-- are nulled. chromaprint (2.6.0) is the base64 of the raw
+-- fingerprint bytes (little-endian uint32 per item), or NULL when
+-- the page did not send one; the transcript text itself is nulled
+-- at grading (2.6.0), while transcript_sha256 is kept.
 CREATE TABLE IF NOT EXISTS jobs (
   job_id TEXT PRIMARY KEY,
   pkg TEXT,
@@ -55,6 +59,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   transcript TEXT,
   audio_sha256 TEXT,
   transcript_sha256 TEXT,
+  chromaprint TEXT,
   versions_json TEXT,
   youtube_status TEXT,
   youtube_video_sha256 TEXT,
@@ -85,6 +90,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS jobs_code_lookup
 CREATE UNIQUE INDEX IF NOT EXISTS jobs_one_final
   ON jobs (pkg, audio_sha256)
   WHERE kind = 'final' AND status <> 'expired';
+
+-- One live job per (package, audio fingerprint), all kinds
+-- (2.6.0): the dedup backstop for the exact-SHA path. A second job
+-- for the same recording under the same resolved package version is
+-- answered as a duplicate, not created. Expired jobs fall outside
+-- the index: an expired job does not block a fresh job for the same
+-- recording.
+CREATE UNIQUE INDEX IF NOT EXISTS jobs_one_per_recording
+  ON jobs (pkg, audio_sha256)
+  WHERE status <> 'expired';
+
+-- Retrieval codes submitted with duplicate jobs (2.6.0): each maps
+-- a code to the existing job it duplicated, keyed by the requested
+-- pkg string (as for jobs). Aliases whose job has expired are
+-- deleted by the sweep.
+CREATE TABLE IF NOT EXISTS job_code_aliases (
+  pkg TEXT,
+  code_lookup TEXT,
+  job_id TEXT,
+  created_at TEXT,
+  PRIMARY KEY (pkg, code_lookup)
+);
 
 -- Anonymous duration comparisons reported by the student page
 -- (POST /stats/duration): the page's audio duration and the YouTube

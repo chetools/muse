@@ -29,7 +29,7 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 5. The jobs list refreshes every 5 seconds while the page is open — a
    waiting job shows how many jobs are ahead of it — and when the job
    is ready the page shows the grades and critique. An ungraded job
-   is kept for 7 days; a graded job is kept for 48 hours after
+   is kept for 7 days; a graded job is kept for 180 days after
    grading. A graded job
    without a checked link can then be turned into the Canvas
    submission from the conversion panel (pick the job, check the
@@ -60,6 +60,16 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   and the page never fetches it; `ph` (the package content SHA-256)
   binds the link to the exact package text. *(Pure.)*
 - `js/hash.js` — SHA-256 lowercase hex (Web Crypto). *(Pure.)*
+- `js/fingerprint.js` — Chromaprint of the normalised 16 kHz mono
+  WAV (2.6.0): `computeFingerprint(pcmInt16)` lazily loads the
+  vendored `rusty-chromaprint-wasm` 0.1.5 module (hand-rolled loader,
+  no bundler) and returns `{rawBase64, items}` — the base64 of the
+  raw fingerprint bytes (little-endian uint32 per item) — or `null`
+  on any failure, so a fingerprint failure never blocks a
+  submission. The base64 helpers are pure and Node-tested.
+- `vendor/chromaprint/` — vendored `rusty-chromaprint-wasm` 0.1.5
+  (MIT): the glue `rusty_chromaprint_wasm_bg.js` and the
+  `rusty_chromaprint_wasm_bg.wasm`; see its README.md.
 - `js/media.js` — media stage: `encodeWavPcm16` builds the exact
   16 kHz mono WAV bytes; `decodeFileTo16kMono` is the browser adapter
   (Web Audio decode + resample).
@@ -106,7 +116,7 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   expired. Each status response carries the job's current
   `expires_at`, and `main.js` stores it back into the entry, so the
   entry's lifetime follows the governing expiry (7 days while
-  ungraded, 48 hours after grading). The stored expiry is a cache,
+  ungraded, 180 days after grading). The stored expiry is a cache,
   not a liveness test: `main.js` asks the Worker about every entry,
   including one whose stored expiry has passed — a pre-2.4.1 entry
   carries creation + 48 hours, which the Worker no longer applies to

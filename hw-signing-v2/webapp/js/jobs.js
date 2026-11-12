@@ -146,7 +146,10 @@ export function validateJobPayload(body) {
 
 // Assemble the POST /jobs body from page state. youtube fields are
 // included only for final jobs; the link itself is never sent — only
-// the Worker's check token and the video ID.
+// the Worker's check token and the video ID. chromaprint (2.6.0) is
+// the raw Chromaprint as base64, included only when the page computed
+// one; a job sent without it is graded the same and dedupes on the
+// exact audio hash only.
 export function buildJobPayload(state) {
   const body = {
     pkg: state.pkg,
@@ -158,6 +161,7 @@ export function buildJobPayload(state) {
     versions: { ...state.versions },
     retrieval_code: state.retrievalCode,
   };
+  if (state.chromaprint) body.chromaprint = state.chromaprint;
   if (state.kind === 'final') {
     body.youtube_token = state.youtubeToken;
     body.youtube_video_id = state.youtubeVideoId;
@@ -265,14 +269,67 @@ export async function requestYouTubeCheck(workerBase, url, fetchFn) {
 }
 
 // POST /jobs → {job_id, created_at, expires_at}. Throws with the
-// Worker's error message on failure (e.g. duplicate code, second
-// final for one fingerprint).
+// Worker's error message on failure (e.g. duplicate code). A
+// duplicate response (2.6.0) is returned as-is, not thrown: it
+// carries job_id and duplicate:true, and the caller shows the
+// existing job through the normal jobs-list path.
 export async function submitJob(workerBase, payload, fetchFn) {
   const { status, ok, data } = await postJson(workerBase, '/jobs', payload, fetchFn);
+  if (data && data.duplicate) return data;
   if (!ok || !data || !data.job_id) {
     throw new Error((data && data.error) || ('job submission failed (HTTP ' + status + ')'));
   }
   return data;
+}
+
+/* ---------------- duplicate responses (2.6.0) ----------------
+ * When the submitted recording already has a live job under the
+ * resolved prompt package version, POST /jobs returns the existing
+ * job instead of creating one:
+ *   {duplicate:true, job_id, created_at, expires_at, pkg, status,
+ *    queue_ahead?, result?, alias_created}
+ * `result` is the existing result bundle when the job is ready;
+ * `queue_ahead` is present while it is queued or claimed.
+ */
+
+// The kind of a job from its result bundle: a bundle whose signed
+// youtube_video_sha256 names a checked video is a final job; 'none'
+// (or a missing value) is a practice job. The same rule the manual
+// retrieval path uses to label a job it did not create.
+export function kindFromResultBundle(bundle) {
+  return bundle && bundle.youtube_video_sha256 &&
+    bundle.youtube_video_sha256 !== 'none' ? 'final' : 'practice';
+}
+
+// Build the localStorage entry for a duplicate response, or null
+// when nothing is to be stored. The entry is filed under the
+// submitted code (the alias) so the existing job renders through the
+// normal jobs-list path — queue state while queued or claimed,
+// grades and critique when ready — and finalize and ZIP work from
+// it exactly as from the original entry. When alias_created is
+// false the submitted code is already used by a different job for
+// the pkg, so it does not retrieve this job and nothing is stored
+// under it. The entry's kind follows the existing job: the result
+// bundle decides it when the job is ready; while the job is still
+// queued or claimed there is no result yet, so the submitted kind
+// stands until the jobs list learns the ready bundle.
+export function duplicateJobEntry(response, submitted) {
+  if (!response || !response.duplicate || !response.alias_created) return null;
+  const kind = response.result
+    ? kindFromResultBundle(response.result) : submitted.kind;
+  const isFinal = kind === 'final' && submitted.kind === 'final';
+  return {
+    pkg: submitted.pkg,
+    course: submitted.course,
+    asg: submitted.asg,
+    retrieval_code: submitted.retrieval_code,
+    kind,
+    youtube_link: isFinal ? (submitted.youtube_link || '') : '',
+    youtube_title: isFinal ? (submitted.youtube_title || '') : '',
+    youtube_checked_at: isFinal ? (submitted.youtube_checked_at || '') : '',
+    created_at: response.created_at,
+    expires_at: response.expires_at,
+  };
 }
 
 // POST /jobs/status → {status, data} where data is the status body

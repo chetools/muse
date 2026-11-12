@@ -71,13 +71,38 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   and grading that usually takes minutes, a student who keeps the
   page open sees the grade arrive; the Worker's push machinery
   remains but the page never subscribes, so nothing is sent).
+- Dedup (2.6.0): one acoustic fingerprint yields one grade only under the
+  same prompt package version. The dedup key is (acoustic fingerprint,
+  resolved prompt package version), equivalently (fingerprint,
+  pkg_content_sha256), since version implies content. Same audio under
+  the same version returns the same grade and critique; same audio
+  under a new prompt version for the same link is a new grading and
+  regrading is allowed. The version is the RESOLVED version: the
+  Worker resolves the link to the newest open version first (2.5.0
+  replacement check), and the dedup lookup runs after resolution,
+  scoped to the resolved pkg. The fingerprint is the Chromaprint of
+  the normalised 16 kHz mono WAV (see `POST /jobs`); the exact SHA-256
+  of the WAV bytes is the fast path, checked first. Chromaprint
+  identifies one recording instance only, not a speaker and not the
+  words: a re-spoken take with different pacing does not match.
 - One FINAL job per (pkg, audio_sha256): a second final request for the
-  same fingerprint is refused (409). Practice jobs are unrestricted.
-- Job lifetime (2.4.1): an ungraded job expires 7 days after creation;
-  a graded job expires 48 h after grading. (Before 2.4.1 every job
+  same fingerprint under the same resolved version returns the existing
+  final job as a duplicate (2.6.0, below), rather than 409. Practice
+  jobs are no longer unrestricted: any job for the same fingerprint
+  under the same resolved version is a duplicate.
+- Job lifetime: an ungraded job expires 7 days after creation;
+  a graded job expires 180 days after grading (2.6.0; graded was
+  48 h before 2.6.0 — decided 2026-11-11 the 48 h lifetime stayed,
+  superseded 2026-11-12). The full job row is kept for that period,
+  including the result bundle (completeness, accuracy, critique,
+  receipt), the acoustic fingerprint, the hashes, the code lookup
+  and salt, and the aliases, except the transcript text, which is
+  nulled at grading (see `/grading/result`). (Before 2.4.1 every job
   expired 48 h after creation, which deleted ungraded submissions
-  whenever grading did not run within 48 h.) On expiry the transcript
-  and result are deleted. Retrieval marks the job retrieved.
+  whenever grading did not run within 48 h.) On expiry the result
+  bundle and remaining fields are nulled and the row is marked
+  expired. After 180 days a duplicate lookup finds nothing, so a
+  fresh submission is re-graded. Retrieval marks the job retrieved.
 - Retrieval code length (2.4.1): a code is created with at least 8
   characters (`^[A-Za-z0-9]{8,128}$`, enforced at `POST /jobs` only).
   Lookup does not re-validate length, so jobs created earlier with
@@ -125,15 +150,25 @@ Tables (SQL in `worker/schema.sql`):
 - `jobs(job_id TEXT PRIMARY KEY, pkg TEXT, retrieval_name TEXT,
   code_lookup TEXT, code_salt TEXT, code_hash TEXT, kind TEXT, status TEXT,
   transcript TEXT, audio_sha256 TEXT, transcript_sha256 TEXT,
-  versions_json TEXT, youtube_status TEXT, completeness INTEGER,
+  chromaprint TEXT, versions_json TEXT, youtube_status TEXT, completeness INTEGER,
   accuracy INTEGER, critique TEXT, result_json TEXT, receipt TEXT,
   push_json TEXT, claimed_at TEXT, claim_expires TEXT, created_at TEXT,
   graded_at TEXT, retrieved_at TEXT, expires_at TEXT)` plus a unique
-  index `jobs_code_lookup` on (pkg, code_lookup) — `retrieval_name` is
+  index `jobs_code_lookup` on (pkg, code_lookup) and a partial unique
+  index `jobs_one_per_recording` on (pkg, audio_sha256) WHERE status <>
+  'expired' (2.6.0: one live job per fingerprint per resolved version,
+  all kinds) — `retrieval_name` is
   a legacy column, stored empty since 2.1.0. `youtube_status` is only the check
   outcome string (`ok` / `none`); no link, title or channel is stored.
   For final jobs also store `youtube_video_sha256` (SHA-256 of the video
-  ID) from the check token.
+  ID) from the check token. `chromaprint` (2.6.0) is the base64 of the
+  raw fingerprint bytes (little-endian uint32 per item, one item per
+  ~0.124 s), or NULL when the page did not send one.
+- `job_code_aliases(pkg TEXT, code_lookup TEXT, job_id TEXT,
+  created_at TEXT, PRIMARY KEY(pkg, code_lookup))` (2.6.0): a retrieval
+  code submitted with a duplicate job, mapping to the existing job
+  (see `POST /jobs`). Lookup is by the requested pkg string, as for
+  jobs. Aliases whose job has expired are deleted by the sweep.
 
 Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
 
@@ -159,31 +194,62 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   confirm_within_tolerance, beyond_tolerance}}` over the stored
   comparisons, for recalibrating the page's duration bands.
 - `POST /jobs` — body: `{pkg, pkg_content_sha256, kind, transcript,
-  audio_sha256, transcript_sha256, versions:{webapp,model,glossary},
+  audio_sha256, transcript_sha256, chromaprint?, versions:{webapp,model,glossary},
   retrieval_code, youtube_token?, youtube_video_id?,
-  push_subscription?}`. Validate: package exists and the content
-  hash matches that version's stored hash; the job is then resolved
-  to the newest `open` version of the same package name when a newer
-  one exists (the replacement check, worker 2.5.0) — resolution
-  applies whether or not the requested version is still open, and
-  the job is stored, graded and signed under the resolved version;
-  with no newer open version, the requested version must itself be
-  `open`. Retrieval stays keyed to the requested version: the code
-  lookup hash is computed from the requested pkg string, and jobs
-  are found by that lookup alone. Transcript non-empty and
-  ≤ 200,000 chars; hashes are 64-hex; retrieval_code matches
-  `^[A-Za-z0-9]{8,128}$` and is unique for the pkg (by its lookup
-  hash); for `final`, youtube_token verifies and its status is `ok`
-  and the token is < 24 h old, and no other final job exists for
-  (pkg, audio_sha256) under the resolved or the requested version.
-  Store the code's lookup hash and a salted SHA-256.
+  push_subscription?}`. `chromaprint` (2.6.0, optional) is the base64
+  of the raw Chromaprint bytes for the normalised WAV (little-endian
+  uint32 per item); it must decode to a byte length divisible by 4
+  with 1–20000 items, else the field is ignored and only the exact-SHA
+  dedup applies — a bad fingerprint never rejects a job. Validate:
+  package exists and the content hash matches that version's stored
+  hash; the job is then resolved to the newest `open` version of the
+  same package name when a newer one exists (the replacement check,
+  worker 2.5.0) — resolution applies whether or not the requested
+  version is still open, and the job is stored, graded and signed
+  under the resolved version; with no newer open version, the
+  requested version must itself be `open`. Retrieval stays keyed to
+  the requested version: the code lookup hash is computed from the
+  requested pkg string, and jobs are found by that lookup alone.
+  Transcript non-empty and ≤ 200,000 chars; hashes are 64-hex;
+  retrieval_code matches `^[A-Za-z0-9]{8,128}$`; for `final`,
+  youtube_token verifies and its status is `ok` and the token is
+  < 24 h old. Dedup (2.6.0), in this order, after resolution and
+  before insert: (1) a live job (status <> 'expired') for the resolved
+  pkg with the same audio_sha256; (2) a live job for the resolved pkg
+  whose stored Chromaprint matches the submitted one at similarity
+  ≥ 0.85 (BER with offset search ±8 items, as the audit app compares;
+  only jobs with a stored fingerprint are compared; exact-SHA matches
+  skip this step). A graded job is live for 180 days after grading,
+  so the lookup finds it for that whole period; after expiry it finds
+  nothing and a fresh submission is re-graded. On a match: no new job
+  is created; the submitted kind and YouTube token are ignored; the
+  submitted retrieval code is stored as an alias for the existing job
+  unless that code is already used by a different job for the pkg, in
+  which case no alias is stored. → 200
+  `{duplicate:true, job_id, created_at, expires_at, pkg, status,
+  queue_ahead?, result?, alias_created}` where `status` is the
+  existing job's status, `queue_ahead` is present when it is queued
+  or claimed (same definition as `/jobs/status`), `result` is the
+  existing result bundle when it is ready, and `alias_created` says
+  whether the submitted code now retrieves the job. On no match: the
+  retrieval code must be unique for the pkg (by its lookup hash),
+  else 409; store the code's lookup hash and a salted SHA-256, and
+  the fingerprint when sent.
   → `{job_id, created_at, expires_at, pkg}` with status `queued`;
   `pkg` is the resolved package version; `expires_at` is creation
-  + 7 days (the ungraded lifetime).
+  + 7 days (the ungraded lifetime). Race safety: the
+  `jobs_one_per_recording` index is the backstop for the exact-SHA
+  path (INSERT catch re-checks and returns the duplicate, as the
+  one-final catch does); after every INSERT the handler re-checks
+  for an earlier live duplicate by SHA and by Chromaprint, and if
+  one is found deletes the row just inserted and returns it as the
+  duplicate instead.
 - `POST /jobs/status` `{pkg, retrieval_code}` → find the job by code
-  lookup hash (salted-hash fallback for pre-2.1.0 jobs); return
+  lookup hash (salted-hash fallback for pre-2.1.0 jobs); if no job
+  matches, check `job_code_aliases` for (pkg, code_lookup) and load
+  that job (2.6.0). Return
   `{status}` and `expires_at` (the job's current governing expiry:
-  creation + 7 days while ungraded, graded_at + 48 h once graded) and,
+  creation + 7 days while ungraded, graded_at + 180 days once graded) and,
   while `queued` or `claimed`, `queue_ahead`: the
   number of jobs ahead in the grading queue — every claimed job plus
   every queued job created earlier (for a claimed job, the jobs
@@ -191,14 +257,22 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   created_at order, the `/grading/pending` order. When `ready`, the
   full result bundle (below) is returned and nothing is marked.
   Every wrong code returns the same 403 body.
-- `POST /jobs/retrieved` `{pkg, retrieval_code}` → mark
+- `POST /jobs/retrieved` `{pkg, retrieval_code}` → find the job as
+  in `/jobs/status` (alias lookup included, 2.6.0); mark
   retrieved_at; return `{ok:true}`.
 - `POST /jobs/finalize` `{pkg, retrieval_code, youtube_token,
-  youtube_video_id, youtube_checked_at}` → turn the job into the
+  youtube_video_id, youtube_checked_at}` → find the job as in
+  `/jobs/status` (alias lookup included, 2.6.0); turn the job into the
   final job: the check token is verified exactly as at intake; the
-  one-final-per-recording rule applies; when the job is already
-  graded, the stored result bundle is re-signed with the video hash
-  (all other signed fields, including the grading time, unchanged).
+  one-final-per-recording rule applies (per resolved pkg version,
+  `findLiveFinal` unchanged); when the job is already graded, the
+  stored result bundle is re-signed with the video hash (all other
+  signed fields, including the grading time, unchanged).
+  Finalize does not re-grade: a practice job graded under an earlier
+  version stays graded under that version when finalized after a new
+  version opens; to submit a grade under the new version the student
+  resubmits (a new job under the resolved version) and finalizes that
+  one instead.
   → `{ok:true, receipt}`.
 - `GET /grading/pending` (GRADING_TOKEN) → queued jobs and jobs whose
   claim expired: `[{job_id, pkg, kind, created_at, transcript_chars}]`.
@@ -210,7 +284,18 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   accuracy, critique, injection_flags}` → validate claim is live;
   scores are integers 0–5; critique non-empty ≤ 20,000 chars. Compute
   the result bundle, sign it (below), store, status `ready`,
-  graded_at set, and `expires_at` reset to graded_at + 48 h. If a push subscription is stored, send the Web Push
+  graded_at set, `expires_at` reset to graded_at + 180 days, and
+  `transcript` set to NULL in the same UPDATE (2.6.0: the transcript
+  text is kept only until grading; transcript_sha256, audio_sha256,
+  the acoustic fingerprint, completeness, accuracy, critique,
+  result_json, receipt, code lookup/hash/salt and aliases are kept
+  for 180 days. This is safe because the transcript is read only for
+  queued jobs: `/grading/pending` uses it only for transcript_chars
+  on queued jobs, and `/grading/claim` returns it only for queued
+  jobs; ready jobs are never claimed, and `/jobs/status` returns the
+  result bundle, not the transcript. Ungraded jobs keep the
+  transcript until grading or the 7-day expiry, when the sweep
+  already nulls it.) If a push subscription is stored, send the Web Push
   (payload: `{"title":"HW Signing","body":"Your grade and critique are
   ready."}`, TTL = seconds until job expiry, urgency `normal`); push
   failure never fails the result call. → `{ok:true, receipt}`.
@@ -279,11 +364,27 @@ New/changed behaviour:
   words and a Delete button per entry (name and words scrubbed with
   the current removal list). Nothing else is stored
   in IndexedDB.
+- `js/fingerprint.js` (2.6.0) — compute the Chromaprint of the
+  normalised 16 kHz mono WAV, in the browser, from the PCM the page
+  already holds: `computeFingerprint(pcmInt16) -> Promise<{rawBase64,
+  items} | null>`. The implementation is `rusty-chromaprint-wasm`
+  0.1.5, vendored under `webapp/vendor/chromaprint/` (wasm + glue +
+  a small loader, no bundler; see `spike/SPIKE.md` for the verified
+  numbers against the audit app's ffmpeg reference). Loading is lazy
+  and the module is cached; any failure returns null and the job is
+  sent without a fingerprint (exact-SHA dedup only) — a fingerprint
+  failure never blocks a submission. Computing is about 1.6 ms per
+  audio-second on the measured machine, on the main thread.
 - Transcription: after extraction and fingerprinting, check the cache.
   Hit → load chunks, skip transcription, show "transcript restored from
   this computer". Miss → transcribe, caching each completed window;
   an interrupted run resumes from cached chunks on the next load of the
-  same file.
+  same file. The acoustic fingerprint for dedup (2.6.0) is computed
+  from the page's own normalised WAV; this does not change the
+  duration-comparison note below — the page still cannot read the
+  YouTube video's audio track, so sameness of recording with the video
+  is still established by the audit's acoustic cross-check on the
+  submitted ZIP.
 - Scrub and identifier review are applied fresh on every load (cached
   chunks are pre-scrub). The identifier confirmation checkbox gates the
   job section, as it gates export in v1.
@@ -294,7 +395,7 @@ New/changed behaviour:
   ZIP download or expiry. Each status response carries the job's
   current `expires_at`, and the page stores it back into the entry, so
   an entry's lifetime follows the governing expiry (7 days ungraded,
-  48 h after grading) rather than the value stamped at creation. The
+  180 days after grading) rather than the value stamped at creation. The
   stored value is a cache, not a liveness test: the page asks the
   Worker about every entry — including one whose stored expiry has
   passed, as a pre-2.4.1 entry's will at 48 h — and drops the entry
@@ -328,7 +429,17 @@ New/changed behaviour:
   /jobs/finalize; the row then offers
   the submission ZIP.
 - Submit → POST /jobs; on success save the localStorage entry and show
-  the queued state.
+  the queued state. On a duplicate response (2.6.0): save the entry
+  under the submitted code (the alias) and show the existing job
+  through the normal jobs-list path — the queue state while it is
+  queued or claimed, the grades and critique when it is ready — so
+  finalize and ZIP work from the alias entry exactly as from the
+  original entry. An alias entry for an existing final job filed by
+  a practice resubmission carries no YouTube link (none was sent);
+  the ZIP review then falls back to the link field in step 6, which
+  the student re-enters there, still checked against the signed
+  video hash, and keeps the re-entered link with the entry. The page
+  adds no text about dedup, regrading, or this change.
 - Retrieval: when a job is `ready`, show grades and critique (status is
   shown automatically; grades display after a click, per the earlier
   decision) and offer **Review and download submission ZIP** (final

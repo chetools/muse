@@ -24,17 +24,19 @@
 // jobs table keeps only youtube_status ("ok" / "none") and, for final
 // jobs, youtube_video_sha256 (SHA-256 hex of the video ID).
 
-const SERVICE_VERSION = "2.5.0";
+const SERVICE_VERSION = "2.6.0";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
-// Job lifetime (2.4.1): an ungraded job is kept for up to
+// Job lifetime (2.6.0): an ungraded job is kept for up to
 // UNGRADED_TTL_MS after creation, so a submission made while the
 // teacher's Muse is not polling is not lost; once graded, the job
-// (transcript and result) is kept for GRADED_TTL_MS after grading and
-// then expires. Before 2.4.1 every job expired 48 h after creation,
-// graded or not.
+// (result bundle, hashes and fingerprint — the transcript text
+// itself is nulled at grading, see handleResult) is kept for
+// GRADED_TTL_MS after grading and then expires. Before 2.4.1 every
+// job expired 48 h after creation, graded or not; graded jobs were
+// kept 48 h after grading before 2.6.0.
 const UNGRADED_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const GRADED_TTL_MS = 48 * 60 * 60 * 1000;
+const GRADED_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const YOUTUBE_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_TRANSCRIPT_CHARS = 200000;
 const MAX_CRITIQUE_CHARS = 20000;
@@ -106,6 +108,76 @@ async function hmacBase64url(secret, text) {
   );
   const sig = await crypto.subtle.sign("HMAC", key, enc(text));
   return base64url(new Uint8Array(sig));
+}
+
+// ------------------------------------------------------- Chromaprint
+// (2.6.0 dedup). A fingerprint is the base64 of the raw Chromaprint
+// bytes for the normalised WAV: little-endian uint32 per item, one
+// item per ~0.124 s. Decode validates and returns a Uint32Array, or
+// null when the field is absent, malformed or out of range — a bad
+// fingerprint is ignored, never a reason to reject a job (only the
+// exact-SHA dedup then applies). Comparison is the audit app's BER
+// logic (audit.py compare_fingerprints): bit error rate at the best
+// alignment over an offset search of ±8 items, similarity 1 - BER.
+const FP_MAX_ITEMS = 20000;
+const FP_MAX_OFFSET = 8;
+const FP_SIMILARITY_THRESHOLD = 0.85;
+
+function decodeChromaprint(value) {
+  if (typeof value !== "string" || value.length === 0) return null;
+  if (value.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(value)) return null;
+  let bin;
+  try {
+    bin = atob(value);
+  } catch {
+    return null;
+  }
+  if (bin.length % 4 !== 0) return null;
+  const items = bin.length / 4;
+  if (items < 1 || items > FP_MAX_ITEMS) return null;
+  const out = new Uint32Array(items);
+  for (let i = 0; i < items; i++) {
+    out[i] =
+      (bin.charCodeAt(i * 4) |
+        (bin.charCodeAt(i * 4 + 1) << 8) |
+        (bin.charCodeAt(i * 4 + 2) << 16) |
+        (bin.charCodeAt(i * 4 + 3) << 24)) >>>
+      0;
+  }
+  return out;
+}
+
+function popcount32(x) {
+  x >>>= 0;
+  let c = 0;
+  while (x) {
+    c += x & 1;
+    x >>>= 1;
+  }
+  return c;
+}
+
+function fpBer(a, b, offset = 0) {
+  const startA = Math.max(0, -offset);
+  const startB = Math.max(0, offset);
+  const n = Math.min(a.length - startA, b.length - startB);
+  if (n <= 0) return null;
+  let bits = 0;
+  for (let i = 0; i < n; i++) {
+    bits += popcount32(a[startA + i] ^ b[startB + i]);
+  }
+  return bits / (32 * n);
+}
+
+// Best-alignment similarity (1 - BER) over offsets -8..8, or null
+// when the fingerprints do not overlap at any offset.
+function fpSimilarity(a, b) {
+  let best = null;
+  for (let off = -FP_MAX_OFFSET; off <= FP_MAX_OFFSET; off++) {
+    const ber = fpBer(a, b, off);
+    if (ber !== null && (best === null || ber < best)) best = ber;
+  }
+  return best === null ? null : 1 - best;
 }
 
 // Constant-time comparison, so a wrong value leaks nothing about the
@@ -244,9 +316,10 @@ async function getJobRow(env, jobId) {
 // ungraded job the created_at + UNGRADED_TTL_MS cap (a job created
 // before 2.4.1 carries a stored expires_at of creation + 48 h, which
 // no longer governs it while it is ungraded); for a graded job
-// graded_at + GRADED_TTL_MS (the stored expires_at holds exactly
-// that for jobs graded under 2.4.1; a job graded before 2.4.1 carries
-// creation + 48 h there, which no longer governs it either).
+// graded_at + GRADED_TTL_MS (180 days since 2.6.0; the stored
+// expires_at holds exactly that for jobs graded under 2.6.0, and
+// graded_at + 48 h for jobs graded under 2.4.1–2.5.0, which no longer
+// governs them either).
 function effectiveExpiresAt(row) {
   if (row.status === "queued" || row.status === "claimed") {
     return new Date(
@@ -298,6 +371,21 @@ async function sweep(env, nowIso) {
         "WHERE status = ? AND created_at <= ?",
     )
       .bind("expired", st, ungradedCutoff)
+      .run();
+  }
+  // Aliases whose job has expired are deleted (2.6.0): a code
+  // submitted with a duplicate job retrieves that job only while
+  // the job is live.
+  const { results: expiredRows } = await env.DB.prepare(
+    "SELECT job_id FROM jobs WHERE status = ?",
+  )
+    .bind("expired")
+    .all();
+  for (const r of expiredRows || []) {
+    await env.DB.prepare(
+      "DELETE FROM job_code_aliases WHERE job_id = ?",
+    )
+      .bind(r.job_id)
       .run();
   }
   await env.DB.prepare(
@@ -655,6 +743,100 @@ async function findLiveFinal(env, pkgFull, audioSha256) {
     .first();
 }
 
+// Dedup (2.6.0): the live job for the same recording under the
+// resolved package version, or null. In order: (1) the exact-SHA
+// fast path — a live job for the resolved pkg with the same
+// audio_sha256; (2) a live job for the resolved pkg whose stored
+// Chromaprint matches the submitted one at similarity >= 0.85.
+// Exact-SHA matches skip the fingerprint step. Only jobs with a
+// stored fingerprint are compared. excludeJobId (the row just
+// inserted, for the post-insert race re-check) is skipped.
+// Earliest created_at wins; the ORDER BY is stable in the D1 shim
+// and in practice in D1, so equal timestamps keep insertion order.
+async function findLiveDuplicate(env, pkgFull, audioSha256, fpItems, excludeJobId = null) {
+  const { results: shaRows } = await env.DB.prepare(
+    "SELECT * FROM jobs WHERE pkg = ? AND audio_sha256 = ? " +
+      "AND status <> ? ORDER BY created_at",
+  )
+    .bind(pkgFull, audioSha256, "expired")
+    .all();
+  for (const row of shaRows || []) {
+    if (row.job_id !== excludeJobId) return row;
+  }
+  if (!fpItems) return null;
+  const { results } = await env.DB.prepare(
+    "SELECT * FROM jobs WHERE pkg = ? AND status <> ? ORDER BY created_at",
+  )
+    .bind(pkgFull, "expired")
+    .all();
+  for (const row of results || []) {
+    if (row.job_id === excludeJobId || !row.chromaprint) continue;
+    const other = decodeChromaprint(row.chromaprint);
+    if (!other) continue;
+    const sim = fpSimilarity(fpItems, other);
+    if (sim !== null && sim >= FP_SIMILARITY_THRESHOLD) return row;
+  }
+  return null;
+}
+
+// The duplicate response for POST /jobs (2.6.0): no new job is
+// created; the submitted code is stored as an alias for the existing
+// job (keyed by the REQUESTED pkg string) unless that code is
+// already used by a different job for the pkg, in which case no
+// alias is stored. The submitted kind and YouTube token are ignored.
+async function duplicateResponse(env, dupRow, requestedPkg, codeLookup, nowIso) {
+  let aliasCreated = false;
+  const codeJob = await env.DB.prepare(
+    "SELECT job_id FROM jobs WHERE code_lookup = ?",
+  )
+    .bind(codeLookup)
+    .first();
+  let usedByDifferent = !!(codeJob && codeJob.job_id !== dupRow.job_id);
+  if (!usedByDifferent) {
+    const aliasRow = await env.DB.prepare(
+      "SELECT job_id FROM job_code_aliases WHERE pkg = ? AND code_lookup = ?",
+    )
+      .bind(requestedPkg, codeLookup)
+      .first();
+    if (aliasRow && aliasRow.job_id !== dupRow.job_id) {
+      usedByDifferent = true;
+    }
+  }
+  if (!usedByDifferent) {
+    try {
+      await env.DB.prepare(
+        "INSERT INTO job_code_aliases (pkg, code_lookup, job_id, created_at) " +
+          "VALUES (?, ?, ?, ?)",
+      )
+        .bind(requestedPkg, codeLookup, dupRow.job_id, nowIso)
+        .run();
+      aliasCreated = true;
+    } catch {
+      // The alias already exists (a repeat duplicate under the same
+      // code): nothing new was created.
+      aliasCreated = false;
+    }
+  }
+  const out = {
+    duplicate: true,
+    job_id: dupRow.job_id,
+    created_at: dupRow.created_at,
+    expires_at: effectiveExpiresAt(dupRow),
+    pkg: dupRow.pkg,
+    status: dupRow.status,
+    alias_created: aliasCreated,
+  };
+  if (dupRow.status === "queued" || dupRow.status === "claimed") {
+    out.queue_ahead = await queueAhead(env, dupRow);
+  }
+  if (dupRow.status === "ready" && dupRow.result_json) {
+    const bundle = JSON.parse(dupRow.result_json);
+    delete bundle.injection_flags;
+    out.result = bundle;
+  }
+  return json(out);
+}
+
 async function handleJobCreate(request, env) {
   const badSecret = requireSigning(env);
   if (badSecret) return badSecret;
@@ -745,6 +927,29 @@ async function handleJobCreate(request, env) {
   }
   const resolvedFull = `${pkgRow.pkg} v${pkgRow.version}`;
 
+  // Chromaprint (2.6.0, optional): decode and validate; an invalid,
+  // oversize or absent fingerprint is ignored — a bad fingerprint
+  // never rejects a job, and only the exact-SHA dedup then applies.
+  const fpItems = decodeChromaprint(body.chromaprint);
+  const storedChromaprint = fpItems ? body.chromaprint : null;
+  const codeLookup = await codeLookupFor(parsed.full, body.retrieval_code);
+
+  // Dedup (2.6.0), after resolution and before insert, in this
+  // order: exact audio SHA, then Chromaprint similarity >= 0.85.
+  // On a match no new job is created and the submitted kind and
+  // YouTube token are ignored; the submitted code is aliased to the
+  // existing job (see duplicateResponse). This runs before the
+  // YouTube gate and the code-uniqueness check, so a duplicate
+  // submission is answered as a duplicate even without a token or
+  // with a code already used by another job.
+  const dup = await findLiveDuplicate(
+    env,
+    resolvedFull,
+    body.audio_sha256.toLowerCase(),
+    fpItems,
+  );
+  if (dup) return duplicateResponse(env, dup, parsed.full, codeLookup, nowIso);
+
   // YouTube gate for final jobs. The check token is an HMAC over
   // video_id / status / checked_at, so the page returns all three;
   // a final job is accepted only for a token whose status is "ok"
@@ -776,7 +981,6 @@ async function handleJobCreate(request, env) {
     youtubeVideoSha256 = await sha256Hex(body.youtube_video_id);
   }
 
-  const codeLookup = await codeLookupFor(parsed.full, body.retrieval_code);
   // The lookup embeds the requested pkg string while the job row is
   // stored under the resolved version, so the clash check — like
   // retrieval — keys on the lookup alone.
@@ -789,26 +993,6 @@ async function handleJobCreate(request, env) {
     return json({ error: "retrieval code already used for this package" }, 409);
   }
 
-  if (body.kind === "final") {
-    let priorFinal = await findLiveFinal(
-      env,
-      resolvedFull,
-      body.audio_sha256.toLowerCase(),
-    );
-    if (!priorFinal && resolvedFull !== parsed.full) {
-      // A final stored under the requested version before the
-      // replacement check existed still counts.
-      priorFinal = await findLiveFinal(
-        env,
-        parsed.full,
-        body.audio_sha256.toLowerCase(),
-      );
-    }
-    if (priorFinal) {
-      return json({ error: "a final job already exists for this recording" }, 409);
-    }
-  }
-
   const codeSalt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
   const codeHash = await sha256Hex(`${codeSalt}\n${body.retrieval_code}`);
   const jobId = crypto.randomUUID();
@@ -816,11 +1000,11 @@ async function handleJobCreate(request, env) {
   try {
     await env.DB.prepare(
       "INSERT INTO jobs (job_id, pkg, retrieval_name, code_lookup, code_salt, code_hash, " +
-        "kind, status, transcript, audio_sha256, transcript_sha256, " +
+        "kind, status, transcript, audio_sha256, transcript_sha256, chromaprint, " +
         "versions_json, youtube_status, youtube_video_sha256, completeness, " +
         "accuracy, critique, result_json, receipt, push_json, claimed_at, " +
         "claim_expires, created_at, graded_at, retrieved_at, expires_at) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
       .bind(
         jobId,
@@ -834,6 +1018,7 @@ async function handleJobCreate(request, env) {
         body.transcript,
         body.audio_sha256.toLowerCase(),
         body.transcript_sha256.toLowerCase(),
+        storedChromaprint,
         JSON.stringify({
           webapp: body.versions.webapp,
           model: body.versions.model,
@@ -857,31 +1042,41 @@ async function handleJobCreate(request, env) {
       .run();
   } catch {
     // A UNIQUE constraint fired despite the checks above: a concurrent
-    // create won the race. Re-check which invariant fired so the error
-    // names the right rule — the jobs_one_final partial index (one
-    // live final per audio fingerprint) or the jobs_code_lookup index
-    // (one job per retrieval code per package). (Review fix F2.)
-    if (body.kind === "final") {
-      let priorFinal = await findLiveFinal(
-        env,
-        resolvedFull,
-        body.audio_sha256.toLowerCase(),
-      );
-      if (!priorFinal && resolvedFull !== parsed.full) {
-        priorFinal = await findLiveFinal(
-          env,
-          parsed.full,
-          body.audio_sha256.toLowerCase(),
-        );
-      }
-      if (priorFinal) {
-        return json(
-          { error: "a final job already exists for this recording" },
-          409,
-        );
-      }
+    // create won the race. Re-check the dedup rule — the
+    // jobs_one_per_recording partial index (one live job per audio
+    // fingerprint per resolved version, all kinds) or the
+    // jobs_code_lookup index (one job per retrieval code per
+    // package). A dedup match is returned as the duplicate, as the
+    // one-final catch did before 2.6.0. (Review fix F2, extended.)
+    const raced = await findLiveDuplicate(
+      env,
+      resolvedFull,
+      body.audio_sha256.toLowerCase(),
+      fpItems,
+    );
+    if (raced) {
+      return duplicateResponse(env, raced, parsed.full, codeLookup, nowIso);
     }
     return json({ error: "retrieval code already used for this package" }, 409);
+  }
+  // Post-insert race re-check: a concurrent create with a different
+  // audio SHA but a matching Chromaprint is not stopped by the
+  // index, so re-check for an earlier live duplicate (strictly
+  // earlier created_at, so equal timestamps never delete both
+  // rows). If one is found, delete the row just inserted and return
+  // the earlier one as the duplicate instead.
+  const earlier = await findLiveDuplicate(
+    env,
+    resolvedFull,
+    body.audio_sha256.toLowerCase(),
+    fpItems,
+    jobId,
+  );
+  if (earlier && Date.parse(earlier.created_at) < Date.parse(nowIso)) {
+    await env.DB.prepare("DELETE FROM jobs WHERE job_id = ?")
+      .bind(jobId)
+      .run();
+    return duplicateResponse(env, earlier, parsed.full, codeLookup, nowIso);
   }
   return json({
     job_id: jobId,
@@ -926,6 +1121,18 @@ async function jobByRetrieval(env, body) {
       `${cand.code_salt}\n${body.retrieval_code}`,
     );
     if (timingSafeEqual(codeHash, cand.code_hash)) return cand;
+  }
+  // Alias lookup (2.6.0): a code submitted with a duplicate job is
+  // stored in job_code_aliases keyed by the requested pkg string,
+  // and retrieves the existing job exactly as its own code does.
+  const alias = await env.DB.prepare(
+    "SELECT job_id FROM job_code_aliases WHERE pkg = ? AND code_lookup = ?",
+  )
+    .bind(body.pkg, lookup)
+    .first();
+  if (alias) {
+    const aliased = await getJobRow(env, alias.job_id);
+    if (aliased) return aliased;
   }
   return json({ error: "invalid retrieval code" }, 403);
 }
@@ -1243,14 +1450,21 @@ async function handleResult(request, env) {
   );
   const stored = { ...bundle, injection_flags: body.injection_flags || [] };
   // Grading starts the job's remaining lifetime: it now expires
-  // GRADED_TTL_MS after grading, replacing the ungraded cap.
+  // GRADED_TTL_MS after grading, replacing the ungraded cap. The
+  // transcript text is nulled in the same UPDATE (2.6.0 transcript
+  // minimisation): transcript_sha256, the acoustic fingerprint, the
+  // result bundle, the code lookup/hash/salt and any aliases are
+  // kept for the 180 days. Nothing still needs the text — pending
+  // lists it only for queued jobs, claim returns it only for queued
+  // jobs, and status returns the bundle, built above from
+  // transcript_sha256, not from the text.
   const gradedExpires = new Date(
     Date.parse(t) + GRADED_TTL_MS,
   ).toISOString();
   await env.DB.prepare(
     "UPDATE jobs SET status = ?, completeness = ?, accuracy = ?, " +
       "critique = ?, result_json = ?, receipt = ?, graded_at = ?, " +
-      "expires_at = ?, claim_expires = NULL WHERE job_id = ?",
+      "expires_at = ?, claim_expires = NULL, transcript = NULL WHERE job_id = ?",
   )
     .bind(
       "ready",

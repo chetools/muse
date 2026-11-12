@@ -1,0 +1,18 @@
+{
+  "name": "spike",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@unimusic/chromaprint": "^0.1.4",
+    "chromaprint": "^0.1.0",
+    "chromaprint-web": "^1.0.2",
+    "rusty-chromaprint-wasm": "^0.1.5"
+  }
+}

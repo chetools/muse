@@ -9,12 +9,15 @@ import worker from "./worker.js";
 // Minimal SQL engine covering exactly the statement shapes worker.js
 // uses: INSERT with ?/NULL values; SELECT (*, column list, COUNT(*),
 // MAX(col)) with AND-combined =, <>, <, <=, >, >=, IS [NOT] NULL
-// conditions and ORDER BY; UPDATE ... SET col = ?/NULL ... WHERE ...
-// INSERT also enforces the schema's uniqueness rules: the primary
-// keys, UNIQUE(pkg, code_lookup) on jobs, and the jobs_one_final
-// partial unique index (one live final per pkg + audio fingerprint).
+// conditions and ORDER BY; UPDATE ... SET col = ?/NULL ... WHERE ...;
+// DELETE ... WHERE ... . INSERT also enforces the schema's uniqueness
+// rules: the primary keys, UNIQUE(pkg, code_lookup) on jobs, the
+// jobs_one_final partial unique index (one live final per pkg +
+// audio fingerprint), the jobs_one_per_recording partial unique
+// index (2.6.0: one live job of any kind per pkg + audio
+// fingerprint), and the job_code_aliases primary key.
 function createDb() {
-  const tables = { packages: [], jobs: [], duration_stats: [] };
+  const tables = { packages: [], jobs: [], duration_stats: [], job_code_aliases: [] };
 
   function resolveToken(tok, args, ptr) {
     tok = tok.trim();
@@ -108,6 +111,19 @@ function createDb() {
               r.pkg === row.pkg && r.audio_sha256 === row.audio_sha256)) {
           throw new Error("UNIQUE constraint failed: index 'jobs_one_final'");
         }
+        // Partial unique index jobs_one_per_recording (2.6.0):
+        // among non-expired jobs of any kind, (pkg, audio_sha256)
+        // is unique.
+        if (row.status !== "expired" &&
+            tables.jobs.some((r) => r.status !== "expired" &&
+              r.pkg === row.pkg && r.audio_sha256 === row.audio_sha256)) {
+          throw new Error("UNIQUE constraint failed: index 'jobs_one_per_recording'");
+        }
+      }
+      if (table === "job_code_aliases") {
+        if (tables.job_code_aliases.some((r) => r.pkg === row.pkg && r.code_lookup === row.code_lookup)) {
+          throw new Error("UNIQUE constraint failed: job_code_aliases.pkg, job_code_aliases.code_lookup");
+        }
       }
       if (table === "packages") {
         if (tables.packages.some((r) => r.pkg === row.pkg && r.version === row.version)) {
@@ -135,6 +151,14 @@ function createDb() {
         }
       }
       return changes;
+    }
+    m = /^DELETE\s+FROM\s+(\w+)\s+WHERE\s+(.+)$/is.exec(sql);
+    if (m) {
+      const [, table, where] = m;
+      const before = tables[table].length;
+      tables[table] = tables[table].filter(
+        (row) => !evalConds(row, where, args, { i: 0 }));
+      return before - tables[table].length;
     }
     throw new Error("unsupported statement: " + sql);
   }
@@ -284,6 +308,8 @@ const GRADING = env.GRADING_TOKEN;
 const AUDIO_SHA = "a".repeat(64);
 const AUDIO2_SHA = "b".repeat(64);
 const AUDIO3_SHA = "c".repeat(64);
+const AUDIO_FINAL_SHA = "1".repeat(64);
+const AUDIO4_SHA = "d".repeat(64);
 // The Worker verifies transcript_sha256 against the transcript at
 // intake (review fix F3), so the fixture hash is the genuine SHA-256
 // of the fixture transcript string.
@@ -516,7 +542,7 @@ r = await call("/jobs", { body: { ...jobBase, retrieval_code: "bad code" } });
 check("retrieval code with spaces rejected", r.status === 400);
 r = await call("/jobs", { body: { ...jobBase, retrieval_code: "" } });
 check("empty retrieval code rejected", r.status === 400);
-r = await call("/jobs", { body: jobBase });
+r = await call("/jobs", { body: { ...jobBase, audio_sha256: AUDIO2_SHA } });
 check("duplicate retrieval code for the package rejected", r.status === 409);
 r = await call("/jobs", { body: { ...jobBase, retrieval_code: "redfox99", pkg_content_sha256: "f".repeat(64) } });
 check("package content hash mismatch rejected", r.status === 400);
@@ -532,10 +558,11 @@ check("non-hex audio hash rejected", r.status === 400);
 // Final jobs and the YouTube gate
 const finalBase = {
   ...jobBase, kind: "final", retrieval_code: "finalone9",
+  audio_sha256: AUDIO_FINAL_SHA,
   youtube_token: ytOk.body.token, youtube_video_id: ytOk.body.video_id,
   youtube_checked_at: ytOk.body.checked_at,
 };
-r = await call("/jobs", { body: { ...jobBase, kind: "final", retrieval_code: "finalx99" } });
+r = await call("/jobs", { body: { ...jobBase, kind: "final", retrieval_code: "finalx99", audio_sha256: AUDIO_FINAL_SHA } });
 check("final job without a YouTube token rejected", r.status === 400);
 r = await call("/jobs", {
   body: {
@@ -563,9 +590,18 @@ const finalJob = r.body.job_id;
     row.youtube_status === "ok" && row.youtube_video_sha256 === expectVideoHash);
 }
 r = await call("/jobs", { body: { ...finalBase, retrieval_code: "finaltwo9" } });
-check("second final job for one audio fingerprint rejected", r.status === 409);
+check("second final job for one audio fingerprint returns the existing final as a duplicate",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === finalJob &&
+  r.body.status === "queued" && r.body.queue_ahead === 1 && r.body.alias_created === true &&
+  r.body.pkg === "test-package v1");
 r = await call("/jobs", { body: { ...jobBase, retrieval_code: "practicetwo9" } });
-check("second practice job for the same fingerprint allowed", r.status === 200);
+check("second practice job for the same fingerprint returns the existing practice job as a duplicate",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === practiceJob &&
+  r.body.status === "queued" && r.body.queue_ahead === 0 && r.body.alias_created === true);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "practicethree9", audio_sha256: AUDIO4_SHA } });
+check("practice job for a different fingerprint created",
+  r.status === 200 && !r.body.duplicate && typeof r.body.job_id === "string");
+const thirdPracticeJob = r.body.job_id;
 
 // ------------------------------------------------------- code hashing / status auth
 {
@@ -588,7 +624,7 @@ check("queued status carries a jobs-ahead count", Number.isInteger(r.body.queue_
 check("first queued job has 0 jobs ahead", r.body.queue_ahead === 0);
 r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "finalone9" } });
 check("second queued job has 1 job ahead", r.status === 200 && r.body.queue_ahead === 1);
-r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "practicetwo9" } });
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "practicethree9" } });
 check("third queued job has 2 jobs ahead", r.status === 200 && r.body.queue_ahead === 2);
 
 // A job created before 2.4.1 with a short code remains retrievable:
@@ -686,7 +722,7 @@ async function decryptPush(req) {
     req.opts.headers.urgency === "normal" &&
     req.opts.headers.authorization.startsWith("vapid t=") &&
     req.opts.headers.authorization.includes("k=" + env.VAPID_PUBLIC_KEY) &&
-    Number(req.opts.headers.ttl) > 0 && Number(req.opts.headers.ttl) <= 48 * 3600);
+    Number(req.opts.headers.ttl) > 0 && Number(req.opts.headers.ttl) <= 180 * 24 * 3600);
   const auth = req.opts.headers.authorization;
   const jwt = auth.slice("vapid t=".length, auth.indexOf(","));
   const [h, p, s] = jwt.split(".");
@@ -793,7 +829,7 @@ check("queued job aged 49 h is still pending", r.status === 200 &&
   const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
   check("queued job aged 49 h keeps its transcript", row.transcript === jobBase.transcript);
 }
-// Grading it starts the 48 h graded lifetime.
+// Grading it starts the 180-day graded lifetime.
 r = await call("/grading/claim", { token: GRADING, body: { job_id: weekendJob } });
 check("queued job aged 49 h can be claimed", r.status === 200);
 r = await call("/grading/result", {
@@ -803,12 +839,14 @@ r = await call("/grading/result", {
 check("result for the aged job succeeds", r.status === 200 && r.body.ok === true);
 {
   const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
-  check("grading resets expiry to graded_at + 48 h",
-    Date.parse(row.expires_at) - Date.parse(row.graded_at) === 48 * 3600 * 1000);
+  check("grading resets expiry to graded_at + 180 days",
+    Date.parse(row.expires_at) - Date.parse(row.graded_at) === 180 * 24 * 3600 * 1000);
+  check("grading nulls the transcript text but keeps its hash",
+    row.transcript === null && row.transcript_sha256 === TRANS_SHA);
 }
 r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
 check("ready status reports the graded expiry", r.status === 200 && r.body.status === "ready" &&
-  Date.parse(r.body.expires_at) - Date.now() <= 48 * 3600 * 1000);
+  Date.parse(r.body.expires_at) - Date.now() <= 180 * 24 * 3600 * 1000);
 // An ungraded job past the 7-day cap does expire.
 r = await call("/jobs", { body: { ...jobBase, retrieval_code: "staleone99", audio_sha256: "7".repeat(64) } });
 const staleJob = r.body.job_id;
@@ -828,22 +866,22 @@ check("ungraded job aged 8 days reports status expired", r.status === 200 && r.b
 r = await call("/grading/pending", { method: "GET", token: GRADING });
 check("expired job is not pending", r.status === 200 &&
   !r.body.some((j) => j.job_id === staleJob));
-// A job graded before 2.4.1 (stored expires_at = creation + 48 h,
-// here in the past) is governed by graded_at + 48 h, not the stored
-// value: graded 10 h ago, it is still live.
+// A job graded before 2.6.0 (stored expires_at = graded_at + 48 h,
+// here in the past) is governed by graded_at + 180 days, not the
+// stored value: graded 10 h ago, it is still live.
 {
   const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
   row.graded_at = new Date(Date.now() - 10 * 3600 * 1000).toISOString();
   row.expires_at = new Date(Date.now() - 1000).toISOString();
 }
 r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
-check("pre-2.4.1 graded job is governed by graded_at, not the stored expiry",
+check("pre-2.6.0 graded job is governed by graded_at, not the stored expiry",
   r.status === 200 && r.body.status === "ready" &&
-  Date.parse(r.body.expires_at) - Date.now() > 37 * 3600 * 1000);
-// A graded job expires 48 h after grading.
+  Date.parse(r.body.expires_at) - Date.now() > 179 * 24 * 3600 * 1000);
+// A graded job expires 180 days after grading.
 {
   const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
-  row.graded_at = new Date(Date.now() - 49 * 3600 * 1000).toISOString();
+  row.graded_at = new Date(Date.now() - 181 * 24 * 3600 * 1000).toISOString();
   row.expires_at = new Date(Date.now() - 1000).toISOString();
 }
 r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
@@ -892,24 +930,26 @@ r = await call("/jobs", { body: { ...jobBase, retrieval_code: "hashliar9", trans
 check("F3: job whose transcript hash does not match its transcript rejected",
   r.status === 400 && /transcript/i.test((r.body && r.body.error) || ""));
 
-// F2: one live final per audio fingerprint, enforced by the
-// jobs_one_final partial unique index — two concurrent finals under
-// different retrieval names cannot both land, and the loser is told
-// the fingerprint rule, not the name rule.
+// F2: one live job per audio fingerprint, enforced by the
+// jobs_one_per_recording partial unique index — two concurrent jobs
+// under different retrieval names cannot both land, and the loser
+// is told it is a duplicate of the winner (2.6.0: the duplicate
+// response, not a 409).
 {
-  const raceFinal = { ...finalBase, retrieval_code: "racefinala9", audio_sha256: "6".repeat(64) };
+  const raceFinal = { ...finalBase, retrieval_code: "racefinala9", audio_sha256: "5".repeat(64) };
   const [f1, f2] = await Promise.all([
     call("/jobs", { body: raceFinal }),
     call("/jobs", { body: { ...raceFinal, retrieval_code: "racefinalb9" } }),
   ]);
-  const statuses = [f1.status, f2.status].sort((a, b) => a - b);
-  check("F2: concurrent finals for one fingerprint — exactly one is created",
-    statuses[0] === 200 && statuses[1] === 409);
-  const loser = f1.status === 409 ? f1 : f2;
-  check("F2: the losing final is told the fingerprint rule",
-    !!loser.body && loser.body.error === "a final job already exists for this recording");
+  const winner = f1.body && f1.body.duplicate ? f2 : f1;
+  const loser = f1.body && f1.body.duplicate ? f1 : f2;
+  check("F2: concurrent finals for one fingerprint — exactly one is created, the loser gets the duplicate",
+    f1.status === 200 && f2.status === 200 &&
+    winner.body && !winner.body.duplicate && typeof winner.body.job_id === "string" &&
+    loser.body && loser.body.duplicate === true &&
+    loser.body.job_id === winner.body.job_id && loser.body.alias_created === true);
   const rows = db._tables.jobs.filter(
-    (j) => j.audio_sha256 === "6".repeat(64) && j.kind === "final");
+    (j) => j.audio_sha256 === "5".repeat(64) && j.kind === "final");
   check("F2: exactly one final row is stored for the fingerprint", rows.length === 1);
 }
 
@@ -961,9 +1001,33 @@ check("F3: job whose transcript hash does not match its transcript rejected",
   check("re-signed bundle verifies after finalize", r.status === 200 && r.body.valid === true);
   r = await call("/jobs/finalize", { body: finBody });
   check("finalize of an already-final job rejected", r.status === 409);
-  r = await call("/jobs", { body: { ...jobBase, retrieval_code: "finconflict9" } });
-  check("practice job for a fingerprint with a live final still allowed", r.status === 200);
-  r = await call("/jobs/finalize", { body: { ...finBody, retrieval_code: "finconflict9" } });
+  // Under 2.6.0 a job for a fingerprint with a live final is a
+  // duplicate of that final, not a new job: the live final for
+  // AUDIO_FINAL_SHA is the one created after the first final
+  // expired (finalthree9), not the expired finalJob row.
+  const liveFinal = db._tables.jobs.find(
+    (j) => j.audio_sha256 === AUDIO_FINAL_SHA && j.kind === "final" && j.status !== "expired");
+  r = await call("/jobs", { body: { ...finalBase, retrieval_code: "finconflict9" } });
+  check("job for a fingerprint with a live final returns the final as a duplicate",
+    r.status === 200 && r.body.duplicate === true && r.body.job_id === liveFinal.job_id);
+  r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "finconflict9" } });
+  check("alias code for the duplicate retrieves the final job",
+    r.status === 200 && r.body.status === "queued");
+  // Finalize's own one-final guard still applies when a final
+  // already exists for the recording: set it up by direct row
+  // edit, since POST /jobs can no longer create the second job.
+  r = await call("/jobs", { body: { ...jobBase, retrieval_code: "finpractice9", audio_sha256: "e5".repeat(32) } });
+  check("practice job for the finalize-conflict recording created",
+    r.status === 200 && !r.body.duplicate);
+  r = await call("/jobs", { body: { ...finalBase, retrieval_code: "finother999", audio_sha256: "f6".repeat(32) } });
+  check("second final job for the finalize-conflict setup created",
+    r.status === 200 && !r.body.duplicate);
+  const finOtherJob = r.body.job_id;
+  {
+    const row = db._tables.jobs.find((j) => j.job_id === finOtherJob);
+    row.audio_sha256 = "e5".repeat(32);
+  }
+  r = await call("/jobs/finalize", { body: { ...finBody, retrieval_code: "finpractice9" } });
   check("finalize blocked when a final already exists for the recording", r.status === 409);
 }
 
@@ -985,18 +1049,18 @@ await rpStatus("replace-package v1", { status: "trialled", trial: { completeness
 r = await rpStatus("replace-package v1", { status: "open" });
 check("replacement package v1 opens", r.status === 200 && r.body.status === "open");
 const rpBase = { ...jobBase, pkg: "replace-package v1", pkg_content_sha256: rpHash1 };
-r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfirst001" } });
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfirst001", audio_sha256: "2a".repeat(32) } });
 check("no newer open version: job stays on the requested version",
   r.status === 200 && r.body.pkg === "replace-package v1");
 r = await call("/admin/packages", { body: { pkg_name: "replace-package", text: RP_TEXT_2 }, token: ADMIN });
 check("replacement package v2 created as draft", r.status === 200 && r.body.version === 2);
-r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpsecond02" } });
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpsecond02", audio_sha256: "2b".repeat(32) } });
 check("newer version still draft: job stays on the requested version",
   r.status === 200 && r.body.pkg === "replace-package v1");
 await rpStatus("replace-package v2", { status: "trialled", trial: { completeness: 5, accuracy: 5 } });
 r = await rpStatus("replace-package v2", { status: "open" });
 check("replacement package v2 opens", r.status === 200 && r.body.status === "open");
-r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpthird003" } });
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpthird003", audio_sha256: "2c".repeat(32) } });
 check("newer open version: job resolves to it at intake",
   r.status === 200 && r.body.pkg === "replace-package v2");
 const rpJob = r.body.job_id;
@@ -1012,24 +1076,296 @@ check("claim returns the resolved version's text and hash",
 r = await call("/jobs/status", { body: { pkg: "replace-package v1", retrieval_code: "rpthird003" } });
 check("status lookup under the old link still finds the resolved job",
   r.status === 200 && r.body.status === "claimed");
-r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpthird003" } });
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpthird003", audio_sha256: "2d".repeat(32) } });
 check("same code under the old link again rejected after resolution", r.status === 409);
 r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfourth04", pkg_content_sha256: "f".repeat(64) } });
 check("wrong hash for the requested version rejected despite a newer open version",
   r.status === 400);
 r = await rpStatus("replace-package v1", { status: "closed" });
 check("replacement package v1 closes", r.status === 200 && r.body.status === "closed");
-r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfifth005" } });
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpfifth005", audio_sha256: "2e".repeat(32) } });
 check("requested version closed, newer open: old link still resolves",
   r.status === 200 && r.body.pkg === "replace-package v2");
 r = await call("/admin/packages", { body: { pkg_name: "replace-package", text: RP_TEXT_3 }, token: ADMIN });
 check("replacement package v3 created as draft", r.status === 200 && r.body.version === 3);
-r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpsixth006" } });
+r = await call("/jobs", { body: { ...rpBase, retrieval_code: "rpsixth006", audio_sha256: "2f".repeat(32) } });
 check("newest version draft: resolution stops at the newest open version",
   r.status === 200 && r.body.pkg === "replace-package v2");
-r = await call("/jobs", { body: { ...rpBase, pkg: "replace-package v2", pkg_content_sha256: rpHash2, retrieval_code: "rpseventh7" } });
+r = await call("/jobs", { body: { ...rpBase, pkg: "replace-package v2", pkg_content_sha256: rpHash2, retrieval_code: "rpseventh7", audio_sha256: "3a".repeat(32) } });
 check("job sent under the newest link stays on it",
   r.status === 200 && r.body.pkg === "replace-package v2");
+
+// ------------------------------------------------------- dedup (2.6.0)
+function fpBase64(items) {
+  const buf = Buffer.alloc(items.length * 4);
+  items.forEach((v, i) => buf.writeUInt32LE(v >>> 0, i * 4));
+  return buf.toString("base64");
+}
+function makeFp(seed, n = 100) {
+  let x = seed >>> 0;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+    out.push(x);
+  }
+  return out;
+}
+const FP_A = makeFp(12345, 100);
+const FP_A64 = fpBase64(FP_A);
+const FP_B = FP_A.map((v, i) => (i % 10 === 0 ? v ^ 1 : v)); // a few bits flipped: similarity ~0.998
+const FP_C = makeFp(999, 100); // unrelated recording: similarity ~0.5
+const FP_D = makeFp(31337, 80);
+const FP_E = makeFp(4242, 90);
+const FP_F = makeFp(5151, 60);
+const FP_A_SHIFTED = [...makeFp(777, 3), ...FP_A];
+
+r = await call("/", { method: "GET" });
+check("health: version is 2.6.0", r.status === 200 && r.body.version === "2.6.0");
+
+// Duplicate of a graded job returns the same bundle (practice and
+// final), and the submitted kind / YouTube token are ignored.
+const DEDUP_A = "a1".repeat(32);
+const DEDUP_B = "b2".repeat(32);
+const DEDUP_C = "c3".repeat(32);
+const DEDUP_D = "d4".repeat(32);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "deduppa01", audio_sha256: DEDUP_A, chromaprint: FP_A64 } });
+check("dedup setup: practice job with a fingerprint created", r.status === 200 && !r.body.duplicate);
+const dedupJob = r.body.job_id;
+{
+  const row = db._tables.jobs.find((j) => j.job_id === dedupJob);
+  check("fingerprint stored on the job row", row.chromaprint === FP_A64);
+}
+await call("/grading/claim", { token: GRADING, body: { job_id: dedupJob } });
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: dedupJob, completeness: 4, accuracy: 5, critique: "Dedup graded critique." },
+});
+check("dedup setup: graded job returns a receipt", r.status === 200 && r.body.ok === true);
+const dedupReceipt = r.body.receipt;
+{
+  const row = db._tables.jobs.find((j) => j.job_id === dedupJob);
+  check("transcript nulling (a): graded job row transcript is NULL",
+    row.transcript === null);
+  check("transcript nulling (b): graded job keeps transcript_sha256 and the fingerprint",
+    row.transcript_sha256 === TRANS_SHA && row.chromaprint === FP_A64);
+  check("graded expires_at is graded_at + 180 days",
+    Date.parse(row.expires_at) - Date.parse(row.graded_at) === 180 * 24 * 3600 * 1000);
+}
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "deduppb02", audio_sha256: DEDUP_A, chromaprint: FP_A64 } });
+check("duplicate practice job returns the same graded bundle",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === dedupJob &&
+  r.body.status === "ready" && r.body.result && r.body.result.completeness === 4 &&
+  r.body.result.accuracy === 5 && r.body.result.receipt === dedupReceipt &&
+  r.body.result.critique === "Dedup graded critique." && r.body.alias_created === true &&
+  Date.parse(r.body.expires_at) - Date.parse(r.body.result.t) <= 180 * 24 * 3600 * 1000);
+r = await call("/jobs", { body: { ...jobBase, kind: "final", retrieval_code: "deduppc03", audio_sha256: DEDUP_A, chromaprint: FP_A64 } });
+check("duplicate final job without a YouTube token still returns the duplicate (kind and token ignored)",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === dedupJob);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "deduppd04", audio_sha256: DEDUP_B, chromaprint: FP_A64 } });
+check("same fingerprint under a different audio hash is a duplicate (Chromaprint path)",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === dedupJob);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "deduppe05", audio_sha256: DEDUP_C, chromaprint: fpBase64(FP_A_SHIFTED) } });
+check("fingerprint shifted by 3 items is a duplicate (offset search)",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === dedupJob);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "deduppf06", audio_sha256: DEDUP_D, chromaprint: fpBase64(FP_C) } });
+check("different fingerprint is a new job", r.status === 200 && !r.body.duplicate);
+const dedupOtherJob = r.body.job_id;
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "deduppg07", audio_sha256: DEDUP_A, pkg: "replace-package v2", pkg_content_sha256: rpHash2 } });
+check("same audio under a different package is a new job (dedup is per package)",
+  r.status === 200 && !r.body.duplicate);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "dedupph08", audio_sha256: DEDUP_D, chromaprint: fpBase64(FP_C) } });
+check("duplicate of a queued job carries queue_ahead",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === dedupOtherJob &&
+  r.body.status === "queued" && Number.isInteger(r.body.queue_ahead));
+// Alias retrieval: the alias code finds the graded job by status,
+// and a code already used by a different job is not aliased.
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "deduppb02" } });
+check("transcript nulling (b): alias status returns the result bundle for the graded job",
+  r.status === 200 && r.body.status === "ready" && r.body.result &&
+  r.body.result.receipt === dedupReceipt);
+r = await call("/jobs/retrieved", { body: { pkg: "test-package v1", retrieval_code: "deduppb02" } });
+check("alias code marks the job retrieved", r.status === 200 && r.body.ok === true);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "deduppf06", audio_sha256: DEDUP_A, chromaprint: FP_A64 } });
+check("duplicate with a code already used by a different job: no alias created, duplicate still returned",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === dedupJob &&
+  r.body.alias_created === false);
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "deduppf06" } });
+check("code used by another job still retrieves that job, not the duplicate",
+  r.status === 200 && r.body.status === "queued");
+r = await call("/jobs/finalize", {
+  body: {
+    pkg: "test-package v1", retrieval_code: "deduppb02",
+    youtube_video_id: "dQw4w9WgXcQ",
+    youtube_token: ytOk.body.token,
+    youtube_checked_at: ytOk.body.checked_at,
+  },
+});
+check("alias code finalizes the graded job", r.status === 200 && r.body.ok === true);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === dedupJob);
+  check("finalize via alias sets kind final on the original job",
+    row.kind === "final" && row.youtube_status === "ok");
+}
+
+// Transcript nulling (c): a queued job still returns its transcript
+// on claim; grading it then nulls the transcript.
+r = await call("/grading/claim", { token: GRADING, body: { job_id: dedupOtherJob } });
+check("transcript nulling (c): queued job returns its transcript on claim",
+  r.status === 200 && r.body.transcript === JOB_TRANSCRIPT);
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: dedupOtherJob, completeness: 3, accuracy: 4, critique: "Queued claim transcript check." },
+});
+check("transcript nulling (c): result for the claimed job succeeds", r.status === 200 && r.body.ok === true);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === dedupOtherJob);
+  check("transcript nulling (c): transcript is NULL after grading",
+    row.transcript === null && row.transcript_sha256 === TRANS_SHA);
+}
+
+// Same audio under a new prompt version re-grades.
+const RG_TEXT_1 = PKG_TEXT + "\nRegrade package, version 1.\n";
+const RG_TEXT_2 = PKG_TEXT + "\nRegrade package, version 2.\n";
+const rgHash1 = await sha256Hex(RG_TEXT_1);
+const rgHash2 = await sha256Hex(RG_TEXT_2);
+r = await call("/admin/packages", { body: { pkg_name: "regrade-package", text: RG_TEXT_1 }, token: ADMIN });
+check("regrade package v1 created", r.status === 200 && r.body.version === 1);
+await rpStatus("regrade-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 } });
+r = await rpStatus("regrade-package v1", { status: "open" });
+check("regrade package v1 opens", r.status === 200 && r.body.status === "open");
+const REGRADE_A = "a9".repeat(32);
+const rgBase = { ...jobBase, pkg: "regrade-package v1", pkg_content_sha256: rgHash1, audio_sha256: REGRADE_A, chromaprint: FP_A64 };
+r = await call("/jobs", { body: { ...rgBase, retrieval_code: "regradea1" } });
+check("regrade setup: job under v1 created", r.status === 200 && r.body.pkg === "regrade-package v1");
+const regradeV1Job = r.body.job_id;
+await call("/grading/claim", { token: GRADING, body: { job_id: regradeV1Job } });
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: regradeV1Job, completeness: 5, accuracy: 5, critique: "First version grade." },
+});
+check("regrade setup: v1 job graded", r.status === 200 && r.body.ok === true);
+r = await call("/admin/packages", { body: { pkg_name: "regrade-package", text: RG_TEXT_2 }, token: ADMIN });
+check("regrade package v2 created", r.status === 200 && r.body.version === 2);
+await rpStatus("regrade-package v2", { status: "trialled", trial: { completeness: 5, accuracy: 5 } });
+r = await rpStatus("regrade-package v2", { status: "open" });
+check("regrade package v2 opens", r.status === 200 && r.body.status === "open");
+r = await call("/jobs", { body: { ...rgBase, retrieval_code: "regradeb2" } });
+check("same audio under a new prompt version is a new job, resolved to v2",
+  r.status === 200 && !r.body.duplicate && r.body.pkg === "regrade-package v2");
+const regradeV2Job = r.body.job_id;
+await call("/grading/claim", { token: GRADING, body: { job_id: regradeV2Job } });
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: regradeV2Job, completeness: 3, accuracy: 4, critique: "Second version grade." },
+});
+check("regrade: v2 job graded with its own grade", r.status === 200 && r.body.ok === true);
+r = await call("/jobs/status", { body: { pkg: "regrade-package v1", retrieval_code: "regradeb2" } });
+check("regrade: status under the old link returns the v2 grade",
+  r.status === 200 && r.body.status === "ready" && r.body.result &&
+  r.body.result.completeness === 3 && r.body.result.critique === "Second version grade.");
+r = await call("/jobs", { body: { ...rgBase, retrieval_code: "regradec3" } });
+check("same audio under v2 again is a duplicate of the v2 job",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === regradeV2Job);
+
+// Bad, oversize and missing fingerprints are ignored, never reject.
+const BADFP = "!!!not-base64!!!";
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp001", audio_sha256: "b1".repeat(32) } });
+check("missing fingerprint: job created normally", r.status === 200 && !r.body.duplicate);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === r.body.job_id);
+  check("missing fingerprint stored as NULL", row.chromaprint === null || row.chromaprint === undefined);
+}
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp002", audio_sha256: "c1".repeat(32), chromaprint: BADFP } });
+check("malformed fingerprint: job created normally", r.status === 200 && !r.body.duplicate);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === r.body.job_id);
+  check("malformed fingerprint stored as NULL", row.chromaprint === null);
+}
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp003", audio_sha256: "c2".repeat(32), chromaprint: Buffer.from([1, 2, 3]).toString("base64") } });
+check("fingerprint of 3 bytes (not a whole item): job created normally", r.status === 200 && !r.body.duplicate);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp004", audio_sha256: "c4".repeat(32), chromaprint: fpBase64(makeFp(42, 20001)) } });
+check("oversize fingerprint (20001 items): job created normally", r.status === 200 && !r.body.duplicate);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === r.body.job_id);
+  check("oversize fingerprint stored as NULL", row.chromaprint === null);
+}
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp005", audio_sha256: "c5".repeat(32), chromaprint: "" } });
+check("empty fingerprint: job created normally", r.status === 200 && !r.body.duplicate);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp006", audio_sha256: "c6".repeat(32), chromaprint: BADFP } });
+check("same bad fingerprint on a different recording is not a duplicate",
+  r.status === 200 && !r.body.duplicate);
+
+// Expired jobs allow fresh grading, and the sweep deletes aliases.
+const EXP_A = "d1".repeat(32);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "expa0001", audio_sha256: EXP_A, chromaprint: fpBase64(FP_D) } });
+check("expiry setup: ungraded job created", r.status === 200 && !r.body.duplicate);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === r.body.job_id);
+  const created = Date.now() - 8 * 24 * 3600 * 1000;
+  row.created_at = new Date(created).toISOString();
+  row.expires_at = new Date(created + 7 * 24 * 3600 * 1000).toISOString();
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "expa0001" } });
+check("ungraded job aged 8 days reports expired", r.status === 200 && r.body.status === "expired");
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "expa0002", audio_sha256: EXP_A, chromaprint: fpBase64(FP_D) } });
+check("expired ungraded job frees the fingerprint for a fresh job",
+  r.status === 200 && !r.body.duplicate);
+const EXP_B = "d2".repeat(32);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "expb0001", audio_sha256: EXP_B, chromaprint: fpBase64(FP_E) } });
+check("expiry setup: graded job created", r.status === 200 && !r.body.duplicate);
+const expBJob = r.body.job_id;
+await call("/grading/claim", { token: GRADING, body: { job_id: expBJob } });
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: expBJob, completeness: 4, accuracy: 4, critique: "Expiry test grade." },
+});
+check("expiry setup: job graded", r.status === 200 && r.body.ok === true);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "expb0002", audio_sha256: EXP_B, chromaprint: fpBase64(FP_E) } });
+check("duplicate of the graded job returns its bundle and creates an alias",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === expBJob && r.body.alias_created === true);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === expBJob);
+  row.graded_at = new Date(Date.now() - 181 * 24 * 3600 * 1000).toISOString();
+  row.expires_at = new Date(Date.now() - 1000).toISOString();
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "expb0001" } });
+check("graded job past 180 days reports expired", r.status === 200 && r.body.status === "expired");
+{
+  const row = db._tables.jobs.find((j) => j.job_id === expBJob);
+  check("graded expiry deletes the result and the alias is swept",
+    row.status === "expired" && row.result_json === null &&
+    !db._tables.job_code_aliases.some((a) => a.job_id === expBJob));
+}
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "expb0002" } });
+check("alias code stops retrieving once the job has expired", r.status === 403);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "expb0003", audio_sha256: EXP_B, chromaprint: fpBase64(FP_E) } });
+check("expired graded job frees the fingerprint for fresh grading",
+  r.status === 200 && !r.body.duplicate);
+
+// Race safety (2.6.0): two concurrent creates for the same
+// fingerprint and version — exactly one job, the loser gets the
+// duplicate response.
+{
+  const RACE_A = "e1".repeat(32);
+  const raceBody = { ...jobBase, retrieval_code: "racea001", audio_sha256: RACE_A, chromaprint: fpBase64(FP_F) };
+  const [r1, r2] = await Promise.all([
+    call("/jobs", { body: raceBody }),
+    call("/jobs", { body: { ...raceBody, retrieval_code: "raceb002" } }),
+  ]);
+  const winner = r1.body && r1.body.duplicate ? r2 : r1;
+  const loser = r1.body && r1.body.duplicate ? r1 : r2;
+  check("race: concurrent creates for one fingerprint — exactly one job, loser gets the duplicate",
+    r1.status === 200 && r2.status === 200 &&
+    winner.body && !winner.body.duplicate && typeof winner.body.job_id === "string" &&
+    loser.body && loser.body.duplicate === true &&
+    loser.body.job_id === winner.body.job_id && loser.body.alias_created === true);
+  const rows = db._tables.jobs.filter(
+    (j) => j.audio_sha256 === RACE_A && j.pkg === "test-package v1" && j.status !== "expired");
+  check("race: exactly one live row is stored for the fingerprint", rows.length === 1);
+  r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "raceb002" } });
+  check("race: the loser's code retrieves the winning job via its alias",
+    r.status === 200 && r.body.status === "queued");
+}
 
 // Unknown route
 r = await call("/nope", { method: "GET" });
