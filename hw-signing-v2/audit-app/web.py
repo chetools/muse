@@ -1217,6 +1217,44 @@ def downloaded_packages(cfg):
     return nested + [p for p in flat if p["key"] not in seen]
 
 
+def downloaded_attempt_packages(cfg):
+    """Previous-attempt packages on disk (v35): for each canonical
+    unit, every attempt-<n>/ subfolder holding its own audio and
+    submission.html. Each record mirrors a downloaded_packages
+    record and adds "attempt_no", "attempt_key" ("<unit>::a<n>",
+    the audit-results key for that attempt's own check) and
+    "is_attempt". These are never units in their own right: the
+    canonical lists, grades and Gradebook rows ignore them; only
+    the checks, the attempt views and the video downloads use
+    them, so a previous attempt can be checked and watched
+    without ever becoming the grade of record."""
+    out = []
+    for pkg in downloaded_packages(cfg):
+        folder = Path(pkg["html_path"]).parent
+        for sub in sorted(folder.glob("attempt-*")):
+            if not sub.is_dir():
+                continue
+            try:
+                n = int(sub.name.split("-", 1)[1])
+            except (IndexError, ValueError):
+                continue
+            wavs = list(sub.glob("*.wav")) + list(sub.glob("*.mp3")) \
+                + list(sub.glob("*.m4a")) + list(sub.glob("*.webm"))
+            htmls = list(sub.glob("*.html"))
+            if not wavs or not htmls:
+                continue
+            zip_file = sub / "package.zip"
+            out.append({**pkg,
+                        "audio_path": str(wavs[0]),
+                        "html_path": str(htmls[0]),
+                        "zip_path": str(zip_file)
+                        if zip_file.exists() else None,
+                        "attempt_no": n,
+                        "attempt_key": f"{pkg['key']}::a{n}",
+                        "is_attempt": True})
+    return out
+
+
 def suggested_final(check):
     """The grade that stands when integrity is clean (audit v2): the
     student's estimated grades. None when anything is flagged."""
@@ -1305,9 +1343,15 @@ def _check_one_package(cfg, pkg, base_entry):
             parsed = audit.parse_package(
                 Path(pkg["html_path"]).read_text(encoding="utf-8"))
             if (parsed["verification"] or {}).get("youtube_link"):
+                # A previous attempt is cross-checked against its
+                # own downloaded video (v35), never the current
+                # attempt's.
+                vfile = attempt_video_path(cfg, pkg["key"],
+                                           pkg["attempt_no"]) \
+                    if pkg.get("is_attempt") else \
+                    youtube_video_file(cfg, pkg["key"], pkg["user_id"])
                 entry["youtube"] = audit.youtube_cross_check(
-                    pkg["audio_path"],
-                    youtube_video_file(cfg, pkg["key"], pkg["user_id"]), parsed, cfg)
+                    pkg["audio_path"], vfile, parsed, cfg)
             else:
                 entry["youtube"] = {
                     "available": False, "youtube_flag": False,
@@ -1330,9 +1374,13 @@ def run_checks(cfg):
     """Check every downloaded package, several in parallel. Each
     finished check is written to audit-results.json as it completes,
     so if the app is stopped mid-run the finished checks survive and
-    the next pass re-runs only the ones still missing or failed."""
+    the next pass re-runs only the ones still missing or failed.
+    Previous attempts on disk are checked too (v35): an attempt's
+    result is stored under its own "<unit>::a<n>" key, so it never
+    overwrites — and is never read as — the current attempt's
+    check, which alone feeds the suggested grades and Gradebook."""
     store = results_store(cfg)
-    pkgs = downloaded_packages(cfg)
+    pkgs = downloaded_packages(cfg) + downloaded_attempt_packages(cfg)
     if not pkgs:
         return store
     results_path = _state_file(cfg, "audit-results.json")
@@ -1340,14 +1388,18 @@ def run_checks(cfg):
 
     def work(pkg):
         key = pkg["key"]
+        skey = pkg.get("attempt_key") or key
         label = f"student {pkg['user_id']}" + (
             f" ({pkg['course_id']}/{pkg['assignment_id']})"
-            if pkg.get("course_id") else "")
+            if pkg.get("course_id") else "") + (
+            f" attempt {pkg['attempt_no']}"
+            if pkg.get("is_attempt") else "")
         log_activity("check", f"integrity check started — {label}")
         entry = _check_one_package(
-            cfg, pkg, store_get(store, key, pkg["user_id"]))
+            cfg, pkg, store.get(skey) if pkg.get("is_attempt")
+            else store_get(store, key, pkg["user_id"]))
         with lock:
-            store[key] = entry
+            store[skey] = entry
             write_json_atomic(results_path, store)
         if entry.get("error"):
             log_activity("check",
@@ -1943,9 +1995,10 @@ def wall_attempts(cfg, key):
     current attempt (canonical folder) plus every attempt-<n>
     folder, ordered by attempt number. Each row parses its own
     submission.html, so zooming an attempt tile shows that
-    attempt's grades, critique and transcript. Grades of record,
-    finals and checks stay with the current attempt: previous
-    rows carry no final and read "not checked"."""
+    attempt's grades, critique and transcript. Grades of record
+    and finals stay with the current attempt: previous rows carry
+    no final. Since v35 a previous row carries its own stored
+    check (under "<unit>::a<n>") and its real integrity text."""
     split = _split_unit_key(key)
     if not split:
         return []
@@ -1970,12 +2023,14 @@ def wall_attempts(cfg, key):
         grades = parsed["grading_grades"] or parsed["summary_grades"]
         if current:
             local = youtube_video_file(cfg, key, uid)
-            integrity = _integrity_text(store_get(checks, key, uid))
+            acheck = store_get(checks, key, uid)
+            integrity = _integrity_text(acheck)
             examined = store_has(examined_store(cfg), key, uid)
             final = final_score(store_get(finals_store(cfg), key, uid))
         else:
             local = attempt_video_path(cfg, key, attempt_no)
-            integrity = "not checked"
+            acheck = checks.get(f"{key}::a{attempt_no}")
+            integrity = _integrity_text(acheck)
             examined = False
             final = None
         return {"id": sid, "unit_key": key, "user_id": uid,
@@ -2000,6 +2055,7 @@ def wall_attempts(cfg, key):
                 "score": grades_total(grades),
                 "examined": examined, "final_score": final,
                 "integrity": integrity,
+                "check": acheck,
                 "critique": _grading_text(html_text),
                 "transcript": [{"t": t, "text": text}
                                for t, text in parsed["timed_lines"]
@@ -2085,11 +2141,33 @@ def pending_work(cfg):
                      is False)
                     and youtube_video_file(cfg, p["key"], p["user_id"]).exists()):
             n_chk += 1
+    # Previous attempts owe the same work (v35): a check of their
+    # own, and their own wall video.
+    att_pkgs = downloaded_attempt_packages(cfg)
+    for p in att_pkgs:
+        entry = checks.get(p["attempt_key"])
+        if entry is None or entry.get("error") \
+                or (((entry.get("youtube") or {}).get("available")
+                     is False)
+                    and attempt_video_path(
+                        cfg, p["key"], p["attempt_no"]).exists()):
+            n_chk += 1
     n_vid = 0
     try:
         n_vid = sum(1 for st in wall_students(cfg)
                     if st["source"] != "demo" and not st.get("downloaded")
                     and st.get("youtube"))
+        for p in att_pkgs:
+            if attempt_video_path(cfg, p["key"],
+                                  p["attempt_no"]).exists():
+                continue
+            try:
+                parsed = audit.parse_package(
+                    Path(p["html_path"]).read_text(encoding="utf-8"))
+                if (parsed["verification"] or {}).get("youtube_link"):
+                    n_vid += 1
+            except Exception:  # noqa: BLE001 - advisory only
+                pass
     except Exception:  # noqa: BLE001 - the count is advisory only
         n_vid = 0
     vids_dir = root / "videos"
@@ -2175,6 +2253,36 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
                     outcome["failed"] += 1
                     log_activity("video", "video download failed — "
                                           f"{st['name']}: {e}")
+            # Previous attempts' videos too (v35): each attempt's
+            # own YouTube link, stored under its attempt file name
+            # so its acoustic cross-check can run.
+            att_rows = []
+            try:
+                for p in downloaded_packages(cfg):
+                    att_rows.extend(
+                        r for r in wall_attempts(cfg, p["key"])
+                        if not r["is_current"])
+            except Exception as e:  # noqa: BLE001 - logged, checks go on
+                log_activity("video", "attempt video list unavailable: "
+                                      f"{type(e).__name__}: {e}")
+            for r in att_rows:
+                if r.get("downloaded") or not r.get("youtube"):
+                    continue
+                stem = f"{r['unit_key']}-attempt-{r['attempt_no']}"
+                log_activity("video", "video download started — "
+                                      f"{r['name']} "
+                                      f"(attempt {r['attempt_no']})")
+                try:
+                    video_fn(cfg, stem, r["youtube"])
+                    outcome["got"] += 1
+                    log_activity("video", "video downloaded — "
+                                          f"{r['name']} "
+                                          f"(attempt {r['attempt_no']})")
+                except Exception as e:  # noqa: BLE001 - counted, continues
+                    outcome["failed"] += 1
+                    log_activity("video", "video download failed — "
+                                          f"{r['name']} "
+                                          f"(attempt {r['attempt_no']}): {e}")
 
         # Integrity checks and video downloads are independent once
         # the packages are on disk, so they run at the same time.
@@ -2199,6 +2307,13 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
                              or {}).get("youtube") or {}).get("available")
                         is False
                         and youtube_video_file(cfg, p["key"], p["user_id"]).exists()]
+                owed += [p["attempt_key"]
+                         for p in downloaded_attempt_packages(cfg)
+                         if ((store_now.get(p["attempt_key"])
+                              or {}).get("youtube") or {}).get("available")
+                         is False
+                         and attempt_video_path(
+                             cfg, p["key"], p["attempt_no"]).exists()]
             except Exception:  # noqa: BLE001 - advisory only
                 owed = []
             if owed:
@@ -2317,12 +2432,23 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
             warnings.append(f"{student}: YouTube video ID mismatch - "
                             "the link in the submission is not the "
                             "video checked before grading")
+        # Preview-only fields (v35): the signed grade from the
+        # check's estimated grades, and whether a teacher entry
+        # differs from it, so the preview can highlight the
+        # difference. gradebook_csv_text writes named fields
+        # only, so these never reach the CSV.
+        student_score = grades_total(_check.get("estimated_grades"))
         rows.append({
             "Student": student, "ID": uid,
             "SIS User ID": rmap.get("sis_user_id", ""),
             "SIS Login ID": rmap.get("sis_login_id", ""),
             "Section": rmap.get("section", ""),
             "score": score, "source": source or "",
+            "student_score": student_score,
+            "grade_differs": bool(
+                source == "teacher entry"
+                and student_score is not None
+                and total is not None and total != student_score),
         })
     rows.sort(key=lambda r: (str(r["Section"]).lower(),
                              r["Student"].lower()))
@@ -2510,6 +2636,13 @@ def selective_cleanup(cfg, keys, include_exports=False,
             if key in store:
                 del store[key]
                 changed = True
+            # Per-attempt check entries (v35) belong to the unit
+            # and go with it, from the results store only.
+            if store_name == "audit-results.json":
+                for k in [k for k in store
+                          if k.startswith(key + "::a")]:
+                    del store[k]
+                    changed = True
             if sole and uid in store:
                 del store[uid]
                 changed = True
@@ -2873,6 +3006,9 @@ th{background:#f0f0ec}
 pre.transcript{white-space:pre-wrap;background:#fafaf7;border:1px solid #e3e3de;padding:10px;max-height:380px;overflow:auto;font-size:12.5px}
 .row{display:flex;gap:16px;flex-wrap:wrap}.col{flex:1;min-width:min(260px,100%)}
 input.fin{width:52px}
+td.fincell.diff{background:#f7ecd2}
+input.fin.diff{background:#f7ecd2}
+#zgrade.diff{background:#f7ecd2}
 td,th,pre,.mut{overflow-wrap:anywhere}
 #spinner{display:none;color:#243b53;font-weight:600}
 #activitylog{background:#14181d;color:#d7e0d7;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55;height:190px;overflow-y:auto;padding:8px 10px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -2954,7 +3090,7 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <table><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
 <th>Integrity</th><th>Grade</th>
 <th>Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
-<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean (audit v2). Edit it and Save; an edited value is the teacher's. A flagged submission stays blank until you enter a final grade.</p>
+<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean (audit v2). It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade.</p>
 </section>
 
 <section><h2>3. Grades back to Canvas</h2>
@@ -3130,7 +3266,9 @@ window.gbPreview=async i=>{
   b.rows.forEach(r=>{
     if(secs.length>1 && r.Section!==lastSec){ lastSec=r.Section;
       body+="<tr><td colspan='5' style='background:#f0f0ec'><strong>Section "+esc(lastSec||"—")+"</strong></td></tr>"; }
-    body+="<tr><td>"+esc(r.Student)+"</td><td>"+esc(r.ID)+"</td><td>"+esc(r.Section)+"</td><td>"+esc(r.score)+"</td><td>"+esc(r.source)+"</td></tr>";
+    body+="<tr><td>"+esc(r.Student)+"</td><td>"+esc(r.ID)+"</td><td>"+esc(r.Section)+"</td>"+
+      (r.grade_differs? "<td class=\"diff\" style=\"background:#f7ecd2\">"+esc(r.score)+"</td><td>"+esc(r.source)+" (signed grade "+esc(r.student_score)+")</td>"
+                      : "<td>"+esc(r.score)+"</td><td>"+esc(r.source)+"</td>")+"</tr>";
   });
   $("gb").innerHTML="<p class='mut'>Course: "+esc(t.course_name)+" · Assignment column: "+esc(b.header[5])+" · Points Possible: "+esc(b.points_possible)+"</p>"+
    "<table><thead><tr><th>Student</th><th>ID</th><th>Section</th><th>Score</th><th>Source</th></tr></thead><tbody>"+
@@ -3315,6 +3453,79 @@ function bindViewS(){
   $("selclear").onclick=()=>{ SEL=new Set(); SELACTIVE=false; saveSel(); renderSubs(); };
   $("selall").onchange=e=>toggleSelAll(e.target.checked);
 }
+// The Integrity cell of a submissions-table row (v35): one
+// construction shared by the canonical row and the previous-
+// attempt rows, so an attempt's stored check renders exactly
+// like a current attempt's.
+function integCell(c, downloaded){
+  c=c||{};
+  const integ = !downloaded ? '<span class="badge">—</span>' :
+    (c.error ? '<span class="badge bad">check failed</span>' :
+     c.internally_consistent===undefined ? '<span class="badge warn">not checked</span>' :
+     badge(c.internally_consistent,"fingerprints + critique OK","FAILED"));
+  const gsig = !downloaded || c.grade_receipt_ok===undefined ? "" :
+    "<br>"+badge(c.grade_receipt_ok===true,"grade signature OK","grade signature FAILED");
+  const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.youtube_id_ok===false?"youtube id":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
+  const yt = !downloaded || !c.youtube ? "" :
+    c.youtube.error ? '<br><span class="mut">YouTube: error</span>' :
+    c.youtube.youtube_flag ? '<br><span class="badge bad">YouTube FLAGGED · similarity '+esc(c.youtube.similarity)+' · duration diff '+esc(c.youtube.duration_diff_s)+' s</span>' :
+    (c.youtube.passed && c.youtube.similarity!=null) ? '<br><span class="mut">YouTube passed · similarity '+esc(c.youtube.similarity)+"</span>" :
+    c.youtube.passed ? '<br><span class="mut">YouTube passed on duration · acoustic not available</span>' :
+    c.youtube.available ? '<br><span class="mut">YouTube: acoustic check not available (ffmpeg/chromaprint)</span>' :
+    '<br><span class="mut">YouTube: video not downloaded yet</span>';
+  const flg = flags ? '<br><span class="badge warn">'+esc(flags)+"</span>" : "";
+  return integ+gsig+yt+flg;
+}
+// Final-grade auto-save and difference shading (v35). The
+// field's rendered value is kept in dataset.init: leaving a
+// changed field saves it as the teacher's grade, in place —
+// no Save button, no table refresh. An untouched field writes
+// nothing, so a pre-filled clean grade is never re-labelled
+// as a teacher entry. The cell is shaded while the value in
+// the field differs from the signed grade.
+function paintFin(inp){
+  const signed=inp.dataset.signed;
+  const v=inp.value.trim();
+  const n=Number(v);
+  const d=signed!==""&&signed!=null&&v!==""&&Number.isInteger(n)
+    &&n!==Number(signed);
+  const td=inp.closest("td");
+  if(td) td.classList.toggle("diff",d);
+  inp.classList.toggle("diff",d);
+  const sg=document.getElementById("fs_"+inp.dataset.uid);
+  if(sg) sg.style.display=d?"":"none";
+  return d;
+}
+async function autoSaveFinal(inp){
+  const uid=inp.dataset.uid;
+  const msg=document.getElementById("fm_"+uid);
+  const v=inp.value.trim();
+  paintFin(inp);
+  if(v===inp.dataset.init){ if(msg) msg.textContent=""; return; }
+  if(v===""){ if(msg) msg.textContent="a grade is required (0–10)";
+    return; }
+  const score=Number(v);
+  if(!Number.isInteger(score)||score<0||score>10){
+    if(msg) msg.textContent="whole number 0–10"; return; }
+  try{
+    const r=await fetch("/api/final-grade",{method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({user_id:uid,score:score})});
+    const j=await r.json(); if(!r.ok) throw new Error(j.error||"save failed");
+    inp.dataset.init=String(score);
+    const row=SUBS.find(x=>x.id===uid);
+    if(row) row.final_score=score;
+    if(msg) msg.textContent="saved ✓";
+    paintFin(inp);
+  }catch(err){ if(msg) msg.textContent=String(err.message||err); }
+}
+function bindFin(inp){
+  inp.addEventListener("input",()=>paintFin(inp));
+  inp.addEventListener("change",()=>autoSaveFinal(inp));
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){ e.preventDefault(); inp.blur(); } });
+  paintFin(inp);
+}
 function renderSubs(){
   syncViewOptionsS(); paintViewControlsS();
   VIEWLIST=arrangeS(SUBS);
@@ -3323,21 +3534,6 @@ function renderSubs(){
   let lastGroup=null;
   $("subs").innerHTML=VIEWLIST.map(s=>{
     const c=s.check||{};
-    const integ = !s.downloaded ? '<span class="badge">—</span>' :
-      (c.error ? '<span class="badge bad">check failed</span>' :
-       c.internally_consistent===undefined ? '<span class="badge warn">not checked</span>' :
-       badge(c.internally_consistent,"fingerprints + critique OK","FAILED"));
-    const gsig = !s.downloaded || c.grade_receipt_ok===undefined ? "" :
-      "<br>"+badge(c.grade_receipt_ok===true,"grade signature OK","grade signature FAILED");
-    const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.youtube_id_ok===false?"youtube id":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
-    const yt = !s.downloaded || !c.youtube ? "" :
-      c.youtube.error ? '<br><span class="mut">YouTube: error</span>' :
-      c.youtube.youtube_flag ? '<br><span class="badge bad">YouTube FLAGGED · similarity '+esc(c.youtube.similarity)+' · duration diff '+esc(c.youtube.duration_diff_s)+' s</span>' :
-      (c.youtube.passed && c.youtube.similarity!=null) ? '<br><span class="mut">YouTube passed · similarity '+esc(c.youtube.similarity)+"</span>" :
-      c.youtube.passed ? '<br><span class="mut">YouTube passed on duration · acoustic not available</span>' :
-      c.youtube.available ? '<br><span class="mut">YouTube: acoustic check not available (ffmpeg/chromaprint)</span>' :
-      '<br><span class="mut">YouTube: video not downloaded yet</span>';
-    const flg = flags ? '<br><span class="badge warn">'+esc(flags)+"</span>" : "";
     const fin = s.final_score ?? s.suggested_score;
     const ctx = (s.course_name||s.assignment_name) ? '<br><span class="mut">'+esc(s.course_name||"")+(s.assignment_name? " · "+esc(s.assignment_name):"")+"</span>" : "";
     let ghead="";
@@ -3350,18 +3546,20 @@ function renderSubs(){
     "<td>"+fmtDateS(s.submitted_at)+"</td>"+
     "<td>"+esc(s.workflow_state||"")+"<br><span class='mut'>attempt "+esc(s.attempt??"")+"</span></td>"+
     "<td>"+(s.downloaded?badge(true,"yes",""):'<span class="badge">no</span>')+"</td>"+
-    "<td>"+integ+gsig+yt+flg+"</td>"+
+    "<td>"+integCell(c,s.downloaded)+"</td>"+
     "<td>"+(s.student_score==null?"—":s.student_score+" / 10")+"</td>"+
-    '<td><input class="fin" type="number" min="0" max="10" id="fc_'+s.id+'" value="'+(fin??"")+'"> '+
-    '<button class="secondary" onclick="saveFinal(\''+s.id+'\')">Save</button></td>'+
+    '<td class="fincell"><input class="fin" type="number" min="0" max="10" id="fc_'+s.id+'" data-uid="'+esc(s.id)+'" data-signed="'+(s.student_score??"")+'" value="'+(fin??"")+'"> '+
+    '<span class="mut finsign" id="fs_'+s.id+'" style="display:none">signed '+(s.student_score??"")+'</span> '+
+    '<span class="mut finmsg" id="fm_'+s.id+'"></span></td>'+
     '<td><input type="checkbox" style="width:auto" '+(s.examined?"checked":"")+
     ' onchange="toggleExamined(\''+s.id+'\',this.checked)">'+
     "</td></tr>";
     if(ATTMODE==="previous"){
       // Subordinate rows for the earlier attempts on disk,
       // newest first, travelling with their unit's row (v33).
-      // The canonical row above is untouched: finals, examined
-      // and stored checks stay with the current attempt.
+      // The canonical row above is untouched: finals and
+      // examined stay with the current attempt; each attempt
+      // row shows that attempt's own stored check (v35).
       const atts=[...(s.attempts||[])].sort(
         (a,b)=>(b.attempt_no||0)-(a.attempt_no||0));
       out+=atts.map(a=>'<tr class="attrow"><td></td>'+
@@ -3369,7 +3567,7 @@ function renderSubs(){
         "<td>"+fmtDateS(a.submitted_at)+"</td>"+
         '<td><span class="mut">attempt '+esc(a.attempt_no)+"</span></td>"+
         "<td>"+badge(true,"yes","")+"</td>"+
-        '<td><span class="mut">not checked</span></td>'+
+        "<td>"+integCell(a.check,true)+"</td>"+
         "<td>"+(a.score==null?"—":a.score+" / 10")+"</td>"+
         '<td><span class="mut">—</span></td>'+
         '<td><a href="/wall?focus='+encodeURIComponent(s.id)+'&attempt='+esc(a.attempt_no)+'">View →</a></td></tr>').join("");
@@ -3394,6 +3592,10 @@ function renderSubs(){
   }).join("");
   document.querySelectorAll(".selbox").forEach(b=>
     b.onchange=()=>toggleSel(b.dataset.key, b.checked));
+  document.querySelectorAll("input.fin").forEach(inp=>{
+    inp.dataset.init=inp.value;
+    bindFin(inp);
+  });
   renderSelBar(); syncSelAll();
   $("fcount").textContent = SUBS.length
     ? "Showing "+VIEWLIST.length+" of "+SUBS.length+" submission(s)"+
@@ -3420,12 +3622,6 @@ async function refreshSubs(local){
   if(local && VIEWLIST.length)
     $("subshint").textContent="Showing the submissions already on this computer — refreshing from Canvas…";
 }
-window.saveFinal=async uid=>{
-  const v=$("fc_"+uid).value;
-  if(v===""){ alert("Enter the final grade, 0–10."); return; }
-  await api("/api/final-grade",{user_id:uid,score:parseInt(v)});
-  await refreshSubs();
-};
 window.toggleExamined=async (uid,on)=>{
   await api("/api/examined",{id:uid,examined:on,via:"manual"});
   await refreshSubs();
@@ -3461,7 +3657,7 @@ $("rmdemos").onclick=async ()=>{
 };
 $("refresh").onclick=refreshSubs;
 $("download").onclick=async ()=>{ const r=await api("/api/download",{}); $("dlresult").textContent="Download: "+r.downloaded+" new/changed, "+r.skipped+" unchanged"+(r.errors?", "+r.errors+" failed":"")+"."; await loadStatus(); await refreshSubs(); };
-$("checkall").onclick=async ()=>{ const r=await api("/api/check-all",{}); $("dlresult").textContent="Integrity checks: "+r.checked+" OK"+(r.errors?(", "+r.errors+" failed (see the row)"):"")+" of "+r.total+" downloaded submission(s)."; await refreshSubs(); };
+$("checkall").onclick=async ()=>{ const r=await api("/api/check-all",{}); $("dlresult").textContent="Integrity checks: "+r.checked+" OK"+(r.errors?(", "+r.errors+" failed (see the row)"):"")+" of "+r.total+" downloaded submission(s)"+(r.attempt_total?(", plus "+r.attempt_checked+" previous-attempt check(s)"+(r.attempt_errors?(", "+r.attempt_errors+" failed"):"")):"")+"."; await refreshSubs(); };
 $("exportcoded").onclick=async ()=>{ const r=await api("/api/export",{}); $("exportresult").textContent=r.count+" coded files in "+r.export_dir+" (mapping stays in the data folder)."; };
 // ---- Redownload tool (v32) ----
 let RD={course:"",hw:""}, RDT=null, RDP=null, RDINIT=false;
@@ -3636,6 +3832,7 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 #zoominfo{flex:1;min-width:320px;height:100%;display:flex;flex-direction:column;gap:8px;min-height:0}
 #studentcard{background:#1e242c;border:1px solid #39424e;border-radius:8px;padding:10px 14px;flex:none}
 #studentcard input.fin2{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;padding:6px;width:64px}
+#studentcard input.fin2.diff{background:#f7ecd2;color:#1c1c1a}
 .panel{background:#1e242c;border:1px solid #39424e;border-radius:8px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .panel-head{flex:none;display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid #39424e}
 .panel-head h3{margin:0;font-size:15px}
@@ -4344,11 +4541,19 @@ function openZoom(id, opts){
       ? '<p class="mut" style="margin:6px 0">'+esc(s.attempt_label||"Previous attempt")+" — the grade of record stays with the current attempt; this view is read-only.</p>"
       : '<p style="margin:6px 0"><label><strong>Teacher final grade:</strong> '+
         '<input class="fin2" type="number" min="0" max="10" step="1" id="zgrade" value="'+(s.final_score!=null? esc(s.final_score):"")+'" placeholder="'+(s.score!=null? esc(s.score):"0–10")+'"></label> '+
-        '<button class="secondary" id="zgradesave">Save grade</button> <span class="mut" id="zgrademsg"></span></p>');
+        '<span class="mut" id="zgrademsg"></span></p>');
   if($("zgrade")){
-    $("zgrade").addEventListener("input",()=>{ $("zgrade").dataset.dirty="1"; });
-    $("zgrade").addEventListener("keydown",e=>{ e.stopPropagation(); });
-    $("zgradesave").onclick=()=>saveZoomGrade(false);
+    // Auto-save (v35): a changed field saves when it is left,
+    // as it already did on student switching; the field is
+    // shaded while its value differs from the student grade.
+    const zg=$("zgrade");
+    const paintZ=()=>{ const v=zg.value.trim(); const n=Number(v);
+      zg.classList.toggle("diff", s.score!=null&&v!==""
+        &&Number.isInteger(n)&&n!==s.score); };
+    zg.addEventListener("input",()=>{ zg.dataset.dirty="1"; paintZ(); });
+    zg.addEventListener("change",()=>saveZoomGrade(false));
+    zg.addEventListener("keydown",e=>{ e.stopPropagation(); });
+    paintZ();
   }
   $("zcritique").textContent=s.critique||"—";
   $("ztrans").innerHTML=
@@ -5394,11 +5599,20 @@ class Handler(BaseHTTPRequestHandler):
             require_canvas(cfg)
             log_activity("check", "manual integrity checks started")
             store = run_checks(cfg)
+            # Canonical totals count submissions only; previous
+            # attempts (v35, "<unit>::a<n>" keys) are reported
+            # separately so the headline never mixes the two.
+            canon = [e for k, e in store.items() if "::a" not in k]
+            atts = [e for k, e in store.items() if "::a" in k]
             self._send(200, {
-                "checked": sum(1 for e in store.values()
-                               if "error" not in e),
-                "errors": sum(1 for e in store.values() if "error" in e),
-                "total": len(store)})
+                "checked": sum(1 for e in canon if "error" not in e),
+                "errors": sum(1 for e in canon if "error" in e),
+                "total": len(canon),
+                "attempt_checked": sum(1 for e in atts
+                                       if "error" not in e),
+                "attempt_errors": sum(1 for e in atts
+                                      if "error" in e),
+                "attempt_total": len(atts)})
         elif u.path == "/api/export":
             require_canvas(cfg)
             state = read_json_file(
@@ -5737,7 +5951,9 @@ def submissions_view(cfg, local_only=False, attempts=False):
                 "submitted_at": a["submitted_at"],
                 "score": a["score"],
                 "completeness": a["completeness"],
-                "accuracy": a["accuracy"]} for a in prev]
+                "accuracy": a["accuracy"],
+                "check": a.get("check"),
+                "integrity": a.get("integrity")} for a in prev]
             if total:
                 on_disk = {a["attempt_no"] for a in prev}
                 known = fmt_map.get(r["id"]) or {}

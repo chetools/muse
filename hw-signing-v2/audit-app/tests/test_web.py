@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/34.0",
-          "user agent bumped to 34.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/35.0",
+          "user agent bumped to 35.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2398,6 +2398,254 @@ def main():
     web._SCAN["subs"] = {}
     web._SCAN["rosters"] = {}
     web.clear_history_cache()
+
+    # ---------------------------------------------------------
+    # 14. v35: previous attempts are checked too (own store key,
+    # own video file) and their YouTube videos are downloaded by
+    # the automatic pass; final grades auto-save (no Save
+    # button) and a final grade that differs from the signed
+    # grade is highlighted. Fixture: Vee (888), current attempt
+    # and attempt 1 on disk, both clean packages (4 + 4).
+    cfg35 = web.load_web_config()
+    KEY888 = "101_202_888"
+    unit888 = data_dir / "downloads" / "101" / "202" / "888"
+
+    def seed35(folder, sha):
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "submission.html").write_text(
+            build_html(sha), encoding="utf-8")
+        (folder / "submission-audio.wav").write_bytes(wav_bytes)
+
+    seed35(unit888, audit.sha256_file(wav_tmp))
+    seed35(unit888 / "attempt-1", audit.sha256_file(wav_tmp))
+    vids35 = data_dir / "videos"
+    vids35.mkdir(exist_ok=True)
+    (vids35 / f"{KEY888}.mp4").write_bytes(b"canonical-video")
+    (vids35 / f"{KEY888}-attempt-1.mp4").write_bytes(b"attempt-video")
+
+    _keep35 = (web.fetch_courses, web.fetch_assignments,
+               web.fetch_submissions_for, web.fetch_assignment_for,
+               web.fetch_roster_maps)
+    web.fetch_courses = lambda cfg: [
+        {"id": 101, "name": "CHE 1234", "course_code": "CHE1234",
+         "workflow_state": "available",
+         "enrollments": [{"type": "teacher"}]}]
+    web.fetch_assignments = lambda cfg, cid: [
+        {"id": 202, "name": "HW1", "points_possible": 10,
+         "published": True}] if cid == 101 else []
+    SUB888 = {"id": 9888, "user_id": 888,
+              "workflow_state": "submitted", "attempt": 2,
+              "submitted_at": "2026-11-12T09:00:00Z",
+              "user": {"id": 888, "name": "Vee, Thirtyfive"},
+              "attachments": [{"filename": "submission.zip",
+                               "url": "mem://cur888", "size": 1}]}
+    web.fetch_submissions_for = lambda cfg, cid, aid: \
+        [SUB888] if (cid, aid) == (101, 202) else []
+    web.fetch_assignment_for = lambda cfg, cid, aid: {
+        "name": "HW1", "points_possible": 10}
+    web.fetch_roster_maps = lambda cfg, cid=None: {"888": {
+        "sis_user_id": "9888", "sis_login_id": "veet",
+        "section": "001", "sortable_name": "Vee, Thirtyfive"}}
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
+
+    # (a) run_checks checks the attempt, under its own key, and
+    # its cross-check is given the attempt's own video file.
+    seen_vids35 = []
+    _orig_yt35 = audit.youtube_cross_check
+
+    def fake_yt35(audio_path, video_path, parsed, cfg):
+        seen_vids35.append(str(video_path))
+        return {"available": True, "youtube_flag": False,
+                "passed": True, "similarity": 0.99,
+                "threshold": 0.85, "acoustic_configured": True}
+
+    audit.youtube_cross_check = fake_yt35
+    try:
+        store35 = web.run_checks(cfg35)
+    finally:
+        audit.youtube_cross_check = _orig_yt35
+    att_e35 = store35.get(KEY888 + "::a1") or {}
+    can_e35 = store35.get(KEY888) or {}
+    check(att_e35.get("internally_consistent")
+          and can_e35.get("internally_consistent"),
+          "run checks checks the previous attempt too, and both "
+          "are clean (v35)")
+    check(str(web.attempt_video_path(cfg35, KEY888, 1))
+          in seen_vids35
+          and str(web.youtube_video_file(cfg35, KEY888, "888"))
+          in seen_vids35,
+          "the attempt cross-check reads the attempt video "
+          "file; the current attempt reads its own (v35)")
+    saved35 = json.loads((data_dir / "audit-results.json")
+                         .read_text())
+    check(KEY888 + "::a1" in saved35
+          and saved35[KEY888].get("internally_consistent"),
+          "attempt check stored under its own ::a1 key, the "
+          "canonical entry intact (v35)")
+
+    # (b) The attempt views carry the real check.
+    prev35 = next(r for r in web.wall_attempts(cfg35, KEY888)
+                  if not r["is_current"])
+    check(prev35["check"] is not None
+          and prev35["integrity"] == "clean",
+          "wall attempts: the previous row carries its real "
+          "stored check and integrity text (v35)")
+    status, subs35 = call("GET", "/api/submissions?attempts=1")
+    row888 = next(r for r in subs35 if r["user_id"] == "888")
+    a35 = (row888.get("attempts") or [{}])[0]
+    check(a35.get("check") is not None
+          and a35.get("integrity") == "clean",
+          "submissions ?attempts=1 payload carries the attempt "
+          "check and integrity (v35)")
+
+    # (c) check-all counts: submissions and attempts apart.
+    status, out35 = call("POST", "/api/check-all", {})
+    saved35 = json.loads((data_dir / "audit-results.json")
+                         .read_text())
+    n_att35 = sum(1 for k in saved35 if "::a" in k)
+    check(status == 200 and out35["attempt_total"] == n_att35
+          and out35["total"] == len(saved35) - n_att35
+          and out35["attempt_total"] >= 1
+          and out35["attempt_checked"] + out35["attempt_errors"]
+          == out35["attempt_total"],
+          "check-all counts submissions and previous attempts "
+          "separately (v35)")
+
+    # (d) Gradebook preview fields; the CSV is unchanged.
+    status, gb35 = call(
+        "GET", "/api/gradebook/preview?course_id=101"
+        "&assignment_id=202")
+    grow35 = next(r for r in gb35["rows"] if r["ID"] == "888")
+    check(grow35["student_score"] == 8
+          and grow35["grade_differs"] is False
+          and grow35["score"] == 8
+          and grow35["source"] == "student grade (integrity clean)",
+          "gradebook row carries the signed grade; no "
+          "difference without a teacher entry (v35)")
+    call("POST", "/api/final-grade",
+         {"user_id": KEY888, "score": 8})
+    status, gb35 = call(
+        "GET", "/api/gradebook/preview?course_id=101"
+        "&assignment_id=202")
+    grow35 = next(r for r in gb35["rows"] if r["ID"] == "888")
+    check(grow35["grade_differs"] is False
+          and grow35["source"] == "teacher entry",
+          "a teacher entry equal to the signed grade is not a "
+          "difference (v35)")
+    call("POST", "/api/final-grade",
+         {"user_id": KEY888, "score": 6})
+    status, gb35 = call(
+        "GET", "/api/gradebook/preview?course_id=101"
+        "&assignment_id=202")
+    grow35 = next(r for r in gb35["rows"] if r["ID"] == "888")
+    check(grow35["grade_differs"] is True
+          and grow35["student_score"] == 8
+          and grow35["score"] == 6,
+          "a teacher entry differing from the signed grade is "
+          "flagged on the preview row (v35)")
+    rows_diff35 = gb35["rows"]
+    status, csv35 = call(
+        "GET", "/api/gradebook.csv?course_id=101"
+        "&assignment_id=202", raw=True)
+    txt35 = csv35.decode("utf-8")
+    check('"Vee, Thirtyfive",888,9888,veet,001,6' in txt35
+          and "signed" not in txt35
+          and "student_score" not in txt35,
+          "the gradebook CSV is unchanged by the preview-only "
+          "difference fields (v35)")
+
+    # (e) Invariant: a flagged previous attempt changes nothing
+    # for the current attempt.
+    seed35(unit888 / "attempt-1", "0" * 64)
+    web.run_checks(cfg35)
+    saved35 = json.loads((data_dir / "audit-results.json")
+                         .read_text())
+    check(saved35[KEY888 + "::a1"].get("internally_consistent")
+          is False
+          and saved35[KEY888].get("internally_consistent")
+          and saved35[KEY888].get("estimated_grades")
+          == {"completeness": 4, "accuracy": 4},
+          "the tampered previous attempt is flagged under its "
+          "own key; the canonical check is untouched (v35)")
+    status, gb35f = call(
+        "GET", "/api/gradebook/preview?course_id=101"
+        "&assignment_id=202")
+    check(gb35f["rows"] == rows_diff35,
+          "gradebook rows are identical with a flagged previous "
+          "attempt present (v35)")
+
+    # (f) The resume scan owes an attempt check and an attempt
+    # video (delta over the same global state).
+    res35_path = data_dir / "audit-results.json"
+    saved35 = json.loads(res35_path.read_text())
+    saved35[KEY888 + "::a1"] = {
+        "internally_consistent": True,
+        "youtube": {"available": True, "youtube_flag": False,
+                    "passed": True}}
+    res35_path.write_text(json.dumps(saved35))
+    p_before35 = web.pending_work(cfg35)
+    saved35 = json.loads(res35_path.read_text())
+    del saved35[KEY888 + "::a1"]
+    res35_path.write_text(json.dumps(saved35))
+    (vids35 / f"{KEY888}-attempt-1.mp4").unlink()
+    p_after35 = web.pending_work(cfg35)
+    check(p_after35["checks"] == p_before35["checks"] + 1
+          and p_after35["videos"] == p_before35["videos"] + 1,
+          "resume scan counts an owed attempt check and an "
+          "owed attempt video (v35)")
+
+    # (g) The automatic pass downloads the attempt's video.
+    got35 = []
+    web.auto_pipeline(
+        cfg35, download_fn=lambda: [], checks_fn=lambda: None,
+        video_fn=lambda c, uid, url: got35.append((uid, url)))
+    check((f"{KEY888}-attempt-1",
+           f"https://www.youtube.com/watch?v={VIDEO_ID}") in got35,
+          "auto pass downloads a previous attempt's YouTube "
+          "video under its attempt file stem (v35)")
+
+    # (h) Cleanup removes the per-attempt check entries.
+    saved35 = json.loads(res35_path.read_text())
+    saved35[KEY888 + "::a1"] = {"internally_consistent": True}
+    res35_path.write_text(json.dumps(saved35))
+    web.selective_cleanup(cfg35, [KEY888])
+    saved35 = json.loads(res35_path.read_text())
+    check(KEY888 not in saved35
+          and KEY888 + "::a1" not in saved35
+          and not unit888.exists(),
+          "cleanup removes a unit's per-attempt check entries "
+          "with it (v35)")
+
+    # (i) Page wiring: auto-save, no Save buttons, shared
+    # integrity cell, difference shading.
+    status, dash35 = call("GET", "/", raw=True)
+    check(status == 200 and b"saveFinal" not in dash35
+          and b"autoSaveFinal" in dash35
+          and b"bindFin" in dash35
+          and b"data-signed" in dash35
+          and b"function integCell" in dash35
+          and b"previous-attempt check(s)" in dash35,
+          "dashboard: final grades auto-save in place with no "
+          "Save button, and attempt rows use the shared "
+          "integrity cell (v35)")
+    status, wall35p = call("GET", "/wall", raw=True)
+    check(status == 200 and b"zgradesave" not in wall35p
+          and b"Save grade" not in wall35p
+          and b"saveZoomGrade(false)" in wall35p
+          and b"fin2.diff" in wall35p,
+          "wall zoom: no Save grade button, auto-save on "
+          "change, difference shading style present (v35)")
+
+    (web.fetch_courses, web.fetch_assignments,
+     web.fetch_submissions_for, web.fetch_assignment_for,
+     web.fetch_roster_maps) = _keep35
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    web._SCAN["rosters"] = {}
 
     server.shutdown()
     worker.shutdown()

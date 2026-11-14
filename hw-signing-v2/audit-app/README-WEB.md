@@ -18,6 +18,47 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v35 (2026-11-13) — previous attempts checked and downloaded, final grades auto-save, grade differences highlighted
+
+- **Previous attempts are checked like current ones.** Every
+  previous attempt on disk (downloaded with the Redownload
+  tool's "Include previous attempts" scope) now gets its own
+  integrity check — fingerprints, critique and grade signature,
+  and the YouTube acoustic cross-check against that attempt's
+  own downloaded video — in the manual "Run integrity checks"
+  and in the automatic passes. The result line reports the
+  attempt checks separately ("plus N previous-attempt
+  check(s)"). An attempt's result is stored apart from the
+  current attempt's, and the attempts rows in the submissions
+  table and on the wall show it instead of "not checked". The
+  grade of record is unchanged: finals, suggested grades and
+  the Gradebook still come from the current attempt only, and
+  a flagged previous attempt changes none of them.
+- **Previous attempts' YouTube videos download automatically.**
+  The automatic passes fetch them (each under its attempt file
+  name) alongside the current attempts' videos, so an
+  attempt's tile plays on the wall and its acoustic cross-check
+  completes without a per-tile download. The resume scan
+  counts owed attempt checks and videos.
+- **Final grades save themselves — there is no Save button.**
+  In the submissions table and in the wall zoom, changing a
+  final grade and leaving the field saves it as the teacher's
+  grade, with a "saved ✓" note beside the field; an error
+  (for example a cleared field, where a grade is required)
+  also appears beside the field. A field you never touched
+  writes nothing, so a pre-filled clean grade is not
+  re-labelled as a teacher entry; a flagged submission's blank
+  field stores the grade as soon as you enter one and leave.
+- **A final grade that differs from the signed grade is
+  highlighted.** The Final grade cell in the table is shaded
+  amber, with the signed grade shown beside it — as you type,
+  not only after saving — and the wall zoom's teacher-grade
+  field is shaded the same way. In the Gradebook preview, a
+  differing row's score is shaded and its source reads
+  "teacher entry (signed grade N)". The downloaded Gradebook
+  CSV is unchanged. Equal grades (the student's 9 standing as
+  a final 9) are never highlighted.
+
 ## v34 (2026-11-11) — redownload freeze fix, format reporting, collapsible hover sections, select all that appear
 
 - **Redownload no longer freezes with "Include previous
