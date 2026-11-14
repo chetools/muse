@@ -211,10 +211,11 @@ $('loadBtn').addEventListener('click', async () => {
   $('loadStatus').textContent = 'Downloading model files from Hugging Face…';
   try {
     model = await loadModel(onDownloadProgress);
-    $('loadProg').value = 1;
+    $('loadProg').hidden = true;
     $('loadStatus').textContent = 'Model loaded. Transcription runs on WebAssembly, one thread.';
     updateRunEnabled();
   } catch (err) {
+    $('loadProg').hidden = true;
     $('loadStatus').textContent = 'Model did not load.';
     showError('The model could not be loaded. Check the connection and try again.', err, $('loadBtn'));
     $('loadBtn').disabled = false;
@@ -449,6 +450,7 @@ $('runBtn').addEventListener('click', async () => {
     $('runStatus').textContent = '';
   } finally {
     clearInterval(timer);
+    $('runProg').hidden = true;
     $('runBtn').disabled = false;
     refreshDerived();
   }
