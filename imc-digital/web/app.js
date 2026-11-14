@@ -32,6 +32,10 @@ function callWorker(type, payload) {
     worker.postMessage({ id, type, payload });
   });
 }
+function hideBootProgress() {
+  const wrap = $("boot-progress-wrap");
+  if (wrap) wrap.remove();
+}
 function initWorker() {
   try {
     const blob = new Blob([window.WORKER_SRC], { type: "text/javascript" });
@@ -39,7 +43,7 @@ function initWorker() {
   } catch (e) {
     runtimeFailed = true;
     $("boot-status").textContent = "The Python runtime failed to load.";
-    $("boot-progress").hidden = true;
+    hideBootProgress();
     return;
   }
   worker.onmessage = (ev) => {
@@ -47,14 +51,13 @@ function initWorker() {
     if (d.type === "ready") {
       runtimeReady = true;
       $("boot-status").textContent = "Python runtime ready.";
-      const bar = $("boot-progress");
-      bar.max = 1; bar.value = 1;
+      hideBootProgress();
       $("a-run").disabled = false;
       runLive();
     } else if (d.type === "fatal") {
       runtimeFailed = true;
       $("boot-status").textContent = "The Python runtime failed to load.";
-      $("boot-progress").hidden = true;
+      hideBootProgress();
     } else if (pending.has(d.id)) {
       const p = pending.get(d.id);
       pending.delete(d.id);
@@ -64,7 +67,7 @@ function initWorker() {
   worker.onerror = () => {
     runtimeFailed = true;
     $("boot-status").textContent = "The Python runtime failed to load.";
-    $("boot-progress").hidden = true;
+    hideBootProgress();
   };
 }
 
