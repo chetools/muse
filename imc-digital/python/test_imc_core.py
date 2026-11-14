@@ -61,6 +61,9 @@ def test_disturbance_anchor():
 def test_fractional_split_and_steady_state():
     zc = ic.zoh_coefficients(1.0, 10.0, 2.2, 0.4)
     assert zc["d"] == 5 and abs(zc["f"] - 0.5) < 1e-12
+    # Section 5 printed values, as literals.
+    assert abs(zc["b1"] - 0.019801) < 1e-6
+    assert abs(zc["b2"] - 0.019409) < 1e-6
     assert abs(zc["b1"] + zc["b2"] - (1.0 - zc["a"])) < 1e-15
     ys = ic.zoh_step_samples(2.0, 10.0, 2.2, 0.4, 400)
     assert abs(ys[-1] - 2.0) < 1e-6  # settles at K * u = K
@@ -85,6 +88,15 @@ def test_antiwindup_differs_and_protects_under_saturation():
     assert max(abs(x - y) for x, y in zip(on["y"], off["y"])) > 0.01
     assert on["metrics"]["overshoot_pct"] == 0.0
     assert off["metrics"]["overshoot_pct"] > 5.0
+
+
+def test_overshoot_fallback_when_disturbance_at_first_sample():
+    # Stated in the theory: with the disturbance at sample 0
+    # there is no set-point phase, and the overshoot measure
+    # covers the whole run, so the +2 jump itself sets it.
+    r = ic.simulate(u_max=1.5, dist_size=2.0, dist_time=0.0,
+                    anti_windup=False)
+    assert r["metrics"]["overshoot_pct"] == pytest.approx(100.0)
 
 
 def test_limits_respected_over_grid():

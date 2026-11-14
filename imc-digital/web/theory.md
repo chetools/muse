@@ -36,11 +36,14 @@ anti-windup routings of Section 8. The process and the
 controller's internal model share the same parameters: the
 nominal case. The only difference between them in any run is
 the output disturbance, a step applied at the process output,
-which the model does not see. The default inputs are the
-worked instance of the IMC page: $K = 1$, $\tau = 10$ s,
-$\theta = 2$ s, $\lambda = 2$ s, sampling period $T_s = 0.4$ s
-(defined in Section 2), output limits $u$ between 0 and 3,
-and a disturbance step of $+0.2$ at $t = 24$ s.
+which the model does not see — with one exception: while a
+limit binds with anti-windup off, the model and the process
+are fed different input values (Section 8). The default
+inputs are the worked instance of the IMC page: $K = 1$,
+$\tau = 10$ s, $\theta = 2$ s, $\lambda = 2$ s, sampling
+period $T_s = 0.4$ s (defined in Section 2), output limits
+$u$ between 0 and 3, and a disturbance step of $+0.2$ at
+$t = 24$ s, where $t$ is time (s).
 
 ## Sampling and the zero-order hold {#zoh}
 
@@ -113,10 +116,11 @@ Now restore the dead time. The lag does not respond to the
 input written at sample $k$; it responds to the input that
 left the converter $\theta$ earlier. Count the dead time in
 samples, $d = \theta / T_s$ (dimensionless), and suppose for
-this section that the count is whole. The input held over
-the interval $[j T_s, (j+1) T_s)$ reaches the lag over
-$[(j+d) T_s, (j+d+1) T_s)$, so it is the input that
-determines $y[j+d+1]$. Renaming the index, the output at
+this section that the count is whole. Let $j$ be the index
+(dimensionless integer) of an arbitrary earlier sample. The
+input held over the interval $[j T_s, (j+1) T_s)$ reaches
+the lag over $[(j+d) T_s, (j+d+1) T_s)$, so it is the input
+that determines $y[j+d+1]$. Renaming the index, the output at
 sample $k$ is driven by $u[k-d-1]$:
 
 $$y[k] = a \, y[k-1] + K(1-a) \, u[k-d-1]$$
@@ -182,8 +186,10 @@ step-invariant conversion [franklin-1998]
 The lag is the scalar case of a general statement. A linear
 process in state-space form has a state vector $x$ (its
 components carry the units of the states they represent),
-a state matrix $A$ (s$^{-1}$) and an input matrix $B$, with
-$\dot{x} = A x + B u$. Under a zero-order hold its exact
+a state matrix $A$ (s$^{-1}$) and an input matrix $B$,
+whose entries carry the units of the state divided by the
+input and by time, so that $B u$ is a rate of change of the
+state, with $\dot{x} = A x + B u$. Under a zero-order hold its exact
 sampled equivalent is
 
 $$x[k+1] = \Phi \, x[k] + \Gamma \, u[k], \qquad
@@ -253,9 +259,12 @@ stable for every $T_s$ [astrom-wittenmark-1997]
 
 Before the first sample, every stored value is set: the
 model and process states start at the measured output
-deviation (zero, at the operating point), and the shift
+deviation (zero, at the operating point), the shift
 registers are filled with the manipulated variable
-currently being delivered (zero, in deviation variables).
+currently being delivered (zero, in deviation variables),
+and the controller's stored values — its previous corrected
+set point $w[k-1]$ and its previous output $u[k-1]$ in the
+recursion of Section 6 — start at zero.
 At each sample $k$ the program then performs, in order:
 
 1. Update the process output $y[k]$ and the model output
@@ -283,19 +292,22 @@ holds it until the next sample.
 The order is not arbitrary: the model output for this
 sample is computed before the new manipulated variable,
 because the difference equation uses only inputs sent in
-earlier samples. The nominal run of this cycle reproduces
-Table 2 of the IMC page exactly: $u[0] = 4.6364$, the
-output first moves at $k = 6$, and $y = 0.6333$ at
-$t = 4.0$ s, against 0.6321 from the continuous design —
+earlier samples. Run with the output limits set wide, so
+that step 5 never binds and the commanded and delivered
+values coincide, this cycle reproduces Table 2 of the IMC
+page exactly: $u[0] = 4.6364$, the output first moves at
+$k = 6$, and $y = 0.6333$ at $t = 4.0$ s, against 0.6321
+from the continuous design —
 the size of the discretisation at this $T_s$, in the
 controller conversion, since the model conversion is
 exact.
 
 ## Output limits and anti-windup {#antiwindup}
 
-The limits of step 5 are inactive in the nominal run. Make
-them bind — with the default $u_{max} = 3$, the first
-commanded value 4.6364 is already clipped — and a design
+In the nominal run of Section 7 the limits were set wide
+and never bind. The page's default limits are narrower:
+with $u_{max} = 3$, the first commanded value, 4.6364, is
+already clipped to 3. Whenever a limit binds, a design
 question appears that the continuous design never faces:
 during a sample at the limit, the process receives the
 delivered value, but which value do the model register
@@ -330,20 +342,25 @@ integral improves.
 
 ## Measures and checks {#measures}
 
-Each run reports: the integral of absolute error, IAE
-$= T_s \sum_k |r - y[k]|$ (s, the signals being
-dimensionless), summed over the whole run; the overshoot
-(percent of the unit set-point step) measured over the
-set-point phase, before the disturbance step adds its own
-jump to the output; the settled output and manipulated
-variable, each the mean of the last ten samples; the
-largest commanded manipulated variable (dimensionless);
-and the percentage of samples at which the commanded
-value was clipped by a limit. The build-time checks behind
+A run covers 90 s, or 30 s beyond the disturbance step
+when that is longer. Each run reports: the integral of
+absolute error, IAE $= T_s \sum_k |r - y[k]|$ (s, the
+signals being dimensionless), summed over the whole run;
+the overshoot (percent of the unit set-point step)
+measured over the set-point phase, before the disturbance
+step adds its own jump to the output — if the disturbance
+is placed at the first sample there is no set-point phase,
+and the measure then covers the whole run; the settled
+output and manipulated variable, each the mean of the last
+ten samples; the largest magnitude of the commanded
+manipulated variable (dimensionless); and the percentage
+of samples at which the commanded value was clipped by a
+limit. The build-time checks behind
 the page are: the coefficient anchors of Sections 3, 5
 and 6 against the IMC page; the nominal cycle against its
 Table 2; the disturbance example of that page (a step of
-$+0.2$ at sample 60 gives $u[60] = 0.0727$ and settles at
+$+0.2$ at sample 60, with the limits wide as on that page,
+gives $u[60] = 0.0727$ and settles at
 $u = 0.8000$, $y = 1.0000$); the fractional-delay
 comparison of Section 5, against a fine-step numerical
 integration of the lag equation, a separate computation
