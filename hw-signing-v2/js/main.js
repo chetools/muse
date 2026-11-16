@@ -969,11 +969,18 @@ async function verifySubmissionParts(entry, bundle, anchor) {
 
 // First click on a ready final job's ZIP button: verify, then show
 // the review panel in the job's row (renderJobRow renders it from
-// zipReviews, so it survives the 5-second list refresh). The panel's
-// own button performs the download from the verified parts.
+// zipReviews; the 5-second refresh pauses while a review is open, so
+// the panel and its button are never rebuilt under the student). The
+// panel's own button performs the download from the verified parts.
 async function downloadSubmissionZip(entry, bundle, anchor) {
   clearError();
-  const parts = await verifySubmissionParts(entry, bundle, anchor);
+  zipBusy = true;
+  let parts = null;
+  try {
+    parts = await verifySubmissionParts(entry, bundle, anchor);
+  } finally {
+    zipBusy = false;
+  }
   if (!parts) return;
   const words = scrubWords();
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
@@ -1002,31 +1009,36 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
 }
 
 async function doDownloadZip(entry, bundle, review, anchor) {
-  const { parts } = review;
-  const html = assemblePackage({
-    youtubeLink: canonicalWatchUrl(parts.videoId),
-    audioFileName: AUDIO_FILE_NAME,
-    durationS: parts.record.duration_s,
-    chunks: parts.scrubbedChunks,
-    bundle,
-  });
-  const zip = buildZip([
-    { name: ZIP_ENTRY_HTML, data: new TextEncoder().encode(html) },
-    { name: ZIP_ENTRY_AUDIO, data: parts.wav },
-  ]);
-  downloadBlob(zip, submissionZipName({
-    course: entry.course, asg: entry.asg,
-    completeness: bundle.completeness, accuracy: bundle.accuracy,
-    youtubeCheckedAt: entry.youtube_checked_at, gradedAt: bundle.t,
-  }));
-  zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
+  zipBusy = true;
   try {
-    await markJobRetrieved(cfg.worker, {
-      pkg: entry.pkg, retrieval_code: entry.retrieval_code,
+    const { parts } = review;
+    const html = assemblePackage({
+      youtubeLink: canonicalWatchUrl(parts.videoId),
+      audioFileName: AUDIO_FILE_NAME,
+      durationS: parts.record.duration_s,
+      chunks: parts.scrubbedChunks,
+      bundle,
     });
-  } catch { /* the ZIP is already in the student's hands */ }
-  removeJobEntry(entry.pkg, entry.retrieval_code);
-  renderJobs();
+    const zip = buildZip([
+      { name: ZIP_ENTRY_HTML, data: new TextEncoder().encode(html) },
+      { name: ZIP_ENTRY_AUDIO, data: parts.wav },
+    ]);
+    downloadBlob(zip, submissionZipName({
+      course: entry.course, asg: entry.asg,
+      completeness: bundle.completeness, accuracy: bundle.accuracy,
+      youtubeCheckedAt: entry.youtube_checked_at, gradedAt: bundle.t,
+    }));
+    zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
+    try {
+      await markJobRetrieved(cfg.worker, {
+        pkg: entry.pkg, retrieval_code: entry.retrieval_code,
+      });
+    } catch { /* the ZIP is already in the student's hands */ }
+    removeJobEntry(entry.pkg, entry.retrieval_code);
+    renderJobs();
+  } finally {
+    zipBusy = false;
+  }
 }
 
 function renderJobRow(container, entry, statusInfo) {
@@ -1111,6 +1123,10 @@ function renderJobRow(container, entry, statusInfo) {
   const forgetBtn = document.createElement('button');
   forgetBtn.textContent = 'Remove from this browser';
   forgetBtn.addEventListener('click', () => {
+    // A review open on this row is abandoned with the job: its
+    // zipReviews entry goes too, or the poll would stay paused on a
+    // review that no longer exists.
+    zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
     removeJobEntry(entry.pkg, entry.retrieval_code);
     renderJobs();
   });
@@ -1118,7 +1134,21 @@ function renderJobRow(container, entry, statusInfo) {
   container.append(row);
 }
 
-async function renderJobs() {
+// Rendering is serialised: every caller shares the one in-flight
+// render, so a timer tick can never start a second rebuild while a
+// click-triggered render (ZIP verification, send, remove) is still
+// running, and two renders never interleave their DOM writes.
+let renderJobsPromise = null;
+function renderJobs() {
+  if (renderJobsPromise) return renderJobsPromise;
+  renderJobsPromise = (async () => {
+    try { await renderJobsOnce(); }
+    finally { renderJobsPromise = null; }
+  })();
+  return renderJobsPromise;
+}
+
+async function renderJobsOnce() {
   const box = $('jobsBox');
   // The stored expires_at is a cache, not the authority: an entry
   // written before 2.4.1 carries creation + 48 h, while the Worker
@@ -1132,28 +1162,36 @@ async function renderJobs() {
     refreshFinPanel();
     return;
   }
-  box.textContent = '';
-  let entriesDirty = false;
-  const survivors = [];
-  for (const entry of entries) {
-    const key = jobKey(entry.pkg, entry.retrieval_code);
-    let res = null;
+  // Every status is fetched before the list is touched, and all of
+  // them in parallel: the box is never emptied while the network
+  // answers, and one slow answer no longer delays the other rows.
+  // (Before this fix the box was emptied first and each row was
+  // rebuilt twice, once per sequential fetch, so the ZIP buttons
+  // vanished and moved on every 5-second cycle.)
+  const results = await Promise.all(entries.map(async (entry) => {
     try {
-      res = await fetchJobStatus(cfg.worker, {
+      return await fetchJobStatus(cfg.worker, {
         pkg: entry.pkg, retrieval_code: entry.retrieval_code,
       });
-    } catch { /* offline or Worker error: keep the entry, render last known */ }
+    } catch { /* offline or Worker error: keep the entry, render last known */ return null; }
+  }));
+  let entriesDirty = false;
+  const survivors = [];
+  const frag = document.createDocumentFragment();
+  entries.forEach((entry, i) => {
+    const key = jobKey(entry.pkg, entry.retrieval_code);
+    const res = results[i];
     if (res && res.status === 'expired') {
-      // The Worker has deleted the job; drop the entry and its row.
+      // The Worker has deleted the job; drop the entry and its row,
+      // and any ZIP review open on it, so the poll is not left
+      // paused on a review that no longer exists.
       entriesDirty = true;
       readyBundles.delete(key);
       jobStates.delete(key);
-      continue;
+      zipReviews.delete(key);
+      return;
     }
     survivors.push(entry);
-    const holder = document.createElement('div');
-    box.append(holder);
-    renderJobRow(holder, entry, jobStates.get(key) || null);
     if (res) {
       // The Worker reports the job's current expiry (7 days while
       // ungraded, 48 hours after grading); keep the stored entry in
@@ -1180,33 +1218,44 @@ async function renderJobs() {
         status: res.status,
         queue_ahead: res.data ? res.data.queue_ahead : undefined,
       });
-      holder.textContent = '';
-      renderJobRow(holder, entry, jobStates.get(key));
     }
-  }
-  if (!survivors.length && entries.length) {
-    box.textContent = 'No jobs sent from this browser yet.';
-  }
+    const holder = document.createElement('div');
+    renderJobRow(holder, entry, jobStates.get(key) || null);
+    frag.append(holder);
+  });
+  // One synchronous swap, after every fetch has settled: no painted
+  // frame ever shows an empty or half-built list, and a button's
+  // position never moves while its row is being rebuilt.
+  box.textContent = '';
+  if (survivors.length) box.append(frag);
+  else box.textContent = 'No jobs sent from this browser yet.';
   if (entriesDirty) saveJobEntries(survivors);
   refreshFinPanel();
 }
 
 // The jobs list refreshes itself every 5 seconds while the page is
 // open, so a waiting student sees the queue move and the grade arrive
-// without reloading — no notification is needed. Refreshes pause
-// while the tab is hidden and never overlap.
-let jobsRefreshInFlight = false;
+// without reloading — no notification is needed. A poll is skipped
+// while the tab is hidden, while a ZIP verification or download is
+// running (zipBusy), while a ZIP review panel is open (zipReviews),
+// or while the student's focus is inside the list: a poll never
+// rebuilds the list under a student who is reading a review or about
+// to click. A skipped poll loses nothing — the next tick fetches
+// every status again.
+let zipBusy = false;
 async function refreshJobs() {
-  if (jobsRefreshInFlight || document.hidden) return;
-  jobsRefreshInFlight = true;
+  if (document.hidden) return;
+  if (zipBusy || zipReviews.size) return;
+  const box = $('jobsBox');
+  if (box && document.activeElement && box.contains(document.activeElement)) return;
   try { await renderJobs(); } catch { /* the next tick retries */ }
-  jobsRefreshInFlight = false;
 }
 setInterval(refreshJobs, 5000);
 
 // --- Conversion: turn a graded job into the Canvas submission ---
 let finCheck = null;
 let finManualEntry = null;
+let manualEntry = null; // the job currently rendered in the manual box
 let finPrevSelKey = null;
 
 function conversionCandidates() {
@@ -1407,6 +1456,15 @@ $('manualBtn').addEventListener('click', async () => {
   clearError();
   const code = $('manualCode').value;
   const box = $('manualBox');
+  // Retrieving a different code replaces the row below, which
+  // destroys the only button that could close a ZIP review open on
+  // it: delete that review's zipReviews entry now, or it would be
+  // orphaned and pause the poll for good. Retrieving the same code
+  // again keeps its review (the row is re-rendered with the panel).
+  if (manualEntry && manualEntry.retrieval_code !== code) {
+    zipReviews.delete(jobKey(manualEntry.pkg, manualEntry.retrieval_code));
+    manualEntry = null;
+  }
   box.hidden = true;
   if (!cfg.worker || !cfg.pkg) {
     $('manualStatus').textContent = 'Open this assignment’s configured link to retrieve.';
@@ -1417,6 +1475,14 @@ $('manualBtn').addEventListener('click', async () => {
     const res = await fetchJobStatus(cfg.worker, {
       pkg: cfg.pkg, retrieval_code: code,
     });
+    if ((res.status === 'expired' || res.status === 'forbidden') &&
+        manualEntry && manualEntry.retrieval_code === code) {
+      // The job a kept review belongs to is gone for good, and its
+      // row stays hidden: delete the review, or it would be orphaned
+      // and pause the poll for good.
+      zipReviews.delete(jobKey(manualEntry.pkg, manualEntry.retrieval_code));
+      manualEntry = null;
+    }
     if (res.status === 'forbidden') {
       $('manualStatus').textContent = 'No job under that code.';
       return;
@@ -1441,6 +1507,7 @@ $('manualBtn').addEventListener('click', async () => {
       // downloadSubmissionZip verifies it is the checked video).
       readyBundles.set(jobKey(entry.pkg, entry.retrieval_code), res.data.result);
       entry.manual = true;
+      manualEntry = entry;
       if (entry.kind === 'practice') {
         finManualEntry = entry;
         jobStates.set(jobKey(entry.pkg, entry.retrieval_code), { status: 'ready' });
@@ -1458,7 +1525,7 @@ $('manualBtn').addEventListener('click', async () => {
         ? 'Final job. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
         : 'Practice job.';
       box.append(note);
-      renderJobRow(box, entry, 'ready');
+      renderJobRow(box, entry, { status: 'ready' });
     }
   } catch (err) {
     $('manualStatus').textContent = 'The check could not be completed. Try again.';
