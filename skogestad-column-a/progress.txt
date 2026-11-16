@@ -135,3 +135,12 @@ V3 THEORY-FIRST REVISION (2026-11-16, user-approved plan):
   Delta re-review of the fixed passages: no confirmed
   findings (7/7 passages, 10/10 numbers). Delta QA re-run
   with the corrected expectations as hard asserts: PASS.
+  Published (2026-11-16): main scoped push 6f4c51a ->
+  90a279f (30 files, all in skogestad-column-a scope;
+  web/template.html is not tracked on main - the repo
+  .gitignore *.html rule excludes it, as for v2; the built
+  page carries it). gh-pages scoped push 8a7ecc1 -> b7dab8d
+  (only skogestad-column-a/index.html changed; notebook
+  unchanged). Served bytes verified byte-identical to the
+  v3 build (SHA-256 b3aec731..., 7,039,713 bytes) at
+  https://chetools.github.io/muse/skogestad-column-a/
