@@ -175,3 +175,12 @@ V4 CHANNEL-OVERLAY FIX (2026-11-16):
   chart area, zero console/page errors.
   Independent delta review: 2 confirmed findings, both
   fixed; delta re-review 0 findings (10/10).
+  Published (2026-11-16): main scoped push d06442e ->
+  fd6c017 (25 files, all in skogestad-column-a scope;
+  web/template.html is not tracked on main - the repo
+  .gitignore *.html rule excludes it, as for v2/v3; the
+  built page carries it). gh-pages scoped push b7dab8d ->
+  f9f7a98 (only skogestad-column-a/index.html changed;
+  notebook unchanged). Served bytes verified byte-identical
+  to the v4 build (SHA-256 73ae8207..., 7,040,820 bytes) at
+  https://chetools.github.io/muse/skogestad-column-a/
