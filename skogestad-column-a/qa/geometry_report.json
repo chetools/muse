@@ -1,0 +1,214 @@
+{
+ "widths": {
+  "2560": {
+   "tabs": {
+    "app": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [
+       {
+        "id": "chart-profile",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "chart-step",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "analysis": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "theory": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "code": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [
+       {
+        "id": "walkfig-1-1",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "walkfig-7-1",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    }
+   },
+   "walkthrough_step5": "anchor xD = 0.9900 shown",
+   "edges": {
+    "colL": 680,
+    "colR": 1880,
+    "headL": 696,
+    "headR": 1864
+   },
+   "pageerrors": []
+  },
+  "1280": {
+   "tabs": {
+    "app": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [
+       {
+        "id": "chart-profile",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "chart-step",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "analysis": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "theory": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "code": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [
+       {
+        "id": "walkfig-1-1",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "walkfig-7-1",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    }
+   },
+   "walkthrough_step5": "anchor xD = 0.9900 shown",
+   "edges": {
+    "colL": 40,
+    "colR": 1240,
+    "headL": 56,
+    "headR": 1224
+   },
+   "pageerrors": []
+  },
+  "390": {
+   "tabs": {
+    "app": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [
+       {
+        "id": "chart-profile",
+        "svgW": 358,
+        "boxW": 358
+       },
+       {
+        "id": "chart-step",
+        "svgW": 358,
+        "boxW": 358
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "analysis": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "theory": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "code": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [
+       {
+        "id": "walkfig-1-1",
+        "svgW": 358,
+        "boxW": 358
+       },
+       {
+        "id": "walkfig-7-1",
+        "svgW": 358,
+        "boxW": 358
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    }
+   },
+   "walkthrough_step5": "anchor xD = 0.9900 shown",
+   "edges": {
+    "colL": 0,
+    "colR": 390,
+    "headL": 16,
+    "headR": 374
+   },
+   "pageerrors": []
+  }
+ }
+}

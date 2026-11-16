@@ -1,0 +1,82 @@
+Skogestad Column A WASM page — build progress (2026-11-16)
+Spec: SPEC.md frozen, decisions D1-D13 + Amendment A1 govern.
+Core: python/column_a.py VERIFIED unchanged (final re-run 2026-11-16:
+  anchor xD 0.9900 xB 0.0100, dominant pole -5.1555e-3/min vs
+  published -5.1562e-3/min, RGA11 LV 35.942 DV 0.447 LB 0.560
+  RR 3.290, DB pole at origin, balanced/xF gains as in SPEC A1).
+BUILD COMPLETE (local only; nothing pushed or published):
+  dist/skogestad-column-a-standalone-v1.html (6.94 MB)
+  notebook/walkthrough_molab.py + dist copy (30,704 bytes each)
+Checks (all 2026-11-16):
+  driver tests PASS (incl. DB both modes, balanced channel,
+    validation, unknown type). Core test suite PASS unchanged.
+  Build: citations ok (skogestad-cola, skogestad-2006), CSS
+    balance ok, 487 KaTeX spans, notebook inlined source
+    byte-identical (AST check), boot compile guard ok (37
+    autograd files parse; DB payload strict-JSON clean).
+  Geometry QA PASS: 2560/1280/390 x App/Analysis/Theory/Code,
+    stubbed slow boot, precomputed display labelled, chart SVG
+    width == container (+/-2 px), no overlaps, no sideways
+    scroll, no page errors. Header shares the body column
+    (inside .col; edges offset only by the column padding).
+  Live QA PASS (CDN mirror): boot ready; first live run replaced
+    precomputed display (no 'precomputed' text left, 2 charts);
+    P-A anchor gains in browser vs CPython max rel err 3.2e-14
+    (tolerance 1e-6); changed-input auto-run distinguishable;
+    P-C FOPTD matrix fit in browser 1.29 s at N=5, 2.59 s at
+    N=39 (limit ~20 s; full-matrix fit kept); P-B DB renders A1
+    treatment, no NaN/Infinity; progress element removed after
+    runs, ready line shown; live region announces; keyboard tab
+    switch works; zero page/console errors.
+  marimo check --strict on notebook: exit 0. MW check: exit 0.
+Deviations/notes:
+  - driver.py (new page code, core untouched): nonlinear step
+    integration truncates with a flag when a step drains a
+    holdup out of the valid region (DB steps do this), instead
+    of failing; the page note explains it.
+  - autograd 1.9.1 vendored (37 .py files, 288 KB); it does not
+    import the 'future' package on Python 3, so no shim needed.
+  - Theory reports recomputed RGA LV 35.9 / RR 3.29 against
+    published 35.1 / 3.22 with the sensitivity explanation
+    derived in section 8.
+FIX PASS (2026-11-16, independent reviews Briefs A/B/C, 20 items):
+  Rebuilt as dist/skogestad-column-a-standalone-v2.html
+  (6,977,733 bytes); v1 on disk untouched (6,939,109 bytes).
+  Notebook regenerated (32,703 bytes, notebook/ == dist/ copy);
+  marimo check --strict exit 0, MW exit 0, notebook executes.
+  Fixes: walkthrough Step 5 anchor index (prints xD = 0.9900);
+  Step 2 balance closures (total 0.00e+00, component -7.55e-15
+  mol/s in the build); Step 8 deflated-system residuals printed
+  (1.07e-17 balanced, 5.45e-16 feed composition, walkthrough
+  route). Theory: S8 RGA claim corrected (LV and RR ~2 % off,
+  RR kappa = 0.696 stated, 3.29 used; DV/LB agree to published
+  digits); S8 verification reframed (matrix/shortcut agreement
+  is an identity check; gains evidenced by published values and
+  the FD-route test); row/column sums by proved identity;
+  S11 Radau/Jacobian corrected and separation measured (4.1 %
+  of final xD value, 2.2 % xB, at the default 1 mol/s L step);
+  S7 gain units per configuration; S7 dominant pole qualified
+  (two origin poles from uncontrolled drums); S6 Jacobian block
+  units; S6 h and e_j defined; S6 AD rewritten as trace +
+  backward vector-Jacobian products; S10 tau bounds 1 s to
+  10x horizon stated; S9/S10 DB treatment named as driver.py;
+  S2 cola citations added; S5 check attributed to test suite;
+  S1 feed stage nt//2 qualified; S3 feed-stage vapour flow
+  V + (1 - q) F stated; S10 fit-error scope sentence added.
+  SPEC Amendment A2 appended (fit bounds; DB residual check).
+  Driver: DB residuals in payload (N=5 perfect: balanced
+  8.33e-18, xf 5.25e-16, 2-norm; P: 2.07e-15, 4.62e-16),
+  displayed in the DB panel, asserted < 1e-8 in driver tests.
+  Tests: FD-route comparison added (LV/DV/LB/RR perfect + LV P,
+  anchor and N=5): max gain diff 6.65e-09 (anchor), RGA11 rel
+  diff <= 3.5e-08; all driver tests pass; core suite unchanged
+  and passing (anchor xD 0.9900, RGA LV 35.942 / RR 3.290).
+  Build guards: citations ok, CSS ok, 521 KaTeX spans, listings
+  byte-identical (build check), notebook inlined source
+  byte-identical, boot compile guard ok.
+  Browser QA on v2: geometry PASS (2560/1280/390, all tabs,
+  walkthrough Step 5 shows anchor xD = 0.9900); live PASS (CDN
+  mirror boot, precomputed replaced, anchor max rel err
+  3.2e-14, DB residuals shown in both level modes, FOPTD fit
+  1.23 s at N=5 and 2.87 s at N=39, progress removed, zero
+  page/console errors). Nothing pushed or published.

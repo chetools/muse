@@ -1,0 +1,17 @@
+{
+ "boot": "ready; first live run complete",
+ "precomputed_replaced": true,
+ "anchor_max_rel_err": 3.1954540229193674e-14,
+ "changed_input_run": "summary updated after edit",
+ "foptd_fit_s_N5": 1.23,
+ "channel_overlay": "rendered",
+ "db_residuals_perfect": "shown in DB panel",
+ "db_residuals_P": "shown in DB panel",
+ "db": "A1 treatment rendered; no NaN",
+ "foptd_fit_s_N39": 2.87,
+ "progress_removed": true,
+ "live_region": "FOPTD matrix fitted.",
+ "keyboard_first_focus": "BUTTON",
+ "keyboard_tab_switch": "Theory panel visible",
+ "page_errors": []
+}
