@@ -106,7 +106,7 @@ function markStale() {
 }
 
 // ---------- tabs and fragments ----------
-const TABS = ["app", "analysis", "theory", "code"];
+const TABS = ["theory", "app", "analysis", "code"];
 function showTab(name, pushHash) {
   for (const t of TABS) {
     $("panel-" + t).hidden = t !== name;
@@ -148,6 +148,38 @@ function routeFragment() {
   }
 }
 window.addEventListener("hashchange", routeFragment);
+
+// ---------- guidance pop-ups (native popover, with fallback) ----------
+if (!("showPopover" in HTMLElement.prototype)) {
+  document.querySelectorAll(".guidepop").forEach((pop) => {
+    pop.removeAttribute("popover");
+    pop.hidden = true;
+    pop.classList.remove("open");
+  });
+  document.querySelectorAll("[popovertarget]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pop = document.getElementById(btn.getAttribute("popovertarget"));
+      if (!pop) return;
+      const hideOnly = btn.getAttribute("popovertargetaction") === "hide";
+      const willShow = !hideOnly && pop.hidden;
+      document.querySelectorAll(".guidepop").forEach((other) => {
+        other.hidden = true;
+        other.classList.remove("open");
+      });
+      if (willShow) {
+        pop.hidden = false;
+        pop.classList.add("open");
+      }
+    });
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape") return;
+    document.querySelectorAll(".guidepop").forEach((pop) => {
+      pop.hidden = true;
+      pop.classList.remove("open");
+    });
+  });
+}
 
 // ---------- chart sizing (reveal-triggered) ----------
 function refitCharts() {

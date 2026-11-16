@@ -1,3 +1,218 @@
+## Introduction
+
+This page presents a binary distillation column that follows
+Skogestad's Column A model. The column is simulated with a
+nonlinear stage model, and the model is linearised at its
+operating point. The number of trays is $N$ (a dimensionless
+count). The distillate composition is $x_D$ (the mole fraction
+of the light component in the distillate, dimensionless), and
+the bottoms composition is $x_B$ (the mole fraction of the
+light component in the bottoms, dimensionless). The reflux
+flow is $L$ (mol/s), the boilup flow is $V$ (mol/s), the
+distillate flow is $D$ (mol/s), and the bottoms flow is $B$
+(mol/s). A configuration code names the two manipulated flows:
+for example, LV names $L$ and $V$.
+
+The page computes transfer matrices from the manipulated
+variables and the feed disturbances to $x_D$ and $x_B$. The
+computation covers five control configurations and two
+level-control modes. The page also computes the relative gain
+array (RGA) for each configuration that has a steady-state
+gain matrix, and a reduction of each transfer-matrix entry to
+first-order plus dead time (FOPTD) form.
+
+The Theory is organised with the model first. The column and
+stage model, the steady state, and the control configurations
+and level closures come before the linearisation. The transfer
+matrix, the steady-state gains, the RGA, the singular
+configuration case, and the FOPTD reduction follow. A
+comparison against the nonlinear model and a statement of
+scope and limits close the Theory.
+
+## Relevance
+
+Control configuration choice matters for a distillation column
+because the two product compositions are controlled with two
+manipulated flows, and the interaction between the two
+composition loops depends on which flows are manipulated. The
+level closures set the remaining flows. A change in one
+manipulated flow moves both compositions, and the second loop
+answers with its own flow. The size of that steady-state
+interaction changes with the configuration: the same column
+can be strongly interacting under one configuration and
+nearly decoupled under another. The way the two levels are
+closed changes the dynamics (the poles), but not the
+steady-state gains.
+
+A linearised model is the working tool for that question. Its
+steady-state gains, its RGA and its time constants state the
+interaction and the response speeds at the operating point in
+a form that can be compared across configurations. The
+nonlinear model is the check on the range of that comparison:
+a step test on the nonlinear model shows how far the linear
+responses stay close to the nonlinear responses.
+
+## Key points to be demonstrated
+
+1. Linearisation by automatic differentiation of the nonlinear
+stage model gives the transfer matrix at the operating point,
+and its step responses track the nonlinear model's responses
+for small steps; the separation grows with step size (§6, §7,
+§11).
+2. Interaction between the two product-composition loops
+depends strongly on the control configuration: the 1,1
+element of the RGA, $\lambda_{11}$ (dimensionless), is about
+19.4 for the LV configuration at the default column
+($N = 5$) and 35.9 at the anchor column ($N = 39$), against
+0.45 for DV at the anchor — the same column, a different
+pairing problem (§5, §8). The level closure does not change
+the steady-state gains or $\lambda_{11}$ (the gains are the
+same in both modes, §5); it changes the poles, because the
+proportional-only model keeps the two level states.
+3. The RGA can be computed from the full matrix formula or
+from the shortcut
+$1 / (1 - g_{12} g_{21} / (g_{11} g_{22}))$, where $g_{ij}$ is
+the steady-state gain from input $j$ to output $i$ (mole
+fraction per unit input); the two agree, and every row and
+column of the RGA sums to 1 (§8).
+4. The DB configuration has no steady-state gain matrix:
+conservation of total inventory puts a pole at the origin, the
+unbalanced manipulated-variable directions and the feed-flow
+channel integrate, and only the balanced-split direction and
+the feed-composition channel have finite gains, obtained from
+a deflated system solved by least squares with residuals below
+$10^{-8}$ (§9).
+5. Each transfer-matrix entry can be reduced to an FOPTD entry
+(a gain, a time constant and a dead time, the latter two in s)
+fitted by least squares; the fit error varies by channel and
+channels whose response is not FOPTD-shaped exceed 10 % fit
+error and are flagged (§10).
+
+## How this is demonstrated
+
+The demonstration uses the [App panel](#panel-app) for the
+column settings, the configuration and the step test, and the
+[Analysis panel](#panel-analysis) for the gain, RGA and FOPTD
+tables. Calculations run automatically after the runtime loads
+and again on every input change. The first display is
+precomputed for the default inputs and labelled as such until
+the first live run replaces it.
+
+The relative volatility is $\alpha$ (dimensionless). The feed
+flow is $F$ (mol/s), the feed composition is $x_F$
+(dimensionless), and the feed liquid fraction is $q$
+(dimensionless). The reflux flow is $L$ (mol/s), the boilup
+flow is $V$ (mol/s), the distillate flow is $D$ (mol/s), and
+the bottoms flow is $B$ (mol/s). The reflux-drum level gain is
+$K_{cD}$ and the reboiler level gain is $K_{cB}$ (both in 1/s).
+
+The App panel inputs are "Number of trays N", "Relative
+volatility α", "Feed flow F", "Feed composition xF", "Feed
+liquid fraction q", "Reflux flow L" and "Boilup flow V". The
+"Configuration" select offers LV, DV, LB, DB and (L/D)-(V/B).
+The "Level control mode" select offers Perfect and
+Proportional-only, with the level gains set by "Reflux-drum
+level gain KcD" and "Reboiler level gain KcB". The Step test
+is set by "Stepped input" and "Step size". The App panel
+outputs are the summary table, the composition-profile chart
+and the step-response chart, which plots the linear response
+against the nonlinear response. The Analysis panel outputs are
+tables of the steady-state gain matrix, the relative gain
+array, and the poles and dominant time constant, the "Fit
+FOPTD matrix" button and the FOPTD matrix table it fills, and
+the channel overlay, set by the "Output" and "Input" selects
+and the "Show channel overlay" button.
+
+Each key point is demonstrated as follows:
+
+- Point 1 is derived in §6, §7 and §11. The App Step test
+("Stepped input", "Step size") and the step-response chart
+carry out the comparison between the linear and nonlinear
+responses.
+- Point 2 is derived in §5 and §8. The "Configuration" select
+and the "Level control mode" select set the case, and the
+relative gain array table in the Analysis panel gives
+$\lambda_{11}$ for the case.
+- Point 3 is derived in §8. The steady-state gain matrix table
+and the relative gain array table in the Analysis panel give
+the gains and the array, and the note under the relative gain
+array table compares the two routes to $\lambda_{11}$.
+- Point 4 is derived in §9. Setting "Configuration" to DB
+changes the Analysis panel output to the finite gains and ramp
+rates described in §9, and the App step-response chart shows
+the integrating responses.
+- Point 5 is derived in §10. The "Fit FOPTD matrix" button
+builds the FOPTD matrix table, and the channel overlay
+compares one fitted entry against the high-order response for
+that channel.
+
+## Guided experiments
+
+### Experiment 1
+
+Work in the App panel Step test with the default column and
+the LV configuration. Set "Stepped input" to First manipulated
+variable and "Step size" to 1. The step-response chart shows
+the linear and nonlinear responses close: at this step the
+largest separation over the horizon is 4.1 % of the final
+$x_D$ value and 2.2 % of the final $x_B$ value (§11). Set
+"Step size" to 10 and observe the separation grow.
+
+### Experiment 2
+
+In the Analysis panel, read $\lambda_{11}$ for LV at the
+defaults: 19.3585. In the App panel, set "Number of trays N"
+to 39. $\lambda_{11}$ rises to 35.8970, and the App summary
+table shows $x_D = 0.9900$ and $x_B = 0.0100$, the anchor
+column. Set "Configuration" to DV. $\lambda_{11}$ falls to
+0.4445. With the unrounded source flows the anchor value for
+LV is 35.94, and §8 explains the difference (the sensitivity
+of $\lambda_{11}$ for LV).
+
+### Experiment 3
+
+In the Analysis panel, pick any configuration except DB.
+Compare the note under the relative gain array table: the
+value of $\lambda_{11}$ from the matrix formula and the value
+from the shortcut agree to the four decimals displayed.
+
+### Experiment 4
+
+Set "Configuration" to DB. The Analysis panel then shows no
+gain matrix and no RGA. It shows the gains for the balanced
+split and for $x_F$, the residuals of the deflated system
+(below $10^{-8}$; at the defaults they print at $10^{-15}$ or
+smaller), and the ramp rates of the integrating channels. The
+App step-response chart shows ramping (integrating) responses
+for an unbalanced stepped input.
+
+### Experiment 5
+
+In the Analysis panel, press "Fit FOPTD matrix". Read the
+fit-error column of the FOPTD matrix table. At the defaults
+no entry is flagged: the largest fit error is 1.6 % (the
+channel from the feed flow $F$ (mol/s) to the bottoms
+composition $x_B$), and all other channels are at 0.67 % or
+below. Entries above 10 % are flagged when they occur for
+other inputs. Use the channel overlay, set by the "Output"
+and "Input" selects and the "Show channel overlay" button,
+for the largest-error channel ($x_B$ from $F$) and one
+small-error channel. Compare the FOPTD curve against the
+high-order response in each case.
+
+### Experiment 6
+
+At the defaults, switch "Level control mode" from Perfect to
+Proportional-only and back. The gain matrix, $\lambda_{11}$
+and the dominant time constant in the Analysis panel are
+unchanged, because the steady-state gains are the same in
+both modes (§5). The poles table changes: the pole count
+rises from 12 to 14 at the default column, and the two added
+poles sit at $-0.1667$ 1/s (the level poles, set by the level
+gains), faster than the slowest pole. The two level gains
+$K_{cD}$ and $K_{cB}$ (in 1/s) set how strongly the levels are
+held. Read the poles from the panel.
+
 ## 1. The column, the stages and the operating point
 
 The column separates a binary mixture (two components) into a
@@ -790,6 +1005,33 @@ linear results are local to the operating point (§11). The
 FOPTD entries are reductions for comparison and for reading
 time scales; no controller is designed from them on this page.
 The relative gains are steady-state values (§8).
+
+## 13. Conclusion and discussion
+
+Point 1 gave a transfer matrix from a linearisation of the
+nonlinear stage model by automatic differentiation, with step
+responses that track the nonlinear model for small steps.
+Point 2 showed that the interaction between the two
+composition loops changes with the control configuration;
+the level closure changes the dynamics, not the steady-state
+gains. Point 3 gave two routes to the RGA,
+the matrix formula and the shortcut, with every row and column
+of the array summing to 1. Point 4 treated the DB
+configuration, which has no steady-state gain matrix and has
+finite gains only on the balanced-split direction and the
+feed-composition channel. Point 5 reduced each transfer-matrix
+entry to an FOPTD entry and reported a fit error for each
+entry.
+
+The limits are the limits of §11 and §12. The linear results
+are local to the operating point, and the separation between
+the linear and nonlinear responses grows with step size. The
+FOPTD entries are reductions for comparison and for reading
+time scales; no controller is designed from them on this page.
+The relative gains are steady-state values. The model is
+binary, at constant pressure and constant relative volatility,
+with equilibrium stages and linearised liquid dynamics, and
+with no vapour holdup and no energy balance.
 
 ## References
 

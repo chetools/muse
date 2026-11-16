@@ -80,3 +80,58 @@ FIX PASS (2026-11-16, independent reviews Briefs A/B/C, 20 items):
   3.2e-14, DB residuals shown in both level modes, FOPTD fit
   1.23 s at N=5 and 2.87 s at N=39, progress removed, zero
   page/console errors). Nothing pushed or published.
+
+V3 THEORY-FIRST REVISION (2026-11-16, user-approved plan):
+  Panels reordered Theory, App, Analysis, Code; Theory is the
+  landing panel; fragment routing unchanged. Theory gains
+  unnumbered front sections (Introduction; Relevance; Key
+  points to be demonstrated, 5 points; How this is
+  demonstrated; Guided experiments 1-6) and a closing
+  section 13, Conclusion and discussion; existing sections
+  1-12 not renumbered or retitled (theory.md: lines added
+  only in the front matter and section 13, plus the fix pass
+  below). App gains four dismissible Guide pop-ups (Column,
+  Control configuration, Step test, Reading the results):
+  native popover with a feature-detected fallback toggle for
+  browsers without showPopover; non-modal, never block a run.
+  Model and numbers FROZEN: precomputed payload byte-identical
+  to v2 (SHA-256 2fe80157...), notebook byte-identical, core
+  and driver suites pass unchanged. Trial run first: clean
+  rebuild of unmodified sources reproduced v2 byte-identically
+  (marimo-export venv python; system python3 lacks
+  markdown_it/pygments).
+  Build: dist/skogestad-column-a-standalone-v3.html
+  (7,039,713 bytes); guards pass (citations ok, CSS ok, 573
+  KaTeX spans, notebook byte-identical, boot guard ok).
+  Geometry QA PASS (qa_geometry_v3.py): 2560/1280/390, tab
+  order and Theory landing, TOC entries, chart geometry, no
+  overlaps, no sideways scroll, pop-ups open/close at all
+  widths incl. 390 px with a pop-up open, zero page errors.
+  Live QA PASS (qa_live_v3.py, CDN mirror): all v2 checks
+  (anchor max rel err 3.2e-14, DB A1 both modes, fits 1.56 s
+  at N=5 and 2.66 s at N=39, progress removed, keyboard,
+  zero errors) plus guided experiments executed live:
+  E1 separation grows (0.0011 at step 1, 0.1068 at step 10);
+  E2 lambda11 19.3585 (N=5 LV), 35.8970 (N=39 LV), 0.4445
+  (N=39 DV); E3 matrix/shortcut strings equal; E4 DB
+  residuals 1.25e-17 / 4.29e-16 < 1e-8; E5 max fit error
+  1.56 % (xB from F), no channel above 10 % at defaults;
+  E6 level mode leaves gains, lambda11 and dominant time
+  constant (222.3 s) unchanged, pole count 12 -> 14;
+  pop-up open during a run does not block the auto-run.
+  Independent delta review (clean context): 3 confirmed
+  findings, all upheld and fixed: (1) level closure does NOT
+  change steady-state gains/lambda11 (Theory section 5) -
+  Key point 2, Relevance, Experiment 6, section 13 and the
+  guide-config pop-up restated (dynamics/poles only);
+  (2) configuration codes used before L, V, D, B defined -
+  flows now defined in the Introduction; (3) guide-config
+  pop-up now spells out every code's flows and stands alone.
+  QA also corrected Experiment 2's precise lambda11 values
+  to the page-displayed ones for the page's rounded default
+  flows (35.8970 / 0.4445; 35.94 / 0.447 are the unrounded
+  source-flow values, section 8 sensitivity) and Experiment
+  5's procedure (no flagged channel at the defaults).
+  Delta re-review of the fixed passages: no confirmed
+  findings (7/7 passages, 10/10 numbers). Delta QA re-run
+  with the corrected expectations as hard asserts: PASS.

@@ -1,0 +1,217 @@
+{
+ "boot": "ready; first live run complete",
+ "precomputed_replaced": true,
+ "anchor_max_rel_err": 3.1954540229193674e-14,
+ "changed_input_run": "summary updated after edit",
+ "experiments": {
+  "E3": {
+   "rga_note": "L\tV\nxD\t19.3585\t-18.3585\nxB\t-18.3585\t19.3585\n\n\u03bb11 from the matrix formula: 19.3585; from the shortcut 1 / (1 \u2212 g12 g21 / (g11 g22)): 19.3585. Every row and column sums to 1 (Theory, \u00a78).",
+   "lambda11_matrix_str": "19.3585",
+   "lambda11_shortcut_str": "19.3585",
+   "strings_equal": true
+  },
+  "E2": {
+   "lambda11_N5_LV": 19.3585,
+   "N39_summary": {
+    "Configuration / level mode": "LV / perfect",
+    "Stages NT (feed stage from bottom)": "41 (21)",
+    "Distillate composition xD": "0.9900",
+    "Bottoms composition xB": "0.0100",
+    "Distillate flow D0 (mol/s)": "8.333",
+    "Bottoms flow B0 (mol/s)": "8.334",
+    "Dominant time constant (s)": "11629.1",
+    "Steady-state residual (largest |right-hand side|)": "1.77e-12"
+   },
+   "xD_N39": 0.99,
+   "lambda11_N39_LV": 35.897,
+   "lambda11_N39_LV_full": 35.897000577712866,
+   "lambda11_N39_LV_expected": 35.897,
+   "lambda11_N39_DV": 0.4445,
+   "lambda11_restored_N5_LV": 19.3585
+  },
+  "E6": {
+   "perfect": {
+    "lambda11": 19.3585,
+    "tau_dom": 222.3,
+    "poles_text": "Number of poles: 12. Dominant (slowest) time constant: 222.3 s. Largest imaginary part over all poles: 0.00e+0 1/s.\n\nSlowest poles (1/s), real parts\n-4.50e-3\n-2.77e-2\n-9.07e-2\n-1.67e-1\n-2.64e-1\n-2.65e-1\n-2.65e-1\n-2.65e-1\n-2.65e-1\n-2.65e-1",
+    "lambda11_full": 19.358493323585677,
+    "tau_dom_full": 222.2656404028267,
+    "pole_count": 12
+   },
+   "proportional": {
+    "lambda11": 19.3585,
+    "tau_dom": 222.3,
+    "poles_text": "Number of poles: 14. Dominant (slowest) time constant: 222.3 s. Largest imaginary part over all poles: 0.00e+0 1/s.\n\nSlowest poles (1/s), real parts\n-4.50e-3\n-2.77e-2\n-9.07e-2\n-1.67e-1\n-1.67e-1\n-1.67e-1\n-2.64e-1\n-2.65e-1\n-2.65e-1\n-2.65e-1",
+    "lambda11_full": 19.3584933239411,
+    "tau_dom_full": 222.2656404028267,
+    "pole_count": 14
+   },
+   "displayed_values_differ": false,
+   "displayed_values_identical": true
+  },
+  "E1": {
+   "size1": {
+    "lin_xD": 0.0263,
+    "nonlin_xD": 0.0252,
+    "sep_xD": 0.0011000000000000003
+   },
+   "size10": {
+    "lin_xD": 0.2625,
+    "nonlin_xD": 0.1557,
+    "sep_xD": 0.1068
+   },
+   "separation_grows": true
+  },
+  "E4": {
+   "residual_balanced": 1.25e-17,
+   "residual_xf": 4.29e-16,
+   "rga_text": "No relative gain array exists for DB: the gain matrix does not exist at steady state, and the published relative gain is infinite (Theory, \u00a78 and \u00a79)."
+  },
+  "E5": {
+   "rows": [
+    {
+     "label": "xD \u2190 L",
+     "cells": [
+      "0.02645",
+      "228.0",
+      "17.3",
+      "0.39"
+     ],
+     "i": 0,
+     "j": 0,
+     "err": 0.39,
+     "flagged": false
+    },
+    {
+     "label": "xD \u2190 V",
+     "cells": [
+      "-0.02572",
+      "227.0",
+      "15.0",
+      "0.32"
+     ],
+     "i": 0,
+     "j": 1,
+     "err": 0.32,
+     "flagged": false
+    },
+    {
+     "label": "xD \u2190 F",
+     "cells": [
+      "0.01089",
+      "230.1",
+      "51.6",
+      "0.60"
+     ],
+     "i": 0,
+     "j": 2,
+     "err": 0.6,
+     "flagged": false
+    },
+    {
+     "label": "xD \u2190 xF",
+     "cells": [
+      "0.98718",
+      "224.5",
+      "19.9",
+      "0.16"
+     ],
+     "i": 0,
+     "j": 3,
+     "err": 0.16,
+     "flagged": false
+    },
+    {
+     "label": "xB \u2190 L",
+     "cells": [
+      "0.02864",
+      "216.6",
+      "9.6",
+      "0.33"
+     ],
+     "i": 1,
+     "j": 0,
+     "err": 0.33,
+     "flagged": false
+    },
+    {
+     "label": "xB \u2190 V",
+     "cells": [
+      "-0.02937",
+      "210.8",
+      "0.0",
+      "0.67"
+     ],
+     "i": 1,
+     "j": 1,
+     "err": 0.67,
+     "flagged": false
+    },
+    {
+     "label": "xB \u2190 F",
+     "cells": [
+      "0.01666",
+      "191.1",
+      "0.0",
+      "1.56"
+     ],
+     "i": 1,
+     "j": 2,
+     "err": 1.56,
+     "flagged": false
+    },
+    {
+     "label": "xB \u2190 xF",
+     "cells": [
+      "1.01282",
+      "221.7",
+      "13.8",
+      "0.05"
+     ],
+     "i": 1,
+     "j": 3,
+     "err": 0.05,
+     "flagged": false
+    }
+   ],
+   "max_fit_error_pct": 1.56,
+   "max_channel": "xB \u2190 F",
+   "channels_over_10pct": [],
+   "flagged_in_dom": [],
+   "worst_channel_overlay": "rendered",
+   "overlay_channel": "xB \u2190 F"
+  },
+  "popup_during_run": {
+   "open_before_run": {
+    "found": true,
+    "popOpen": true,
+    "display": "block",
+    "hidden": false,
+    "w": 352,
+    "h": 339
+   },
+   "open_after_run": {
+    "found": true,
+    "popOpen": true,
+    "display": "block",
+    "hidden": false,
+    "w": 352,
+    "h": 339
+   },
+   "summary_updated_with_popup_open": true,
+   "popup_still_open_after_run": true
+  }
+ },
+ "findings": [],
+ "foptd_fit_s_N5": 1.56,
+ "channel_overlay": "rendered",
+ "db_residuals_perfect": "shown in DB panel",
+ "db_residuals_P": "shown in DB panel",
+ "db": "A1 treatment rendered; no NaN",
+ "foptd_fit_s_N39": 2.66,
+ "progress_removed": true,
+ "live_region": "FOPTD matrix fitted.",
+ "keyboard_first_focus": "BUTTON",
+ "keyboard_tab_switch": "Theory panel visible",
+ "page_errors": []
+}
