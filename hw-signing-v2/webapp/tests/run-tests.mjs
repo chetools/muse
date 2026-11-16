@@ -351,7 +351,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.4');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.5');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -799,7 +799,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.4');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.5');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -819,6 +819,29 @@ await test('wiring: status expiry is stored back into the job entry (2.4.1)', ()
     'renderJobs drops an entry when the Worker reports the job expired');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('at least 8'), 'the code help states the 8-character minimum');
+});
+
+await test('wiring: jobs refresh never rebuilds the list under the student (2.4.5)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('Promise.all(entries.map'),
+    'statuses are fetched in parallel, before the list is touched');
+  assert.ok(main.includes('renderJobsPromise'),
+    'renders are serialised: callers share one in-flight render');
+  assert.ok(main.includes('zipReviews.size'),
+    'the 5-second poll pauses while a ZIP review panel is open');
+  assert.ok(main.includes('zipBusy'),
+    'the 5-second poll pauses while a ZIP verification or download runs');
+  assert.ok(!main.includes('holder.textContent'),
+    'no row is rendered twice (stale state, then fresh state) any more');
+  assert.ok((main.match(/zipReviews\.delete/g) || []).length >= 4,
+    'a ZIP review entry is deleted on download, on removing its job, ' +
+    'on the job expiring, and on a manual retrieval replacing its row — ' +
+    'an orphaned entry would pause the poll for good');
+  assert.ok(main.includes("renderJobRow(box, entry, { status: 'ready' })"),
+    'the manually retrieved row is rendered with a status object, so its ' +
+    'grades and ZIP buttons appear');
+  assert.ok(!main.includes("renderJobRow(box, entry, 'ready')"),
+    'a string status renders as "undefined" with no ZIP button (pre-2.4.5 defect)');
 });
 
 /* ---------------- duration bands + bundle verification (2.4.0) ---------------- */
