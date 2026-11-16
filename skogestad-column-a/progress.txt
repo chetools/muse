@@ -144,3 +144,34 @@ V3 THEORY-FIRST REVISION (2026-11-16, user-approved plan):
   unchanged). Served bytes verified byte-identical to the
   v3 build (SHA-256 b3aec731..., 7,039,713 bytes) at
   https://chetools.github.io/muse/skogestad-column-a/
+
+V4 CHANNEL-OVERLAY FIX (2026-11-16):
+  Defect (from the user's iPhone screenshot): after pressing
+  Fit on phones, a blank 380 px #chart-channel block stood in
+  the Analysis panel. The block is 380 px at all widths
+  because .chart.tall outranks the phone .chart rule.
+  Root cause: doFit never rendered a channel; only the
+  sidebar button did, and renderChannel returned early for
+  integrating/negligible channels, leaving the box empty.
+  Changes: doFit now awaits doChannel after a successful
+  fit; placeholder text inside #chart-channel in the
+  template, restored by doRun/markStale; markStale also
+  clears #an-channel-note; integrating/negligible notes are
+  written into the chart area via showChannelText; the
+  balanced-split error in doChannel also writes its DB-only
+  explanation into the chart area; the Show channel overlay
+  button is unchanged.
+  Model and numbers FROZEN: precomputed payload
+  byte-identical to v3 (SHA-256 2fe80157...).
+  Build: dist/skogestad-column-a-standalone-v4.html
+  (7,040,820 bytes, SHA-256 73ae8207...); trial rebuild of
+  unmodified sources byte-identical to v3; build guards
+  pass; both test suites pass.
+  Geometry QA PASS (qa_geometry_v4.py): 2560/1280/390.
+  Live QA PASS (qa_live_v4.py): 1280 and 390 - placeholder
+  before fit, fit-only press draws the overlay with SVG
+  width = container at both widths, stale-note and
+  balanced-split scenarios pass, DB integrating text in the
+  chart area, zero console/page errors.
+  Independent delta review: 2 confirmed findings, both
+  fixed; delta re-review 0 findings (10/10).

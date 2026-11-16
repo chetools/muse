@@ -1,0 +1,62 @@
+{
+ "widths": {
+  "1280": {
+   "placeholder_before_fit": {
+    "text": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+    "visible": true
+   },
+   "overlay_after_fit_only": {
+    "svgW": 845,
+    "boxW": 845
+   },
+   "channel_note_after_fit": "K = 0.02645, tau = 228.0 s, theta = 17.3 s, fit error = 0.39 %.",
+   "screenshot": "qa/1280-analysis-v4-overlay.png",
+   "stale_note": {
+    "channel": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+    "note": "",
+    "stale_shown": true,
+    "input_restored": true
+   },
+   "button_rerender": {
+    "note": "K = 0.01666, tau = 191.1 s, theta = 0.0 s, fit error = 1.56 %.",
+    "chart_title": "Channel xB \u2190 F (unit step)"
+   },
+   "balanced_split": {
+    "foptd_rendered": true,
+    "ch_err": "The balanced-split channel exists only for DB.",
+    "chart_channel": "The balanced-split channel exists only for DB.",
+    "svg_count": 0
+   },
+   "placeholder_after_DB_run": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+   "integrating_chart_area": "Channel xD \u2190 D is integrating: no FOPTD fit. Long-time ramp rate -3.94e-5 mole fraction/s per unit input.",
+   "page_errors": []
+  },
+  "390": {
+   "placeholder_before_fit": {
+    "text": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+    "visible": true
+   },
+   "overlay_after_fit_only": {
+    "svgW": 358,
+    "boxW": 358
+   },
+   "channel_note_after_fit": "K = 0.02645, tau = 228.0 s, theta = 17.3 s, fit error = 0.39 %.",
+   "screenshot": "qa/390-analysis-v4-overlay.png",
+   "stale_note": {
+    "channel": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+    "note": "",
+    "stale_shown": true,
+    "input_restored": true
+   },
+   "balanced_split": {
+    "foptd_rendered": true,
+    "ch_err": "The balanced-split channel exists only for DB.",
+    "chart_channel": "The balanced-split channel exists only for DB.",
+    "svg_count": 0
+   },
+   "placeholder_after_DB_run": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+   "integrating_chart_area": "Channel xD \u2190 D is integrating: no FOPTD fit. Long-time ramp rate -3.94e-5 mole fraction/s per unit input.",
+   "page_errors": []
+  }
+ }
+}

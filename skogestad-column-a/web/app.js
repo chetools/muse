@@ -103,6 +103,10 @@ function markStale() {
   const stale = displayedParams !== null && now !== displayedParams;
   $("app-stale").hidden = !stale;
   $("an-stale").hidden = !stale;
+  if (stale) {
+    showChannelPlaceholder();
+    $("an-channel-note").innerHTML = "";
+  }
 }
 
 // ---------- tabs and fragments ----------
@@ -209,6 +213,19 @@ function plot(id, traces, layout) {
   el.data = true;
   Plotly.react(el, traces, Object.assign(
     { margin: MARGIN, legend: LEGEND, showlegend: true }, layout));
+}
+
+const CHANNEL_PLACEHOLDER = "No channel overlay yet — it appears " +
+  "here when the FOPTD matrix is fitted.";
+function showChannelPlaceholder() {
+  showChannelText('<p class="note chart-placeholder">' +
+    CHANNEL_PLACEHOLDER + "</p>");
+}
+function showChannelText(html) {
+  const el = $("chart-channel");
+  if (window.Plotly && el.data) Plotly.purge(el);
+  el.data = false;
+  el.innerHTML = html;
 }
 
 function renderSummary(res, pre) {
@@ -391,18 +408,26 @@ function renderChannel(ch, res) {
   const c = ch.channel;
   const label = outs[c.i] + " ← " + inName(res, c.j);
   if (c.integrating) {
-    $("an-channel-note").innerHTML = '<p class="note">Channel ' +
+    const html = '<p class="note">Channel ' +
       esc(label) + " is integrating: no FOPTD fit. Long-time " +
       "ramp rate " + fmtE(c.ramp) +
       " mole fraction/s per unit input.</p>";
+    $("an-channel-note").innerHTML = html;
+    showChannelText(html);
     return;
   }
   if (c.negligible) {
-    $("an-channel-note").innerHTML = '<p class="note">Channel ' +
+    const html = '<p class="note">Channel ' +
       esc(label) + " is negligible (K = " + fmt(c.K, 5) +
       "); no fit is identifiable.</p>";
+    $("an-channel-note").innerHTML = html;
+    showChannelText(html);
     return;
   }
+  const el = $("chart-channel");
+  if (window.Plotly && el.data) Plotly.purge(el);
+  el.data = false;
+  el.innerHTML = "";
   plot("chart-channel", [
     { x: c.t, y: c.y_high, mode: "lines",
       name: "high-order step response" },
@@ -435,6 +460,8 @@ async function doRun() {
     renderAnalysis(res, false);
     $("an-foptd").innerHTML = '<p class="note">Not fitted for ' +
       "the current inputs. Use the Fit FOPTD matrix button.</p>";
+    showChannelPlaceholder();
+    $("an-channel-note").innerHTML = "";
     $("run-note").textContent = "Run complete.";
     announce("Run complete. xD " + fmt(res.xD) + ", xB " +
       fmt(res.xB) + ".");
@@ -459,6 +486,7 @@ async function doFit() {
       mv_names: ["MV1", "MV2"] });
     $("fit-note").textContent = "FOPTD matrix fitted.";
     announce("FOPTD matrix fitted.");
+    await doChannel();
   } catch (e) {
     $("fit-err").textContent = e.message;
     $("fit-err").hidden = false;
@@ -484,6 +512,8 @@ async function doChannel() {
     if (String(e.message).includes("channel")) {
       $("ch-err").textContent =
         "The balanced-split channel exists only for DB.";
+      showChannelText('<p class="note chart-placeholder">' +
+        "The balanced-split channel exists only for DB.</p>");
     } else {
       $("ch-err").textContent = e.message;
     }

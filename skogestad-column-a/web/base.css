@@ -43,6 +43,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .main { min-width: 0; }
 .chart { width: 100%; height: 340px; }
 .chart.tall { height: 380px; }
+.chart .chart-placeholder { margin: 0; padding: 0.8rem; }
 table.metrics { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
 table.metrics th, table.metrics td { border: 1px solid #ccc;
   padding: 0.3rem 0.5rem; text-align: right; }

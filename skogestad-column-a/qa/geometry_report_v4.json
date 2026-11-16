@@ -1,0 +1,566 @@
+{
+ "widths": {
+  "2560": {
+   "tabs": {
+    "theory": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "app": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [
+       {
+        "id": "chart-profile",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "chart-step",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "analysis": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "code": {
+     "geometry": {
+      "scrollW": 2560,
+      "innerW": 2560,
+      "charts": [
+       {
+        "id": "walkfig-1-1",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "walkfig-7-1",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    }
+   },
+   "landing": {
+    "tab_order": [
+     "theory",
+     "app",
+     "analysis",
+     "code"
+    ],
+    "tab_labels": [
+     "Theory",
+     "App",
+     "Analysis",
+     "Code"
+    ],
+    "panel_visible_on_load": {
+     "theory": true,
+     "app": false,
+     "analysis": false,
+     "code": false
+    },
+    "toc_text": "Introduction\nRelevance\nKey points to be demonstrated\nHow this is demonstrated\nGuided experiments\nExperiment 1\nExperiment 2\nExperiment 3\nExperiment 4\nExperiment 5\nExperiment 6\n1. The column, the stages and the operating point\n2. The stage balances\n3. Inter-stage flows: vapour flows and the liquid-flow law\n4. The steady state\n5. Control configurations and the level closures\n6. Linearisation by automatic differentiation\n7. The transfer matrix, poles and steady-state gains\n8. The relative gain array and its shortcut\n9. The DB configuration: a pole at the origin\n10. Reduction to first-order plus dead time entries\n11. The nonlinear step comparison\n12. Scope and limits of the model\n13. Conclusion and discussion\nReferences",
+    "toc_required_present": [
+     "Introduction",
+     "Relevance",
+     "Key points to be demonstrated",
+     "How this is demonstrated",
+     "Guided experiments",
+     "13. Conclusion and discussion"
+    ]
+   },
+   "channel_placeholder": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+   "walkthrough_step5": "anchor xD = 0.9900 shown",
+   "popups": {
+    "guide-column": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 339
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-config": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 446
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-step": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 232
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-results": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 360
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    }
+   },
+   "edges": {
+    "colL": 680,
+    "colR": 1880,
+    "headL": 696,
+    "headR": 1864
+   },
+   "pageerrors": []
+  },
+  "1280": {
+   "tabs": {
+    "theory": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "app": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [
+       {
+        "id": "chart-profile",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "chart-step",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "analysis": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "code": {
+     "geometry": {
+      "scrollW": 1280,
+      "innerW": 1280,
+      "charts": [
+       {
+        "id": "walkfig-1-1",
+        "svgW": 845,
+        "boxW": 845
+       },
+       {
+        "id": "walkfig-7-1",
+        "svgW": 845,
+        "boxW": 845
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    }
+   },
+   "landing": {
+    "tab_order": [
+     "theory",
+     "app",
+     "analysis",
+     "code"
+    ],
+    "tab_labels": [
+     "Theory",
+     "App",
+     "Analysis",
+     "Code"
+    ],
+    "panel_visible_on_load": {
+     "theory": true,
+     "app": false,
+     "analysis": false,
+     "code": false
+    },
+    "toc_text": "Introduction\nRelevance\nKey points to be demonstrated\nHow this is demonstrated\nGuided experiments\nExperiment 1\nExperiment 2\nExperiment 3\nExperiment 4\nExperiment 5\nExperiment 6\n1. The column, the stages and the operating point\n2. The stage balances\n3. Inter-stage flows: vapour flows and the liquid-flow law\n4. The steady state\n5. Control configurations and the level closures\n6. Linearisation by automatic differentiation\n7. The transfer matrix, poles and steady-state gains\n8. The relative gain array and its shortcut\n9. The DB configuration: a pole at the origin\n10. Reduction to first-order plus dead time entries\n11. The nonlinear step comparison\n12. Scope and limits of the model\n13. Conclusion and discussion\nReferences",
+    "toc_required_present": [
+     "Introduction",
+     "Relevance",
+     "Key points to be demonstrated",
+     "How this is demonstrated",
+     "Guided experiments",
+     "13. Conclusion and discussion"
+    ]
+   },
+   "channel_placeholder": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+   "walkthrough_step5": "anchor xD = 0.9900 shown",
+   "popups": {
+    "guide-column": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 339
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-config": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 446
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-step": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 232
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-results": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 360
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    }
+   },
+   "edges": {
+    "colL": 40,
+    "colR": 1240,
+    "headL": 56,
+    "headR": 1224
+   },
+   "pageerrors": []
+  },
+  "390": {
+   "tabs": {
+    "theory": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "app": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [
+       {
+        "id": "chart-profile",
+        "svgW": 358,
+        "boxW": 358
+       },
+       {
+        "id": "chart-step",
+        "svgW": 358,
+        "boxW": 358
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "analysis": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [],
+      "overlaps": []
+     },
+     "bad_charts": []
+    },
+    "code": {
+     "geometry": {
+      "scrollW": 390,
+      "innerW": 390,
+      "charts": [
+       {
+        "id": "walkfig-1-1",
+        "svgW": 358,
+        "boxW": 358
+       },
+       {
+        "id": "walkfig-7-1",
+        "svgW": 358,
+        "boxW": 358
+       }
+      ],
+      "overlaps": []
+     },
+     "bad_charts": []
+    }
+   },
+   "landing": {
+    "tab_order": [
+     "theory",
+     "app",
+     "analysis",
+     "code"
+    ],
+    "tab_labels": [
+     "Theory",
+     "App",
+     "Analysis",
+     "Code"
+    ],
+    "panel_visible_on_load": {
+     "theory": true,
+     "app": false,
+     "analysis": false,
+     "code": false
+    },
+    "toc_text": "Introduction\nRelevance\nKey points to be demonstrated\nHow this is demonstrated\nGuided experiments\nExperiment 1\nExperiment 2\nExperiment 3\nExperiment 4\nExperiment 5\nExperiment 6\n1. The column, the stages and the operating point\n2. The stage balances\n3. Inter-stage flows: vapour flows and the liquid-flow law\n4. The steady state\n5. Control configurations and the level closures\n6. Linearisation by automatic differentiation\n7. The transfer matrix, poles and steady-state gains\n8. The relative gain array and its shortcut\n9. The DB configuration: a pole at the origin\n10. Reduction to first-order plus dead time entries\n11. The nonlinear step comparison\n12. Scope and limits of the model\n13. Conclusion and discussion\nReferences",
+    "toc_required_present": [
+     "Introduction",
+     "Relevance",
+     "Key points to be demonstrated",
+     "How this is demonstrated",
+     "Guided experiments",
+     "13. Conclusion and discussion"
+    ]
+   },
+   "channel_placeholder": "No channel overlay yet \u2014 it appears here when the FOPTD matrix is fitted.",
+   "walkthrough_step5": "anchor xD = 0.9900 shown",
+   "popups": {
+    "guide-column": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 339
+     },
+     "scroll_390": {
+      "sw": 390,
+      "iw": 390
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-config": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 446
+     },
+     "scroll_390": {
+      "sw": 390,
+      "iw": 390
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-step": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 232
+     },
+     "scroll_390": {
+      "sw": 390,
+      "iw": 390
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    },
+    "guide-results": {
+     "open_state": {
+      "found": true,
+      "popOpen": true,
+      "display": "block",
+      "hidden": false,
+      "openClass": false,
+      "w": 352,
+      "h": 360
+     },
+     "scroll_390": {
+      "sw": 390,
+      "iw": 390
+     },
+     "closed_state": {
+      "found": true,
+      "popOpen": false,
+      "display": "none",
+      "hidden": false,
+      "openClass": false,
+      "w": 0,
+      "h": 0
+     }
+    }
+   },
+   "edges": {
+    "colL": 0,
+    "colR": 390,
+    "headL": 16,
+    "headR": 374
+   },
+   "pageerrors": []
+  }
+ }
+}
