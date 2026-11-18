@@ -235,7 +235,15 @@ logic is Node-tested through `classifyDuration`.
   segment ("al-paso"), not inside longer words ("always-7",
   "final-try"); longer words and collapsed multi-word entries block
   anywhere.
-- **Component version strings**: webapp `hw-signing-webapp 2.4.5`;
+- **ZIP steps show live status (2.4.6)**: the verification step
+  shows a labelled progress element beside the ZIP button while it
+  hashes the recording, and the ZIP build runs in slices
+  (`buildZipAsync`) with a percentage progress element; both are
+  removed when the step completes — the download leaves a brief
+  "Done — <file name> has been downloaded" line above the jobs
+  list. The built ZIP's bytes are unchanged from the synchronous
+  builder for the same entries.
+- **Component version strings**: webapp `hw-signing-webapp 2.4.6`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle

@@ -22,7 +22,7 @@ import { encodeWavPcm16, wavDurationS } from '../js/media.js';
 import { buildVocabulary } from '../js/vocab.js';
 import { PAIRS } from '../chemescribe-base/corrections.js';
 import { cacheKey, cacheHit, toCachedChunk, fromCachedChunk, recordingFirstWords } from '../js/cachekey.js';
-import { crc32, buildZipBytes, ZIP_DOS_DATE, ZIP_DOS_TIME, submissionZipName } from '../js/zip.js';
+import { crc32, crc32Async, buildZipBytes, buildZipBytesAsync, ZIP_DOS_DATE, ZIP_DOS_TIME, submissionZipName } from '../js/zip.js';
 import {
   RETRIEVAL_CODE_RE, parseYouTubeVideoId, canonicalWatchUrl,
   classifyDuration, verifyBundleContents, reportDurationStat,
@@ -270,6 +270,30 @@ await test('zip: round-trip — entries in order, contents and CRC intact', () =
   assert.equal(crc32(new TextEncoder().encode('123456789')), 0xCBF43926);
 });
 
+await test('zip async: byte-identical to the synchronous build; progress ends at total', async () => {
+  // An entry larger than the 4 MiB slice size, so slicing engages.
+  const big = new Uint8Array(9 * 1024 * 1024 + 123);
+  for (let i = 0; i < big.length; i++) big[i] = (i * 31 + 7) & 0xFF;
+  const entries = [
+    { name: 'submission.html', data: new TextEncoder().encode('<html>hello</html>') },
+    { name: 'submission-audio.wav', data: big },
+  ];
+  const total = entries.reduce((s, e) => s + e.data.length, 0);
+  const calls = [];
+  const asyncZip = await buildZipBytesAsync(entries, (done, tot) => calls.push([done, tot]));
+  assert.deepEqual(asyncZip, buildZipBytes(entries),
+    'async build → bytes identical to the synchronous build');
+  assert.ok(calls.length >= 3, 'progress reported across slices');
+  for (const [done, tot] of calls) {
+    assert.equal(tot, total);
+    assert.ok(done <= total, 'progress never exceeds the total');
+  }
+  assert.deepEqual(calls[calls.length - 1], [total, total],
+    'final progress call is exactly (total, total)');
+  assert.equal(await crc32Async(big), crc32(big),
+    'chunked CRC-32 equals the one-shot CRC-32');
+});
+
 await test('zip name: course, homework, total grade and YouTube check time', () => {
   // Dates are constructed locally so the expectation holds in any
   // timezone: the name uses local time.
@@ -351,7 +375,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.5');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.6');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -799,7 +823,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.5');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.6');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -842,6 +866,27 @@ await test('wiring: jobs refresh never rebuilds the list under the student (2.4.
     'grades and ZIP buttons appear');
   assert.ok(!main.includes("renderJobRow(box, entry, 'ready')"),
     'a string status renders as "undefined" with no ZIP button (pre-2.4.5 defect)');
+});
+
+await test('wiring: ZIP steps show live status and a completion line (2.4.6)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(main.includes('buildZipAsync'),
+    'the ZIP is built by the sliced async builder, not the blocking one');
+  assert.ok(!main.includes('buildZip('),
+    'no call site still uses the synchronous ZIP builder');
+  assert.ok(main.includes("document.createElement('progress')"),
+    'a native progress element is created for the ZIP steps');
+  assert.ok(main.includes('Verifying the recording and the transcript'),
+    'the verification step announces itself beside the ZIP button');
+  assert.ok(main.includes('Building the submission ZIP… '),
+    'the build step reports its percentage beside the download button');
+  assert.ok(main.includes('status.box.remove()'),
+    'the progress element is removed when a step completes');
+  assert.ok(main.includes("$('zipDone')") && html.includes('id="zipDone"'),
+    'a completion line element sits above the jobs list and is filled in');
+  assert.ok(main.includes('has been downloaded. Upload that file to Canvas.'),
+    'the completion line names the downloaded file and the next action');
 });
 
 /* ---------------- duration bands + bundle verification (2.4.0) ---------------- */
