@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/35.0",
-          "user agent bumped to 35.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/36.0",
+          "user agent bumped to 36.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2581,10 +2581,22 @@ def main():
     # video (delta over the same global state).
     res35_path = data_dir / "audit-results.json"
     saved35 = json.loads(res35_path.read_text())
+    # v36: a finished entry carries its input fingerprint and a
+    # measured acoustic result; the hand-written "complete" entry
+    # below carries both, so it represents the same state under
+    # the incremental owed-check decision (pending_work now uses
+    # _check_mode, the run_checks decision itself).
+    _att_pkg35 = next(p for p in web.downloaded_attempt_packages(cfg35)
+                      if p["attempt_key"] == KEY888 + "::a1")
+    _dl35 = web.read_json_file(
+        web._state_file(cfg35, "download-state.json"), {})
     saved35[KEY888 + "::a1"] = {
         "internally_consistent": True,
         "youtube": {"available": True, "youtube_flag": False,
-                    "passed": True}}
+                    "passed": True, "acoustic_configured": True,
+                    "similarity": 0.99},
+        "check_inputs": web._package_check_inputs(
+            cfg35, _att_pkg35, _dl35)}
     res35_path.write_text(json.dumps(saved35))
     p_before35 = web.pending_work(cfg35)
     saved35 = json.loads(res35_path.read_text())
@@ -2638,6 +2650,296 @@ def main():
           and b"fin2.diff" in wall35p,
           "wall zoom: no Save grade button, auto-save on "
           "change, difference shading style present (v35)")
+
+    # ---------------------------------------------------------
+    # 15. v36: incremental integrity checks. A stored check
+    # carries a fingerprint of its inputs; an unchanged package
+    # is skipped, a changed video or threshold earns only the
+    # acoustic re-check, a changed package (or a changed ZIP
+    # watermark, or a fingerprint-less pre-v36 entry) earns a
+    # full check, a degraded acoustic result is retried, an
+    # error entry is always retried, only_keys restricts a run,
+    # and the manual endpoint forces a full re-check unless
+    # asked for the incremental pass. The counters wrap the real
+    # check functions, the real acoustic fake used for measured
+    # results, and the real Worker verification, so a skip is
+    # proven by the absence of the work itself — the package
+    # check, its Worker call and the acoustic check are three
+    # separately counted signals. Fixture: Wren (999), a clean
+    # current package (4 + 4) and a clean previous attempt, each
+    # with its YouTube video on disk.
+    KEY999 = "101_202_999"
+    unit999 = data_dir / "downloads" / "101" / "202" / "999"
+    seed35(unit999, audit.sha256_file(wav_tmp))
+    seed35(unit999 / "attempt-1", audit.sha256_file(wav_tmp))
+    (data_dir / "videos" / f"{KEY999}.mp4").write_bytes(
+        b"wren-video-v1")
+    (data_dir / "videos" / f"{KEY999}-attempt-1.mp4").write_bytes(
+        b"wren-attempt-video-v1")
+    cfg36 = web.load_web_config()
+    counts36 = {"pkg": 0, "yt": 0, "worker": 0}
+    _orig_cp36 = audit.check_package
+    _orig_yt36 = audit.youtube_cross_check
+    _orig_wv36 = audit.worker_verify_grade
+
+    def counting_cp36(*a, **k):
+        counts36["pkg"] += 1
+        return _orig_cp36(*a, **k)
+
+    def fake_yt36(*a, **k):
+        # A measured acoustic result (the real cross-check on
+        # these fixture bytes measures nothing — that degraded
+        # case has its own step below).
+        counts36["yt"] += 1
+        return {"available": True, "youtube_flag": False,
+                "passed": True, "similarity": 0.99,
+                "threshold": 0.85, "acoustic_configured": True}
+
+    def counting_wv36(*a, **k):
+        counts36["worker"] += 1
+        return _orig_wv36(*a, **k)
+
+    def entry36(key=KEY999):
+        return json.loads((data_dir / "audit-results.json")
+                          .read_text())[key]
+
+    audit.check_package = counting_cp36
+    audit.youtube_cross_check = fake_yt36
+    audit.worker_verify_grade = counting_wv36
+    try:
+        web.run_checks(cfg36)
+        e999 = entry36()
+        ci999 = e999.get("check_inputs") or {}
+        check(e999.get("internally_consistent")
+              and ci999.get("video") is not None
+              and ci999.get("threshold") == 0.85
+              and ci999.get("worker") == cfg36["worker_base_url"]
+              and ci999.get("app") == audit.USER_AGENT
+              and ci999.get("html_sha256") == audit.sha256_file(
+                  unit999 / "submission.html"),
+              "v36: the first check stores the input fingerprint, "
+              "with the threshold, Worker, app version, video "
+              "signature and HTML hash it actually used")
+        check(entry36(KEY999 + "::a1").get("internally_consistent")
+              and entry36(KEY999 + "::a1").get("check_inputs"),
+              "v36: a previous attempt is checked and "
+              "fingerprinted under its own key")
+        base36 = dict(counts36)
+        at36 = e999["checked_at"]
+        at36a = entry36(KEY999 + "::a1")["checked_at"]
+        web.run_checks(cfg36)
+        check(counts36 == base36
+              and entry36()["checked_at"] == at36
+              and entry36(KEY999 + "::a1")["checked_at"] == at36a,
+              "v36: unchanged packages are skipped outright — no "
+              "package check, no Worker call, no acoustic check, "
+              "entries untouched (current and previous attempt)")
+        status, act36 = call("GET", "/api/activity")
+        check(any("stored checks stand" in e["msg"]
+                  for e in act36["entries"]),
+              "v36: the skip is the planning loop's own decision, "
+              "logged as such — not an early return that never "
+              "looked at the packages")
+        (data_dir / "videos" / f"{KEY999}.mp4").write_bytes(
+            b"wren-video-v2-longer")
+        web.run_checks(cfg36)
+        check(counts36["pkg"] == base36["pkg"]
+              and counts36["worker"] == base36["worker"]
+              and counts36["yt"] == base36["yt"] + 1,
+              "v36: a changed video earns only the acoustic "
+              "re-check — the package check and its Worker call "
+              "do not run")
+        base36 = dict(counts36)
+        cfg36["acoustic_threshold"] = 0.9
+        web.run_checks(cfg36)
+        check(counts36["pkg"] == base36["pkg"]
+              and counts36["yt"] > base36["yt"],
+              "v36: a threshold-only change re-runs the acoustic "
+              "part (for every package — the threshold is global) "
+              "and no package check")
+        cfg36["acoustic_threshold"] = 0.85
+        web.run_checks(cfg36)
+        base36 = dict(counts36)
+        check(counts36["pkg"] == base36["pkg"],
+              "v36: restoring the threshold is likewise "
+              "acoustic-only")
+        (data_dir / "videos" / f"{KEY999}.mp4").write_bytes(
+            b"wren-video-v3")
+        web.run_checks(cfg36, only_keys={"101_202_000"})
+        check(counts36 == base36,
+              "v36: only_keys excludes every other package, "
+              "even one that owes a check")
+        web.run_checks(cfg36, only_keys={KEY999})
+        check(counts36["pkg"] == base36["pkg"]
+              and counts36["yt"] == base36["yt"] + 1,
+              "v36: only_keys runs just the named package, at "
+              "acoustic-only cost")
+        base36 = dict(counts36)
+        seed35(unit999, "0" * 64)
+        web.run_checks(cfg36)
+        check(counts36["pkg"] == base36["pkg"] + 1
+              and counts36["worker"] == base36["worker"] + 1
+              and entry36().get("internally_consistent") is False,
+              "v36: a changed package is fully re-checked "
+              "(Worker call included) and flagged")
+        seed35(unit999, audit.sha256_file(wav_tmp))
+        web.run_checks(cfg36)
+        check(entry36().get("internally_consistent"),
+              "v36: the restored package re-checks clean")
+        # A fingerprint-less (pre-v36) entry: one full check,
+        # then it is skipped like any other.
+        saved36 = json.loads((data_dir / "audit-results.json")
+                             .read_text())
+        del saved36[KEY999]["check_inputs"]
+        (data_dir / "audit-results.json").write_text(
+            json.dumps(saved36))
+        base36 = dict(counts36)
+        web.run_checks(cfg36)
+        check(counts36["pkg"] == base36["pkg"] + 1
+              and entry36().get("check_inputs"),
+              "v36: a pre-v36 entry with no fingerprint gets "
+              "one full check and gains its fingerprint")
+        base36 = dict(counts36)
+        web.run_checks(cfg36)
+        check(counts36 == base36,
+              "v36: from then on it is skipped like any other")
+        # A changed ZIP watermark alone (the download state's
+        # SHA-256 for this unit) invalidates the stored check.
+        dlp36 = data_dir / "download-state.json"
+        dl36 = json.loads(dlp36.read_text()) \
+            if dlp36.exists() else {}
+        dl36["101:202:999"] = {"zip_sha256": "f" * 64}
+        dlp36.write_text(json.dumps(dl36))
+        web.run_checks(cfg36)
+        check(counts36["pkg"] == base36["pkg"] + 1,
+              "v36: a changed ZIP watermark alone earns a "
+              "full check")
+        base36 = dict(counts36)
+        web.run_checks(cfg36)
+        check(counts36 == base36,
+              "v36: the new watermark is then the stored "
+              "fingerprint and the package is skipped")
+        web.run_checks(cfg36, force=True)
+        check(counts36["pkg"] > base36["pkg"],
+              "v36: force re-checks unchanged packages")
+        # A degraded acoustic result (the real cross-check on
+        # these fixture bytes measures nothing) is not final:
+        # the next incremental pass retries the acoustic part
+        # only, so repaired tooling takes effect.
+        def real_yt36(*a, **k):
+            counts36["yt"] += 1
+            return _orig_yt36(*a, **k)
+
+        audit.youtube_cross_check = real_yt36
+        web.run_checks(cfg36, force=True)
+        check(entry36()["youtube"].get("acoustic_configured")
+              is False
+              and entry36()["youtube"].get("similarity") is None,
+              "v36: the fixture's unreadable video leaves a "
+              "degraded acoustic result (premise for the retry)")
+        base36 = dict(counts36)
+        web.run_checks(cfg36)
+        check(counts36["pkg"] == base36["pkg"]
+              and counts36["yt"] > base36["yt"],
+              "v36: a degraded acoustic result is retried on "
+              "the next pass, acoustic part only — never "
+              "fingerprinted as final")
+        audit.youtube_cross_check = fake_yt36
+        web.run_checks(cfg36)
+    finally:
+        audit.check_package = _orig_cp36
+        audit.youtube_cross_check = _orig_yt36
+        audit.worker_verify_grade = _orig_wv36
+
+    # An error entry is never skipped.
+    audit.check_package = lambda *a, **k: (_ for _ in ()).throw(
+        RuntimeError("boom36"))
+    try:
+        web.run_checks(cfg36, force=True)
+    finally:
+        audit.check_package = _orig_cp36
+    check(entry36().get("error"),
+          "v36: a failed check stores its error")
+    web.run_checks(cfg36)
+    check(not entry36().get("error")
+          and entry36().get("internally_consistent"),
+          "v36: an error entry is retried by the next "
+          "incremental pass, not skipped")
+
+    # The manual endpoint: force by default, incremental on
+    # {"force": false} — and the incremental response counts
+    # only what the call itself did.
+    audit.check_package = counting_cp36
+    audit.youtube_cross_check = fake_yt36
+    try:
+        web.run_checks(cfg36)  # settle any degraded entries
+        base36 = dict(counts36)
+        status, out36 = call("POST", "/api/check-all", {})
+        check(status == 200 and counts36["pkg"] > base36["pkg"],
+              "v36: manual check-all forces a full re-check")
+        base36 = dict(counts36)
+        status, out36 = call("POST", "/api/check-all",
+                             {"force": False})
+        check(status == 200 and counts36 == base36
+              and out36["checked"] == 0 and out36["total"] >= 1,
+              "v36: manual check-all with force:false skips "
+              "everything and reports zero checked — skipped "
+              "packages are not counted as checked")
+        (data_dir / "videos" / f"{KEY999}.mp4").write_bytes(
+            b"wren-video-v4")
+        status, out36 = call("POST", "/api/check-all",
+                             {"force": False})
+        check(status == 200
+              and counts36["pkg"] == base36["pkg"]
+              and counts36["yt"] == base36["yt"] + 1
+              and out36["checked"] == 1,
+              "v36: the force:false branch does run the "
+              "incremental pass — an owed acoustic check runs "
+              "through the endpoint and is the one check it "
+              "reports")
+        stats36 = {}
+        web.run_checks(cfg36, only_keys={"101_202_000"},
+                       stats=stats36)
+        check(stats36.get("total") == 0
+              and stats36.get("attempt_total") == 0
+              and stats36.get("checked") == 0,
+              "v36: run stats carry the full key set even when "
+              "no package is considered")
+        # The youtube-check endpoint's fingerprint refresh: it
+        # stamps a video-only change (nothing is then owed) but
+        # never blesses a package that changed in other ways.
+        (data_dir / "videos" / f"{KEY999}.mp4").write_bytes(
+            b"wren-video-v5")
+        status, res36 = call("POST", "/api/youtube-check",
+                             {"id": KEY999})
+        base36 = dict(counts36)
+        web.run_checks(cfg36)
+        check(status == 200 and counts36 == base36,
+              "v36: after a video-only change, the youtube-check "
+              "endpoint refreshes the fingerprint and nothing "
+              "is owed")
+        seed35(unit999, "0" * 64)
+        fp36 = entry36()["check_inputs"]["html_sha256"]
+        status, res36 = call("POST", "/api/youtube-check",
+                             {"id": KEY999})
+        check(entry36()["check_inputs"]["html_sha256"] == fp36,
+              "v36: the youtube-check endpoint does not refresh "
+              "the fingerprint when non-acoustic inputs moved — "
+              "the stored results still belong to the old "
+              "package")
+        base36 = dict(counts36)
+        web.run_checks(cfg36)
+        check(counts36["pkg"] == base36["pkg"] + 1
+              and entry36().get("internally_consistent") is False,
+              "v36: that changed package is still fully checked "
+              "afterwards and flagged")
+        seed35(unit999, audit.sha256_file(wav_tmp))
+        web.run_checks(cfg36)
+        check(entry36().get("internally_consistent"),
+              "v36: and the restored package re-checks clean")
+    finally:
+        audit.check_package = _orig_cp36
+        audit.youtube_cross_check = _orig_yt36
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,

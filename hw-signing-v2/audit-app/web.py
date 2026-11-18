@@ -102,6 +102,30 @@ submissions SCAN_WORKERS calls at a time, its cache lasts
 are cached with the scan, the wall parses each package's
 HTML once, and the table parses a package's grades only when
 no stored check already holds them.
+
+v36: integrity checks are incremental. Each stored check now
+carries a "check_inputs" fingerprint of everything its result
+depends on — the package ZIP's watermark SHA-256, the HTML
+file's SHA-256, the size and modification time of the audio,
+ZIP and downloaded YouTube video files, the acoustic
+threshold, the grading Worker address and the app version. An
+automatic pass skips a package whose fingerprint still matches
+its stored check (no recomputation, no Worker call, no
+fingerprinting); when only the video or the threshold changed
+it re-runs just the acoustic cross-check and merges it;
+anything else — a changed package, an error entry, or a stored
+check from before v36, which carries no fingerprint — gets one
+full check. A stored acoustic result that never measured
+anything (the video was present but Chromaprint was
+unavailable, so no similarity exists) is not final either: it
+is owed the acoustic part again on later passes, so fixing the
+tooling takes effect without a forced re-check. The manual Run integrity checks button
+keeps its established meaning and forces a full re-check of
+every downloaded package (POST /api/check-all with
+{"force": false} asks for the incremental pass instead). The
+automatic pass's follow-up stage, which completes the acoustic
+checks of videos downloaded in the same pass, now runs only the
+packages that owe one instead of the full sweep again.
 """
 
 import argparse
@@ -1321,6 +1345,45 @@ def youtube_video_file(cfg, key, user_id=None):
     return legacy if legacy.exists() else canonical
 
 
+def _video_file_for(cfg, pkg):
+    """The downloaded YouTube video a package is cross-checked
+    against: a previous attempt's own file (v35), never the
+    current attempt's; the current attempt's unit file, with the
+    pre-v16 bare user_id fallback."""
+    if pkg.get("is_attempt"):
+        return attempt_video_path(cfg, pkg["key"], pkg["attempt_no"])
+    return youtube_video_file(cfg, pkg["key"], pkg["user_id"])
+
+
+def _youtube_result(cfg, pkg):
+    """The acoustic YouTube cross-check entry for one package.
+    It needs the downloaded YouTube video, so on a first pass
+    (video still downloading in parallel) it records "not
+    downloaded yet" and the pass that follows the download — or
+    the follow-up stage of the same pass — completes it. It uses
+    ffmpeg's Chromaprint fingerprint, not transcription, so it
+    is fast (seconds) and needs no re-transcription setup. A
+    failure here is recorded on the YouTube entry only, never as
+    the package's error (the pre-v36 behaviour, kept)."""
+    try:
+        parsed = audit.parse_package(
+            Path(pkg["html_path"]).read_text(encoding="utf-8"))
+        if (parsed["verification"] or {}).get("youtube_link"):
+            return audit.youtube_cross_check(
+                pkg["audio_path"], _video_file_for(cfg, pkg),
+                parsed, cfg)
+        return {
+            "available": False, "youtube_flag": False,
+            "passed": None, "threshold":
+                float(cfg.get("acoustic_threshold", 0.85)),
+            "similarity": None, "acoustic_configured": False,
+            "reason": "no YouTube link in the package"}
+    except Exception as ye:  # noqa: BLE001 - recorded, not fatal
+        return {"error": f"{type(ye).__name__}: {ye}",
+                "youtube_flag": False, "passed": None,
+                "available": False, "acoustic_configured": False}
+
+
 def _check_one_package(cfg, pkg, base_entry):
     """Integrity + YouTube cross-check for one package. Pure with
     respect to the store: returns the finished entry for the caller
@@ -1332,61 +1395,184 @@ def _check_one_package(cfg, pkg, base_entry):
         rep.pop("parsed", None)
         entry.pop("error", None)
         entry.update(rep)
-        # The acoustic YouTube cross-check runs here too: it needs
-        # the downloaded YouTube video, so on a first pass (video
-        # still downloading in parallel) it records "not downloaded
-        # yet" and the pass that follows the download - or the
-        # follow-up stage of the same pass - completes it. It uses
-        # ffmpeg's Chromaprint fingerprint, not transcription, so
-        # it is fast (seconds) and needs no re-transcription setup.
-        try:
-            parsed = audit.parse_package(
-                Path(pkg["html_path"]).read_text(encoding="utf-8"))
-            if (parsed["verification"] or {}).get("youtube_link"):
-                # A previous attempt is cross-checked against its
-                # own downloaded video (v35), never the current
-                # attempt's.
-                vfile = attempt_video_path(cfg, pkg["key"],
-                                           pkg["attempt_no"]) \
-                    if pkg.get("is_attempt") else \
-                    youtube_video_file(cfg, pkg["key"], pkg["user_id"])
-                entry["youtube"] = audit.youtube_cross_check(
-                    pkg["audio_path"], vfile, parsed, cfg)
-            else:
-                entry["youtube"] = {
-                    "available": False, "youtube_flag": False,
-                    "passed": None, "threshold":
-                        float(cfg.get("acoustic_threshold", 0.85)),
-                    "similarity": None, "acoustic_configured": False,
-                    "reason": "no YouTube link in the package"}
-        except Exception as ye:  # noqa: BLE001 - recorded, not fatal
-            entry["youtube"] = {"error": f"{type(ye).__name__}: {ye}",
-                                "youtube_flag": False, "passed": None,
-                                "available": False,
-                                "acoustic_configured": False}
+        entry["youtube"] = _youtube_result(cfg, pkg)
     except Exception as e:  # noqa: BLE001 - one bad package must
         entry["error"] = f"{type(e).__name__}: {e}"  # not stop the rest
     entry["checked_at"] = datetime.now(timezone.utc).isoformat()
     return entry
 
 
-def run_checks(cfg):
-    """Check every downloaded package, several in parallel. Each
-    finished check is written to audit-results.json as it completes,
-    so if the app is stopped mid-run the finished checks survive and
-    the next pass re-runs only the ones still missing or failed.
-    Previous attempts on disk are checked too (v35): an attempt's
-    result is stored under its own "<unit>::a<n>" key, so it never
-    overwrites — and is never read as — the current attempt's
-    check, which alone feeds the suggested grades and Gradebook."""
+def _youtube_only_entry(cfg, pkg, base_entry):
+    """Re-run only the acoustic cross-check of a stored entry and
+    merge it (v36): the package itself is unchanged, so its
+    fingerprints, receipt verification and injection scan stand;
+    only the downloaded video or the acoustic threshold moved."""
+    entry = dict(base_entry or {})
+    entry["youtube"] = _youtube_result(cfg, pkg)
+    entry["checked_at"] = datetime.now(timezone.utc).isoformat()
+    return entry
+
+
+# ------------------------------------------------- incremental checks (v36)
+#
+# A check result is a deterministic function of its inputs: the
+# package files (watermarked immutable — a new submission is a new
+# submitted_at / attempt / ZIP hash), the downloaded YouTube video,
+# the acoustic threshold, the grading Worker that verifies the
+# receipt, and the app version doing the checking. The fingerprint
+# below records exactly those inputs: the download watermark, one
+# small content hash (the HTML file, which carries the grades,
+# critique and transcript claims), and file stats for the large
+# media files — so deciding that a package can be skipped costs
+# nothing next to the check itself (hash recomputation, a Worker
+# round trip and two Chromaprint fingerprints). Detection bound:
+# the media files are guarded by size and modification time; an
+# edit that preserves both is not detected. No write path in this
+# system (download, extraction, redownload, video download)
+# preserves a modification time, and the files sit on the
+# teacher's own disk between checks.
+
+def _stat_sig(path):
+    """[size, mtime_ns] of one file, or None when it is absent."""
+    try:
+        st = Path(path).stat()
+    except OSError:
+        return None
+    return [st.st_size, st.st_mtime_ns]
+
+
+def _package_check_inputs(cfg, pkg, dl_state):
+    """The fingerprint of everything one package's stored check
+    depends on (v36)."""
+    folder = Path(pkg["html_path"]).parent
+    zip_path = pkg.get("zip_path") or str(folder / "package.zip")
+    wkey = None
+    if pkg.get("course_id") and pkg.get("assignment_id"):
+        wkey = (f"{pkg['course_id']}:{pkg['assignment_id']}"
+                f":{pkg['user_id']}")
+        if pkg.get("is_attempt"):
+            wkey += f":attempt-{pkg['attempt_no']}"
+    mark = dl_state.get(wkey) if wkey else None
+    if mark is None:
+        # Flat legacy layout: the watermark key is the bare user id.
+        mark = dl_state.get(str(pkg["user_id"])) or {}
+    try:
+        html_sha = audit.sha256_file(pkg["html_path"])
+    except OSError:
+        html_sha = None
+    return {
+        "zip_sha256": mark.get("zip_sha256"),
+        "audio": _stat_sig(pkg["audio_path"]),
+        "html_sha256": html_sha,
+        "zip": _stat_sig(zip_path),
+        "video": _stat_sig(_video_file_for(cfg, pkg)),
+        "threshold": float(cfg.get("acoustic_threshold", 0.85)),
+        "worker": cfg.get("worker_base_url"),
+        "app": audit.USER_AGENT,
+    }
+
+
+def _acoustic_degraded(existing):
+    """True when the stored acoustic result never measured
+    anything (v36): the YouTube video was present, but no
+    similarity was computed — Chromaprint unavailable or the
+    fingerprinting failed — so the result rests on duration
+    alone, or on nothing. Such a result is not final: if the
+    tooling is later fixed, the acoustic check is owed again.
+    (The no-link and not-downloaded states have available False
+    and are complete as they stand.)"""
+    yt = (existing or {}).get("youtube") or {}
+    return bool(yt.get("available")) \
+        and not yt.get("acoustic_configured") \
+        and yt.get("similarity") is None
+
+
+def _check_mode(existing, inputs, force):
+    """What one package is owed (v36): "full" for the whole check,
+    "youtube" when only the acoustic part can have changed (or
+    never actually measured), or None when the stored check
+    stands. An entry carrying an error, or no fingerprint (every
+    store written before v36), is always owed a full check once."""
+    if force:
+        return "full"
+    if existing is None or existing.get("error"):
+        return "full"
+    stored = existing.get("check_inputs")
+    if not stored:
+        return "full"
+    if stored == inputs:
+        return "youtube" if _acoustic_degraded(existing) else None
+    diff = {k for k in inputs if stored.get(k) != inputs.get(k)}
+    if diff <= {"video", "threshold"}:
+        return "youtube"
+    return "full"
+
+
+def run_checks(cfg, force=False, only_keys=None, stats=None):
+    """Check the downloaded packages that are owed one, several in
+    parallel (v36: incremental). A package whose stored check's
+    "check_inputs" fingerprint still matches its inputs is skipped
+    — its result is a deterministic function of those inputs, so
+    re-running could only reproduce it. A package owed only an
+    acoustic update (its video arrived or changed, or the
+    threshold moved) gets that part alone. Everything else — no
+    stored check, an error entry, a changed package, a pre-v36
+    entry with no fingerprint, or force — gets the full check.
+    only_keys, when given, restricts the run to those store keys
+    (the automatic pass's follow-up stage passes the packages that
+    owe an acoustic check). Each finished check is written to
+    audit-results.json as it completes, so if the app is stopped
+    mid-run the finished checks survive and the next pass re-runs
+    only the ones still missing or failed. Previous attempts on
+    disk are checked too (v35): an attempt's result is stored
+    under its own "<unit>::a<n>" key, so it never overwrites —
+    and is never read as — the current attempt's check, which
+    alone feeds the suggested grades and Gradebook."""
     store = results_store(cfg)
     pkgs = downloaded_packages(cfg) + downloaded_attempt_packages(cfg)
+    if only_keys is not None:
+        wanted = set(only_keys)
+        pkgs = [p for p in pkgs
+                if (p.get("attempt_key") or p["key"]) in wanted]
+    if stats is not None:
+        # Filled before any early return (v36): a caller reporting
+        # the run gets the full key set even when nothing was
+        # considered or everything was skipped.
+        stats.update({
+            "total": sum(1 for p in pkgs if not p.get("is_attempt")),
+            "attempt_total": sum(1 for p in pkgs
+                                 if p.get("is_attempt")),
+            "checked": 0, "errors": 0,
+            "attempt_checked": 0, "attempt_errors": 0,
+            "skipped": 0})
     if not pkgs:
+        return store
+    dl_state = read_json_file(_state_file(cfg, "download-state.json"),
+                              {})
+    jobs, skipped = [], 0
+    for pkg in pkgs:
+        skey = pkg.get("attempt_key") or pkg["key"]
+        existing = store.get(skey) if pkg.get("is_attempt") \
+            else store_get(store, pkg["key"], pkg["user_id"])
+        inputs = _package_check_inputs(cfg, pkg, dl_state)
+        mode = _check_mode(existing, inputs, force)
+        if mode is None:
+            skipped += 1
+        else:
+            jobs.append((pkg, mode, inputs, existing))
+    if skipped:
+        log_activity("check", f"integrity checks: {skipped} "
+                              "unchanged package(s) skipped — "
+                              "stored checks stand (v36)")
+    if stats is not None:
+        stats["skipped"] = skipped
+    if not jobs:
         return store
     results_path = _state_file(cfg, "audit-results.json")
     lock = threading.Lock()
 
-    def work(pkg):
+    def work(job):
+        pkg, mode, inputs, existing = job
         key = pkg["key"]
         skey = pkg.get("attempt_key") or key
         label = f"student {pkg['user_id']}" + (
@@ -1394,10 +1580,27 @@ def run_checks(cfg):
             if pkg.get("course_id") else "") + (
             f" attempt {pkg['attempt_no']}"
             if pkg.get("is_attempt") else "")
-        log_activity("check", f"integrity check started — {label}")
-        entry = _check_one_package(
-            cfg, pkg, store.get(skey) if pkg.get("is_attempt")
-            else store_get(store, key, pkg["user_id"]))
+        if mode == "youtube":
+            log_activity("check", "acoustic re-check started — "
+                                  f"{label}")
+            entry = _youtube_only_entry(cfg, pkg, existing)
+        else:
+            log_activity("check", f"integrity check started — {label}")
+            entry = _check_one_package(cfg, pkg, existing)
+        if not entry.get("error"):
+            # The fingerprint of the inputs as they stood when this
+            # run was planned: if a file changed mid-check, the next
+            # pass sees the mismatch and re-runs. An error entry
+            # keeps no usable fingerprint, so it is always retried.
+            entry["check_inputs"] = inputs
+        if stats is not None:
+            with lock:
+                if pkg.get("is_attempt"):
+                    stats["attempt_errors" if entry.get("error")
+                          else "attempt_checked"] += 1
+                else:
+                    stats["errors" if entry.get("error")
+                          else "checked"] += 1
         with lock:
             store[skey] = entry
             write_json_atomic(results_path, store)
@@ -1412,15 +1615,16 @@ def run_checks(cfg):
                 verdict = "FLAGGED (YouTube acoustic mismatch)"
             elif (entry.get("youtube") or {}).get("passed"):
                 verdict += ", YouTube acoustic match"
-            log_activity("check",
-                         f"integrity check done — {label} ({verdict})")
+            kind = "acoustic re-check" if mode == "youtube" \
+                else "integrity check"
+            log_activity("check", f"{kind} done — {label} ({verdict})")
         return entry
 
-    if len(pkgs) == 1:
-        work(pkgs[0])
+    if len(jobs) == 1:
+        work(jobs[0])
     else:
         with ThreadPoolExecutor(max_workers=4) as pool:
-            list(pool.map(work, pkgs))
+            list(pool.map(work, jobs))
     return store
 
 
@@ -2121,10 +2325,12 @@ def fetch_unit_attempts(cfg, key):
 def pending_work(cfg):
     """What a pass still owes: submissions with no complete package
     on disk, downloaded packages with no finished integrity check
-    (or a failed one), wall videos not yet downloaded, and partial
-    video files (.part) left by an interrupted download. This is
-    the resume scan: work left incomplete when the page or the app
-    was closed shows up here and the pass does it again."""
+    (a failed one, or one whose inputs have moved since it was
+    stored — the v36 fingerprint decision in _check_mode), wall
+    videos not yet downloaded, and partial video files (.part)
+    left by an interrupted download. This is the resume scan:
+    work left incomplete when the page or the app was closed
+    shows up here and the pass does it again."""
     root = audit.data_dir(cfg)
     local = downloaded_packages(cfg)
     local_keys = {p["key"] for p in local}
@@ -2133,24 +2339,27 @@ def pending_work(cfg):
         if s.get("complete") and s["key"] not in local_keys:
             n_dl += 1
     checks = results_store(cfg)
+    # v36: "owed a check" is the run_checks decision itself — the
+    # same fingerprint comparison — so this count and the work a
+    # pass then does cannot disagree. (Before v36 the test was
+    # "no entry, an error entry, or a YouTube part still marked
+    # not-downloaded while its video exists"; each of those is a
+    # case the fingerprint decision also catches.)
+    dl_state = read_json_file(_state_file(cfg, "download-state.json"),
+                              {})
     n_chk = 0
     for p in local:
         entry = store_get(checks, p["key"], p["user_id"])
-        if entry is None or entry.get("error") \
-                or (((entry.get("youtube") or {}).get("available")
-                     is False)
-                    and youtube_video_file(cfg, p["key"], p["user_id"]).exists()):
+        if _check_mode(entry, _package_check_inputs(cfg, p, dl_state),
+                       False) is not None:
             n_chk += 1
     # Previous attempts owe the same work (v35): a check of their
     # own, and their own wall video.
     att_pkgs = downloaded_attempt_packages(cfg)
     for p in att_pkgs:
         entry = checks.get(p["attempt_key"])
-        if entry is None or entry.get("error") \
-                or (((entry.get("youtube") or {}).get("available")
-                     is False)
-                    and attempt_video_path(
-                        cfg, p["key"], p["attempt_no"]).exists()):
+        if _check_mode(entry, _package_check_inputs(cfg, p, dl_state),
+                       False) is not None:
             n_chk += 1
     n_vid = 0
     try:
@@ -2224,9 +2433,14 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
         video_fn = video_fn or download_youtube_medium
         outcome = {"got": 0, "failed": 0}
 
-        def do_checks():
+        def do_checks(only_keys=None):
             try:
-                (checks_fn or (lambda: run_checks(cfg)))()
+                if checks_fn is not None:
+                    checks_fn()
+                else:
+                    # v36: the automatic pass is incremental —
+                    # unchanged packages keep their stored checks.
+                    run_checks(cfg, only_keys=only_keys)
             except Exception as e:  # noqa: BLE001 - logged, videos go on
                 log_activity("check", "integrity checks stopped early: "
                                       f"{type(e).__name__}: {e}")
@@ -2320,7 +2534,9 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
                 log_activity("check", "YouTube videos arrived — running "
                                       "the acoustic cross-checks for "
                                       f"{len(owed)} submission(s)")
-                do_checks()
+                # v36: only the owed packages run, and each is owed
+                # just its acoustic part (see run_checks).
+                do_checks(only_keys=set(owed))
         summary = (f"{new_pkgs} new/changed submission(s) downloaded, "
                    f"integrity checks run, {outcome['got']} video(s) "
                    f"downloaded"
@@ -3067,7 +3283,7 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <p class="mut" id="rdestimate"></p>
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
-<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
+<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes; Run integrity checks re-checks every downloaded package in full. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
 <div id="viewctl">
 <label>Course <select id="fcourse"><option value="">All courses</option></select></label>
@@ -5597,22 +5813,36 @@ class Handler(BaseHTTPRequestHandler):
                 "total": len(records)})
         elif u.path == "/api/check-all":
             require_canvas(cfg)
-            log_activity("check", "manual integrity checks started")
-            store = run_checks(cfg)
-            # Canonical totals count submissions only; previous
-            # attempts (v35, "<unit>::a<n>" keys) are reported
-            # separately so the headline never mixes the two.
-            canon = [e for k, e in store.items() if "::a" not in k]
-            atts = [e for k, e in store.items() if "::a" in k]
-            self._send(200, {
-                "checked": sum(1 for e in canon if "error" not in e),
-                "errors": sum(1 for e in canon if "error" in e),
-                "total": len(canon),
-                "attempt_checked": sum(1 for e in atts
-                                       if "error" not in e),
-                "attempt_errors": sum(1 for e in atts
-                                      if "error" in e),
-                "attempt_total": len(atts)})
+            # v36: the manual button forces a full re-check (its
+            # established meaning); {"force": false} asks for the
+            # incremental pass the automatic work uses.
+            force = bool(body.get("force", True))
+            log_activity("check", "manual integrity checks started"
+                                  + ("" if force else " (incremental)"))
+            if force:
+                store = run_checks(cfg, force=True)
+                # Canonical totals count submissions only; previous
+                # attempts (v35, "<unit>::a<n>" keys) are reported
+                # separately so the headline never mixes the two.
+                canon = [e for k, e in store.items() if "::a" not in k]
+                atts = [e for k, e in store.items() if "::a" in k]
+                self._send(200, {
+                    "checked": sum(1 for e in canon
+                                   if "error" not in e),
+                    "errors": sum(1 for e in canon if "error" in e),
+                    "total": len(canon),
+                    "attempt_checked": sum(1 for e in atts
+                                           if "error" not in e),
+                    "attempt_errors": sum(1 for e in atts
+                                          if "error" in e),
+                    "attempt_total": len(atts)})
+            else:
+                # v36: an incremental run reports what the call
+                # itself did — skipped packages are not counted
+                # as checked.
+                stats = {}
+                run_checks(cfg, force=False, stats=stats)
+                self._send(200, stats)
         elif u.path == "/api/export":
             require_canvas(cfg)
             state = read_json_file(
@@ -5643,6 +5873,28 @@ class Handler(BaseHTTPRequestHandler):
             store = results_store(cfg)
             entry = store_get(store, pkg["key"], pkg["user_id"]) or {}
             entry["youtube"] = res
+            if entry.get("check_inputs") and not entry.get("error"):
+                # v36: this entry was fully checked before, and its
+                # acoustic part has just been recomputed against the
+                # current inputs — refresh its fingerprint so the
+                # next incremental pass does not redo the acoustic
+                # part it just did. Two guards: an entry with no
+                # fingerprint (a YouTube-only shell for an unchecked
+                # package) is never stamped here — it is still owed
+                # a full check; and the refresh applies only when
+                # the inputs that moved since the full check are
+                # the acoustic ones (video, threshold) — if the
+                # package itself or the Worker changed, the stored
+                # integrity results belong to the old inputs and
+                # the package is still owed its full check.
+                dl_state = read_json_file(
+                    _state_file(cfg, "download-state.json"), {})
+                current = _package_check_inputs(cfg, pkg, dl_state)
+                stored = entry["check_inputs"]
+                diff = {k for k in set(stored) | set(current)
+                        if stored.get(k) != current.get(k)}
+                if diff <= {"video", "threshold"}:
+                    entry["check_inputs"] = current
             store[pkg["key"]] = entry
             write_json_atomic(_state_file(cfg, "audit-results.json"),
                               store)
