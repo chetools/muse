@@ -211,3 +211,31 @@ Deviations from the adjudicated brief, for the parent's record:
 - T_ev upper bound: the brief's "T_ev ≤ ~69 °C" is wrong for
   later stages; the verified maximum over the model range is
   about 93 °C, and that is what is printed.
+
+## Publication (v4, 2026-11-18)
+
+- Sources pushed to chetools/muse `main` under `steam-ejector/` (21 files):
+  remote head d242299 (from 543bebc); compare shows 21 added files, all
+  in scope; sampled blob SHAs match local hash-object values.
+- Built page and MoLab notebook pushed to `gh-pages` under `steam-ejector/`:
+  `steam-ejector/index.html` (= dist/steam-ejector-v4.html) and
+  `steam-ejector/walkthrough_molab.py`; root `index.html` lists the page.
+  Remote head c7ef02a (from 6d1fa14); compare shows exactly 3 files.
+  Note: the root index.html edit was applied on a stale base; the remote
+  had gained a skogestad-column-a entry, which was restored into the local
+  copy before pushing (its `</li>` was closed in the process).
+- Served bytes verified 2026-11-18: https://chetools.github.io/muse/steam-ejector/
+  HTTP 200, 4,386,687 bytes, sha256 ca1959c1f2eb5dc2357f6e187cf96c86aa482c7b7292e6563b27c1f9aee43cb3,
+  identical to dist/steam-ejector-v4.html; walkthrough_molab.py served
+  29,355 bytes, sha256 7775512e195ef6aac384ab2f6f81fcaabdcad4254e4d4e3f622f7ce1629891c4,
+  identical to notebook/walkthrough_molab.py.
+- Published-page browser check 2026-11-18 ~07:17-07:20 EST: page loads,
+  design basis reproduced live (635.2 kg/h, 523.6 kW, 170479 USD/yr),
+  precomputed labels replaced by the live run, Theory tab renders,
+  no errors or defects. Self-test: pass verified locally on the
+  byte-identical file (window.SELFTEST, 635.179 kg/h, 523.558 kW); on the
+  published page the live run reproduces the design basis and the Code tab
+  states "Anchor checks passed", but no verdict string is rendered in the
+  page UI (console only).
+- Not verified: the MoLab notebook has not been opened in MoLab and its
+  installer cell is untested there.
