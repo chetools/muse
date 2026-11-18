@@ -47,17 +47,43 @@ const METHOD_STORED = 0;
 function u16le(v) { return [v & 0xFF, (v >>> 8) & 0xFF]; }
 function u32le(v) { return [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF]; }
 
-// entries: [{ name: string, data: Uint8Array }] in archive order.
-// Returns the complete ZIP file as a Uint8Array.
-export function buildZipBytes(entries) {
+// CRC-32 of one entry's bytes, computed in slices with a yield to
+// the event loop between slices, so a large entry (a submission
+// recording is tens of megabytes) does not freeze the page while
+// its checksum is computed. onProgress, when given, is called after
+// each slice with the number of bytes of THIS entry processed so
+// far. The result is identical to crc32(bytes): the slice
+// boundaries do not affect the running checksum.
+export async function crc32Async(bytes, onProgress) {
+  const SLICE = 4 * 1024 * 1024;
+  let crc = 0xFFFFFFFF;
+  for (let start = 0; start < bytes.length; start += SLICE) {
+    const end = Math.min(start + SLICE, bytes.length);
+    for (let i = start; i < end; i++) {
+      crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    }
+    if (onProgress) onProgress(end);
+    if (end < bytes.length) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+// Assemble the archive bytes from entries whose CRC-32 values are
+// already computed (crcs[i] belongs to entries[i]). Shared by the
+// synchronous and asynchronous builders, so both produce exactly
+// the same bytes for the same entries.
+function assembleZip(entries, crcs) {
   const enc = new TextEncoder();
   const parts = [];
   const central = [];
   let offset = 0;
-  for (const entry of entries || []) {
+  for (let idx = 0; idx < (entries || []).length; idx++) {
+    const entry = entries[idx];
     const nameBytes = enc.encode(entry.name);
     const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data);
-    const crc = crc32(data);
+    const crc = crcs[idx];
     const local = new Uint8Array([
       ...u32le(0x04034b50),               // local file header signature
       ...u16le(VERSION_NEEDED),
@@ -116,8 +142,43 @@ export function buildZipBytes(entries) {
   return out;
 }
 
+// entries: [{ name: string, data: Uint8Array }] in archive order.
+// Returns the complete ZIP file as a Uint8Array.
+export function buildZipBytes(entries) {
+  const list = entries || [];
+  return assembleZip(list, list.map((e) =>
+    crc32(e.data instanceof Uint8Array ? e.data : new Uint8Array(e.data))));
+}
+
+// The asynchronous builder (2.4.6): the same bytes as buildZipBytes
+// for the same entries, computed in slices so the page stays alive
+// and can show progress. onProgress, when given, is called with
+// (bytesProcessed, totalBytes) across all entries' data, ending at
+// exactly (totalBytes, totalBytes).
+export async function buildZipBytesAsync(entries, onProgress) {
+  const list = entries || [];
+  const datas = list.map((e) =>
+    e.data instanceof Uint8Array ? e.data : new Uint8Array(e.data));
+  const total = datas.reduce((sum, d) => sum + d.length, 0);
+  let done = 0;
+  const crcs = [];
+  for (const data of datas) {
+    const base = done;
+    crcs.push(await crc32Async(data, onProgress
+      ? (n) => onProgress(base + n, total) : undefined));
+    done += data.length;
+  }
+  if (onProgress) onProgress(total, total);
+  return assembleZip(list, crcs);
+}
+
 export function buildZip(entries) {
   return new Blob([buildZipBytes(entries)], { type: 'application/zip' });
+}
+
+export async function buildZipAsync(entries, onProgress) {
+  return new Blob([await buildZipBytesAsync(entries, onProgress)],
+    { type: 'application/zip' });
 }
 
 export const SUBMISSION_ZIP_NAME = 'submission.zip';

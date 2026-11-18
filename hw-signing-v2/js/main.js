@@ -43,7 +43,7 @@ import {
   finalizeJob, reportDurationStat,
 } from './jobs.js';
 import { computeFingerprint } from './fingerprint.js';
-import { buildZip, submissionZipName, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
+import { buildZipAsync, submissionZipName, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
 
 const $ = (id) => document.getElementById(id);
 const cfg = parseConfig(window.location.search);
@@ -853,6 +853,32 @@ async function wavBytesForBundle(bundle) {
 // and the download step: jobKey -> { receipt, parts, lines }.
 const zipReviews = new Map();
 
+// Live status for the two slow ZIP steps (2.4.6): a labelled native
+// progress element placed directly after the button that started
+// the step. The jobs refresh is paused while either step runs
+// (zipBusy) and while a review is open (zipReviews), so the element
+// is never rebuilt out from under the student. When a step finishes
+// the element is removed: the verification step's outcome is the
+// review panel, and the download step's outcome is the downloaded
+// file plus the brief completion line above the jobs list.
+function showZipStatus(anchor, text) {
+  clearZipStatus(anchor);
+  const box = document.createElement('div');
+  box.className = 'zipstatus';
+  const bar = document.createElement('progress');
+  bar.style.width = '100%';
+  const label = document.createElement('div');
+  label.textContent = text;
+  box.append(bar, label);
+  anchor.after(box);
+  return { box, bar, label };
+}
+
+function clearZipStatus(anchor) {
+  const row = anchor.closest('.jobrow') || anchor.parentElement;
+  if (row) for (const el of row.querySelectorAll('.zipstatus')) el.remove();
+}
+
 // Verify everything that will go into the ZIP against the signed
 // result bundle, before anything is packaged:
 // - the WAV is the recording the job was graded on: it is fetched by
@@ -975,11 +1001,19 @@ async function verifySubmissionParts(entry, bundle, anchor) {
 async function downloadSubmissionZip(entry, bundle, anchor) {
   clearError();
   zipBusy = true;
+  anchor.disabled = true;
+  const status = showZipStatus(anchor,
+    'Verifying the recording and the transcript against the signed ' +
+    'grade record… This can take a minute on a long recording.');
   let parts = null;
   try {
+    // Let the status paint before the verification hashes begin.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     parts = await verifySubmissionParts(entry, bundle, anchor);
   } finally {
     zipBusy = false;
+    anchor.disabled = false;
+    status.box.remove();
   }
   if (!parts) return;
   const words = scrubWords();
@@ -1010,6 +1044,8 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
 
 async function doDownloadZip(entry, bundle, review, anchor) {
   zipBusy = true;
+  anchor.disabled = true;
+  const status = showZipStatus(anchor, 'Building the submission ZIP…');
   try {
     const { parts } = review;
     const html = assemblePackage({
@@ -1019,15 +1055,23 @@ async function doDownloadZip(entry, bundle, review, anchor) {
       chunks: parts.scrubbedChunks,
       bundle,
     });
-    const zip = buildZip([
+    const zip = await buildZipAsync([
       { name: ZIP_ENTRY_HTML, data: new TextEncoder().encode(html) },
       { name: ZIP_ENTRY_AUDIO, data: parts.wav },
-    ]);
-    downloadBlob(zip, submissionZipName({
+    ], (done, total) => {
+      status.bar.max = total;
+      status.bar.value = done;
+      status.label.textContent = 'Building the submission ZIP… ' +
+        (total ? Math.floor((done / total) * 100) : 100) + '%';
+    });
+    const zipName = submissionZipName({
       course: entry.course, asg: entry.asg,
       completeness: bundle.completeness, accuracy: bundle.accuracy,
       youtubeCheckedAt: entry.youtube_checked_at, gradedAt: bundle.t,
-    }));
+    });
+    downloadBlob(zip, zipName);
+    $('zipDone').textContent = 'Done — ' + zipName +
+      ' has been downloaded. Upload that file to Canvas.';
     zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
     try {
       await markJobRetrieved(cfg.worker, {
@@ -1038,6 +1082,8 @@ async function doDownloadZip(entry, bundle, review, anchor) {
     renderJobs();
   } finally {
     zipBusy = false;
+    anchor.disabled = false;
+    status.box.remove();
   }
 }
 
