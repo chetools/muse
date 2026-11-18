@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Steam ejectors — multi-stage vacuum systems</title>
+@@KATEX_CSS@@
+<style>
+:root{--ink:#1b1b1b;--ink2:#5a5a5a;--rule:#d6d6d6;--paper:#ffffff;--tint:#f4f6f8;--accent:#0072B2;--accent2:#D55E00;--measure:68ch}
+*{box-sizing:border-box}
+html{scrollbar-gutter:stable}
+body{background:var(--paper);color:var(--ink);font:17px/1.55 Georgia,"Source Serif 4",serif;margin:0}
+header,main{max-width:var(--measure);margin:0 auto;padding:0 16px}
+header{padding-top:24px}
+h1{font:600 30px/1.2 system-ui,sans-serif;margin:0 0 8px}
+.subtitle{font:16px/1.5 system-ui,sans-serif;color:var(--ink2);margin:0 0 16px}
+h2{font:600 22px/1.25 system-ui,sans-serif;margin:28px 0 8px;scroll-margin-top:72px}
+h3{font:600 18px/1.3 system-ui,sans-serif;margin:22px 0 6px;scroll-margin-top:72px}
+p{margin:0 0 12px;overflow-wrap:anywhere}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+nav.tabs{position:sticky;top:0;z-index:60;background:var(--paper);border-bottom:1px solid var(--rule);margin:0 auto;max-width:var(--measure);padding:0 16px;display:flex;flex-wrap:wrap;gap:2px}
+nav.tabs button{font:600 15px/1.2 system-ui,sans-serif;background:none;border:none;border-bottom:3px solid transparent;padding:12px 10px;cursor:pointer;color:var(--ink)}
+nav.tabs button[aria-selected="true"]{border-bottom-color:var(--accent);color:var(--accent)}
+main{min-width:0}
+section.panel{min-width:0}
+section.panel[hidden]{display:none}
+.toc{border:1px solid var(--rule);background:var(--tint);padding:12px 16px;margin:16px 0;font:15px/1.5 system-ui,sans-serif}
+.toc strong{display:block;margin-bottom:6px}
+.toc ul{margin:0;padding-left:20px}
+.toc a[aria-current="true"]{font-weight:700}
+@media(min-width:1100px){.toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}}
+figure{margin:20px 0;min-width:0}
+figcaption{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin-top:8px}
+figure svg{max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font:15px/1.45 system-ui,sans-serif;margin:12px 0;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--rule);padding:6px 8px;text-align:right;min-width:0}
+th:first-child,td:first-child{text-align:left}
+th{background:var(--tint);text-align:right}
+th:first-child{text-align:left}
+details{border:1px solid var(--rule);background:var(--tint);padding:10px 14px;margin:12px 0}
+details summary{font:600 15px/1.4 system-ui,sans-serif;cursor:pointer}
+details p,details table{margin:8px 0}
+aside.sidenote{border-left:3px solid var(--accent);background:var(--tint);padding:10px 14px;margin:12px 0;font-size:15px}
+aside.sidenote strong{font-family:system-ui,sans-serif}
+code{font:14px/1.4 ui-monospace,monospace;background:var(--tint);padding:1px 4px}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow:auto;font:13px/1.5 ui-monospace,monospace}
+pre code{background:none;padding:0}
+.inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.inputs label{font:600 14px/1.4 system-ui,sans-serif;display:block}
+.inputs input{width:100%;font:16px/1.4 system-ui,sans-serif;padding:8px;margin-top:4px;border:1px solid var(--rule);border-radius:4px}
+.inputs .hint{font:400 13px/1.4 system-ui,sans-serif;color:var(--ink2)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}
+.metric{border:1px solid var(--rule);padding:12px;min-width:0}
+.metric .v{font:600 22px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.metric .k{font:14px/1.4 system-ui,sans-serif;color:var(--ink2)}
+.chart{width:100%;min-width:0;margin:16px 0}
+.chartcap{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin:-8px 0 16px}
+.tablewrap{overflow-x:auto;margin:12px 0;min-width:0}
+.tablewrap table{margin:0}
+button.run{font:600 16px/1.2 system-ui,sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:10px 18px;cursor:pointer}
+button.run:disabled{background:#9a9a9a;cursor:default}
+.stale{font:14px/1.4 system-ui,sans-serif;color:var(--accent2);margin:8px 0}
+.error{font:15px/1.4 system-ui,sans-serif;color:#8b0000;margin:8px 0}
+.warn{font:15px/1.4 system-ui,sans-serif;margin:8px 0}
+progress{width:100%;height:10px;appearance:none}
+progress::-webkit-progress-value{background:var(--accent)}
+progress::-moz-progress-bar{background:var(--accent)}
+.bootline{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin:8px 0}
+.katex-display{overflow-x:auto;overflow-y:hidden}
+section.long h2,section.long h3{content-visibility:auto;contain-intrinsic-size:auto 600px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:static;left:0}
+footer{max-width:var(--measure);margin:40px auto 0;padding:16px;border-top:1px solid var(--rule);font:14px/1.5 system-ui,sans-serif;color:var(--ink2)}
+@media(max-width:480px){body{font-size:16px}h1{font-size:24px}nav.tabs button{padding:10px 7px;font-size:14px}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header>
+<h1>Steam ejectors</h1>
+<p class="subtitle">Multi-stage vacuum systems with interstage condensation: how a
+motive steam jet makes vacuum, why one stage cannot reach low pressure,
+and what each added stage costs.</p>
+<p class="bootline" id="bootline">Runtime loading. The display below shows the design basis
+until the first live run replaces it.</p>
+<progress id="bootprogress" max="100" value="20" aria-label="Runtime loading progress"></progress>
+<p class="bootline" id="bootdone" hidden>Runtime ready.</p>
+</header>
+<nav class="tabs" role="tablist" aria-label="Panels">
+<button role="tab" aria-selected="true" data-panel="app" id="tab-app">App</button>
+<button role="tab" aria-selected="false" data-panel="process" id="tab-process">Process</button>
+<button role="tab" aria-selected="false" data-panel="theory" id="tab-theory">Theory</button>
+<button role="tab" aria-selected="false" data-panel="economics" id="tab-economics">Economics</button>
+<button role="tab" aria-selected="false" data-panel="safety" id="tab-safety">Safety</button>
+<button role="tab" aria-selected="false" data-panel="code" id="tab-code">Code</button>
+<button role="tab" aria-selected="false" data-panel="references" id="tab-references">References</button>
+</nav>
+<main id="main">
+<section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app">
+<h2 id="app">App</h2>
+<p>Suction pressure, load, motive steam pressure, cooling-water
+temperature, and number of stages set the motive steam each stage
+needs and the condenser duties. Change an input to recompute.</p>
+<form class="inputs" id="inputs">
+<label>Suction pressure, p (kPa abs)<input type="number" id="in-ps" value="2" min="0.5" max="30" step="0.1"><span class="hint">Range 0.5–30 kPa abs.</span></label>
+<label>Dry gas flow (kg/h)<input type="number" id="in-dry" value="50" min="5" max="200" step="1"><span class="hint">Range 5–200 kg/h, as air.</span></label>
+<label>Condensable vapour flow (kg/h)<input type="number" id="in-cond" value="100" min="0" max="500" step="1"><span class="hint">Range 0–500 kg/h, as water.</span></label>
+<label>Motive steam pressure (MPa abs)<input type="number" id="in-pm" value="0.8" min="0.4" max="1.2" step="0.05"><span class="hint">Range 0.4–1.2 MPa abs, saturated.</span></label>
+<label>Cooling-water temperature (°C)<input type="number" id="in-tcw" value="25" min="15" max="35" step="1"><span class="hint">Range 15–35 °C.</span></label>
+<label>Number of stages<input type="number" id="in-n" value="3" min="1" max="5" step="1"><span class="hint">Range 1–5, whole number.</span></label>
+<label>Steam price (USD/t)<input type="number" id="in-price" value="30" min="0" max="200" step="1"><span class="hint">Economics assumption.</span></label>
+<label>Operating hours (h/yr)<input type="number" id="in-hours" value="8000" min="1000" max="8760" step="100"><span class="hint">Economics assumption.</span></label>
+</form>
+<button class="run" id="runbtn" disabled>Run</button>
+<p class="stale" id="stalenote" hidden>Inputs changed since the displayed run.</p>
+<p class="error" id="aperror" role="alert" hidden></p>
+<div aria-live="polite" id="liveregion" class="bootline"></div>
+<div class="metrics" id="metrics"></div>
+<div class="chart" id="chart-pressure" style="height:340px"></div>
+<p class="chartcap">Stage suction pressures and the final discharge pressure (log scale) against position in the train, at the current inputs.</p>
+<div class="chart" id="chart-steam" style="height:340px"></div>
+<p class="chartcap">Total motive steam against suction pressure, at the current load, motive pressure, cooling-water temperature and stage count; the diamond marks the current inputs.</p>
+<div id="stagetable"></div>
+<div id="warnings"></div>
+<div id="econ"></div>
+</section>
+<section class="panel long" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
+@@PROCESS_HTML@@
+</section>
+<section class="panel long" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory" hidden>
+@@THEORY_HTML@@
+</section>
+<section class="panel long" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
+@@ECONOMICS_HTML@@
+</section>
+<section class="panel long" id="panel-safety" role="tabpanel" aria-labelledby="tab-safety" hidden>
+@@SAFETY_HTML@@
+</section>
+<section class="panel" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
+<h2 id="code">Code</h2>
+@@CODE_TOC@@
+<h3 id="code-model">Model listing</h3>
+<p>The listing below is the file <code>python/balance.py</code> as
+built, and the model the App panel runs is this file.</p>
+<pre id="codelisting">@@CODE_LISTING@@</pre>
+<h3 id="code-walkthrough">Walkthrough</h3>
+<p>The walkthrough below was computed when this page was built. It
+repeats the design-basis arithmetic cell by cell, with each step
+tied to the Theory section it implements.</p>
+@@WALKTHROUGH_HTML@@
+<h3 id="code-notebook">Editable notebook</h3>
+<p>The MoLab notebook is editable; run all cells once after
+opening. The notebook file is
+<code>walkthrough_molab.py</code>, served with this page.</p>
+<p><a href="https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py">Editable notebook on the MoLab link</a></p>
+</section>
+<section class="panel long" id="panel-references" role="tabpanel" aria-labelledby="tab-references" hidden>
+@@REFERENCES_HTML@@
+</section>
+</main>
+<footer>
+<p>Pressures are absolute unless stated. Flows are mass flow rates.
+Costs are in 2026 USD and follow the relations of the Economics
+panel.</p>
+</footer>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="balance-src" type="text/plain">@@BALANCE_PY@@</script>
+@@PLOTLY_JS@@
+@@KATEX_JS@@
+<script>
+"use strict";
+var PANELS=["app","process","theory","economics","safety","code","references"];
+var displayedParams=null, liveReady=false, firstLiveDone=false, runTimer=null, runPending=false;
+function showPanel(name){
+  PANELS.forEach(function(p){
+    document.getElementById("panel-"+p).hidden=(p!==name);
+    document.getElementById("tab-"+p).setAttribute("aria-selected", p===name?"true":"false");
+  });
+  if(history.replaceState){history.replaceState(null,"","#"+name);}
+  refitCharts();
+}
+document.querySelectorAll("nav.tabs button").forEach(function(b){
+  b.addEventListener("click",function(){showPanel(b.getAttribute("data-panel"));});
+});
+function refitCharts(){
+  if(window.Plotly){
+    ["chart-pressure","chart-steam"].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&el.data){try{Plotly.Plots.resize(el);}catch(e){}}
+    });
+  }
+}
+window.addEventListener("resize",refitCharts);
+new MutationObserver(refitCharts).observe(document.getElementById("panel-app"),{attributes:true,attributeFilter:["hidden"]});
+function readInputs(){
+  return {
+    p_suction_kpa:parseFloat(document.getElementById("in-ps").value),
+    m_dry_kg_h:parseFloat(document.getElementById("in-dry").value),
+    m_cond_kg_h:parseFloat(document.getElementById("in-cond").value),
+    p_motive_mpa:parseFloat(document.getElementById("in-pm").value),
+    t_cw_c:parseFloat(document.getElementById("in-tcw").value),
+    n_stages:parseInt(document.getElementById("in-n").value,10),
+    steam_price:parseFloat(document.getElementById("in-price").value),
+    hours:parseFloat(document.getElementById("in-hours").value)
+  };
+}
+function paramsChanged(a,b){
+  if(!a||!b)return false;
+  return Object.keys(a).some(function(k){return a[k]!==b[k];});
+}
+function renderPayload(d,precomputed){
+  var suffix=precomputed?" (precomputed)":"";
+  var m=document.getElementById("metrics");
+  m.innerHTML=""
+    +"<div class='metric'><div class='v'>"+d.total_motive_kg_h.toFixed(1)+"</div><div class='k'>Total motive steam (kg/h)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+d.motive_low_kg_h.toFixed(0)+"–"+d.motive_high_kg_h.toFixed(0)+"</div><div class='k'>Motive steam band (kg/h)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+d.compression_ratio.toFixed(2)+"</div><div class='k'>Compression ratio per stage"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+d.total_duty_kw.toFixed(1)+"</div><div class='k'>Total condenser duty (kW)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+d.total_cw_m3_h.toFixed(1)+"</div><div class='k'>Cooling water (m3/h)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+d.annual_total_usd.toFixed(0)+"</div><div class='k'>Annual operating cost (USD/yr)"+suffix+"</div></div>";
+  var xs=d.stages.map(function(s){return "Stage "+s.stage;});
+  var ps=d.stages.map(function(s){return s.p_suction_kpa;});
+  ps.push(d.p_discharge_kpa);
+  var xs2=["Suction"].concat(xs);
+  Plotly.react("chart-pressure",[{x:xs2,y:ps,mode:"lines+markers",name:"Stage pressures"+suffix,line:{color:"#0072B2"},marker:{symbol:"circle"}}],{margin:{l:70,r:120,t:10,b:50},xaxis:{title:"Stage"},yaxis:{title:"p (kPa)",type:"log"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
+  var sw=d.sweep.map(function(p){return p.ps;});
+  var sm=d.sweep.map(function(p){return p.motive;});
+  Plotly.react("chart-steam",[{x:sw,y:sm,mode:"lines+markers",name:"Motive steam"+suffix,line:{color:"#D55E00"},marker:{symbol:"square"}},{x:[d.p_suction_kpa],y:[d.total_motive_kg_h],mode:"markers",name:"Current point"+suffix,marker:{symbol:"diamond",size:12,color:"#0072B2"}}],{margin:{l:70,r:120,t:10,b:50},xaxis:{title:"Suction pressure, p (kPa)",type:"log"},yaxis:{title:"Motive steam (kg/h)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
+  var rows=d.stages.map(function(s){
+    return "<tr><td>"+s.stage+"</td><td>"+s.p_suction_kpa.toFixed(2)+"</td><td>"+s.p_discharge_kpa.toFixed(2)+"</td><td>"+s.entrainment_ratio.toFixed(2)+"</td><td>"+s.motive_kg_h.toFixed(1)+"</td><td>"+s.duty_kw.toFixed(1)+"</td><td>"+s.cw_m3_h.toFixed(2)+"</td></tr>";
+  }).join("");
+  document.getElementById("stagetable").innerHTML="<h3>Stage table"+suffix+"</h3><div class=\"tablewrap\"><table><tr><th>Stage</th><th>Suction p (kPa)</th><th>Discharge p (kPa)</th><th>Entrainment ratio</th><th>Motive steam (kg/h)</th><th>Duty (kW)</th><th>Cooling water (m3/h)</th></tr>"+rows+"</table></div>";
+  document.getElementById("warnings").innerHTML=d.warnings.length?"<h3>Warnings</h3>"+d.warnings.map(function(w){return "<p class='warn'>"+w+"</p>";}).join(""):"";
+  document.getElementById("econ").innerHTML="<h3>Economics"+suffix+"</h3><p>Installed capital "+d.capital_usd.toFixed(0)+" USD; annual steam cost "+d.annual_steam_usd.toFixed(0)+" USD/yr; annual cooling-water cost "+d.annual_cw_usd.toFixed(0)+" USD/yr.</p><p>Nozzle exit velocity (ideal-gas limit) "+d.nozzle_v.toFixed(0)+" m/s at Mach "+d.nozzle_mach.toFixed(2)+".</p>";
+  document.getElementById("stalenote").hidden=true;
+  refitCharts();
+}
+var prestart=JSON.parse(document.getElementById("prestart-data").textContent);
+renderPayload(prestart,true);
+displayedParams=prestart.inputs;
+document.getElementById("liveregion").textContent="Design basis shown. Runtime loading.";
+var pyodide=null;
+function setError(msg){
+  var e=document.getElementById("aperror");
+  e.textContent=msg;e.hidden=false;
+  document.getElementById("liveregion").textContent=msg;
+}
+function clearError(){var e=document.getElementById("aperror");e.hidden=true;e.textContent="";}
+function economicsFrom(d,inputs){
+  var steam_t=d.total_motive_kg_h/1000;
+  var annual_steam=steam_t*inputs.hours*inputs.steam_price;
+  var annual_cw=d.total_cw_m3_h*inputs.hours*0.05;
+  return {annual_steam_usd:annual_steam,annual_cw_usd:annual_cw,annual_total_usd:annual_steam+annual_cw};
+}
+function runLive(){
+  if(!liveReady||!pyodide){return;}
+  clearError();
+  var inputs=readInputs();
+  try{
+    var code="import json\n"
+      +"r=run_model("+inputs.p_suction_kpa+","+inputs.m_dry_kg_h+","+inputs.m_cond_kg_h+","+inputs.p_motive_mpa+","+inputs.t_cw_c+","+inputs.n_stages+")\n"
+      +"e=economics(r)\n"
+      +"r['capital_usd']=e['capital_usd']\n"
+      +"r['annual_steam_usd']=e['annual_steam_usd']\n"
+      +"r['annual_cw_usd']=e['annual_cw_usd']\n"
+      +"r['annual_total_usd']=e['annual_total_usd']\n"
+      +"r['nozzle_v']=r['nozzle']['v_exit_m_s']\n"
+      +"r['nozzle_mach']=r['nozzle']['mach']\n"
+      +"r['sweep']=[{'ps': ps, 'motive': run_model(ps,"+inputs.m_dry_kg_h+","+inputs.m_cond_kg_h+","+inputs.p_motive_mpa+","+inputs.t_cw_c+","+inputs.n_stages+")['total_motive_kg_h']} for ps in (0.5,0.7,1.0,1.5,2.0,3.0,5.0,7.0,10.0,15.0,20.0,30.0)]\n"
+      +"r['inputs']={'p_suction_kpa': "+inputs.p_suction_kpa+", 'm_dry_kg_h': "+inputs.m_dry_kg_h+", 'm_cond_kg_h': "+inputs.m_cond_kg_h+", 'p_motive_mpa': "+inputs.p_motive_mpa+", 't_cw_c': "+inputs.t_cw_c+", 'n_stages': "+inputs.n_stages+", 'steam_price': "+inputs.steam_price+", 'hours': "+inputs.hours+"}\n"
+      +"json.dumps(r)";
+    var out=pyodide.runPython(code);
+    var d=JSON.parse(out);
+    renderPayload(d,false);
+    displayedParams=inputs;
+    firstLiveDone=true;
+    document.getElementById("liveregion").textContent="Run complete. Total motive steam "+d.total_motive_kg_h.toFixed(1)+" kg/h.";
+    if(window.SELFTEST_PENDING){window.SELFTEST=checkSelftest(d);window.SELFTEST_PENDING=false;}
+  }catch(err){
+    var msg=String(err&&err.message?err.message:err);
+    var clean=msg.split("\n").filter(function(l){return l.indexOf("ValueError")>=0;}).join(" ");
+    setError(clean||"The inputs could not be run. Check the ranges and try again.");
+  }
+}
+function checkSelftest(d){
+  var ok=Math.abs(d.total_motive_kg_h-prestart.total_motive_kg_h)<1.0
+    &&Math.abs(d.total_duty_kw-prestart.total_duty_kw)<1.0
+    &&Math.abs(d.compression_ratio-prestart.compression_ratio)<0.01;
+  return {pass:ok,total_motive_kg_h:d.total_motive_kg_h,total_duty_kw:d.total_duty_kw};
+}
+function scheduleRun(){
+  if(!liveReady){document.getElementById("stalenote").hidden=false;return;}
+  if(runTimer){clearTimeout(runTimer);}
+  runTimer=setTimeout(function(){runLive();},350);
+}
+["in-ps","in-dry","in-cond","in-pm","in-tcw","in-n","in-price","in-hours"].forEach(function(id){
+  document.getElementById(id).addEventListener("input",function(){
+    if(firstLiveDone){document.getElementById("stalenote").hidden=false;}
+    scheduleRun();
+  });
+});
+document.getElementById("runbtn").addEventListener("click",function(){runLive();});
+function boot(){
+  var s=document.createElement("script");
+  s.src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+  s.onload=function(){
+    document.getElementById("bootprogress").value=60;
+    loadPyodide().then(function(py){
+      pyodide=py;
+      var src=document.getElementById("balance-src").textContent;
+      py.FS.writeFile("/balance.py",src);
+      py.runPython("import sys; sys.path.insert(0,'/'); from balance import run_model, economics");
+      liveReady=true;
+      document.getElementById("bootprogress").value=100;
+      document.getElementById("bootdone").hidden=false;
+      document.getElementById("bootline").hidden=true;
+      document.getElementById("bootprogress").hidden=true;
+      document.getElementById("runbtn").disabled=false;
+      document.getElementById("liveregion").textContent="Runtime ready. Running the design basis.";
+      if(new URLSearchParams(location.search).get("selftest")==="1"){window.SELFTEST_PENDING=true;}
+      runLive();
+    }).catch(function(err){
+      document.getElementById("bootline").textContent="The Python runtime failed to load, so no live run is available. The design basis display above remains, labelled as precomputed.";
+      setError("The Python runtime failed to load. Check the network connection and reload the page.");
+    });
+  };
+  s.onerror=function(){
+    document.getElementById("bootline").textContent="The Python runtime failed to load, so no live run is available. The design basis display above remains, labelled as precomputed.";
+    setError("The Python runtime failed to load. Check the network connection and reload the page.");
+  };
+  document.head.appendChild(s);
+}
+var hash=(location.hash||"#app").slice(1);
+if(PANELS.indexOf(hash)>=0){showPanel(hash);}else{showPanel("app");}
+boot();
+</script>
+</body>
+</html>
