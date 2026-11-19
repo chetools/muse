@@ -288,7 +288,10 @@ $('mediaFile').addEventListener('change', async (ev) => {
   sourceName = file.name;
   $('mediaStatus').textContent = 'Reading the file…';
   try {
-    pcm = await decodeFileTo16kMono(file);
+    pcm = await decodeFileTo16kMono(file, () => {
+      $('mediaStatus').textContent =
+        'This browser could not read that file directly, so the audio is being extracted another way…';
+    });
     durationS = pcm.length / SAMPLE_RATE;
     wavBytes = encodeWavPcm16(pcm);
     audioSha = await sha256Hex(wavBytes);
