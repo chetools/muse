@@ -243,7 +243,19 @@ logic is Node-tested through `classifyDuration`.
   "Done — <file name> has been downloaded" line above the jobs
   list. The built ZIP's bytes are unchanged from the synchronous
   builder for the same entries.
-- **Component version strings**: webapp `hw-signing-webapp 2.4.6`;
+- **Fallback audio decode (2.5.0)**: when the browser's own
+  `decodeAudioData` cannot read a chosen MP4/MOV file (fragmented
+  containers and some codec combinations are rejected by one browser
+  and accepted by another), the page retries on the device: the
+  vendored mp4box.js (`vendor/mp4box/`, loaded only then) demuxes the
+  file and WebCodecs `AudioDecoder` decodes the audio track; each
+  decoded chunk is downmixed and resampled to 16 kHz as it arrives
+  and then dropped, so a long recording is never held in memory at
+  its native rate. Browsers without
+  `AudioDecoder` (Safari before 26, Firefox on Android) skip the
+  fallback and show the same failure as before. No file leaves the
+  device on either path.
+- **Component version strings**: webapp `hw-signing-webapp 2.5.0`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle

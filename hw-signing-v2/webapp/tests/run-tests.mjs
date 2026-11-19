@@ -18,7 +18,11 @@ import {
   VERSIONS, assemblePackage, parsePackageVerification,
   formatTranscriptTimestamp,
 } from '../js/package.js';
-import { encodeWavPcm16, wavDurationS } from '../js/media.js';
+import { encodeWavPcm16, wavDurationS, channelsToMono, createStreamResampler, decodeFileTo16kMono } from '../js/media.js';
+import {
+  isMp4FamilyFile, tier2BlockReason, webCodecsCodecString,
+  decoderSpecificInfo, planesToChannels, demuxMp4Audio, decodeMp4WithWebCodecs,
+} from '../js/media-mp4.js';
 import { buildVocabulary } from '../js/vocab.js';
 import { PAIRS } from '../chemescribe-base/corrections.js';
 import { cacheKey, cacheHit, toCachedChunk, fromCachedChunk, recordingFirstWords } from '../js/cachekey.js';
@@ -375,7 +379,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.4.6');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.0');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -823,7 +827,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.4.6');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.0');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -966,6 +970,319 @@ await test('wiring: duration gate and review elements present in the page', () =
   assert.ok(main.includes('clearYtCheck()'), 'recording change voids the link check');
   assert.ok(!main.includes(': chunks;'), 'no fallback to the on-page transcript at ZIP time');
   assert.ok(main.includes('verifyBundleContents'), 'ZIP contents verified against the bundle');
+});
+
+await test('media tier 2: MP4-family detection by name and by MIME type', () => {
+  assert.equal(isMp4FamilyFile({ name: 'WIN_20261119_Pro.mp4', type: '' }), true);
+  assert.equal(isMp4FamilyFile({ name: 'clip.MOV', type: '' }), true);
+  assert.equal(isMp4FamilyFile({ name: 'voice.m4a', type: '' }), true);
+  assert.equal(isMp4FamilyFile({ name: 'noext', type: 'video/mp4' }), true);
+  assert.equal(isMp4FamilyFile({ name: 'movie.webm', type: 'video/webm' }), false);
+  assert.equal(isMp4FamilyFile({ name: 'song.mp3', type: 'audio/mpeg' }), false);
+  assert.equal(isMp4FamilyFile({ name: 'notes.txt', type: '' }), false);
+  assert.equal(isMp4FamilyFile(null), false);
+});
+
+await test('media tier 2: gating skips cleanly when WebCodecs is absent or the file is not MP4-family', () => {
+  const full = { AudioDecoder: function () {}, EncodedAudioChunk: function () {} };
+  const mp4 = { name: 'a.mp4', type: '' };
+  assert.equal(tier2BlockReason(full, mp4), null);
+  // Safari before 26 / Firefox Android shape: no AudioDecoder at all.
+  assert.match(tier2BlockReason({}, mp4), /AudioDecoder/);
+  assert.match(tier2BlockReason({ AudioDecoder: function () {} }, mp4), /EncodedAudioChunk/);
+  assert.match(tier2BlockReason(full, { name: 'a.webm', type: 'video/webm' }), /not an MP4/);
+  assert.match(tier2BlockReason(null, mp4), /AudioDecoder/);
+});
+
+await test('media tier 2: WebCodecs codec strings from mp4box track codecs', () => {
+  assert.equal(webCodecsCodecString('mp4a.40.2'), 'mp4a.40.2');
+  assert.equal(webCodecsCodecString('mp4a.40.29'), 'mp4a.40.29');
+  assert.equal(webCodecsCodecString('Opus'), 'opus');
+  assert.equal(webCodecsCodecString('opus'), 'opus');
+  assert.equal(webCodecsCodecString('ac-3'), 'ac-3');
+  assert.equal(webCodecsCodecString('ec-3'), 'ec-3');
+});
+
+await test('media tier 2: decoder-specific info found anywhere in the ESD tree', () => {
+  const dsi = new Uint8Array([0x11, 0x90]);
+  const tree = [
+    { tag: 3, descs: [{ tag: 4, descs: [{ tag: 5, data: dsi }, { tag: 6 }] }] },
+  ];
+  assert.equal(decoderSpecificInfo(tree), dsi);
+  assert.equal(decoderSpecificInfo([{ tag: 3, descs: [{ tag: 4 }] }]), null);
+  assert.equal(decoderSpecificInfo([]), null);
+  assert.equal(decoderSpecificInfo(null), null);
+});
+
+await test('media tier 2: decoded planes convert to per-channel float arrays', () => {
+  const planar = planesToChannels({
+    format: 'f32-planar', frames: 3, channels: 2,
+    planes: [new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])],
+  });
+  assert.deepEqual([...planar[0]], [1, 2, 3]);
+  assert.deepEqual([...planar[1]], [4, 5, 6]);
+  const interleaved = planesToChannels({
+    format: 'f32', frames: 2, channels: 2,
+    planes: [new Float32Array([1, 4, 2, 5])],
+  });
+  assert.deepEqual([...interleaved[0]], [1, 2]);
+  assert.deepEqual([...interleaved[1]], [4, 5]);
+  const s16 = planesToChannels({
+    format: 's16', frames: 2, channels: 1,
+    planes: [new Int16Array([16384, -32768])],
+  });
+  assert.deepEqual([...s16[0]], [0.5, -1]);
+  const s16p = planesToChannels({
+    format: 's16-planar', frames: 2, channels: 2,
+    planes: [new Int16Array([0, 32767]), new Int16Array([-32768, 16384])],
+  });
+  assert.equal(s16p[1][0], -1);
+  assert.throws(() => planesToChannels({
+    format: 'u8', frames: 1, channels: 1, planes: [new Uint8Array([0])],
+  }), /unsupported decoded audio format/);
+});
+
+await test('media: channelsToMono takes the per-frame mean', () => {
+  const mono = channelsToMono([
+    new Float32Array([1, -1, 0.5]), new Float32Array([0, 1, -0.5]),
+  ]);
+  assert.deepEqual([...mono], [0.5, 0, 0]);
+  assert.deepEqual([...channelsToMono([new Float32Array([2, 4])])], [2, 4]);
+  assert.equal(channelsToMono([]).length, 0);
+});
+
+await test('media tier 2: streaming resampler is exact at the native rate and decimates by the rate ratio', () => {
+  const identity = createStreamResampler(16000);
+  const src = new Float32Array([0.25, -0.5, 0.75, 1]);
+  const joined = [...identity.push(src), ...identity.finish()];
+  assert.deepEqual(joined, [...src]);
+  const third = createStreamResampler(48000);
+  const ramp = new Float32Array(9000);
+  for (let i = 0; i < ramp.length; i++) ramp[i] = i / 9000;
+  const out = [...third.push(ramp), ...third.finish()];
+  assert.equal(out.length, 3000);
+  // Interior points of a ramp are reproduced (the first and last few
+  // output samples carry the kernel's edge transient, as any
+  // resampler's do).
+  assert.ok(Math.abs(out[1000] - 3000 / 9000) < 1e-3);
+  assert.ok(Math.abs(out[2000] - 6000 / 9000) < 1e-3);
+  // A constant signal resamples to exactly itself, edges included.
+  const dcResampler = createStreamResampler(48000);
+  const dc = [...dcResampler.push(new Float32Array(4800).fill(0.7)), ...dcResampler.finish()];
+  assert.equal(dc.length, 1600);
+  for (const v of dc) assert.ok(Math.abs(v - 0.7) < 1e-6);
+});
+
+await test('media tier 2: streaming resampler filters above the output band instead of aliasing it', () => {
+  const sine = (freq) => {
+    const n = 24000;
+    const x = new Float32Array(n);
+    for (let i = 0; i < n; i++) x[i] = Math.sin((2 * Math.PI * freq * i) / 48000);
+    const rs = createStreamResampler(48000);
+    const o = [...rs.push(x), ...rs.finish()];
+    const mid = o.slice(200, o.length - 200);
+    return Math.sqrt(mid.reduce((s, v) => s + v * v, 0) / mid.length);
+  };
+  // In-band 4 kHz passes at full amplitude (RMS of a unit sine).
+  assert.ok(Math.abs(sine(4000) - Math.SQRT1_2) < 0.01);
+  // 12 kHz and 10 kHz are above the 8 kHz output band: filtered out,
+  // not folded back into the band.
+  assert.ok(sine(12000) < 0.01);
+  assert.ok(sine(10000) < 0.02);
+});
+
+await test('media tier 2: streaming resampler output does not depend on chunk sizes', () => {
+  const n = 10007; // prime length, non-integer ratio at 44.1 kHz
+  const src = new Float32Array(n);
+  let seed = 42;
+  for (let i = 0; i < n; i++) { seed = (seed * 1103515245 + 12345) % 2147483648; src[i] = seed / 2147483648 - 0.5; }
+  const oneShotResampler = createStreamResampler(44100);
+  const oneShot = [...oneShotResampler.push(src), ...oneShotResampler.finish()];
+  const chunkedResampler = createStreamResampler(44100);
+  const chunked = [];
+  for (let at = 0; at < n;) {
+    const take = [1, 7, 1024, 333][chunked.length % 4] || 1;
+    chunked.push(...chunkedResampler.push(src.subarray(at, at + take)));
+    at += take;
+  }
+  chunked.push(...chunkedResampler.finish());
+  assert.equal(chunked.length, oneShot.length);
+  assert.equal(oneShot.length, Math.ceil(n * 16000 / 44100));
+  for (let i = 0; i < oneShot.length; i++) {
+    assert.ok(Math.abs(chunked[i] - oneShot[i]) < 1e-6, 'sample ' + i + ' differs across chunkings');
+  }
+  // Interior spot check: an output landing exactly on input sample
+  // 2205 of a ramp reproduces that sample's value.
+  const at441 = createStreamResampler(44100);
+  const ramp = new Float32Array(4410);
+  for (let i = 0; i < ramp.length; i++) ramp[i] = i;
+  const rampOut = [...at441.push(ramp), ...at441.finish()];
+  assert.ok(Math.abs(rampOut[800] - 2205) < 0.5);
+});
+
+await test('media tier 2: demux rejects a non-MP4 buffer and accepts the module in Node', async () => {
+  await assert.rejects(
+    () => demuxMp4Audio(new TextEncoder().encode('not an mp4 file at all').buffer),
+    /.+/);
+  assert.equal(typeof demuxMp4Audio, 'function');
+});
+
+function fixtureBuffer(name) {
+  const bytes = readFileSync(new URL('./fixtures/' + name, import.meta.url));
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+}
+
+await test('media tier 2: demux of real MP4 fixtures (flat and fragmented)', async () => {
+  for (const name of ['tone-flat.mp4', 'tone-fragmented.mp4']) {
+    const d = await demuxMp4Audio(fixtureBuffer(name));
+    assert.equal(d.codec, 'mp4a.40.2', name);
+    assert.equal(d.sampleRate, 22050, name);
+    assert.equal(d.channels, 1, name);
+    assert.ok(d.description && d.description.length >= 2, name + ': AAC description present');
+    assert.ok(d.samples.length >= 10, name + ': samples extracted');
+    for (let i = 1; i < d.samples.length; i++) {
+      assert.ok(d.samples[i].timestampUs > d.samples[i - 1].timestampUs, name + ': timestamps increase');
+    }
+    const last = d.samples[d.samples.length - 1];
+    const endS = (last.timestampUs + last.durationUs) / 1e6;
+    assert.ok(endS > 0.45 && endS < 0.6, name + ': ends near 0.5 s (got ' + endS + ')');
+  }
+});
+
+// A WebCodecs stand-in: records its configuration and chunks, and
+// answers each decode with one planar AudioData of a constant value.
+function installFakeWebCodecs({ supported = true, framesPerChunk = 1024, value = 0.25, stall = false } = {}) {
+  const saved = {
+    AudioDecoder: globalThis.AudioDecoder,
+    EncodedAudioChunk: globalThis.EncodedAudioChunk,
+  };
+  const seen = { configs: [], chunks: [], constructed: 0 };
+  class FakeAudioData {
+    constructor(timestamp) {
+      this.format = 'f32-planar';
+      this.numberOfChannels = 1;
+      this.numberOfFrames = framesPerChunk;
+      this.sampleRate = 22050;
+      this.timestamp = timestamp;
+    }
+    allocationSize() { return framesPerChunk * 4; }
+    copyTo(arr) { arr.fill(value); }
+    close() {}
+  }
+  class FakeEncodedAudioChunk {
+    constructor(init) { Object.assign(this, init); seen.chunks.push(init); }
+  }
+  class FakeAudioDecoder {
+    static async isConfigSupported(config) {
+      seen.configs.push(config);
+      return supported ? { supported: true, config } : { supported: false };
+    }
+    constructor(callbacks) { this.callbacks = callbacks; seen.constructed += 1; seen.decoder = this; }
+    get decodeQueueSize() { return stall ? 200 : 0; }
+    configure() {}
+    decode(chunk) { if (!stall) this.callbacks.output(new FakeAudioData(chunk.timestamp)); }
+    async flush() {}
+    close() {}
+  }
+  globalThis.AudioDecoder = FakeAudioDecoder;
+  globalThis.EncodedAudioChunk = FakeEncodedAudioChunk;
+  return {
+    seen,
+    restore() {
+      if (saved.AudioDecoder === undefined) delete globalThis.AudioDecoder;
+      else globalThis.AudioDecoder = saved.AudioDecoder;
+      if (saved.EncodedAudioChunk === undefined) delete globalThis.EncodedAudioChunk;
+      else globalThis.EncodedAudioChunk = saved.EncodedAudioChunk;
+    },
+  };
+}
+
+await test('media tier 2: decode streams demuxed samples through WebCodecs in order', async () => {
+  const fake = installFakeWebCodecs();
+  try {
+    const chunks = [];
+    const frames = await decodeMp4WithWebCodecs(fixtureBuffer('tone-fragmented.mp4'),
+      (channelArrays, sampleRate, timestampUs) => chunks.push({ channelArrays, sampleRate, timestampUs }));
+    const demuxed = await demuxMp4Audio(fixtureBuffer('tone-fragmented.mp4'));
+    assert.equal(fake.seen.configs.length, 1);
+    assert.equal(fake.seen.configs[0].codec, 'mp4a.40.2');
+    assert.equal(fake.seen.configs[0].sampleRate, 22050);
+    assert.ok(fake.seen.configs[0].description instanceof Uint8Array);
+    assert.equal(fake.seen.chunks.length, demuxed.samples.length);
+    assert.equal(fake.seen.chunks[0].timestamp, demuxed.samples[0].timestampUs);
+    assert.equal(chunks.length, demuxed.samples.length);
+    assert.equal(frames, demuxed.samples.length * 1024);
+    for (let i = 1; i < chunks.length; i++) {
+      assert.ok(chunks[i].timestampUs > chunks[i - 1].timestampUs, 'output in presentation order');
+    }
+    assert.equal(chunks[0].channelArrays[0][0], 0.25);
+  } finally { fake.restore(); }
+});
+
+await test('media tier 2: unsupported codec config rejects before any decode', async () => {
+  const fake = installFakeWebCodecs({ supported: false });
+  try {
+    await assert.rejects(
+      () => decodeMp4WithWebCodecs(fixtureBuffer('tone-flat.mp4'), () => {}),
+      /cannot decode codec mp4a\.40\.2/);
+    assert.equal(fake.seen.chunks.length, 0);
+  } finally { fake.restore(); }
+});
+
+await test('media tier 2: a decoder error during the backpressure wait settles the decode', async () => {
+  const fake = installFakeWebCodecs({ stall: true });
+  try {
+    const promise = decodeMp4WithWebCodecs(fixtureBuffer('tone-flat.mp4'), () => {});
+    // The stalled decoder never outputs, so the feed loop parks in
+    // the backpressure wait; an error there must wake it and reject,
+    // never leave the promise unsettled.
+    await new Promise((r) => setTimeout(r, 20));
+    fake.seen.decoder.callbacks.error(new Error('async boom'));
+    await assert.rejects(promise, /async boom/);
+  } finally { fake.restore(); }
+});
+
+await test('media tier 2 routing: native failure falls back, and only for MP4 files in WebCodecs browsers', async () => {
+  const nativeErr = new Error('native boom');
+  const savedCtx = globalThis.AudioContext;
+  globalThis.AudioContext = class {
+    async decodeAudioData() { throw nativeErr; }
+    async close() {}
+  };
+  const fileOf = (name, buf) => ({ name, type: '', arrayBuffer: async () => buf.slice(0) });
+  const fake = installFakeWebCodecs();
+  try {
+    // MP4 + WebCodecs present: tier 2 runs, callback fires, PCM returns.
+    let tier2Calls = 0;
+    const pcm = await decodeFileTo16kMono(
+      fileOf('take.mp4', fixtureBuffer('tone-flat.mp4')), () => { tier2Calls += 1; });
+    assert.equal(tier2Calls, 1);
+    assert.ok(pcm instanceof Float32Array && pcm.length > 3000);
+    for (const v of pcm) assert.ok(Math.abs(v - 0.25) < 0.05, 'constant input resamples to itself');
+    // WebM: gate blocks tier 2; the identical native error propagates.
+    await assert.rejects(
+      () => decodeFileTo16kMono(fileOf('take.webm', fixtureBuffer('tone-flat.mp4'))),
+      (err) => err === nativeErr);
+    // No AudioDecoder (Safari < 26 shape): same unchanged failure.
+    delete globalThis.AudioDecoder;
+    await assert.rejects(
+      () => decodeFileTo16kMono(fileOf('take.mp4', fixtureBuffer('tone-flat.mp4'))),
+      (err) => err === nativeErr);
+  } finally {
+    fake.restore();
+    if (savedCtx === undefined) delete globalThis.AudioContext;
+    else globalThis.AudioContext = savedCtx;
+  }
+});
+
+await test('wiring: tier-2 gate loads no mp4box, and the page names the fallback beside the control (2.5.0)', () => {
+  const pure = readFileSync(new URL('../js/media-mp4-pure.js', import.meta.url), 'utf8');
+  assert.ok(!/^\s*import\s/m.test(pure), 'the gate module has no import statements, so gating never loads mp4box');
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('extracted another way'), 'status names the fallback while it runs');
+  assert.ok(main.includes('That file could not be decoded.'), 'final failure text unchanged');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(!index.includes('media-mp4'), 'tier 2 is not loaded on the normal path');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed, ' + skipped + ' skipped');
