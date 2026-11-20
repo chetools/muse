@@ -72,7 +72,24 @@ state_write rm -f "$FLAG_401"
 # /grading/pending returns a JSON array; its length is the pending count.
 PENDING="$(jq -r 'length // 0' "$BODY")"
 if [ "$PENDING" -gt 0 ] 2>/dev/null; then
-  wake "grading job waiting" "{\"pending\": $PENDING}"
+  # In-flight cap (2026-11-20): this account runs at most 7 grading
+  # jobs at a time. The wake procedure records each claim in the
+  # ledger ~/hooks/state/grading-active.json and removes it when the
+  # result posts; entries older than 15 minutes (the claim lease)
+  # are stale and do not count. With no room left the script stays
+  # silent and the jobs wait for a later poll or another account.
+  NOW="$(date +%s)"
+  ACTIVE=0
+  if [ -f "$HOME/hooks/state/grading-active.json" ]; then
+    ACTIVE="$(jq --argjson cutoff "$((NOW - 900))" '[.[] | select(.claimed_at > $cutoff)] | length' "$HOME/hooks/state/grading-active.json" 2>/dev/null || echo 0)"
+    case "$ACTIVE" in *[!0-9]*|'') ACTIVE=0 ;; esac
+  fi
+  ROOM=$((7 - ACTIVE))
+  if [ "$ROOM" -le 0 ]; then
+    silent "grading job waiting; at grading capacity" "{\"pending\": $PENDING, \"active\": $ACTIVE}"
+  else
+    wake "grading job waiting" "{\"pending\": $PENDING, \"room\": $ROOM}"
+  fi
 else
   silent "no pending jobs" '{"pending": 0}'
 fi
