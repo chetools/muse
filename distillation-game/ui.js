@@ -5,57 +5,6 @@ const f2 = (v) => v.toFixed(2);
 const pct = (v) => (v * 100).toFixed(1) + "%";
 const kW = (v) => (v / 1000).toFixed(0) + " kW";
 
-// ---------- Sound (synthesised, no audio files) ----------
-let audio = null, masterGain = null;
-function ensureAudio() {
-  if (audio) return;
-  try {
-    audio = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = audio.createGain();
-    masterGain.gain.value = 0.5;
-    masterGain.connect(audio.destination);
-  } catch (e) { audio = null; }
-}
-function click(delay, freq) {
-  if (!audio || !$("chkSound").checked) return;
-  const t = audio.currentTime + delay;
-  const o = audio.createOscillator(), g = audio.createGain();
-  o.type = "square"; o.frequency.value = freq || 1800;
-  g.gain.setValueAtTime(0.06, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-  o.connect(g); g.connect(masterGain);
-  o.start(t); o.stop(t + 0.04);
-}
-let lastOpeningVal = {};
-function soundValve(idx, value) {
-  ensureAudio();
-  if (!audio || !$("chkSound").checked) return;
-  const prev = lastOpeningVal[idx];
-  lastOpeningVal[idx] = value;
-  if (prev === undefined || Math.abs(value - prev) < 0.01) return;
-  // Soft clicks, density rising with the size of the move.
-  const n = Math.min(6, Math.max(1, Math.round(Math.abs(value - prev) / 4)));
-  for (let i = 0; i < n; i++) click(i * 0.05, 1400 + Math.random() * 500);
-}
-let alarmSoundAt = 0;
-function soundAlarm(kind) {
-  ensureAudio();
-  if (!audio || !$("chkSound").checked) return;
-  const now = performance.now();
-  if (now - alarmSoundAt < 1600) return;
-  alarmSoundAt = now;
-  const freq = kind === "relief" ? 620 : 880;
-  for (let i = 0; i < 2; i++) {
-    const t = audio.currentTime + i * 0.22;
-    const o = audio.createOscillator(), g = audio.createGain();
-    o.type = "sine"; o.frequency.value = freq;
-    g.gain.setValueAtTime(0.12, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    o.connect(g); g.connect(masterGain);
-    o.start(t); o.stop(t + 0.2);
-  }
-}
-
 // ---------- Event log ----------
 let simClock = 0;
 function logMsg(msg) {
@@ -197,13 +146,14 @@ function refreshOutputs() {
   dyn.rebLiq.setAttribute("height", o[33] * 44);
   dyn.feedLbl.textContent = `F = ${f2(o[37])} mol/s`;
   // Drum and condenser levels.
-  dyn.drumLiq.setAttribute("y", 96 + 58 - o[32] * 56);
-  dyn.drumLiq.setAttribute("height", o[32] * 56);
-  dyn.drumLbl.textContent = `P ${f1(P.drum)} kPa`;
-  dyn.drumLbl2.textContent = `level ${pct(o[32])}, ${f1(o[4])} K`;
-  dyn.condFlood.setAttribute("y", 296 + 60 - o[23] * 58);
-  dyn.condFlood.setAttribute("height", o[23] * 58);
-  dyn.condLbl.textContent = `flooded ${pct(o[23])}, condensing at ${f1(o[7])} K`;
+  dyn.drumLiq.setAttribute("y", 88 + 50 - o[32] * 48);
+  dyn.drumLiq.setAttribute("height", o[32] * 48);
+  dyn.drumLbl.textContent = `P ${f1(o[2])} kPa`;
+  dyn.drumLbl2.textContent = `level ${(o[32] * 100).toFixed(1)}%`;
+  dyn.drumLbl3.textContent = `${f1(o[4])} K`;
+  dyn.condFlood.setAttribute("y", 300 + 54 - o[23] * 52);
+  dyn.condFlood.setAttribute("height", o[23] * 52);
+  dyn.condLbl.textContent = `flooded ${pct(o[23])}`;
   dyn.riserLbl.textContent = `riser ${f2(o[20])} mol/s`;
   dyn.marginLbl.textContent = `margin ${f2(o[21])} K`;
   dyn.riser.setAttribute("stroke", o[21] < 0 ? "#b3541e" : "#56b4e9");
@@ -212,7 +162,8 @@ function refreshOutputs() {
   dyn.botLbl.textContent = `${f2(o[16])} mol/s`;
   dyn.chestLbl.textContent = `${f1(P.chest)} kPa`;
   dyn.tankLbl.textContent = `${f1(o[5])} K`;
-  dyn.qCondArrow.textContent = `condenser duty ${kW(o[25])}`;
+  dyn.qCondArrow.textContent = "condensing at";
+  dyn.condLbl2.textContent = `${f1(o[7])} K`;
   dyn.qRebArrow.textContent = `reboiler duty ${kW(o[24])}`;
   // Valve labels.
   const ops = getOpenings();
@@ -263,11 +214,9 @@ function refreshOutputs() {
   if (alarm.relief) {
     bar.className = "relief"; bar.style.display = "block";
     bar.textContent = "RELIEF VALVE LIFTING — vapour is being lost to the flare and the score penalty is heavy.";
-    soundAlarm("relief");
   } else if (alarm.hp) {
     bar.className = "hp"; bar.style.display = "block";
     bar.textContent = "HIGH PRESSURE ALARM — column pressure is above 360 kPa. The relief valve lifts at 400 kPa.";
-    soundAlarm("hp");
   } else if (alarm.flash) {
     bar.className = "flash"; bar.style.display = "block";
     bar.textContent = "RISER FLASHING — the condensate is not subcooled enough for the lift to the drum; drainage is degraded.";
@@ -354,7 +303,6 @@ function doReset() {
 }
 $("btnReset").addEventListener("click", doReset);
 $("btnOverReset").addEventListener("click", doReset);
-$("chkSound").addEventListener("change", ensureAudio);
 
 let lastFrame = null, uiAccum = 0;
 function tick(now) {

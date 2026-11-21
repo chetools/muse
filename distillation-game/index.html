@@ -117,7 +117,6 @@
           </select>
         </label>
         <button id="btnReset" disabled>Reset to the nominal point</button>
-        <label class="small"><input type="checkbox" id="chkSound"> Sound</label>
         <span class="small">Clock: <span id="clock">0 s</span></span>
       </div>
       <h2 style="margin-top:12px">Disturbances (practice)</h2>
@@ -290,8 +289,7 @@ function buildPlant() {
     const t = txt(root, px(p), row ? 66 : 52, lab, "lbl");
     t.setAttribute("text-anchor", "middle");
   }
-  dyn.pVal = txt(root, 372, 35, "", "num");
-  dyn.pVal.setAttribute("text-anchor", "end");
+  dyn.pVal = txt(root, 380, 52, "", "num");
 
   // Column body and trays. Stage 0 is the reboiler; stages 1..12
   // are trays, tray 12 at the top.
@@ -311,107 +309,113 @@ function buildPlant() {
     dyn.traySegs[j] = segs;
     const tt = el("rect", { x: colX + colW + 6, y: yTop + 4, width: 16, height: trayH - 8, fill: "#ccc", stroke: "#c9c4b4" }, root);
     dyn.trayTemp[j] = tt;
-    if (j === 6) txt(root, colX + colW + 30, yTop + trayH / 2 + 4, "feed tray 6", "lbl");
+    if (j === 6) txt(root, colX + colW / 2, yTop + 14, "feed tray 6", "lbl").setAttribute("text-anchor", "middle");
   }
   txt(root, colX + colW / 2, topY - 8, "Column, 12 trays", "lblb").setAttribute("text-anchor", "middle");
   dyn.topT = txt(root, 254, 132, "", "num");
-  // Feed inlet at tray 6.
+  // Feed inlet at tray 6 (straight run, no bends).
   const feedY = topY + 6.5 * trayH;
   pipe(root, `10,${feedY} 60,${feedY}`, "#6b675a", 3);
   el("path", { d: `M 60 ${feedY - 5} L 72 ${feedY} L 60 ${feedY + 5} Z`, fill: "#6b675a" }, root);
   txt(root, 10, feedY - 12, "feed in", "lbl");
   dyn.feedLbl = txt(root, 10, feedY + 22, "", "num");
-  // Reboiler (smaller than the first build).
+  // Reboiler (narrower).
   const rebY = topY + trayH * 12 + 14;
-  el("rect", { x: 80, y: rebY, width: 140, height: 48, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
-  dyn.rebLiq = el("rect", { x: 82, y: rebY + 46, width: 136, height: 0, fill: "#56b4e9", opacity: 0.55 }, root);
-  txt(root, 150, rebY + 64, "Reboiler", "lblb").setAttribute("text-anchor", "middle");
-  dyn.rebT = txt(root, 150, rebY + 92, "", "num");
+  el("rect", { x: 100, y: rebY, width: 110, height: 48, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
+  dyn.rebLiq = el("rect", { x: 102, y: rebY + 46, width: 106, height: 0, fill: "#56b4e9", opacity: 0.55 }, root);
+  txt(root, 155, rebY + 14, "Reboiler", "lblb").setAttribute("text-anchor", "middle");
+  dyn.rebT = txt(root, 155, rebY + 92, "", "num");
   dyn.rebT.setAttribute("text-anchor", "middle");
-  dyn.qRebArrow = txt(root, 150, rebY + 106, "", "num");
+  dyn.qRebArrow = txt(root, 155, rebY + 124, "", "num");
   dyn.qRebArrow.setAttribute("text-anchor", "middle");
-  // Bottoms line.
-  pipe(root, `210,${rebY + 48} 210,592 420,592`, "#6b675a", 3);
+  // Bottoms line: down from the reboiler, then straight right.
+  pipe(root, `205,${rebY + 48} 205,592 420,592`, "#6b675a", 3);
   valveGlyph(root, "bottoms", 300, 592);
   txt(root, 428, 588, "bottoms out", "lbl");
   dyn.botLbl = txt(root, 428, 606, "", "num");
-  // Overhead line: along y=100 to the inlet valve, then down the
-  // x=430 leg into the condenser top.
-  pipe(root, `205,100 430,100 430,296`, "#6b675a", 3);
-  valveGlyph(root, "inlet", 345, 100);
-  // Relief branch off the overhead line.
-  pipe(root, `250,100 250,58`, "#6b675a", 2.5);
-  el("path", { d: "M 242 58 L 258 58 L 250 46 Z", fill: "#fff", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
-  txt(root, 244, 56, "relief to flare, set 400 kPa", "lbl").setAttribute("text-anchor", "end");
-  dyn.reliefLbl = txt(root, 262, 76, "", "num");
-  // Hot vapour bypass: up from the overhead line, across at y=76,
-  // down into the drum top. No line crossings.
-  pipe(root, `300,100 300,76 470,76 470,96`, "#6b675a", 3);
-  valveGlyph(root, "bypass", 300, 88, "above");
-  txt(root, 385, 66, "hot vapour bypass", "lbl").setAttribute("text-anchor", "middle");
-  // Reflux drum (smaller than the first build).
-  const drumX = 446, drumY = 96, drumW = 160, drumH = 60;
+  // Overhead line: straight right, one bend down into the
+  // condenser top.
+  pipe(root, `205,100 352,100 352,300`, "#6b675a", 3);
+  valveGlyph(root, "inlet", 300, 100);
+  // Relief branch (straight up).
+  pipe(root, `225,100 225,58`, "#6b675a", 2.5);
+  el("path", { d: "M 217 58 L 233 58 L 225 46 Z", fill: "#fff", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
+  txt(root, 217, 52, "relief to flare, set 400 kPa", "lbl").setAttribute("text-anchor", "end");
+  dyn.reliefLbl = txt(root, 270, 90, "", "num");
+  // Hot vapour bypass: up, straight across, down into the drum top.
+  pipe(root, `262,100 262,64 470,64 470,88`, "#6b675a", 3);
+  valveGlyph(root, "bypass", 370, 64, "above");
+  txt(root, 300, 54, "hot vapour bypass", "lbl").setAttribute("text-anchor", "middle");
+  // Reflux drum (narrower, right-aligned with the condenser).
+  const drumX = 430, drumY = 88, drumW = 120, drumH = 52;
   el("rect", { x: drumX, y: drumY, width: drumW, height: drumH, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
   dyn.drumLiq = el("rect", { x: drumX + 2, y: drumY + drumH - 2, width: drumW - 4, height: 0, fill: "#56b4e9", opacity: 0.55 }, root);
   txt(root, drumX + drumW / 2, drumY - 8, "Reflux drum", "lblb").setAttribute("text-anchor", "middle");
-  dyn.drumLbl = txt(root, drumX, drumY + drumH + 18, "", "num");
-  dyn.drumLbl2 = txt(root, drumX, drumY + drumH + 34, "", "num");
-  // Condenser below the drum (smaller than the first build).
-  const cX = 400, cY = 296, cW = 220, cH = 62;
+  dyn.drumLbl = txt(root, 424, drumY + drumH + 18, "", "num");
+  dyn.drumLbl2 = txt(root, 424, drumY + drumH + 34, "", "num");
+  dyn.drumLbl3 = txt(root, 424, drumY + drumH + 50, "", "num");
+  // Condenser below the drum (narrower).
+  const cX = 352, cY = 300, cW = 150, cH = 56;
   el("rect", { x: cX, y: cY, width: cW, height: cH, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
   dyn.condFlood = el("rect", { x: cX + 2, y: cY + cH - 2, width: cW - 4, height: 0, fill: "#56b4e9", opacity: 0.5 }, root);
   for (let i = 0; i < 4; i++) {
-    const y = cY + 12 + i * 13;
+    const y = cY + 11 + i * 12;
     el("line", { x1: cX + 8, y1: y, x2: cX + cW - 8, y2: y, stroke: "#16697a", "stroke-width": 3 }, root);
   }
   txt(root, cX + cW / 2, cY - 8, "Condenser (flooded)", "lblb").setAttribute("text-anchor", "middle");
-  dyn.condLbl = txt(root, 405, cY + cH + 20, "", "num");
-  dyn.qCondArrow = txt(root, 405, cY + cH + 36, "", "num");
-  // Riser from the condenser right end up to the drum right side.
-  dyn.riser = pipe(root, `620,340 648,340 648,130 606,130`, "#56b4e9", 4);
-  dyn.riserLbl = txt(root, 656, 302, "", "num");
-  dyn.marginLbl = txt(root, 656, 318, "", "num");
-  valveGlyph(root, "outlet", 648, 235);
-  // Reflux line: drum bottom down and back to the column top.
-  pipe(root, `470,156 470,210 246,210 246,116 205,116`, "#56b4e9", 3);
-  valveGlyph(root, "reflux", 360, 210);
-  txt(root, 254, 200, "reflux", "lbl");
-  // Distillate line: drum bottom, right, stopping before the riser.
-  pipe(root, `580,156 580,176 636,176`, "#56b4e9", 3);
-  el("path", { d: "M 636 171 L 648 176 L 636 181 Z", fill: "#56b4e9" }, root);
-  valveGlyph(root, "distillate", 600, 176);
-  txt(root, 636, 232, "distillate out", "lbl").setAttribute("text-anchor", "end");
-  dyn.distLbl = txt(root, 636, 214, "", "num");
+  dyn.condLbl = txt(root, 462, cY + cH + 12, "", "num");
+  dyn.condLbl.setAttribute("text-anchor", "end");
+  dyn.qCondArrow = txt(root, 462, cY + cH + 26, "", "num");
+  dyn.qCondArrow.setAttribute("text-anchor", "end");
+  dyn.condLbl2 = txt(root, 462, cY + cH + 40, "", "num");
+  dyn.condLbl2.setAttribute("text-anchor", "end");
+  // Riser: straight up the shared right edge, one bend into the
+  // drum side.
+  dyn.riser = pipe(root, `502,300 502,132 550,132`, "#56b4e9", 4);
+  valveGlyph(root, "outlet", 502, 230);
+  dyn.riserLbl = txt(root, 528, 300, "", "num");
+  dyn.marginLbl = txt(root, 528, 316, "", "num");
+  // Distillate: straight out of the drum side.
+  pipe(root, `550,110 636,110`, "#56b4e9", 3);
+  el("path", { d: "M 636 105 L 648 110 L 636 115 Z", fill: "#56b4e9" }, root);
+  valveGlyph(root, "distillate", 593, 110);
+  txt(root, 636, 144, "distillate out", "lbl").setAttribute("text-anchor", "end");
+  dyn.distLbl = txt(root, 636, 160, "", "num");
   dyn.distLbl.setAttribute("text-anchor", "end");
-  // Steam: header along y=556, regulator, flow valve, chest, reboiler.
-  pipe(root, `742,556 236,556 236,${rebY + 24}`, "#b3541e", 3);
-  txt(root, 742, 524, "steam supply 900 kPa", "lbl").setAttribute("text-anchor", "end");
+  // Reflux: down the right side clear of the condenser, straight
+  // left along the bottom, up into the column top.
+  pipe(root, `515,140 515,500 246,500 246,116 205,116`, "#56b4e9", 3);
+  valveGlyph(root, "reflux", 380, 500);
+  txt(root, 254, 200, "reflux", "lbl");
+  // Steam: header along y=556, one bend up into the reboiler.
+  pipe(root, `742,556 155,556 155,${rebY + 48}`, "#b3541e", 3);
+  txt(root, 742, 534, "steam supply 900 kPa", "lbl").setAttribute("text-anchor", "end");
   valveGlyph(root, "regulator", 660, 556);
   valveGlyph(root, "steam", 545, 556);
   el("rect", { x: 415, y: 520, width: 80, height: 42, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
-  txt(root, 455, 512, "steam chest", "lbl").setAttribute("text-anchor", "middle");
-  dyn.chestLbl = txt(root, 455, 545, "", "num");
+  dyn.chestCap = txt(root, 455, 533, "steam chest", "lbl");
+  dyn.chestCap.setAttribute("text-anchor", "middle");
+  dyn.chestLbl = txt(root, 455, 550, "", "num");
   dyn.chestLbl.setAttribute("text-anchor", "middle");
-  // Cooling loop: surge tank (smaller), pump, makeup. Water return
-  // leaves the condenser bottom right; supply enters bottom left.
-  pipe(root, `600,358 600,404 700,404 700,426`, "#16697a", 3);
-  pipe(root, `664,452 641,452`, "#16697a", 3);
-  pipe(root, `615,452 560,452 560,404 520,404 520,362`, "#16697a", 3);
-  const tX = 664, tY = 426;
-  el("rect", { x: tX, y: tY, width: 72, height: 58, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
-  el("rect", { x: tX + 2, y: tY + 22, width: 68, height: 34, fill: "#56b4e9", opacity: 0.45 }, root);
-  txt(root, tX + 36, tY + 15, "cooling surge tank", "lbl").setAttribute("text-anchor", "middle");
-  dyn.tankLbl = txt(root, tX + 36, tY + 74, "", "num");
-  dyn.tankLbl.setAttribute("text-anchor", "middle");
+  // Cooling loop: surge tank at bottom left of the condenser,
+  // pump on the supply run. Supply enters the condenser bottom;
+  // return leaves the condenser bottom right.
+  pipe(root, `400,356 400,404 282,404 282,436`, "#16697a", 3);
+  pipe(root, `470,356 470,450 318,450`, "#16697a", 3);
+  const tX = 262, tY = 436;
+  el("rect", { x: tX, y: tY, width: 56, height: 52, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
+  el("rect", { x: tX + 2, y: tY + 22, width: 52, height: 28, fill: "#56b4e9", opacity: 0.45 }, root);
+  txt(root, tX + 28, tY + 32, "surge tank", "lbl").setAttribute("text-anchor", "middle");
+  dyn.tankLbl = txt(root, tX + 64, tY + 34, "", "num");
   const pumpG = el("g", { class: "valve", "data-valve": "pump" }, root);
-  el("circle", { cx: 628, cy: 452, r: 13, class: "vbody" }, pumpG);
-  txt(pumpG, 628, 456, "P", "lblb").setAttribute("text-anchor", "middle");
-  dyn.v_pump = txt(pumpG, 628, 480, "", "num");
+  el("circle", { cx: 341, cy: 404, r: 13, class: "vbody" }, pumpG);
+  txt(pumpG, 341, 408, "P", "lblb").setAttribute("text-anchor", "middle");
+  dyn.v_pump = txt(pumpG, 341, 428, "", "num");
   dyn.v_pump.setAttribute("text-anchor", "middle");
   pumpG.addEventListener("click", () => selectValve("pump"));
-  valveGlyph(root, "makeup", 680, 396);
-  pipe(root, `680,426 680,402`, "#16697a", 3);
-  txt(root, 680, 368, "cold makeup", "lbl").setAttribute("text-anchor", "middle");
+  valveGlyph(root, "makeup", 270, 412);
+  pipe(root, `270,436 270,388`, "#16697a", 3);
+  txt(root, 278, 376, "cold makeup", "lbl");
 }
 </script>
 <script src="ui.js"></script>
