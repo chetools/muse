@@ -121,8 +121,11 @@ function tempColor(t) {
 let prevAlarm = { hp: false, relief: false, flash: false, ruptured: false };
 let riserPhase = 0;
 
+let bubV = { R: 9, S: 9 };
 function refreshOutputs() {
   const o = outputs();
+  bubV = { R: o[12], S: o[11] };
+  sampleHistory(o);
   const P = { col: o[0], cond: o[1], drum: o[2], chest: o[3] };
   // Pressure bar.
   dyn.pBar.setAttribute("width", Math.max(0, (P.col - 20) / 620 * 350));
@@ -233,6 +236,7 @@ function refreshOutputs() {
   prevAlarm = alarm;
   pollApStatus();
   if (selected) syncValvePanel();
+  drawAllTiles();
 }
 
 // ---------- Disturbances ----------
@@ -288,6 +292,8 @@ $("selAp").addEventListener("change", (e) => {
     `Autopilot level ${level} engaged${level >= 1 ? "; the inlet valve is parked fully open" : ""}. Teal-outlined valves are on autopilot; moving one claims its seat.`);
 });
 function doReset() {
+  HISTORY.length = 0;
+  lastSampleT = -1;
   W.dg_reset(sim);
   $("selAp").value = "0";
   apStatus = null;
@@ -335,3 +341,319 @@ function tick(now) {
 loadEngine().catch((e) => {
   $("status").textContent = "Engine failed to load: " + e.message;
 });
+
+// ---------- Tray bubbling (vapour-rate driven) ----------
+let bubLast = performance.now();
+function animateBubbles(now) {
+  requestAnimationFrame(animateBubbles);
+  const dt = Math.min(0.05, (now - bubLast) / 1000);
+  bubLast = now;
+  if (!dyn.trayBubbles || !playing) return;
+  for (let j = 1; j <= 12; j++) {
+    const bubs = dyn.trayBubbles[j];
+    if (!bubs) continue;
+    const V = j > 6 ? bubV.R : bubV.S;
+    const rate = Math.max(0, V) / 9;
+    const yTop = 84 + (12 - j) * 32;
+    for (const b of bubs) {
+      b.phase += dt * (0.2 + 0.9 * rate) * b.speed;
+      if (b.phase > 1) { b.phase -= 1; b.x = b.x0 + (Math.random() * 8 - 4); }
+      b.el.setAttribute("cy", (yTop + 30 - b.phase * 10).toFixed(1));
+      b.el.setAttribute("cx", (b.x + Math.sin(b.phase * 6 + b.x0) * 1.2).toFixed(1));
+      const vis = rate < 0.08 ? 0 :
+        Math.sin(Math.PI * Math.min(1, b.phase)) * Math.min(1, 0.2 + rate);
+      b.el.setAttribute("opacity", vis.toFixed(2));
+      b.el.setAttribute("r", (1.3 + rate * 1.4 * b.size).toFixed(2));
+    }
+  }
+}
+requestAnimationFrame(animateBubbles);
+
+// ---------- Plots: history, parameter catalogue, palette ----------
+const HISTORY = [];
+let lastSampleT = -1;
+function sampleHistory(o) {
+  if (simClock - lastSampleT < 1.0) return;
+  lastSampleT = simClock;
+  HISTORY.push({ t: simClock, v: Array.from(o) });
+  if (HISTORY.length > 7200) HISTORY.shift();
+}
+const COMP_NAMES = ["pentane", "hexane", "heptane"];
+const KEY_TAG = [" (light key)", " (heavy key)", ""];
+const SERIES_COLORS = ["#16697a", "#b3541e", "#7d3c98", "#1e7a34",
+  "#8a6d00", "#005f8f", "#a83232", "#4d4d4d"];
+const PLOT_PARAMS = {};
+const PLOT_GROUPS = [];
+function defParam(id, name, short, group, unit, color, frac, get) {
+  if (!PLOT_GROUPS.includes(group)) PLOT_GROUPS.push(group);
+  PLOT_PARAMS[id] = { id, name, short, group, unit, color, frac, get };
+}
+(function buildCatalogue() {
+  let ci = 0;
+  const col = () => SERIES_COLORS[(ci++) % SERIES_COLORS.length];
+  const P = (id, name, idx) => defParam(id, name, name, "Pressures", "kPa", col(), false, (o) => o[idx]);
+  P("pcol", "Column pressure", 0); P("pcond", "Condenser pressure", 1);
+  P("pdrum", "Drum pressure", 2); P("pchest", "Steam chest pressure", 3);
+  defParam("lvl_drum", "Drum level", "drum level", "Levels and margin", "", col(), true, (o) => o[32]);
+  defParam("lvl_reb", "Reboiler level", "reboiler level", "Levels and margin", "", col(), true, (o) => o[33]);
+  defParam("flooded", "Condenser flooded fraction", "flooded", "Levels and margin", "", col(), true, (o) => o[23]);
+  defParam("margin", "Subcooling margin", "margin", "Levels and margin", "K", col(), false, (o) => o[21]);
+  const F = (id, name, idx) => defParam(id, name, name, "Flows", "mol/s", col(), false, (o) => o[idx]);
+  F("feed", "Feed flow", 37); F("vrec", "Vapour, rectifying", 12);
+  F("vstrip", "Vapour, stripping", 11); F("refluxf", "Reflux flow", 13);
+  F("distf", "Distillate flow", 15); F("botf", "Bottoms flow", 16);
+  F("vin", "Vapour into condenser", 17); F("bypassf", "Bypass vapour", 18);
+  F("condrate", "Condensation rate", 19); F("drain", "Condensate to drum", 20);
+  F("steamf", "Steam flow", 26); F("relieff", "Relief flow", 27);
+  const T = (id, name, idx) => defParam(id, name, name, "Temperatures", "K", col(), false, (o) => o[idx]);
+  T("ttop", "Top temperature", 9); T("tdrum", "Drum temperature", 4);
+  T("tcond", "Condensing temperature", 7); T("tpool", "Reboiler liquid temperature", 8);
+  T("treb", "Reboiler temperature", 10); T("twout", "Water leaving condenser", 6);
+  T("ttank", "Cooling tank temperature", 5);
+  defParam("qcond", "Condenser duty", "condenser", "Duties", "kW", col(), false, (o) => o[25] / 1000);
+  defParam("qreb", "Reboiler duty", "reboiler", "Duties", "kW", col(), false, (o) => o[24] / 1000);
+  const compGroup = (prefix, label, base) => {
+    for (let c = 0; c < 3; c++) {
+      defParam(`${prefix}${c}`, `${label} ${COMP_NAMES[c]}${KEY_TAG[c]}`,
+        COMP_NAMES[c], `${label} composition`, "", COMP_COLORS[c], true,
+        (o) => o[base + c]);
+    }
+  };
+  compGroup("xd", "Distillate", 40);
+  compGroup("xb", "Bottoms", 49);
+  compGroup("xt", "Top vapour", 46);
+  compGroup("xp", "Condenser pool", 43);
+  for (let j = 0; j <= 12; j++) {
+    const stage = j === 0 ? "Reboiler" : `Tray ${j}`;
+    for (let c = 0; c < 3; c++) {
+      defParam(`xs${j}_${c}`, `${stage} ${COMP_NAMES[c]}`, `${stage} ${COMP_NAMES[c]}`,
+        "Tray compositions", "", COMP_COLORS[c], true, (o) => o[52 + j * 3 + c]);
+    }
+    defParam(`ts${j}`, `${stage} temperature`, `${stage}`, "Tray temperatures", "K",
+      col(), false, (o) => o[91 + j]);
+  }
+})();
+function buildPalette() {
+  const pal = $("palette");
+  pal.innerHTML = "";
+  for (const g of PLOT_GROUPS) {
+    const det = document.createElement("details");
+    if (g === "Distillate composition" || g === "Bottoms composition") det.open = true;
+    const sum = document.createElement("summary");
+    sum.textContent = g;
+    det.appendChild(sum);
+    const row = document.createElement("div");
+    row.className = "chipRow";
+    for (const p of Object.values(PLOT_PARAMS)) {
+      if (p.group !== g) continue;
+      const chip = document.createElement("span");
+      chip.className = "pChip";
+      chip.textContent = p.name;
+      chip.draggable = true;
+      chip.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", p.id);
+        e.dataTransfer.effectAllowed = "copy";
+      });
+      chip.addEventListener("click", () => addTile([p.id]));
+      row.appendChild(chip);
+    }
+    det.appendChild(row);
+    pal.appendChild(det);
+  }
+}
+
+// ---------- Plots: tiles and drawing ----------
+let tiles = [];
+let tileSeq = 0;
+function fmtClock(t) {
+  return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+}
+function fmtY(v) {
+  const a = Math.abs(v);
+  if (a >= 100) return v.toFixed(0);
+  if (a >= 10) return v.toFixed(1);
+  if (a >= 1) return v.toFixed(2);
+  return v.toFixed(3);
+}
+function tileTitle(tile) {
+  if (tile.fixedTitle) return tile.fixedTitle;
+  const names = tile.series.map((id) => PLOT_PARAMS[id].short);
+  return names.length === 1 ? PLOT_PARAMS[tile.series[0]].name : names.join(" · ");
+}
+function renderTileHead(tile) {
+  tile.titleEl.textContent = tileTitle(tile);
+  tile.legendEl.innerHTML = "";
+  for (const id of tile.series) {
+    const p = PLOT_PARAMS[id];
+    const chip = document.createElement("span");
+    chip.className = "sChip";
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = p.color;
+    chip.appendChild(dot);
+    chip.appendChild(document.createTextNode(p.short));
+    const x = document.createElement("button");
+    x.textContent = "×";
+    x.title = `Remove ${p.name}`;
+    x.addEventListener("click", () => removeSeries(tile, id));
+    chip.appendChild(x);
+    tile.legendEl.appendChild(chip);
+  }
+}
+function addTile(seriesIds, guides, fixedTitle) {
+  const tile = { n: ++tileSeq, series: [...seriesIds], guides: guides || [], fixedTitle: fixedTitle || null };
+  const el = document.createElement("div");
+  el.className = "tile";
+  const head = document.createElement("div");
+  head.className = "tileHead";
+  tile.titleEl = document.createElement("span");
+  tile.titleEl.className = "tileTitle";
+  const x = document.createElement("button");
+  x.className = "tileX";
+  x.textContent = "×";
+  x.title = "Remove this plot";
+  x.addEventListener("click", () => { el.remove(); tiles = tiles.filter((t) => t !== tile); });
+  head.appendChild(tile.titleEl);
+  head.appendChild(x);
+  tile.legendEl = document.createElement("div");
+  tile.legendEl.className = "tileLegend";
+  tile.canvas = document.createElement("canvas");
+  el.appendChild(head);
+  el.appendChild(tile.legendEl);
+  el.appendChild(tile.canvas);
+  el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("dragover"); });
+  el.addEventListener("dragleave", () => el.classList.remove("dragover"));
+  el.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    el.classList.remove("dragover");
+    const pid = e.dataTransfer.getData("text/plain");
+    if (pid && PLOT_PARAMS[pid]) addSeries(tile, pid);
+  });
+  tile.el = el;
+  $("plotGrid").appendChild(el);
+  tiles.push(tile);
+  renderTileHead(tile);
+  drawTile(tile);
+  return tile;
+}
+function addSeries(tile, pid) {
+  if (tile.series.includes(pid) || tile.series.length >= 6) return;
+  tile.series.push(pid);
+  tile.fixedTitle = null;
+  renderTileHead(tile);
+  drawTile(tile);
+}
+function removeSeries(tile, pid) {
+  tile.series = tile.series.filter((s) => s !== pid);
+  if (tile.series.length === 0) {
+    tile.el.remove();
+    tiles = tiles.filter((t) => t !== tile);
+    return;
+  }
+  tile.fixedTitle = null;
+  renderTileHead(tile);
+  drawTile(tile);
+}
+function buildDefaultTiles() {
+  $("plotGrid").innerHTML = "";
+  tiles = [];
+  addTile(["pcol"], [{ y: 360, label: "alarm 360" }, { y: 400, label: "relief 400" }], "Column pressure");
+  addTile(["lvl_drum", "lvl_reb", "flooded"], [], "Levels and flooding");
+  addTile(["xd0", "xd1", "xd2"], [{ y: 0.95, label: "spec 0.95" }], "Distillate composition");
+  addTile(["xb0", "xb1", "xb2"], [{ y: 0.05, label: "spec 0.05" }], "Bottoms composition");
+  addTile(["qcond", "qreb"], [], "Duties");
+}
+function drawTile(tile) {
+  const cv = tile.canvas;
+  if (!cv || !cv.clientWidth) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) {
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const mL = 36, mR = 8, mT = 5, mB = 15;
+  const pw = W - mL - mR, ph = H - mT - mB;
+  const winSel = $("selPlotWin").value;
+  const win = winSel === "inf" ? Infinity : parseFloat(winSel);
+  const tEnd = HISTORY.length ? HISTORY[HISTORY.length - 1].t : Math.max(simClock, 1);
+  const tStart = Math.max(0, tEnd - win);
+  const vis = HISTORY.filter((s) => s.t >= tStart - 1e-9);
+  const allFrac = tile.series.every((id) => PLOT_PARAMS[id].frac);
+  let yLo = Infinity, yHi = -Infinity;
+  if (allFrac && tile.series.length) { yLo = 0; yHi = 1; }
+  if (yLo === Infinity) {
+    for (const s of vis) for (const id of tile.series) {
+      const v = PLOT_PARAMS[id].get(s.v);
+      if (v < yLo) yLo = v;
+      if (v > yHi) yHi = v;
+    }
+    for (const g of tile.guides) { if (g.y < yLo) yLo = g.y; if (g.y > yHi) yHi = g.y; }
+    if (yLo === Infinity) { yLo = 0; yHi = 1; }
+    const pad = (yHi - yLo) * 0.1 || 1;
+    yLo -= pad; yHi += pad;
+  }
+  const X = (t) => mL + (t - tStart) / Math.max(1e-9, tEnd - tStart) * pw;
+  const Y = (v) => mT + (yHi - v) / (yHi - yLo) * ph;
+  ctx.font = "10px sans-serif";
+  ctx.strokeStyle = "#e3ddcb";
+  ctx.fillStyle = "#55503f";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = yLo + (yHi - yLo) * i / 4;
+    const y = Y(v);
+    ctx.beginPath(); ctx.moveTo(mL, y); ctx.lineTo(mL + pw, y); ctx.stroke();
+    ctx.textAlign = "right";
+    ctx.fillText(fmtY(v), mL - 3, y + 3);
+  }
+  ctx.textAlign = "left";
+  ctx.fillText(fmtClock(tStart), mL, H - 3);
+  ctx.textAlign = "right";
+  ctx.fillText(fmtClock(tEnd), mL + pw, H - 3);
+  for (const g of tile.guides) {
+    if (g.y < yLo || g.y > yHi) continue;
+    ctx.strokeStyle = "rgba(176,0,32,0.55)";
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(mL, Y(g.y)); ctx.lineTo(mL + pw, Y(g.y)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(176,0,32,0.8)";
+    ctx.textAlign = "right";
+    ctx.fillText(g.label, mL + pw - 2, Y(g.y) - 3);
+    ctx.fillStyle = "#55503f";
+  }
+  for (const id of tile.series) {
+    const p = PLOT_PARAMS[id];
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    let started = false;
+    for (const s of vis) {
+      const x = X(s.t), y = Y(p.get(s.v));
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.lineWidth = 1;
+}
+function drawAllTiles() {
+  for (const t of tiles) drawTile(t);
+}
+(function initPlots() {
+  buildPalette();
+  buildDefaultTiles();
+  const panel = $("plotPanel");
+  panel.addEventListener("dragover", (e) => { e.preventDefault(); panel.classList.add("dragover"); });
+  panel.addEventListener("dragleave", () => panel.classList.remove("dragover"));
+  panel.addEventListener("drop", (e) => {
+    e.preventDefault();
+    panel.classList.remove("dragover");
+    const pid = e.dataTransfer.getData("text/plain");
+    if (pid && PLOT_PARAMS[pid]) addTile([pid]);
+  });
+  $("btnPlotsReset").addEventListener("click", buildDefaultTiles);
+  $("selPlotWin").addEventListener("change", drawAllTiles);
+})();

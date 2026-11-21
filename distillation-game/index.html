@@ -36,6 +36,25 @@
   }
   #plantCard { padding: 6px; }
   svg#plant { width: 100%; height: auto; display: block; }
+  #plotsWrap { max-width: 1180px; margin: 0 auto; padding: 0 14px 20px; }
+  #plotPanel { border: 1.5px dashed transparent; border-radius: 10px; }
+  #plotPanel.dragover { border-color: var(--accent); }
+  .plotGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin-top: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+  .tile.dragover { outline: 2px solid var(--accent); }
+  .tileHead { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .tileTitle { font-size: 12.5px; font-weight: 700; }
+  .tileX { border: none; background: none; font-size: 14px; padding: 0 2px; color: #55503f; }
+  .tileLegend { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; }
+  .sChip { font-size: 11px; border: 1px solid var(--line); border-radius: 10px; padding: 1px 4px 1px 6px; display: inline-flex; align-items: center; gap: 4px; }
+  .sChip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .sChip button { border: none; background: none; padding: 0 1px; font-size: 11px; color: #55503f; }
+  .tile canvas { width: 100%; height: 108px; display: block; }
+  #palette details { margin-top: 4px; }
+  #palette summary { font-size: 12.5px; font-weight: 700; color: var(--accent); cursor: pointer; }
+  .chipRow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+  .pChip { font-size: 11.5px; border: 1px solid var(--line); border-radius: 10px; padding: 2px 8px; background: #fdfcf8; cursor: grab; }
+  .pChip:hover { border-color: var(--accent); }
   h2 { font-size: 15px; margin: 2px 0 8px; }
   .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   button, select {
@@ -106,6 +125,9 @@
             <option value="1" selected>1&times;</option>
             <option value="2">2&times;</option>
             <option value="4">4&times;</option>
+            <option value="8">8&times;</option>
+            <option value="16">16&times;</option>
+            <option value="32">32&times;</option>
           </select>
         </label>
         <label class="small">Autopilot
@@ -170,6 +192,24 @@
     </div>
   </div>
 </main>
+<section id="plotsWrap">
+  <div class="card">
+    <div class="row" style="justify-content: space-between">
+      <h2 style="margin:0">Plots</h2>
+      <label class="small">Time window
+        <select id="selPlotWin">
+          <option value="120">last 2 min</option>
+          <option value="600" selected>last 10 min</option>
+          <option value="inf">whole round</option>
+        </select>
+      </label>
+      <button id="btnPlotsReset">Restore the default set</button>
+    </div>
+    <div class="small" style="margin-top:4px">Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Clicking a parameter also starts a new plot. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
+    <div id="palette"></div>
+    <div id="plotPanel"><div class="plotGrid" id="plotGrid"></div></div>
+  </div>
+</section>
 <script>
 "use strict";
 // ---------- Engine (Rust compiled to WebAssembly) ----------
@@ -260,17 +300,22 @@ function pipe(parent, pts, color, width) {
 const COMP_COLORS = ["#e69f00", "#56b4e9", "#009e73"];
 let dyn = {};   // dynamic SVG elements by key
 
-function valveGlyph(parent, key, x, y, labelPos) {
+function valveGlyph(parent, key, x, y, labelPos, rot) {
   const g = el("g", { class: "valve", "data-valve": key }, parent);
   const s = 11;
+  const shapes = rot ? el("g", { transform: `rotate(${rot} ${x} ${y})` }, g) : g;
   el("path", {
     d: `M ${x - s} ${y - s * 0.7} L ${x + s} ${y + s * 0.7} L ${x + s} ${y - s * 0.7} L ${x - s} ${y + s * 0.7} Z`,
     class: "vbody",
-  }, g);
-  el("line", { x1: x, y1: y - s * 0.7, x2: x, y2: y - s * 1.5, stroke: "#1a1a2e", "stroke-width": 1.6 }, g);
-  el("line", { x1: x - s * 0.8, y1: y - s * 1.5, x2: x + s * 0.8, y2: y - s * 1.5, stroke: "#1a1a2e", "stroke-width": 2.2 }, g);
-  const label = txt(g, x, labelPos === "above" ? y - s * 2.1 : y + s * 1.9, "", "num");
-  label.setAttribute("text-anchor", "middle");
+  }, shapes);
+  el("line", { x1: x, y1: y - s * 0.7, x2: x, y2: y - s * 1.5, stroke: "#1a1a2e", "stroke-width": 1.6 }, shapes);
+  el("line", { x1: x - s * 0.8, y1: y - s * 1.5, x2: x + s * 0.8, y2: y - s * 1.5, stroke: "#1a1a2e", "stroke-width": 2.2 }, shapes);
+  let lx = x, ly = y + s * 1.9, anchor = "middle";
+  if (labelPos === "above") ly = y - s * 2.1;
+  if (labelPos === "diag") { lx = x + 8; ly = y - 12; anchor = "start"; }
+  if (labelPos === "leftbelow") { lx = x - 22; ly = y + 22; anchor = "end"; }
+  const label = txt(g, lx, ly, "", "num");
+  label.setAttribute("text-anchor", anchor);
   g.addEventListener("click", () => selectValve(key));
   dyn["v_" + key] = label;
   return g;
@@ -297,16 +342,25 @@ function buildPlant() {
   el("rect", { x: colX, y: topY, width: colW, height: trayH * 12, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
   dyn.traySegs = [];
   dyn.trayTemp = [];
+  dyn.trayBubbles = [];
   for (let j = 1; j <= 12; j++) {
     const yTop = topY + (12 - j) * trayH;
     el("line", { x1: colX, y1: yTop + trayH, x2: colX + colW, y2: yTop + trayH, stroke: "#c9c4b4", "stroke-width": 1 }, root);
     const segs = [];
     let sx = colX + 3;
     for (let c = 0; c < 3; c++) {
-      const r = el("rect", { x: sx, y: yTop + trayH - 9, width: 0, height: 7, fill: COMP_COLORS[c] }, root);
+      const r = el("rect", { x: sx, y: yTop + trayH - 13, width: 0, height: 13, fill: COMP_COLORS[c] }, root);
       segs.push(r);
     }
     dyn.traySegs[j] = segs;
+    el("line", { x1: colX + 3, y1: yTop + trayH - 13, x2: colX + colW - 3, y2: yTop + trayH - 13, stroke: "#ffffff", "stroke-width": 1, opacity: 0.45 }, root);
+    const bubs = [];
+    for (let k = 0; k < 3; k++) {
+      const bx = colX + 14 + k * 32 + (j % 3) * 4;
+      const bc = el("circle", { cx: bx, cy: yTop + trayH - 3, r: 2, fill: "#ffffff", opacity: 0 }, root);
+      bubs.push({ el: bc, phase: Math.random(), speed: 0.7 + Math.random() * 0.6, size: 0.7 + Math.random() * 0.6, x0: bx, x: bx });
+    }
+    dyn.trayBubbles[j] = bubs;
     const tt = el("rect", { x: colX + colW + 6, y: yTop + 4, width: 16, height: trayH - 8, fill: "#ccc", stroke: "#c9c4b4" }, root);
     dyn.trayTemp[j] = tt;
     if (j === 6) txt(root, colX + colW / 2, yTop + 14, "feed tray 6", "lbl").setAttribute("text-anchor", "middle");
@@ -372,7 +426,7 @@ function buildPlant() {
   // Riser: straight up the shared right edge, one bend into the
   // drum side.
   dyn.riser = pipe(root, `502,300 502,132 550,132`, "#56b4e9", 4);
-  valveGlyph(root, "outlet", 502, 230);
+  valveGlyph(root, "outlet", 502, 230, "leftbelow", -90);
   dyn.riserLbl = txt(root, 528, 300, "", "num");
   dyn.marginLbl = txt(root, 528, 316, "", "num");
   // Distillate: straight out of the drum side.
@@ -400,7 +454,7 @@ function buildPlant() {
   // Cooling loop: surge tank at bottom left of the condenser,
   // pump on the supply run. Supply enters the condenser bottom;
   // return leaves the condenser bottom right.
-  pipe(root, `400,356 400,404 282,404 282,436`, "#16697a", 3);
+  pipe(root, `400,356 400,404 318,404 318,436`, "#16697a", 3);
   pipe(root, `470,356 470,450 318,450`, "#16697a", 3);
   const tX = 262, tY = 436;
   el("rect", { x: tX, y: tY, width: 56, height: 52, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
@@ -413,9 +467,9 @@ function buildPlant() {
   dyn.v_pump = txt(pumpG, 341, 428, "", "num");
   dyn.v_pump.setAttribute("text-anchor", "middle");
   pumpG.addEventListener("click", () => selectValve("pump"));
-  valveGlyph(root, "makeup", 270, 412);
-  pipe(root, `270,436 270,388`, "#16697a", 3);
-  txt(root, 278, 376, "cold makeup", "lbl");
+  valveGlyph(root, "makeup", 276, 412, "diag", 90);
+  pipe(root, `276,436 276,384`, "#16697a", 3);
+  txt(root, 284, 376, "cold makeup", "lbl");
 }
 </script>
 <script src="ui.js"></script>
