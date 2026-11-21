@@ -217,7 +217,7 @@ function refreshOutputs() {
       sx += x[c] * 104;
     });
     const Lj = j > 6 ? o[13] : o[14];
-    const target = Math.min(20, 6 + 7 * Math.pow(Math.max(0, Lj) / (j > 6 ? 5 : 15), 2 / 3));
+    const target = Math.min(20, 13 * Math.pow(Math.max(0, Lj) / (j > 6 ? 5 : 15), 2 / 3));
     if (trayDepthVis[j] === undefined) trayDepthVis[j] = target;
     const dtTray = Math.max(0, simClock - lastTrayClock);
     trayDepthVis[j] += (target - trayDepthVis[j]) * (1 - Math.exp(-dtTray / 20));
