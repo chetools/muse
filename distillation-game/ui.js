@@ -8,14 +8,21 @@ const kW = (v) => (v / 1000).toFixed(0) + " kW";
 // ---------- Sound (synthesised, no audio files; off unless toggled) ----------
 let audio = null, masterGain = null;
 function ensureAudio() {
-  if (audio) return;
+  if (audio) {
+    if (audio.state === "suspended") audio.resume();
+    return;
+  }
   try {
     audio = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audio.createGain();
     masterGain.gain.value = 0.5;
     masterGain.connect(audio.destination);
+    if (audio.state === "suspended") audio.resume();
   } catch (e) { audio = null; }
 }
+document.addEventListener("pointerdown", () => {
+  if ($("chkSound") && $("chkSound").checked) ensureAudio();
+});
 function click(delay, freq) {
   if (!audio || !$("chkSound").checked) return;
   const t = audio.currentTime + delay;
