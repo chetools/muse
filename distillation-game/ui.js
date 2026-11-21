@@ -5,64 +5,6 @@ const f2 = (v) => v.toFixed(2);
 const pct = (v) => (v * 100).toFixed(1) + "%";
 const kW = (v) => (v / 1000).toFixed(0) + " kW";
 
-// ---------- Sound (synthesised, no audio files; off unless toggled) ----------
-let audio = null, masterGain = null;
-function ensureAudio() {
-  if (audio) {
-    if (audio.state === "suspended") audio.resume();
-    return;
-  }
-  try {
-    audio = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = audio.createGain();
-    masterGain.gain.value = 0.9;
-    masterGain.connect(audio.destination);
-    if (audio.state === "suspended") audio.resume();
-  } catch (e) { audio = null; }
-}
-document.addEventListener("pointerdown", () => {
-  if ($("chkSound") && $("chkSound").checked) ensureAudio();
-});
-function click(delay, freq) {
-  if (!audio || !$("chkSound").checked) return;
-  const t = audio.currentTime + delay;
-  const o = audio.createOscillator(), g = audio.createGain();
-  o.type = "square"; o.frequency.value = freq || 1800;
-  g.gain.setValueAtTime(0.16, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
-  o.connect(g); g.connect(masterGain);
-  o.start(t); o.stop(t + 0.07);
-}
-let lastOpeningVal = {};
-function soundValve(idx, value) {
-  ensureAudio();
-  if (!audio || !$("chkSound").checked) return;
-  const prev = lastOpeningVal[idx];
-  lastOpeningVal[idx] = value;
-  if (prev !== undefined && Math.abs(value - prev) < 0.01) return;
-  const n = prev === undefined ? 2
-    : Math.min(6, Math.max(1, Math.round(Math.abs(value - prev) / 4)));
-  for (let i = 0; i < n; i++) click(i * 0.05, 1000 + Math.random() * 400);
-}
-let alarmSoundAt = 0;
-function soundAlarm(kind) {
-  ensureAudio();
-  if (!audio || !$("chkSound").checked) return;
-  const now = performance.now();
-  if (now - alarmSoundAt < 1600) return;
-  alarmSoundAt = now;
-  const freq = kind === "relief" ? 620 : 880;
-  for (let i = 0; i < 2; i++) {
-    const t = audio.currentTime + i * 0.22;
-    const o = audio.createOscillator(), g = audio.createGain();
-    o.type = "sine"; o.frequency.value = freq;
-    g.gain.setValueAtTime(0.3, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    o.connect(g); g.connect(masterGain);
-    o.start(t); o.stop(t + 0.2);
-  }
-}
-
 // ---------- Event log ----------
 let simClock = 0;
 function logMsg(msg) {
@@ -129,6 +71,7 @@ function syncValvePanel() {
   const v = VALVES[selected];
   const disp = valveDisplay(selected);
   $("vSlider").value = disp;
+  lastSliderVal = disp;
   $("vOpenVal").textContent = v.kind === "kpa" ? `${disp.toFixed(0)} kPa` : `${disp.toFixed(1)}%`;
   const mode = apStatus ? apStatus[2 + v.idx] : 0;
   $("vSeat").textContent =
@@ -136,11 +79,6 @@ function syncValvePanel() {
     mode === 1 ? "You claimed this seat from the autopilot." : "";
   $("vHandBack").style.display = mode === 1 ? "" : "none";
 }
-$("chkSound").addEventListener("change", () => {
-  ensureAudio();
-  if ($("chkSound").checked) { click(0.02); click(0.12); logMsg("Sound on."); }
-  else logMsg("Sound off.");
-});
 $("vHandBack").addEventListener("click", () => {
   if (!selected) return;
   W.dg_release_seat(sim, VALVES[selected].idx);
@@ -153,10 +91,54 @@ function applyValve(dispValue) {
   const v = VALVES[selected];
   const raw = v.kind === "frac" ? dispValue / 100 : dispValue;
   setOpening(v.idx, raw);
-  soundValve(v.idx, raw);
   syncValvePanel();
 }
-$("vSlider").addEventListener("input", (e) => applyValve(parseFloat(e.target.value)));
+let lastSliderVal = null;
+let shiftDown = false;
+window.addEventListener("keydown", (e) => { if (e.key === "Shift") shiftDown = true; });
+window.addEventListener("keyup", (e) => { if (e.key === "Shift") shiftDown = false; });
+window.addEventListener("blur", () => { shiftDown = false; });
+let dragV = null;
+document.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+  const g = e.target.closest ? e.target.closest("[data-valve]") : null;
+  if (!g || !VALVES[g.dataset.valve]) return;
+  const key = g.dataset.valve;
+  selectValve(key);
+  const s = $("vSlider");
+  dragV = { key, x0: e.clientX, y0: e.clientY, v0: valveDisplay(key),
+            min: parseFloat(s.min), max: parseFloat(s.max), moved: false };
+  window.__dragQuiet = true;
+});
+document.addEventListener("pointermove", (e) => {
+  if (!dragV) return;
+  const dx = e.clientX - dragV.x0, dy = e.clientY - dragV.y0;
+  if (Math.abs(dx) + Math.abs(dy) > 2) dragV.moved = true;
+  if (!dragV.moved) return;
+  const range = dragV.max - dragV.min;
+  const sens = range / ((shiftDown || e.shiftKey) ? 2000 : 400);
+  const val = Math.min(dragV.max, Math.max(dragV.min,
+    dragV.v0 + (dx - dy) * sens));
+  applyValve(val);
+});
+document.addEventListener("pointerup", () => {
+  if (!dragV) return;
+  if (dragV.moved) {
+    const v = VALVES[dragV.key];
+    logEvent(v.idx, getOpenings()[v.idx]);
+  }
+  dragV = null;
+  window.__dragQuiet = false;
+});
+$("vSlider").addEventListener("input", (e) => {
+  let val = parseFloat(e.target.value);
+  if (shiftDown && lastSliderVal !== null && selected) {
+    val = lastSliderVal + (val - lastSliderVal) * 0.2;
+    e.target.value = val;
+  }
+  lastSliderVal = val;
+  applyValve(val);
+});
 $("vMinus").addEventListener("click", () => { if (selected) applyValve(Math.max(parseFloat($("vSlider").min), valveDisplay(selected) - 5)); });
 $("vPlus").addEventListener("click", () => { if (selected) applyValve(Math.min(parseFloat($("vSlider").max), valveDisplay(selected) + 5)); });
 $("vFull").addEventListener("click", () => { if (selected) applyValve(parseFloat($("vSlider").max)); });
@@ -309,11 +291,9 @@ function refreshOutputs() {
   if (alarm.relief) {
     bar.className = "relief"; bar.style.display = "block";
     bar.textContent = "RELIEF VALVE LIFTING — vapour is being lost to the flare and the score penalty is heavy.";
-    soundAlarm("relief");
   } else if (alarm.hp) {
     bar.className = "hp"; bar.style.display = "block";
     bar.textContent = "HIGH PRESSURE ALARM — column pressure is above 360 kPa. The relief valve lifts at 400 kPa.";
-    soundAlarm("hp");
   } else if (alarm.flash) {
     bar.className = "flash"; bar.style.display = "block";
     bar.textContent = "RISER FLASHING — the condensate is not subcooled enough for the lift to the drum; drainage is degraded.";
@@ -374,12 +354,12 @@ document.querySelectorAll(".dist").forEach((b) => {
       }
       logMsg("Feed, cooling supply and valve openings restored to nominal; flow rates return to the nominal point.");
     }
-    syncFeedInputs();
+    syncFeedInputs(d === "restore");
     refreshOutputs();
   });
 });
 
-function syncFeedInputs() {
+function syncFeedInputs(force) {
   if (!W || !sim) return;
   const fi = feedInfo();
   const vals = {
@@ -393,7 +373,7 @@ function syncFeedInputs() {
   };
   for (const [id, v] of Object.entries(vals)) {
     const el = $(id);
-    if (el && document.activeElement !== el) el.value = v;
+    if (el && (force || document.activeElement !== el)) el.value = v;
   }
 }
 $("btnFeedApply").addEventListener("click", () => {
@@ -504,7 +484,7 @@ function doReset() {
   $("btnPlay").textContent = "Pause";
   logMsg("Reset to the nominal point.");
   refreshOutputs();
-  syncFeedInputs();
+  syncFeedInputs(true);
 }
 $("btnReset").addEventListener("click", doReset);
 $("btnOverReset").addEventListener("click", doReset);

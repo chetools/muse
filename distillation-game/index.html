@@ -146,7 +146,6 @@
           </select>
         </label>
         <button id="btnReset" disabled>Reset to the nominal point</button>
-        <label class="small"><input type="checkbox" id="chkSound"> Sound</label>
         <span class="small">Clock: <span id="clock">0 s</span></span>
       </div>
       <h2 style="margin-top:12px">Disturbances (practice)</h2>
@@ -197,6 +196,7 @@
         <button id="vFull" disabled>Full open</button>
         <button id="vShut" disabled>Shut</button>
       </div>
+      <div class="vdesc">Drag a valve on the drawing, or drag the slider, to adjust it. Hold Shift while dragging for fine adjustment.</div>
       <div class="vdesc" id="vSeat"></div>
       <div class="row"><button id="vHandBack" style="display:none">Hand back to the autopilot</button></div>
       <div id="vExtra"></div>
@@ -276,8 +276,7 @@ function getOpenings() {
 }
 function setOpening(idx, value) {
   W.dg_set_opening(sim, idx, value);
-  logEvent(idx, value);
-  soundValve(idx, value);
+  if (!window.__dragQuiet) logEvent(idx, value);
 }
 
 // ---------- Valve metadata ----------
@@ -345,6 +344,10 @@ function valveGlyph(parent, key, x, y, labelPos, rot) {
   if (labelPos === "leftbelow") { lx = x - 22; ly = y + 22; anchor = "end"; }
   const label = txt(g, lx, ly, "", "num");
   label.setAttribute("text-anchor", anchor);
+  // Invisible hit box: the bowtie's waist is unpainted, so clicks and
+  // drags at the symbol's centre would otherwise miss the valve.
+  el("rect", { x: x - 16, y: y - 18, width: 32, height: 44,
+               fill: "rgba(0,0,0,0)", "pointer-events": "all" }, g);
   g.addEventListener("click", () => selectValve(key));
   dyn["v_" + key] = label;
   return g;
@@ -461,12 +464,9 @@ function buildPlant() {
     el("line", { x1: cX + 8, y1: y, x2: cX + cW - 8, y2: y, stroke: "#16697a", "stroke-width": 3 }, root);
   }
   txt(root, cX + cW / 2, cY - 8, "Condenser (flooded)", "lblb").setAttribute("text-anchor", "middle");
-  dyn.condLbl = txt(root, 445, cY + cH + 12, "", "num");
-  dyn.condLbl.setAttribute("text-anchor", "end");
-  dyn.qCondArrow = txt(root, 445, cY + cH + 26, "", "num");
-  dyn.qCondArrow.setAttribute("text-anchor", "end");
-  dyn.condLbl2 = txt(root, 445, cY + cH + 40, "", "num");
-  dyn.condLbl2.setAttribute("text-anchor", "end");
+  dyn.condLbl = txt(root, 528, cY + cH + 12, "", "num");
+  dyn.qCondArrow = txt(root, 528, cY + cH + 26, "", "num");
+  dyn.condLbl2 = txt(root, 528, cY + cH + 40, "", "num");
   // Riser: straight up the shared right edge, one bend into the
   // drum side.
   dyn.riser = pipe(root, `484,300 484,140`, "#56b4e9", 4);
@@ -510,6 +510,8 @@ function buildPlant() {
   txt(pumpG, 341, 408, "P", "lblb").setAttribute("text-anchor", "middle");
   dyn.v_pump = txt(pumpG, 341, 428, "", "num");
   dyn.v_pump.setAttribute("text-anchor", "middle");
+  el("rect", { x: 325, y: 386, width: 32, height: 44,
+               fill: "rgba(0,0,0,0)", "pointer-events": "all" }, pumpG);
   pumpG.addEventListener("click", () => selectValve("pump"));
   pipe(root, `276,436 276,384`, "#16697a", 3);
   valveGlyph(root, "makeup", 276, 412, "diag", 90);
