@@ -50,6 +50,10 @@
   .sChip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .sChip button { border: none; background: none; padding: 0 1px; font-size: 11px; color: #55503f; }
   .tile canvas { width: 100%; height: 108px; display: block; }
+  .plotsLayout { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 12px; align-items: start; }
+  @media (max-width: 900px) { .plotsLayout { grid-template-columns: 1fr; } }
+  .tileHead { cursor: grab; }
+  .pChip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
   #palette details { margin-top: 4px; }
   #palette summary { font-size: 12.5px; font-weight: 700; color: var(--accent); cursor: pointer; }
   .chipRow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
@@ -139,6 +143,7 @@
           </select>
         </label>
         <button id="btnReset" disabled>Reset to the nominal point</button>
+        <label class="small"><input type="checkbox" id="chkSound"> Sound</label>
         <span class="small">Clock: <span id="clock">0 s</span></span>
       </div>
       <h2 style="margin-top:12px">Disturbances (practice)</h2>
@@ -205,9 +210,11 @@
       </label>
       <button id="btnPlotsReset">Restore the default set</button>
     </div>
-    <div class="small" style="margin-top:4px">Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Clicking a parameter also starts a new plot. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
-    <div id="palette"></div>
-    <div id="plotPanel"><div class="plotGrid" id="plotGrid"></div></div>
+    <div class="small" style="margin-top:4px">Click a parameter to add its plot; click it again to remove it. Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Drag a plot by its title bar to reposition it. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
+    <div class="plotsLayout">
+      <div id="palette"></div>
+      <div id="plotPanel"><div class="plotGrid" id="plotGrid"></div></div>
+    </div>
   </div>
 </section>
 <script>
@@ -341,7 +348,9 @@ function buildPlant() {
   const colX = 95, colW = 110, topY = 84, trayH = 32;
   el("rect", { x: colX, y: topY, width: colW, height: trayH * 12, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
   dyn.traySegs = [];
-  dyn.trayTemp = [];
+  dyn.traySurf = [];
+  dyn.trayFoam = [];
+  dyn.trayTempTxt = [];
   dyn.trayBubbles = [];
   for (let j = 1; j <= 12; j++) {
     const yTop = topY + (12 - j) * trayH;
@@ -353,17 +362,21 @@ function buildPlant() {
       segs.push(r);
     }
     dyn.traySegs[j] = segs;
-    el("line", { x1: colX + 3, y1: yTop + trayH - 13, x2: colX + colW - 3, y2: yTop + trayH - 13, stroke: "#ffffff", "stroke-width": 1, opacity: 0.45 }, root);
+    dyn.traySurf[j] = el("line", { x1: colX + 3, y1: yTop + trayH - 13, x2: colX + colW - 3, y2: yTop + trayH - 13, stroke: "#ffffff", "stroke-width": 1, opacity: 0.45 }, root);
+    el("line", { x1: colX + 91, y1: yTop + trayH, x2: colX + 91, y2: yTop + trayH - 6, stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
+    dyn.trayFoam[j] = el("rect", { x: colX + 3, y: yTop + trayH - 13, width: colW - 6, height: 0, fill: "#ffffff", opacity: 0.38 }, root);
     const bubs = [];
-    for (let k = 0; k < 3; k++) {
-      const bx = colX + 14 + k * 32 + (j % 3) * 4;
-      const bc = el("circle", { cx: bx, cy: yTop + trayH - 3, r: 2, fill: "#ffffff", opacity: 0 }, root);
-      bubs.push({ el: bc, phase: Math.random(), speed: 0.7 + Math.random() * 0.6, size: 0.7 + Math.random() * 0.6, x0: bx, x: bx });
+    for (let k = 0; k < 7; k++) {
+      const bx = colX + 10 + k * 15 + (j % 3) * 3;
+      const bc = el("circle", { cx: bx, cy: yTop + trayH - 3, r: 1, fill: "#ffffff", opacity: 0 }, root);
+      bubs.push({ el: bc, phase: Math.random(), speed: 0.7 + Math.random() * 0.6, size: Math.random(), x0: bx, x: bx });
     }
     dyn.trayBubbles[j] = bubs;
-    const tt = el("rect", { x: colX + colW + 6, y: yTop + 4, width: 16, height: trayH - 8, fill: "#ccc", stroke: "#c9c4b4" }, root);
-    dyn.trayTemp[j] = tt;
-    if (j === 6) txt(root, colX + colW / 2, yTop + 14, "feed tray 6", "lbl").setAttribute("text-anchor", "middle");
+    const tt = txt(root, colX + colW - 5, yTop + 11, "", "lbl");
+    tt.setAttribute("text-anchor", "end");
+    tt.setAttribute("style", "font-size:8.5px");
+    dyn.trayTempTxt[j] = tt;
+    if (j === 6) txt(root, colX + colW / 2 - 4, yTop + 14, "feed tray 6", "lbl").setAttribute("text-anchor", "middle");
   }
   txt(root, colX + colW / 2, topY - 8, "Column, 12 trays", "lblb").setAttribute("text-anchor", "middle");
   dyn.topT = txt(root, 254, 132, "", "num");
@@ -467,8 +480,8 @@ function buildPlant() {
   dyn.v_pump = txt(pumpG, 341, 428, "", "num");
   dyn.v_pump.setAttribute("text-anchor", "middle");
   pumpG.addEventListener("click", () => selectValve("pump"));
-  valveGlyph(root, "makeup", 276, 412, "diag", 90);
   pipe(root, `276,436 276,384`, "#16697a", 3);
+  valveGlyph(root, "makeup", 276, 412, "diag", 90);
   txt(root, 284, 376, "cold makeup", "lbl");
 }
 </script>

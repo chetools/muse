@@ -5,6 +5,56 @@ const f2 = (v) => v.toFixed(2);
 const pct = (v) => (v * 100).toFixed(1) + "%";
 const kW = (v) => (v / 1000).toFixed(0) + " kW";
 
+// ---------- Sound (synthesised, no audio files; off unless toggled) ----------
+let audio = null, masterGain = null;
+function ensureAudio() {
+  if (audio) return;
+  try {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audio.createGain();
+    masterGain.gain.value = 0.5;
+    masterGain.connect(audio.destination);
+  } catch (e) { audio = null; }
+}
+function click(delay, freq) {
+  if (!audio || !$("chkSound").checked) return;
+  const t = audio.currentTime + delay;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = "square"; o.frequency.value = freq || 1800;
+  g.gain.setValueAtTime(0.06, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 0.04);
+}
+let lastOpeningVal = {};
+function soundValve(idx, value) {
+  ensureAudio();
+  if (!audio || !$("chkSound").checked) return;
+  const prev = lastOpeningVal[idx];
+  lastOpeningVal[idx] = value;
+  if (prev === undefined || Math.abs(value - prev) < 0.01) return;
+  const n = Math.min(6, Math.max(1, Math.round(Math.abs(value - prev) / 4)));
+  for (let i = 0; i < n; i++) click(i * 0.05, 1400 + Math.random() * 500);
+}
+let alarmSoundAt = 0;
+function soundAlarm(kind) {
+  ensureAudio();
+  if (!audio || !$("chkSound").checked) return;
+  const now = performance.now();
+  if (now - alarmSoundAt < 1600) return;
+  alarmSoundAt = now;
+  const freq = kind === "relief" ? 620 : 880;
+  for (let i = 0; i < 2; i++) {
+    const t = audio.currentTime + i * 0.22;
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    o.connect(g); g.connect(masterGain);
+    o.start(t); o.stop(t + 0.2);
+  }
+}
+
 // ---------- Event log ----------
 let simClock = 0;
 function logMsg(msg) {
@@ -78,6 +128,7 @@ function syncValvePanel() {
     mode === 1 ? "You claimed this seat from the autopilot." : "";
   $("vHandBack").style.display = mode === 1 ? "" : "none";
 }
+$("chkSound").addEventListener("change", ensureAudio);
 $("vHandBack").addEventListener("click", () => {
   if (!selected) return;
   W.dg_release_seat(sim, VALVES[selected].idx);
@@ -90,6 +141,7 @@ function applyValve(dispValue) {
   const v = VALVES[selected];
   const raw = v.kind === "frac" ? dispValue / 100 : dispValue;
   setOpening(v.idx, raw);
+  soundValve(v.idx, raw);
   syncValvePanel();
 }
 $("vSlider").addEventListener("input", (e) => applyValve(parseFloat(e.target.value)));
@@ -114,10 +166,6 @@ function segSet(segs, x) {
   segs.forEach((d, i) => { d.style.width = pct(x[i]); });
   segs.forEach((d, i) => { d.title = `${["pentane", "hexane", "heptane"][i]} ${pct(x[i])}`; });
 }
-function tempColor(t) {
-  const u = Math.min(1, Math.max(0, (t - 315) / 95));
-  return `hsl(${Math.round(215 - 215 * u)}, 72%, ${Math.round(64 - 20 * u)}%)`;
-}
 let prevAlarm = { hp: false, relief: false, flash: false, ruptured: false };
 let riserPhase = 0;
 
@@ -140,7 +188,21 @@ function refreshOutputs() {
       r.setAttribute("width", Math.max(0, x[c] * 104));
       sx += x[c] * 104;
     });
-    dyn.trayTemp[j].setAttribute("fill", tempColor(o[91 + j]));
+    const Lj = j > 6 ? o[13] : o[14];
+    const depth = Math.min(20, 6 + 7 * Math.pow(Math.max(0, Lj) / (j > 6 ? 5 : 15), 2 / 3));
+    const plateY = 84 + (13 - j) * 32;
+    dyn.traySegs[j].forEach((r) => {
+      r.setAttribute("y", plateY - depth);
+      r.setAttribute("height", depth);
+    });
+    dyn.traySurf[j].setAttribute("y1", plateY - depth);
+    dyn.traySurf[j].setAttribute("y2", plateY - depth);
+    const ratej = Math.max(0, (j > 6 ? o[12] : o[11])) / 9;
+    const foamH = Math.min(9, Math.max(0, (ratej - 1.25) * 22));
+    dyn.trayFoam[j].setAttribute("y", plateY - depth - foamH);
+    dyn.trayFoam[j].setAttribute("height", foamH);
+    trayVis[j] = { depth, foamH, rate: ratej, plateY };
+    dyn.trayTempTxt[j].textContent = `${Math.round(o[91 + j])} K`;
   }
   dyn.topT.textContent = `top ${f1(o[9])} K`;
   dyn.rebT.textContent = `${f1(o[10])} K, level ${pct(o[33])}`;
@@ -217,9 +279,11 @@ function refreshOutputs() {
   if (alarm.relief) {
     bar.className = "relief"; bar.style.display = "block";
     bar.textContent = "RELIEF VALVE LIFTING — vapour is being lost to the flare and the score penalty is heavy.";
+    soundAlarm("relief");
   } else if (alarm.hp) {
     bar.className = "hp"; bar.style.display = "block";
     bar.textContent = "HIGH PRESSURE ALARM — column pressure is above 360 kPa. The relief valve lifts at 400 kPa.";
+    soundAlarm("hp");
   } else if (alarm.flash) {
     bar.className = "flash"; bar.style.display = "block";
     bar.textContent = "RISER FLASHING — the condensate is not subcooled enough for the lift to the drum; drainage is degraded.";
@@ -343,6 +407,7 @@ loadEngine().catch((e) => {
 });
 
 // ---------- Tray bubbling (vapour-rate driven) ----------
+const trayVis = {};
 let bubLast = performance.now();
 function animateBubbles(now) {
   requestAnimationFrame(animateBubbles);
@@ -352,23 +417,22 @@ function animateBubbles(now) {
   for (let j = 1; j <= 12; j++) {
     const bubs = dyn.trayBubbles[j];
     if (!bubs) continue;
-    const V = j > 6 ? bubV.R : bubV.S;
-    const rate = Math.max(0, V) / 9;
-    const yTop = 84 + (12 - j) * 32;
-    for (const b of bubs) {
-      b.phase += dt * (0.2 + 0.9 * rate) * b.speed;
-      if (b.phase > 1) { b.phase -= 1; b.x = b.x0 + (Math.random() * 8 - 4); }
-      b.el.setAttribute("cy", (yTop + 30 - b.phase * 10).toFixed(1));
-      b.el.setAttribute("cx", (b.x + Math.sin(b.phase * 6 + b.x0) * 1.2).toFixed(1));
-      const vis = rate < 0.08 ? 0 :
-        Math.sin(Math.PI * Math.min(1, b.phase)) * Math.min(1, 0.2 + rate);
-      b.el.setAttribute("opacity", vis.toFixed(2));
-      b.el.setAttribute("r", (1.3 + rate * 1.4 * b.size).toFixed(2));
+    const vis = trayVis[j] || { depth: 13, foamH: 0, rate: 1, plateY: 84 + (13 - j) * 32 };
+    const rise = Math.max(2, vis.depth + vis.foamH - 3);
+    for (let i = 0; i < bubs.length; i++) {
+      const b = bubs[i];
+      const active = vis.rate > 0.12 + i * 0.16;
+      b.phase += dt * (0.15 + 1.15 * vis.rate) * b.speed;
+      if (b.phase > 1) { b.phase -= 1; b.x = b.x0 + (Math.random() * 6 - 3); }
+      b.el.setAttribute("cy", (vis.plateY - 2 - b.phase * rise).toFixed(1));
+      b.el.setAttribute("cx", (b.x + Math.sin(b.phase * 6 + b.x0) * 1).toFixed(1));
+      const op = active ? Math.sin(Math.PI * Math.min(1, b.phase)) * 0.8 : 0;
+      b.el.setAttribute("opacity", op.toFixed(2));
+      b.el.setAttribute("r", (0.7 + b.size * 0.6).toFixed(2));
     }
   }
 }
 requestAnimationFrame(animateBubbles);
-
 // ---------- Plots: history, parameter catalogue, palette ----------
 const HISTORY = [];
 let lastSampleT = -1;
@@ -449,17 +513,31 @@ function buildPalette() {
       const chip = document.createElement("span");
       chip.className = "pChip";
       chip.textContent = p.name;
+      chip.dataset.pid = p.id;
       chip.draggable = true;
       chip.addEventListener("dragstart", (e) => {
-        e.dataTransfer.setData("text/plain", p.id);
+        e.dataTransfer.setData("text/plain", "param:" + p.id);
         e.dataTransfer.effectAllowed = "copy";
       });
-      chip.addEventListener("click", () => addTile([p.id]));
+      chip.addEventListener("click", () => toggleParam(p.id));
       row.appendChild(chip);
     }
     det.appendChild(row);
     pal.appendChild(det);
   }
+}
+
+function refreshChipStates() {
+  const plotted = new Set();
+  for (const t of tiles) for (const id of t.series) plotted.add(id);
+  document.querySelectorAll(".pChip").forEach((chip) => {
+    chip.classList.toggle("on", plotted.has(chip.dataset.pid));
+  });
+}
+function toggleParam(pid) {
+  const tile = tiles.find((t) => t.series.includes(pid));
+  if (tile) removeSeries(tile, pid);
+  else addTile([pid]);
 }
 
 // ---------- Plots: tiles and drawing ----------
@@ -512,9 +590,14 @@ function addTile(seriesIds, guides, fixedTitle) {
   x.className = "tileX";
   x.textContent = "×";
   x.title = "Remove this plot";
-  x.addEventListener("click", () => { el.remove(); tiles = tiles.filter((t) => t !== tile); });
+  x.addEventListener("click", () => { el.remove(); tiles = tiles.filter((t) => t !== tile); refreshChipStates(); });
   head.appendChild(tile.titleEl);
   head.appendChild(x);
+  head.draggable = true;
+  head.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", "tile:" + tile.n);
+    e.dataTransfer.effectAllowed = "move";
+  });
   tile.legendEl = document.createElement("div");
   tile.legendEl.className = "tileLegend";
   tile.canvas = document.createElement("canvas");
@@ -527,15 +610,32 @@ function addTile(seriesIds, guides, fixedTitle) {
     e.preventDefault();
     e.stopPropagation();
     el.classList.remove("dragover");
-    const pid = e.dataTransfer.getData("text/plain");
-    if (pid && PLOT_PARAMS[pid]) addSeries(tile, pid);
+    const data = e.dataTransfer.getData("text/plain");
+    if (data.startsWith("tile:")) {
+      const dragged = tiles.find((t) => t.n === parseInt(data.slice(5), 10));
+      if (dragged && dragged !== tile) moveTileBefore(dragged, tile);
+    } else if (data.startsWith("param:")) {
+      const pid = data.slice(6);
+      if (PLOT_PARAMS[pid]) addSeries(tile, pid);
+    }
   });
   tile.el = el;
   $("plotGrid").appendChild(el);
   tiles.push(tile);
   renderTileHead(tile);
   drawTile(tile);
+  refreshChipStates();
   return tile;
+}
+function moveTileBefore(dragged, target) {
+  $("plotGrid").insertBefore(dragged.el, target.el);
+  tiles = tiles.filter((t) => t !== dragged);
+  tiles.splice(tiles.indexOf(target), 0, dragged);
+}
+function moveTileToEnd(dragged) {
+  $("plotGrid").appendChild(dragged.el);
+  tiles = tiles.filter((t) => t !== dragged);
+  tiles.push(dragged);
 }
 function addSeries(tile, pid) {
   if (tile.series.includes(pid) || tile.series.length >= 6) return;
@@ -543,17 +643,20 @@ function addSeries(tile, pid) {
   tile.fixedTitle = null;
   renderTileHead(tile);
   drawTile(tile);
+  refreshChipStates();
 }
 function removeSeries(tile, pid) {
   tile.series = tile.series.filter((s) => s !== pid);
   if (tile.series.length === 0) {
     tile.el.remove();
     tiles = tiles.filter((t) => t !== tile);
+    refreshChipStates();
     return;
   }
   tile.fixedTitle = null;
   renderTileHead(tile);
   drawTile(tile);
+  refreshChipStates();
 }
 function buildDefaultTiles() {
   $("plotGrid").innerHTML = "";
@@ -651,8 +754,14 @@ function drawAllTiles() {
   panel.addEventListener("drop", (e) => {
     e.preventDefault();
     panel.classList.remove("dragover");
-    const pid = e.dataTransfer.getData("text/plain");
-    if (pid && PLOT_PARAMS[pid]) addTile([pid]);
+    const data = e.dataTransfer.getData("text/plain");
+    if (data.startsWith("tile:")) {
+      const dragged = tiles.find((t) => t.n === parseInt(data.slice(5), 10));
+      if (dragged) moveTileToEnd(dragged);
+    } else if (data.startsWith("param:")) {
+      const pid = data.slice(6);
+      if (PLOT_PARAMS[pid]) addTile([pid]);
+    }
   });
   $("btnPlotsReset").addEventListener("click", buildDefaultTiles);
   $("selPlotWin").addEventListener("change", drawAllTiles);
