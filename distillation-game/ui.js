@@ -44,15 +44,15 @@ function selectValve(key) {
   for (const b of ["vMinus", "vPlus", "vFull", "vShut"]) $(b).disabled = false;
   syncValvePanel();
 }
-let apStatus = null;   // Float64Array(12) from dg_ap_status
+let apStatus = null;   // Float64Array(13) from dg_ap_status
 let prevHelp = 0;
 const HELP_NAMES = ["drum level", "reboiler level", "column pressure",
   "distillate composition", "bottoms composition"];
 function pollApStatus() {
-  const p = W.dg_alloc(12);
+  const p = W.dg_alloc(13);
   W.dg_ap_status(sim, p);
-  apStatus = Array.from(new Float64Array(W.memory.buffer, p, 12));
-  W.dg_free(p, 12);
+  apStatus = Array.from(new Float64Array(W.memory.buffer, p, 13));
+  W.dg_free(p, 13);
   for (const [key, v] of Object.entries(VALVES)) {
     const g = document.querySelector(`.valve[data-valve="${key}"]`);
     if (!g) continue;
@@ -78,7 +78,34 @@ function syncValvePanel() {
     mode === 2 ? "This seat is on autopilot (teal outline). Moving the valve claims the seat." :
     mode === 1 ? "You claimed this seat from the autopilot." : "";
   $("vHandBack").style.display = mode === 1 ? "" : "none";
+  const isFeed = selected === "feed";
+  $("feedCtl").style.display = isFeed ? "" : "none";
+  if (isFeed) {
+    const o = outputs();
+    const spEl = $("inFeedSP");
+    if (document.activeElement !== spEl) spEl.value = o[38].toFixed(1);
+    const chk = $("chkFeedAuto");
+    if (document.activeElement !== chk) chk.checked = o[39] > 0.5;
+    $("feedCtlNote").textContent = o[39] > 0.5
+      ? `Automatic: opening ${getOpenings()[10].toFixed(0)}%, flow ${o[37].toFixed(2)} mol/s. Moving the valve takes it to manual.`
+      : `Manual: the flow (${o[37].toFixed(2)} mol/s) follows the supply-to-column pressure drop.`;
+  }
 }
+$("inFeedSP").addEventListener("change", () => {
+  const v = parseFloat($("inFeedSP").value);
+  if (!isFinite(v) || v < 0) return;
+  feedSetpoint(v);
+  $("chkFeedAuto").checked = true;
+  logMsg(`Feed flow setpoint set to ${v.toFixed(1)} mol/s (valve on automatic).`);
+  syncValvePanel();
+});
+$("chkFeedAuto").addEventListener("change", () => {
+  const on = $("chkFeedAuto").checked;
+  feedAuto(on);
+  logMsg(on ? "Feed valve on automatic: it holds the flow setpoint."
+            : "Feed valve on manual: the flow follows the pressure drop.");
+  syncValvePanel();
+});
 $("vHandBack").addEventListener("click", () => {
   if (!selected) return;
   W.dg_release_seat(sim, VALVES[selected].idx);
@@ -90,6 +117,11 @@ function applyValve(dispValue) {
   if (!selected) return;
   const v = VALVES[selected];
   const raw = v.kind === "frac" ? dispValue / 100 : dispValue;
+  if (selected === "feed" && outputs()[39] > 0.5) {
+    feedAuto(false);
+    $("chkFeedAuto").checked = false;
+    logMsg("Feed valve taken to manual: the flow now follows the supply-to-column pressure drop.");
+  }
   setOpening(v.idx, raw);
   syncValvePanel();
 }
@@ -243,45 +275,48 @@ function refreshOutputs() {
   const fiR = feedInfo();
   $("readouts").innerHTML = `
     <span class="sect">Pressures</span>
-    <span>Column</span><span class="v">${f1(P.col)} kPa</span>
-    <span>Condenser</span><span class="v">${f1(P.cond)} kPa</span>
-    <span>Drum</span><span class="v">${f1(P.drum)} kPa</span>
+    <span data-pid="pcol">Column</span><span class="v">${f1(P.col)} kPa</span>
+    <span data-pid="pcond">Condenser</span><span class="v">${f1(P.cond)} kPa</span>
+    <span data-pid="pdrum">Drum</span><span class="v">${f1(P.drum)} kPa</span>
     <span>Condenser minus drum</span><span class="v">${f1(P.cond - P.drum)} kPa</span>
-    <span>Steam chest</span><span class="v">${f1(P.chest)} kPa</span>
+    <span data-pid="pchest">Steam chest</span><span class="v">${f1(P.chest)} kPa</span>
     <span class="sect">Levels and flooding</span>
-    <span>Drum level</span><span class="v">${pct(o[32])}</span>
-    <span>Reboiler level</span><span class="v">${pct(o[33])}</span>
-    <span>Condenser flooded</span><span class="v">${pct(o[23])}</span>
-    <span>Subcooling margin</span><span class="v">${f2(o[21])} K</span>
+    <span data-pid="lvl_drum">Drum level</span><span class="v">${pct(o[32])}</span>
+    <span data-pid="lvl_reb">Reboiler level</span><span class="v">${pct(o[33])}</span>
+    <span data-pid="flooded">Condenser flooded</span><span class="v">${pct(o[23])}</span>
+    <span data-pid="margin">Subcooling margin</span><span class="v">${f2(o[21])} K</span>
     <span class="sect">Flows, mol/s</span>
-    <span>Vapour into condenser</span><span class="v">${f2(o[17])}</span>
-    <span>Bypass vapour</span><span class="v">${f2(o[18])}</span>
-    <span>Condensation rate</span><span class="v">${f2(o[19])}</span>
-    <span>Condensate to drum</span><span class="v">${f2(o[20])}</span>
-    <span>Reflux</span><span class="v">${f2(o[13])}</span>
-    <span>Distillate</span><span class="v">${f2(o[15])}</span>
-    <span>Bottoms</span><span class="v">${f2(o[16])}</span>
-    <span>Boilup</span><span class="v">${f2(o[11])}</span>
+    <span data-pid="vin">Vapour into condenser</span><span class="v">${f2(o[17])}</span>
+    <span data-pid="bypassf">Bypass vapour</span><span class="v">${f2(o[18])}</span>
+    <span data-pid="condrate">Condensation rate</span><span class="v">${f2(o[19])}</span>
+    <span data-pid="drain">Condensate to drum</span><span class="v">${f2(o[20])}</span>
+    <span data-pid="refluxf">Reflux</span><span class="v">${f2(o[13])}</span>
+    <span data-pid="distf">Distillate</span><span class="v">${f2(o[15])}</span>
+    <span data-pid="botf">Bottoms</span><span class="v">${f2(o[16])}</span>
+    <span data-pid="vstrip">Boilup</span><span class="v">${f2(o[11])}</span>
     <span class="sect">Duties and temperatures</span>
-    <span>Condenser duty</span><span class="v">${kW(o[25])}</span>
-    <span>Reboiler duty</span><span class="v">${kW(o[24])}</span>
-    <span>Cooling tank</span><span class="v">${f1(o[5])} K</span>
-    <span>Water leaving condenser</span><span class="v">${f1(o[6])} K</span>
+    <span data-pid="qcond">Condenser duty</span><span class="v">${kW(o[25])}</span>
+    <span data-pid="qreb">Reboiler duty</span><span class="v">${kW(o[24])}</span>
+    <span data-pid="ttank">Cooling tank</span><span class="v">${f1(o[5])} K</span>
+    <span data-pid="twout">Water leaving condenser</span><span class="v">${f1(o[6])} K</span>
     <span class="sect">Feed</span>
-    <span>Flow</span><span class="v">${f2(fiR.F)} mol/s</span>
-    <span>Pentane</span><span class="v">${pct(fiR.z[0])}</span>
-    <span>Hexane</span><span class="v">${pct(fiR.z[1])}</span>
-    <span>Heptane</span><span class="v">${pct(fiR.z[2])}</span>
-    <span>Temperature</span><span class="v">${f1(fiR.T)} K</span>
-    <span>Pressure</span><span class="v">${f1(fiR.P)} kPa</span>
+    <span data-pid="feed">Flow</span><span class="v">${f2(fiR.F)} mol/s</span>
+    <span data-pid="feedz0">Pentane</span><span class="v">${pct(fiR.z[0])}</span>
+    <span data-pid="feedz1">Hexane</span><span class="v">${pct(fiR.z[1])}</span>
+    <span data-pid="feedz2">Heptane</span><span class="v">${pct(fiR.z[2])}</span>
+    <span data-pid="feedT">Temperature</span><span class="v">${f1(fiR.T)} K</span>
+    <span data-pid="feedP">Pressure</span><span class="v">${f1(fiR.P)} kPa</span>
+    <span data-pid="feedpsi">Vapour at entry</span><span class="v">${pct(o[31])}</span>
+    <span>Liquid at entry</span><span class="v">${pct(1 - o[31])}</span>
     <span class="sect">Products</span>
-    <span>Distillate pentane</span><span class="v ${specD ? "spec-ok" : "spec-bad"}">${pct(xd[0])}</span>
-    <span>Bottoms pentane</span><span class="v ${specB ? "spec-ok" : "spec-bad"}">${pct(xb[0])}</span>`;
+    <span data-pid="xd0">Distillate pentane</span><span class="v ${specD ? "spec-ok" : "spec-bad"}">${pct(xd[0])}</span>
+    <span data-pid="xb0">Bottoms pentane</span><span class="v ${specB ? "spec-ok" : "spec-bad"}">${pct(xb[0])}</span>`;
   segSet(segDist, xd);
   segSet(segBot, xb);
   const fiNow = fiR;
   for (let c = 0; c < 3; c++) dyn.feedZ[c].textContent = `${COMP_NAMES[c]} ${Math.round(fiNow.z[c] * 100)}%`;
   dyn.feedTP.textContent = `${fiNow.T.toFixed(0)} K · ${fiNow.P.toFixed(0)} kPa`;
+  dyn.feedQ.textContent = `${Math.round((1 - o[31]) * 100)}% liquid at entry`;
   lastTrayClock = simClock;
   // Alarms.
   const alarm = { hp: o[36] > 0, relief: o[35] > 0, flash: o[21] < 0, ruptured: o[34] > 0 };
@@ -321,10 +356,12 @@ function feedInfo() {
   W.dg_free(p, 6);
   return { F: a[0], T: a[1], P: a[2], z: [a[3], a[4], a[5]] };
 }
-function setFeed(F, z, T, P) {
+function setFeed(z, T, P) {
   new Float64Array(W.memory.buffer, zPtr, 3).set(z);
-  W.dg_set_feed(sim, F, zPtr, T, P);
+  W.dg_set_feed(sim, zPtr, T, P);
 }
+function feedSetpoint(F) { W.dg_set_feed_setpoint(sim, F); }
+function feedAuto(on) { W.dg_set_feed_auto(sim, on ? 1 : 0); }
 function feedBubbleT(z, P) {
   new Float64Array(W.memory.buffer, zPtr, 3).set(z);
   return W.dg_feed_bubble(sim, zPtr, P);
@@ -339,14 +376,15 @@ document.querySelectorAll(".dist").forEach((b) => {
     if (!nominalFeedState) nominalFeedState = fi;
     if (!nominalOpenings) nominalOpenings = getOpenings();
     const d = b.dataset.d;
-    if (d === "feedUp") { setFeed(fi.F * 1.2, fi.z, fi.T, fi.P); logMsg("Disturbance: feed flow +20%."); }
-    if (d === "feedDown") { setFeed(fi.F / 1.2, fi.z, fi.T, fi.P); logMsg("Disturbance: feed flow −20%."); }
-    if (d === "feedLight") { const z = [0.55, 0.25, 0.20]; setFeed(fi.F, z, feedBubbleT(z, fi.P), fi.P); logMsg("Disturbance: feed richer in pentane (arrives as a saturated liquid)."); }
-    if (d === "feedHeavy") { const z = [0.25, 0.35, 0.40]; setFeed(fi.F, z, feedBubbleT(z, fi.P), fi.P); logMsg("Disturbance: feed leaner in pentane (arrives as a saturated liquid)."); }
+    if (d === "feedUp") { const sp = outputs()[38] * 1.2; feedSetpoint(sp); logMsg(`Disturbance: feed setpoint +20% (now ${sp.toFixed(1)} mol/s, valve on automatic).`); }
+    if (d === "feedDown") { const sp = outputs()[38] / 1.2; feedSetpoint(sp); logMsg(`Disturbance: feed setpoint −20% (now ${sp.toFixed(1)} mol/s, valve on automatic).`); }
+    if (d === "feedLight") { const z = [0.55, 0.25, 0.20]; setFeed(z, feedBubbleT(z, outputs()[0]), fi.P); logMsg("Disturbance: feed richer in pentane (arrives as a saturated liquid)."); }
+    if (d === "feedHeavy") { const z = [0.25, 0.35, 0.40]; setFeed(z, feedBubbleT(z, outputs()[0]), fi.P); logMsg("Disturbance: feed leaner in pentane (arrives as a saturated liquid)."); }
     if (d === "warmWater") { W.dg_set_supply(sim, 308.15); logMsg("Disturbance: cooling supply warmed to 35 °C."); }
     if (d === "restore") {
       const n = nominalFeedState || { ...NOMINAL_FEED, T: fi.T, P: fi.P };
-      setFeed(n.F, n.z, n.T, n.P);
+      setFeed(n.z, n.T, n.P);
+      feedSetpoint(10.0);
       W.dg_set_supply(sim, 298.0);
       if (nominalOpenings) {
         nominalOpenings.forEach((v, i) => setOpening(i, v));
@@ -363,13 +401,11 @@ function syncFeedInputs(force) {
   if (!W || !sim) return;
   const fi = feedInfo();
   const vals = {
-    inFeedF: fi.F.toFixed(2),
     inFeedZ0: Math.round(fi.z[0] * 100),
     inFeedZ1: Math.round(fi.z[1] * 100),
     inFeedZ2: Math.round(fi.z[2] * 100),
     inFeedT: fi.T.toFixed(1),
     inFeedP: fi.P.toFixed(0),
-    inFeedQ: Math.round((1 - outputs()[31]) * 100),
   };
   for (const [id, v] of Object.entries(vals)) {
     const el = $(id);
@@ -377,12 +413,10 @@ function syncFeedInputs(force) {
   }
 }
 $("btnFeedApply").addEventListener("click", () => {
-  const F = parseFloat($("inFeedF").value);
   const zIn = [0, 1, 2].map((i) => parseFloat($("inFeedZ" + i).value));
   const T = parseFloat($("inFeedT").value);
   const P = parseFloat($("inFeedP").value);
-  const mode = $("selFeedMode").value;
-  if ([F, P, ...zIn].some((v) => !isFinite(v)) || ((mode === "T" || mode === "qT") && !isFinite(T))) {
+  if ([T, P, ...zIn].some((v) => !isFinite(v))) {
     logMsg("Feed entry incomplete; nothing applied.");
     return;
   }
@@ -397,62 +431,9 @@ $("btnFeedApply").addEventListener("click", () => {
     Pin = pColNow;
     pNote = ` Feed pressure raised to the column pressure, ${pColNow.toFixed(0)} kPa: a feed cannot enter against a higher pressure.`;
   }
-  const Tb = feedBubbleT(zn, Pin);
-  let appliedT = T, appliedP = Pin, note = "";
-  if (mode === "T") {
-    setFeed(F, zn, T, Pin);
-    note = ` Flash vapour fraction at the tray: ${(outputs()[31] * 100).toFixed(0)}%.`;
-  } else if (mode === "qT") {
-    const qPct = parseFloat($("inFeedQ").value);
-    if (!isFinite(qPct)) { logMsg("No liquid fraction entered; nothing applied."); return; }
-    const psiTarget = 1 - Math.min(100, Math.max(0, qPct)) / 100;
-    const psiAtP = (Pp) => { setFeed(F, zn, T, Pp); return outputs()[31]; };
-    let lo = Math.ceil(pColNow), hi = 500;
-    const psiLo = psiAtP(lo), psiHi = psiAtP(hi);
-    if (psiLo - psiHi < 1e-6) {
-      note = " The flash fraction does not respond to the feed pressure at this temperature (the feed stays a liquid at its own conditions throughout); the pressure is left as entered.";
-      setFeed(F, zn, T, Pin);
-    } else if (psiTarget >= psiLo) {
-      appliedP = lo;
-      note = ` Liquid fraction ${qPct}% is below the flash range at this temperature; pressure set to ${lo} kPa (liquid fraction ${((1 - psiLo) * 100).toFixed(0)}%).`;
-      setFeed(F, zn, T, appliedP);
-    } else if (psiTarget <= psiHi) {
-      appliedP = hi;
-      note = ` Liquid fraction ${qPct}% is above the flash range at this temperature; pressure set to ${hi} kPa (liquid fraction ${((1 - psiHi) * 100).toFixed(0)}%).`;
-      setFeed(F, zn, T, appliedP);
-    } else {
-      for (let i = 0; i < 24; i++) {
-        const mid = (lo + hi) / 2;
-        if (psiAtP(mid) > psiTarget) lo = mid; else hi = mid;
-      }
-      appliedP = (lo + hi) / 2;
-      setFeed(F, zn, T, appliedP);
-      note = ` Pressure from the adiabatic flash: ${appliedP.toFixed(0)} kPa (liquid fraction ${((1 - outputs()[31]) * 100).toFixed(0)}%).`;
-    }
-  } else {
-    const qPct = parseFloat($("inFeedQ").value);
-    if (!isFinite(qPct)) { logMsg("No liquid fraction entered; nothing applied."); return; }
-    const psiTarget = 1 - Math.min(100, Math.max(0, qPct)) / 100;
-    const psiAt = (Tt) => { setFeed(F, zn, Tt, Pin); return outputs()[31]; };
-    let lo = Tb, hi = Tb + 150;
-    const psiLo = psiAt(lo), psiHi = psiAt(hi);
-    if (psiTarget <= psiLo) {
-      appliedT = lo;
-      note = ` Liquid fraction ${qPct}% is above the flash range at this pressure; the feed is set at its bubble point (liquid fraction ${((1 - psiLo) * 100).toFixed(0)}%).`;
-    } else if (psiTarget >= psiHi) {
-      appliedT = hi;
-      note = ` Liquid fraction ${qPct}% is below the flash range reached in the search; temperature set to ${hi.toFixed(1)} K.`;
-    } else {
-      for (let i = 0; i < 24; i++) {
-        const mid = (lo + hi) / 2;
-        if (psiAt(mid) < psiTarget) lo = mid; else hi = mid;
-      }
-      appliedT = (lo + hi) / 2;
-    }
-    setFeed(F, zn, appliedT, Pin);
-    note += ` Temperature from the adiabatic flash: ${appliedT.toFixed(1)} K (liquid fraction ${((1 - outputs()[31]) * 100).toFixed(0)}%).`;
-  }
-  logMsg(`Feed set directly: ${F.toFixed(2)} mol/s, pentane ${(zn[0] * 100).toFixed(0)}%, hexane ${(zn[1] * 100).toFixed(0)}%, heptane ${(zn[2] * 100).toFixed(0)}%, ${appliedT.toFixed(1)} K, ${appliedP.toFixed(0)} kPa.${note}${pNote}`);
+  setFeed(zn, T, Pin);
+  const psi = outputs()[31];
+  logMsg(`Feed supply set: pentane ${(zn[0] * 100).toFixed(0)}%, hexane ${(zn[1] * 100).toFixed(0)}%, heptane ${(zn[2] * 100).toFixed(0)}%, ${T.toFixed(1)} K, ${Pin.toFixed(0)} kPa. On entering the tray it is ${(psi * 100).toFixed(0)}% vapour, ${((1 - psi) * 100).toFixed(0)}% liquid.${pNote}`);
   const btn = $("btnFeedApply");
   btn.textContent = "Applied \u2713";
   setTimeout(() => { btn.textContent = "Apply feed"; }, 1200);
@@ -598,6 +579,7 @@ function defParam(id, name, short, group, unit, color, frac, get) {
   defParam("feedz1", "Feed hexane (heavy key)", "hexane", "Feed", "", COMP_COLORS[1], true, (s) => s.f[4]);
   defParam("feedz2", "Feed heptane", "heptane", "Feed", "", COMP_COLORS[2], true, (s) => s.f[5]);
   defParam("feedT", "Feed temperature", "temperature", "Feed", "K", col(), false, (s) => s.f[1]);
+  defParam("feedpsi", "Feed vapour fraction at entry", "vapour at entry", "Feed", "", col(), true, (s) => s.v[31]);
   defParam("feedP", "Feed pressure", "pressure", "Feed", "kPa", col(), false, (s) => s.f[2]);
   const T = (id, name, idx) => defParam(id, name, name, "Temperatures", "K", col(), false, (s) => s.v[idx]);
   T("ttop", "Top temperature", 9); T("tdrum", "Drum temperature", 4);
@@ -665,6 +647,26 @@ function buildPalette() {
   }
 }
 
+let readoutHover = null;
+$("readouts").addEventListener("mouseover", (e) => {
+  const el = e.target.closest ? e.target.closest("[data-pid]") : null;
+  const pid = el ? el.dataset.pid : null;
+  if (pid === readoutHover) return;
+  readoutHover = pid;
+  clearTimeout(window.__pvTimer);
+  if (pid && PLOT_PARAMS[pid]) {
+    window.__pvTimer = setTimeout(() => {
+      if (readoutHover === pid) showPlotPreview(PLOT_PARAMS[pid], el);
+    }, 250);
+  } else {
+    $("plotPreview").style.display = "none";
+  }
+});
+$("readouts").addEventListener("mouseleave", () => {
+  readoutHover = null;
+  clearTimeout(window.__pvTimer);
+  $("plotPreview").style.display = "none";
+});
 function showPlotPreview(p, chip) {
   const pv = $("plotPreview");
   const last = HISTORY.length ? HISTORY[HISTORY.length - 1] : null;

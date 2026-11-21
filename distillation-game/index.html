@@ -41,6 +41,7 @@
   #plotPanel.dragover { border-color: var(--accent); }
   .plotGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin-top: 8px; }
   .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; position: relative; }
+  #readouts [data-pid] { border-bottom: 1px dotted #b9b29a; cursor: pointer; }
   .tileTip { position: absolute; display: none; pointer-events: none; background: rgba(253,252,248,0.97); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 11.5px; line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 5; white-space: nowrap; }
   #plotPreview { position: fixed; display: none; background: #fdfcf8; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; box-shadow: 0 3px 12px rgba(0,0,0,0.18); z-index: 50; pointer-events: none; }
   #plotPreview .pvTitle { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
@@ -160,25 +161,16 @@
         <button class="dist" data-d="warmWater" disabled>Cooling supply warms to 35 &deg;C</button>
         <button class="dist" data-d="restore" disabled>Restore the nominal feed</button>
       </div>
-      <div style="margin-top:10px"><span class="sect">Set the feed directly</span></div>
+      <div style="margin-top:10px"><span class="sect">Set the feed supply directly</span></div>
       <div class="feedForm">
-        <label>Flow, mol/s <input type="number" id="inFeedF" step="0.1" min="0.5" max="30"></label>
         <label>Pentane, % <input type="number" id="inFeedZ0" step="1" min="0" max="100"></label>
         <label>Hexane, % <input type="number" id="inFeedZ1" step="1" min="0" max="100"></label>
         <label>Heptane, % <input type="number" id="inFeedZ2" step="1" min="0" max="100"></label>
         <label>Temperature, K <input type="number" id="inFeedT" step="0.5" min="250" max="420"></label>
         <label>Pressure, kPa <input type="number" id="inFeedP" step="1" min="60" max="500"></label>
-        <label>Liquid fraction, % <input type="number" id="inFeedQ" step="1" min="5" max="100"></label>
-        <label>Specify by
-          <select id="selFeedMode">
-            <option value="T">Temperature</option>
-            <option value="qP">Liquid fraction (solve T)</option>
-            <option value="qT">Liquid fraction (solve P)</option>
-          </select>
-        </label>
         <button id="btnFeedApply" disabled>Apply feed</button>
       </div>
-      <p class="small">The three percentages are normalised to sum to 100. The feed pressure must be at least the column pressure, or the feed cannot enter; a lower entry is raised to the column pressure. With "Temperature" the feed is set as entered, liquid, two-phase, or vapour; the adiabatic flash to the feed tray determines its vapour fraction there. With "Liquid fraction" (the unvaporised fraction on entering the tray) one further unknown is solved from the flash: the temperature, with the pressure as entered, or the pressure, with the temperature as entered.</p>
+      <p class="small">The three percentages are normalised to sum to 100. The feed pressure must be at least the column pressure, or the feed cannot enter; a lower entry is raised to the column pressure. The supply is set as entered, liquid, two-phase, or vapour; what it becomes on entering the tray is shown under the feed inlet on the drawing and in the readings (vapour at entry). The flow itself is made by the feed valve on the drawing: its setpoint and automatic control are in the valve panel when the feed valve is selected.</p>
       <p class="small">Distillate specification: pentane mole fraction at least 0.95. Bottoms specification: pentane mole fraction at most 0.05. Practice rounds are not scored.</p>
     </div>
     <div class="card" style="margin-top:12px">
@@ -202,7 +194,14 @@
       <div class="vdesc">Drag a valve on the drawing, or drag the slider, to adjust it. Hold Shift while dragging for fine adjustment.</div>
       <div class="vdesc" id="vSeat"></div>
       <div class="row"><button id="vHandBack" style="display:none">Hand back to the autopilot</button></div>
-      <div id="vExtra"></div>
+      <div id="vExtra">
+        <div id="feedCtl" style="display:none">
+          <div class="row"><span class="small">Flow setpoint, mol/s</span>
+            <input type="number" id="inFeedSP" step="0.1" min="0" max="30" style="width:84px"></div>
+          <div class="row"><label class="small"><input type="checkbox" id="chkFeedAuto"> Automatic: the valve holds the setpoint</label></div>
+          <div class="vdesc" id="feedCtlNote"></div>
+        </div>
+      </div>
     </div>
     <div class="card" style="margin-top:12px">
       <h2>Readings</h2>
@@ -271,10 +270,10 @@ function outputs() {
   return new Float64Array(W.memory.buffer, outPtr, NOUT);
 }
 function getOpenings() {
-  const p = W.dg_alloc(10);
+  const p = W.dg_alloc(11);
   W.dg_get_openings(sim, p);
-  const a = Array.from(new Float64Array(W.memory.buffer, p, 10));
-  W.dg_free(p, 10);
+  const a = Array.from(new Float64Array(W.memory.buffer, p, 11));
+  W.dg_free(p, 11);
   return a;
 }
 function setOpening(idx, value) {
@@ -298,6 +297,8 @@ const VALVES = {
     desc: "Drum liquid leaving as distillate product. Together with the reflux valve it sets the drum level; their split sets the reflux ratio." },
   bottoms:    { idx: 5, kind: "pct",  name: "Bottoms valve",
     desc: "Reboiler liquid leaving as bottoms product. Sets the reboiler level with the boilup." },
+  feed:       { idx: 10, kind: "pct",  name: "Feed valve",
+    desc: "Feed entering the column. Its flow is made by this valve from the drop between the feed supply pressure and the column pressure. On automatic, the valve holds the flow setpoint below; moving the valve takes it to manual, where the flow follows the drop." },
   regulator:  { idx: 6, kind: "kpa",  name: "Steam pressure regulator",
     desc: "Sets the pressure upstream of the steam flow valve (supply header 900 kPa). One of two throttles in series to the steam chest." },
   steam:      { idx: 7, kind: "pct",  name: "Steam flow valve",
@@ -412,7 +413,8 @@ function buildPlant() {
   const feedY = topY + 6.5 * trayH;
   pipe(root, `10,${feedY} 60,${feedY}`, "#6b675a", 3);
   el("path", { d: `M 60 ${feedY - 5} L 72 ${feedY} L 60 ${feedY + 5} Z`, fill: "#6b675a" }, root);
-  txt(root, 10, feedY - 12, "feed in", "lbl");
+  const feedInLbl = txt(root, 35, feedY - 38, "feed in", "lbl");
+  feedInLbl.setAttribute("text-anchor", "middle");
   dyn.feedLbl = txt(root, 10, feedY + 22, "", "num");
   dyn.feedZ = [];
   for (let c = 0; c < 3; c++) {
@@ -421,7 +423,9 @@ function buildPlant() {
     t.setAttribute("style", "font-size:10px");
     dyn.feedZ.push(t);
   }
+  valveGlyph(root, "feed", 35, feedY, "above");
   dyn.feedTP = txt(root, 10, feedY + 92, "", "num");
+  dyn.feedQ = txt(root, 10, feedY + 108, "", "num");
   dyn.feedTP.setAttribute("style", "font-size:10px");
   // Reboiler (narrower).
   const rebY = topY + trayH * 12 + 14;
