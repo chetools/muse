@@ -390,21 +390,28 @@ $("btnFeedApply").addEventListener("click", () => {
   const sum = zc[0] + zc[1] + zc[2];
   if (sum <= 0) { logMsg("Feed composition is all zeros; nothing applied."); return; }
   const zn = zc.map((v) => v / sum);
-  const Tb = feedBubbleT(zn, P);
-  let appliedT = T, appliedP = P, note = "";
+  let Pin = P;
+  let pNote = "";
+  const pColNow = outputs()[0];
+  if (Pin < pColNow) {
+    Pin = pColNow;
+    pNote = ` Feed pressure raised to the column pressure, ${pColNow.toFixed(0)} kPa: a feed cannot enter against a higher pressure.`;
+  }
+  const Tb = feedBubbleT(zn, Pin);
+  let appliedT = T, appliedP = Pin, note = "";
   if (mode === "T") {
-    setFeed(F, zn, T, P);
+    setFeed(F, zn, T, Pin);
     note = ` Flash vapour fraction at the tray: ${(outputs()[31] * 100).toFixed(0)}%.`;
   } else if (mode === "qT") {
     const qPct = parseFloat($("inFeedQ").value);
     if (!isFinite(qPct)) { logMsg("No liquid fraction entered; nothing applied."); return; }
     const psiTarget = 1 - Math.min(100, Math.max(0, qPct)) / 100;
     const psiAtP = (Pp) => { setFeed(F, zn, T, Pp); return outputs()[31]; };
-    let lo = 60, hi = 500;
+    let lo = Math.ceil(pColNow), hi = 500;
     const psiLo = psiAtP(lo), psiHi = psiAtP(hi);
     if (psiLo - psiHi < 1e-6) {
       note = " The flash fraction does not respond to the feed pressure at this temperature (the feed stays a liquid at its own conditions throughout); the pressure is left as entered.";
-      setFeed(F, zn, T, P);
+      setFeed(F, zn, T, Pin);
     } else if (psiTarget >= psiLo) {
       appliedP = lo;
       note = ` Liquid fraction ${qPct}% is below the flash range at this temperature; pressure set to ${lo} kPa (liquid fraction ${((1 - psiLo) * 100).toFixed(0)}%).`;
@@ -426,7 +433,7 @@ $("btnFeedApply").addEventListener("click", () => {
     const qPct = parseFloat($("inFeedQ").value);
     if (!isFinite(qPct)) { logMsg("No liquid fraction entered; nothing applied."); return; }
     const psiTarget = 1 - Math.min(100, Math.max(0, qPct)) / 100;
-    const psiAt = (Tt) => { setFeed(F, zn, Tt, P); return outputs()[31]; };
+    const psiAt = (Tt) => { setFeed(F, zn, Tt, Pin); return outputs()[31]; };
     let lo = Tb, hi = Tb + 150;
     const psiLo = psiAt(lo), psiHi = psiAt(hi);
     if (psiTarget <= psiLo) {
@@ -442,10 +449,10 @@ $("btnFeedApply").addEventListener("click", () => {
       }
       appliedT = (lo + hi) / 2;
     }
-    setFeed(F, zn, appliedT, P);
+    setFeed(F, zn, appliedT, Pin);
     note += ` Temperature from the adiabatic flash: ${appliedT.toFixed(1)} K (liquid fraction ${((1 - outputs()[31]) * 100).toFixed(0)}%).`;
   }
-  logMsg(`Feed set directly: ${F.toFixed(2)} mol/s, pentane ${(zn[0] * 100).toFixed(0)}%, hexane ${(zn[1] * 100).toFixed(0)}%, heptane ${(zn[2] * 100).toFixed(0)}%, ${appliedT.toFixed(1)} K, ${appliedP.toFixed(0)} kPa.${note}`);
+  logMsg(`Feed set directly: ${F.toFixed(2)} mol/s, pentane ${(zn[0] * 100).toFixed(0)}%, hexane ${(zn[1] * 100).toFixed(0)}%, heptane ${(zn[2] * 100).toFixed(0)}%, ${appliedT.toFixed(1)} K, ${appliedP.toFixed(0)} kPa.${note}${pNote}`);
   const btn = $("btnFeedApply");
   btn.textContent = "Applied \u2713";
   setTimeout(() => { btn.textContent = "Apply feed"; }, 1200);
@@ -643,6 +650,14 @@ function buildPalette() {
         e.dataTransfer.effectAllowed = "copy";
       });
       chip.addEventListener("click", () => toggleParam(p.id));
+      chip.addEventListener("mouseenter", () => {
+        clearTimeout(window.__pvTimer);
+        window.__pvTimer = setTimeout(() => showPlotPreview(p, chip), 250);
+      });
+      chip.addEventListener("mouseleave", () => {
+        clearTimeout(window.__pvTimer);
+        $("plotPreview").style.display = "none";
+      });
       row.appendChild(chip);
     }
     det.appendChild(row);
@@ -650,6 +665,41 @@ function buildPalette() {
   }
 }
 
+function showPlotPreview(p, chip) {
+  const pv = $("plotPreview");
+  const last = HISTORY.length ? HISTORY[HISTORY.length - 1] : null;
+  pv.querySelector(".pvTitle").textContent =
+    `${p.name} — ${last ? fmtVal(p, p.get(last)) : "no data yet"}`;
+  const cv = pv.querySelector("canvas");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  if (HISTORY.length > 1) {
+    const { tStart, tEnd } = plotWindow();
+    const vis = HISTORY.filter((sm) => sm.t >= tStart - 1e-9);
+    let lo = Infinity, hi = -Infinity;
+    if (p.frac) { lo = 0; hi = 1; } else {
+      for (const sm of vis) { const v = p.get(sm); if (v < lo) lo = v; if (v > hi) hi = v; }
+      if (lo === Infinity) { lo = 0; hi = 1; }
+      const pad = (hi - lo) * 0.1 || 1; lo -= pad; hi += pad;
+    }
+    ctx.strokeStyle = "#e3ddcb";
+    ctx.beginPath(); ctx.moveTo(0, H - 1); ctx.lineTo(W, H - 1); ctx.stroke();
+    ctx.strokeStyle = p.color; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    vis.forEach((sm, i) => {
+      const x = (sm.t - tStart) / Math.max(1e-9, tEnd - tStart) * (W - 2) + 1;
+      const y = H - 3 - (p.get(sm) - lo) / (hi - lo) * (H - 8);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke(); ctx.lineWidth = 1;
+  }
+  const r = chip.getBoundingClientRect();
+  pv.style.display = "block";
+  pv.style.left = (r.right + 10 + 280 > window.innerWidth
+    ? Math.max(4, r.left - 290) : r.right + 10) + "px";
+  pv.style.top = Math.max(4, Math.min(r.top, window.innerHeight - 140)) + "px";
+}
 function refreshChipStates() {
   const plotted = new Set();
   for (const t of tiles) for (const id of t.series) plotted.add(id);
@@ -666,6 +716,10 @@ function toggleParam(pid) {
 // ---------- Plots: tiles and drawing ----------
 let tiles = [];
 let tileSeq = 0;
+function fmtVal(p, v) {
+  if (p.frac) return v.toFixed(3);
+  return `${fmtY(v)}${p.unit ? " " + p.unit : ""}`;
+}
 function fmtClock(t) {
   return `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 }
@@ -729,9 +783,40 @@ function addTile(seriesIds, guides, fixedTitle) {
   tile.legendEl = document.createElement("div");
   tile.legendEl.className = "tileLegend";
   tile.canvas = document.createElement("canvas");
+  tile.tipEl = document.createElement("div");
+  tile.tipEl.className = "tileTip";
+  tile.canvas.addEventListener("mousemove", (e) => {
+    if (!HISTORY.length) return;
+    const rect = tile.canvas.getBoundingClientRect();
+    const mL = 36, pw = rect.width - 44;
+    const { tStart, tEnd } = plotWindow();
+    const t = tStart + (e.clientX - rect.left - mL) / Math.max(1, pw) * (tEnd - tStart);
+    let best = null, bd = Infinity;
+    for (const smp of HISTORY) {
+      const d = Math.abs(smp.t - t);
+      if (d < bd) { bd = d; best = smp; }
+    }
+    if (!best) return;
+    tile.hover = best;
+    tile.tipEl.innerHTML = `<b>${fmtClock(best.t)}</b>` + tile.series.map((id) => {
+      const p = PLOT_PARAMS[id];
+      return `<div><span style="color:${p.color}">\u25cf</span> ${p.name}: ${fmtVal(p, p.get(best))}</div>`;
+    }).join("");
+    tile.tipEl.style.display = "block";
+    const tx = e.clientX - rect.left, ty = e.clientY - rect.top;
+    tile.tipEl.style.left = (tx > rect.width - 170 ? tx - 165 : tx + 14) + "px";
+    tile.tipEl.style.top = Math.max(0, ty - 10) + "px";
+    drawTile(tile);
+  });
+  tile.canvas.addEventListener("mouseleave", () => {
+    tile.hover = null;
+    tile.tipEl.style.display = "none";
+    drawTile(tile);
+  });
   el.appendChild(head);
   el.appendChild(tile.legendEl);
   el.appendChild(tile.canvas);
+  el.appendChild(tile.tipEl);
   el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("dragover"); });
   el.addEventListener("dragleave", () => el.classList.remove("dragover"));
   el.addEventListener("drop", (e) => {
@@ -808,6 +893,13 @@ function buildDefaultTiles() {
   addTile(["xb0", "xb1", "xb2"], [{ y: 0.05, label: "spec 0.05" }], "Bottoms composition");
   addTile(["qcond", "qreb"], [], "Duties");
 }
+function plotWindow() {
+  const winSel = $("selPlotWin").value;
+  const win = winSel === "inf" ? Infinity : parseFloat(winSel);
+  const tEnd = HISTORY.length ? HISTORY[HISTORY.length - 1].t : Math.max(simClock, 1);
+  const tStart = Math.max(0, tEnd - win);
+  return { tStart, tEnd };
+}
 function drawTile(tile) {
   const cv = tile.canvas;
   if (!cv || !cv.clientWidth) return;
@@ -822,10 +914,7 @@ function drawTile(tile) {
   ctx.clearRect(0, 0, W, H);
   const mL = 36, mR = 8, mT = 5, mB = 15;
   const pw = W - mL - mR, ph = H - mT - mB;
-  const winSel = $("selPlotWin").value;
-  const win = winSel === "inf" ? Infinity : parseFloat(winSel);
-  const tEnd = HISTORY.length ? HISTORY[HISTORY.length - 1].t : Math.max(simClock, 1);
-  const tStart = Math.max(0, tEnd - win);
+  const { tStart, tEnd } = plotWindow();
   const vis = HISTORY.filter((s) => s.t >= tStart - 1e-9);
   const allFrac = tile.series.every((id) => PLOT_PARAMS[id].frac);
   let yLo = Infinity, yHi = -Infinity;
@@ -881,12 +970,29 @@ function drawTile(tile) {
     }
     ctx.stroke();
   }
+  if (tile.hover && tile.hover.t >= tStart && tile.hover.t <= tEnd) {
+    const hx = X(tile.hover.t);
+    ctx.strokeStyle = "rgba(85,80,63,0.6)";
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(hx, mT); ctx.lineTo(hx, mT + ph); ctx.stroke();
+    ctx.setLineDash([]);
+    for (const id of tile.series) {
+      const p = PLOT_PARAMS[id];
+      ctx.fillStyle = p.color;
+      ctx.strokeStyle = "#fff";
+      ctx.beginPath(); ctx.arc(hx, Y(p.get(tile.hover)), 3.2, 0, 7); ctx.fill(); ctx.stroke();
+    }
+  }
   ctx.lineWidth = 1;
 }
 function drawAllTiles() {
   for (const t of tiles) drawTile(t);
 }
 (function initPlots() {
+  const pv = document.createElement("div");
+  pv.id = "plotPreview";
+  pv.innerHTML = `<div class="pvTitle"></div><canvas width="262" height="84"></canvas>`;
+  document.body.appendChild(pv);
   buildPalette();
   buildDefaultTiles();
   const panel = $("plotPanel");

@@ -40,7 +40,10 @@
   #plotPanel { border: 1.5px dashed transparent; border-radius: 10px; }
   #plotPanel.dragover { border-color: var(--accent); }
   .plotGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin-top: 8px; }
-  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; position: relative; }
+  .tileTip { position: absolute; display: none; pointer-events: none; background: rgba(253,252,248,0.97); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 11.5px; line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 5; white-space: nowrap; }
+  #plotPreview { position: fixed; display: none; background: #fdfcf8; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; box-shadow: 0 3px 12px rgba(0,0,0,0.18); z-index: 50; pointer-events: none; }
+  #plotPreview .pvTitle { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
   .tile.dragover { outline: 2px solid var(--accent); }
   .tileHead { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
   .tileTitle { font-size: 12.5px; font-weight: 700; }
@@ -175,7 +178,7 @@
         </label>
         <button id="btnFeedApply" disabled>Apply feed</button>
       </div>
-      <p class="small">The three percentages are normalised to sum to 100. With "Temperature" the feed is set as entered, liquid, two-phase, or vapour; the adiabatic flash to the feed tray determines its vapour fraction there. With "Liquid fraction" (the unvaporised fraction on entering the tray) one further unknown is solved from the flash: the temperature, with the pressure as entered, or the pressure, with the temperature as entered.</p>
+      <p class="small">The three percentages are normalised to sum to 100. The feed pressure must be at least the column pressure, or the feed cannot enter; a lower entry is raised to the column pressure. With "Temperature" the feed is set as entered, liquid, two-phase, or vapour; the adiabatic flash to the feed tray determines its vapour fraction there. With "Liquid fraction" (the unvaporised fraction on entering the tray) one further unknown is solved from the flash: the temperature, with the pressure as entered, or the pressure, with the temperature as entered.</p>
       <p class="small">Distillate specification: pentane mole fraction at least 0.95. Bottoms specification: pentane mole fraction at most 0.05. Practice rounds are not scored.</p>
     </div>
     <div class="card" style="margin-top:12px">
@@ -232,7 +235,7 @@
       </label>
       <button id="btnPlotsReset">Restore the default set</button>
     </div>
-    <div class="small" style="margin-top:4px">Click a parameter to add its plot; click it again to remove it. Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Drag a plot by its title bar to reposition it. Drag a plot's legend item onto another plot to move that trace into it, or onto the panel to split it into its own plot. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
+    <div class="small" style="margin-top:4px">Click a parameter to add its plot; click it again to remove it. Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Drag a plot by its title bar to reposition it. Drag a plot's legend item onto another plot to move that trace into it, or onto the panel to split it into its own plot. Hover over an item to preview its history; hover over a plot's lines to read the time and values. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
     <div class="plotsLayout">
       <div id="palette"></div>
       <div id="plotPanel"><div class="plotGrid" id="plotGrid"></div></div>
