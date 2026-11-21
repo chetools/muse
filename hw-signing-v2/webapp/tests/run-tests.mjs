@@ -379,7 +379,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.0');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.1');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -827,7 +827,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.0');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.1');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1273,6 +1273,18 @@ await test('media tier 2 routing: native failure falls back, and only for MP4 fi
     if (savedCtx === undefined) delete globalThis.AudioContext;
     else globalThis.AudioContext = savedCtx;
   }
+});
+
+await test('wiring: version indicator under the title is fed by VERSIONS.webapp (2.5.1)', () => {
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(index.includes('id="appVersion"'), 'index has the version indicator element');
+  const titleAt = index.indexOf('</h1>');
+  const indicatorAt = index.indexOf('id="appVersion"');
+  assert.ok(indicatorAt > titleAt && indicatorAt < index.indexOf('id="cfgLine"'),
+    'indicator sits under the title, above the configuration line');
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes("$('appVersion').textContent = VERSIONS.webapp"),
+    'indicator text is the package version string, set at page load');
 });
 
 await test('wiring: tier-2 gate loads no mp4box, and the page names the fallback beside the control (2.5.0)', () => {
