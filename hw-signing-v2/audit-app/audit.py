@@ -110,6 +110,13 @@ def load_config(path):
 
 def data_dir(cfg):
     d = Path(cfg["data_dir"]).expanduser()
+    if not d.is_absolute():
+        # Portable form: a relative data_dir is taken against the
+        # folder holding this file, never against the caller's
+        # working directory, so the app folder can be copied or
+        # moved (another computer, a USB drive) and still find
+        # its own data.
+        d = Path(__file__).resolve().parent / d
     d.mkdir(parents=True, exist_ok=True)
     return d
 

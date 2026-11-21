@@ -150,7 +150,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
@@ -168,7 +168,7 @@ DEFAULTS = {
     "assignment_id": 0,
     "acoustic_threshold": 0.85,
     "appeal_period_passed": False,
-    "data_dir": str(HERE / "data"),
+    "data_dir": "data",
 }
 
 
@@ -182,6 +182,32 @@ def load_web_config():
     if CONFIG_PATH.exists():
         saved = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         cfg.update({k: v for k, v in saved.items() if v is not None})
+    if (HERE / "runtime" / "python" / "python.exe").exists():
+        # Portable install only (the bundled runtime is the marker):
+        # a config carried over from a fixed installation holds
+        # data_dir as that installation's absolute path, which names
+        # the old computer's folder, not this one. The transferred
+        # data folder sits beside this file, so point data_dir at
+        # it (stored relative, so the folder stays movable) and
+        # persist. The correction is made only when that local
+        # folder actually holds transferred state (downloads,
+        # videos or a state file): an absolute data_dir in any
+        # other use, with an empty local folder, is a deliberate
+        # setting and is left as it stands, as is a data_dir
+        # already naming this folder, or any relative value.
+        _dd = cfg.get("data_dir") or ""
+        _win = PureWindowsPath(_dd)
+        _is_abs = Path(_dd).is_absolute() or _win.is_absolute()
+        _name = _win.name if _win.is_absolute() else Path(_dd).name
+        _local = HERE / "data"
+        _has_state = any((_local / _m).exists() for _m in (
+            "downloads", "videos", "download-state.json",
+            "audit-results.json", "final-grades.json",
+            "package-index.json"))
+        if _dd and _is_abs and _name == "data" \
+                and Path(_dd) != _local and _has_state:
+            cfg["data_dir"] = "data"
+            save_web_config(cfg)
     if (cfg.get("worker_base_url") or "").rstrip("/") == V1_WORKER_URL:
         # v23 migration: the v1 signing Worker verifies nothing in
         # this app any more (the v1 receipt check was eliminated
