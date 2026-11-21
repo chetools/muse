@@ -95,13 +95,47 @@ function selectValve(key) {
   for (const b of ["vMinus", "vPlus", "vFull", "vShut"]) $(b).disabled = false;
   syncValvePanel();
 }
+let apStatus = null;   // Float64Array(12) from dg_ap_status
+let prevHelp = 0;
+const HELP_NAMES = ["drum level", "reboiler level", "column pressure",
+  "distillate composition", "bottoms composition"];
+function pollApStatus() {
+  const p = W.dg_alloc(12);
+  W.dg_ap_status(sim, p);
+  apStatus = Array.from(new Float64Array(W.memory.buffer, p, 12));
+  W.dg_free(p, 12);
+  for (const [key, v] of Object.entries(VALVES)) {
+    const g = document.querySelector(`.valve[data-valve="${key}"]`);
+    if (!g) continue;
+    const mode = apStatus[2 + v.idx];
+    g.classList.toggle("auto", mode === 2);
+    g.classList.toggle("claimed", mode === 1);
+  }
+  const help = apStatus[1];
+  if (help > 0 && prevHelp === 0) {
+    logMsg(`Autopilot is calling for help: ${HELP_NAMES[help - 1]} out of band with its valve saturated.`);
+  }
+  prevHelp = help;
+}
 function syncValvePanel() {
   if (!selected) return;
   const v = VALVES[selected];
   const disp = valveDisplay(selected);
   $("vSlider").value = disp;
   $("vOpenVal").textContent = v.kind === "kpa" ? `${disp.toFixed(0)} kPa` : `${disp.toFixed(1)}%`;
+  const mode = apStatus ? apStatus[2 + v.idx] : 0;
+  $("vSeat").textContent =
+    mode === 2 ? "This seat is on autopilot (teal outline). Moving the valve claims the seat." :
+    mode === 1 ? "You claimed this seat from the autopilot." : "";
+  $("vHandBack").style.display = mode === 1 ? "" : "none";
 }
+$("vHandBack").addEventListener("click", () => {
+  if (!selected) return;
+  W.dg_release_seat(sim, VALVES[selected].idx);
+  logMsg(`${VALVES[selected].name} handed back to the autopilot.`);
+  pollApStatus();
+  syncValvePanel();
+});
 function applyValve(dispValue) {
   if (!selected) return;
   const v = VALVES[selected];
@@ -248,6 +282,7 @@ function refreshOutputs() {
     $("btnPlay").textContent = "Play";
   }
   prevAlarm = alarm;
+  pollApStatus();
   if (selected) syncValvePanel();
 }
 
@@ -263,6 +298,10 @@ function setFeed(F, z, T, P) {
   new Float64Array(W.memory.buffer, zPtr, 3).set(z);
   W.dg_set_feed(sim, F, zPtr, T, P);
 }
+function feedBubbleT(z, P) {
+  new Float64Array(W.memory.buffer, zPtr, 3).set(z);
+  return W.dg_feed_bubble(sim, zPtr, P);
+}
 const NOMINAL_FEED = { F: 10, z: [0.4, 0.3, 0.3] };
 let nominalFeedState = null;
 document.querySelectorAll(".dist").forEach((b) => {
@@ -272,8 +311,8 @@ document.querySelectorAll(".dist").forEach((b) => {
     const d = b.dataset.d;
     if (d === "feedUp") { setFeed(fi.F * 1.2, fi.z, fi.T, fi.P); logMsg("Disturbance: feed flow +20%."); }
     if (d === "feedDown") { setFeed(fi.F / 1.2, fi.z, fi.T, fi.P); logMsg("Disturbance: feed flow −20%."); }
-    if (d === "feedLight") { setFeed(fi.F, [0.55, 0.25, 0.20], fi.T, fi.P); logMsg("Disturbance: feed richer in pentane."); }
-    if (d === "feedHeavy") { setFeed(fi.F, [0.25, 0.35, 0.40], fi.T, fi.P); logMsg("Disturbance: feed leaner in pentane."); }
+    if (d === "feedLight") { const z = [0.55, 0.25, 0.20]; setFeed(fi.F, z, feedBubbleT(z, fi.P), fi.P); logMsg("Disturbance: feed richer in pentane (arrives as a saturated liquid)."); }
+    if (d === "feedHeavy") { const z = [0.25, 0.35, 0.40]; setFeed(fi.F, z, feedBubbleT(z, fi.P), fi.P); logMsg("Disturbance: feed leaner in pentane (arrives as a saturated liquid)."); }
     if (d === "warmWater") { W.dg_set_supply(sim, 308.15); logMsg("Disturbance: cooling supply warmed to 35 °C."); }
     if (d === "restore") {
       const n = nominalFeedState || { ...NOMINAL_FEED, T: fi.T, P: fi.P };
@@ -291,8 +330,18 @@ $("btnPlay").addEventListener("click", () => {
   playing = !playing;
   $("btnPlay").textContent = playing ? "Pause" : "Play";
 });
+$("selAp").addEventListener("change", (e) => {
+  const level = parseInt(e.target.value, 10);
+  W.dg_set_autopilot(sim, level);
+  pollApStatus();
+  if (selected) syncValvePanel();
+  logMsg(level === 0 ? "Autopilot off." :
+    `Autopilot level ${level} engaged${level >= 1 ? "; the inlet valve is parked fully open" : ""}. Teal-outlined valves are on autopilot; moving one claims its seat.`);
+});
 function doReset() {
   W.dg_reset(sim);
+  $("selAp").value = "0";
+  apStatus = null;
   W.dg_set_supply(sim, 298.0);
   simClock = 0;
   nominalFeedState = null;

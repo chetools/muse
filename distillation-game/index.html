@@ -69,6 +69,8 @@
   .legend { font-size: 12px; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
   .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
   .valve { cursor: pointer; }
+  .valve.auto .vbody { stroke: #16697a; stroke-width: 2.8; }
+  .valve.claimed .vbody { stroke: #b3541e; stroke-width: 2.8; }
   .valve .vbody { fill: #fff; stroke: var(--ink); stroke-width: 1.6; }
   .valve.selected .vbody { stroke: var(--accent); stroke-width: 3; }
   .valve text { font-size: 10.5px; fill: var(--ink); }
@@ -106,6 +108,14 @@
             <option value="4">4&times;</option>
           </select>
         </label>
+        <label class="small">Autopilot
+          <select id="selAp" disabled>
+            <option value="0" selected>Off</option>
+            <option value="1">Level 1 &mdash; levels and pressure</option>
+            <option value="2">Level 2 &mdash; plus product quality</option>
+            <option value="3">Level 3 &mdash; full operation</option>
+          </select>
+        </label>
         <button id="btnReset" disabled>Reset to the nominal point</button>
         <label class="small"><input type="checkbox" id="chkSound"> Sound</label>
         <span class="small">Clock: <span id="clock">0 s</span></span>
@@ -139,6 +149,8 @@
         <button id="vFull" disabled>Full open</button>
         <button id="vShut" disabled>Shut</button>
       </div>
+      <div class="vdesc" id="vSeat"></div>
+      <div class="row"><button id="vHandBack" style="display:none">Hand back to the autopilot</button></div>
       <div id="vExtra"></div>
     </div>
     <div class="card" style="margin-top:12px">
@@ -178,6 +190,7 @@ async function loadEngine() {
   $("status").className = "ready";
   for (const b of document.querySelectorAll("button")) b.disabled = false;
   $("vSlider").disabled = true;
+  $("selAp").disabled = false;
   buildPlant();
   refreshOutputs();
   requestAnimationFrame(tick);
