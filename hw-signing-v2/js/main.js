@@ -159,6 +159,10 @@ function downloadBlob(blob, name) {
 
 // --- Configuration display and teacher setup ---
 function renderConfig() {
+  // Small version indicator under the title, so a screenshot or a
+  // shared screen shows which release the student is running. The
+  // text is the same version string the submission package carries.
+  $('appVersion').textContent = VERSIONS.webapp;
   const parts = [];
   if (cfg.course) parts.push('Course: ' + cfg.course);
   if (cfg.asg) parts.push('Assignment: ' + cfg.asg);

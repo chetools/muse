@@ -255,7 +255,11 @@ logic is Node-tested through `classifyDuration`.
   `AudioDecoder` (Safari before 26, Firefox on Android) skip the
   fallback and show the same failure as before. No file leaves the
   device on either path.
-- **Component version strings**: webapp `hw-signing-webapp 2.5.0`;
+- **Version indicator (2.5.1)**: a small line under the page title
+  shows the webapp version string — the same string the submission
+  package carries — set from `VERSIONS.webapp` at page load, so a
+  screenshot or shared screen identifies an outdated copy.
+- **Component version strings**: webapp `hw-signing-webapp 2.5.1`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle
