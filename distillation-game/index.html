@@ -166,9 +166,17 @@
         <label>Heptane, % <input type="number" id="inFeedZ2" step="1" min="0" max="100"></label>
         <label>Temperature, K <input type="number" id="inFeedT" step="0.5" min="250" max="420"></label>
         <label>Pressure, kPa <input type="number" id="inFeedP" step="1" min="60" max="500"></label>
+        <label>Liquid fraction, % <input type="number" id="inFeedQ" step="1" min="5" max="100"></label>
+        <label>Specify by
+          <select id="selFeedMode">
+            <option value="T">Temperature</option>
+            <option value="qP">Liquid fraction (solve T)</option>
+            <option value="qT">Liquid fraction (solve P)</option>
+          </select>
+        </label>
         <button id="btnFeedApply" disabled>Apply feed</button>
       </div>
-      <p class="small">The three percentages are normalised to sum to 100. A temperature above the feed's bubble point at its pressure is capped at the bubble point: a hotter feed at that pressure would be a vapour, which the feed specification does not admit.</p>
+      <p class="small">The three percentages are normalised to sum to 100. With "Temperature" the feed is set as entered, liquid, two-phase, or vapour; the adiabatic flash to the feed tray determines its vapour fraction there. With "Liquid fraction" (the unvaporised fraction on entering the tray) one further unknown is solved from the flash: the temperature, with the pressure as entered, or the pressure, with the temperature as entered.</p>
       <p class="small">Distillate specification: pentane mole fraction at least 0.95. Bottoms specification: pentane mole fraction at most 0.05. Practice rounds are not scored.</p>
     </div>
     <div class="card" style="margin-top:12px">
@@ -224,7 +232,7 @@
       </label>
       <button id="btnPlotsReset">Restore the default set</button>
     </div>
-    <div class="small" style="margin-top:4px">Click a parameter to add its plot; click it again to remove it. Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Drag a plot by its title bar to reposition it. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
+    <div class="small" style="margin-top:4px">Click a parameter to add its plot; click it again to remove it. Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Drag a plot by its title bar to reposition it. Drag a plot's legend item onto another plot to move that trace into it, or onto the panel to split it into its own plot. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
     <div class="plotsLayout">
       <div id="palette"></div>
       <div id="plotPanel"><div class="plotGrid" id="plotGrid"></div></div>
@@ -433,17 +441,17 @@ function buildPlant() {
   txt(root, 217, 52, "relief to flare, set 400 kPa", "lbl").setAttribute("text-anchor", "end");
   dyn.reliefLbl = txt(root, 270, 90, "", "num");
   // Hot vapour bypass: up, straight across, down into the drum top.
-  pipe(root, `262,100 262,64 470,64 470,88`, "#6b675a", 3);
+  pipe(root, `262,100 262,64 478,64 478,88`, "#6b675a", 3);
   valveGlyph(root, "bypass", 370, 64, "above");
   txt(root, 300, 54, "hot vapour bypass", "lbl").setAttribute("text-anchor", "middle");
   // Reflux drum (narrower, right-aligned with the condenser).
-  const drumX = 430, drumY = 88, drumW = 120, drumH = 52;
+  const drumX = 452, drumY = 88, drumW = 120, drumH = 52;
   el("rect", { x: drumX, y: drumY, width: drumW, height: drumH, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
   dyn.drumLiq = el("rect", { x: drumX + 2, y: drumY + drumH - 2, width: drumW - 4, height: 0, fill: "#56b4e9", opacity: 0.55 }, root);
   txt(root, drumX + drumW / 2, drumY - 8, "Reflux drum", "lblb").setAttribute("text-anchor", "middle");
-  dyn.drumLbl = txt(root, 424, drumY + drumH + 18, "", "num");
-  dyn.drumLbl2 = txt(root, 424, drumY + drumH + 34, "", "num");
-  dyn.drumLbl3 = txt(root, 424, drumY + drumH + 50, "", "num");
+  dyn.drumLbl = txt(root, 578, drumY + drumH + 36, "", "num");
+  dyn.drumLbl2 = txt(root, 578, drumY + drumH + 52, "", "num");
+  dyn.drumLbl3 = txt(root, 578, drumY + drumH + 68, "", "num");
   // Condenser below the drum (narrower).
   const cX = 352, cY = 300, cW = 150, cH = 56;
   el("rect", { x: cX, y: cY, width: cW, height: cH, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
@@ -466,11 +474,11 @@ function buildPlant() {
   dyn.riserLbl = txt(root, 528, 300, "", "num");
   dyn.marginLbl = txt(root, 528, 316, "", "num");
   // Distillate: straight out of the drum side.
-  pipe(root, `550,110 636,110`, "#56b4e9", 3);
-  el("path", { d: "M 636 105 L 648 110 L 636 115 Z", fill: "#56b4e9" }, root);
-  valveGlyph(root, "distillate", 593, 110);
-  txt(root, 636, 144, "distillate out", "lbl").setAttribute("text-anchor", "end");
-  dyn.distLbl = txt(root, 636, 160, "", "num");
+  pipe(root, `572,110 648,110`, "#56b4e9", 3);
+  el("path", { d: "M 648 105 L 660 110 L 648 115 Z", fill: "#56b4e9" }, root);
+  valveGlyph(root, "distillate", 610, 110);
+  txt(root, 660, 144, "distillate out", "lbl").setAttribute("text-anchor", "end");
+  dyn.distLbl = txt(root, 660, 160, "", "num");
   dyn.distLbl.setAttribute("text-anchor", "end");
   // Reflux: down the right side clear of the condenser, straight
   // left along the bottom, up into the column top.

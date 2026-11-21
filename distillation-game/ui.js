@@ -389,6 +389,7 @@ function syncFeedInputs() {
     inFeedZ2: Math.round(fi.z[2] * 100),
     inFeedT: fi.T.toFixed(1),
     inFeedP: fi.P.toFixed(0),
+    inFeedQ: Math.round((1 - outputs()[31]) * 100),
   };
   for (const [id, v] of Object.entries(vals)) {
     const el = $(id);
@@ -398,9 +399,10 @@ function syncFeedInputs() {
 $("btnFeedApply").addEventListener("click", () => {
   const F = parseFloat($("inFeedF").value);
   const zIn = [0, 1, 2].map((i) => parseFloat($("inFeedZ" + i).value));
-  let T = parseFloat($("inFeedT").value);
+  const T = parseFloat($("inFeedT").value);
   const P = parseFloat($("inFeedP").value);
-  if ([F, T, P, ...zIn].some((v) => !isFinite(v))) {
+  const mode = $("selFeedMode").value;
+  if ([F, P, ...zIn].some((v) => !isFinite(v)) || ((mode === "T" || mode === "qT") && !isFinite(T))) {
     logMsg("Feed entry incomplete; nothing applied.");
     return;
   }
@@ -409,13 +411,65 @@ $("btnFeedApply").addEventListener("click", () => {
   if (sum <= 0) { logMsg("Feed composition is all zeros; nothing applied."); return; }
   const zn = zc.map((v) => v / sum);
   const Tb = feedBubbleT(zn, P);
-  let note = "";
-  if (T > Tb) {
-    T = Tb;
-    note = ` Temperature capped at the bubble point, ${Tb.toFixed(1)} K.`;
+  let appliedT = T, appliedP = P, note = "";
+  if (mode === "T") {
+    setFeed(F, zn, T, P);
+    note = ` Flash vapour fraction at the tray: ${(outputs()[31] * 100).toFixed(0)}%.`;
+  } else if (mode === "qT") {
+    const qPct = parseFloat($("inFeedQ").value);
+    if (!isFinite(qPct)) { logMsg("No liquid fraction entered; nothing applied."); return; }
+    const psiTarget = 1 - Math.min(100, Math.max(0, qPct)) / 100;
+    const psiAtP = (Pp) => { setFeed(F, zn, T, Pp); return outputs()[31]; };
+    let lo = 60, hi = 500;
+    const psiLo = psiAtP(lo), psiHi = psiAtP(hi);
+    if (psiLo - psiHi < 1e-6) {
+      note = " The flash fraction does not respond to the feed pressure at this temperature (the feed stays a liquid at its own conditions throughout); the pressure is left as entered.";
+      setFeed(F, zn, T, P);
+    } else if (psiTarget >= psiLo) {
+      appliedP = lo;
+      note = ` Liquid fraction ${qPct}% is below the flash range at this temperature; pressure set to ${lo} kPa (liquid fraction ${((1 - psiLo) * 100).toFixed(0)}%).`;
+      setFeed(F, zn, T, appliedP);
+    } else if (psiTarget <= psiHi) {
+      appliedP = hi;
+      note = ` Liquid fraction ${qPct}% is above the flash range at this temperature; pressure set to ${hi} kPa (liquid fraction ${((1 - psiHi) * 100).toFixed(0)}%).`;
+      setFeed(F, zn, T, appliedP);
+    } else {
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (psiAtP(mid) > psiTarget) lo = mid; else hi = mid;
+      }
+      appliedP = (lo + hi) / 2;
+      setFeed(F, zn, T, appliedP);
+      note = ` Pressure from the adiabatic flash: ${appliedP.toFixed(0)} kPa (liquid fraction ${((1 - outputs()[31]) * 100).toFixed(0)}%).`;
+    }
+  } else {
+    const qPct = parseFloat($("inFeedQ").value);
+    if (!isFinite(qPct)) { logMsg("No liquid fraction entered; nothing applied."); return; }
+    const psiTarget = 1 - Math.min(100, Math.max(0, qPct)) / 100;
+    const psiAt = (Tt) => { setFeed(F, zn, Tt, P); return outputs()[31]; };
+    let lo = Tb, hi = Tb + 150;
+    const psiLo = psiAt(lo), psiHi = psiAt(hi);
+    if (psiTarget <= psiLo) {
+      appliedT = lo;
+      note = ` Liquid fraction ${qPct}% is above the flash range at this pressure; the feed is set at its bubble point (liquid fraction ${((1 - psiLo) * 100).toFixed(0)}%).`;
+    } else if (psiTarget >= psiHi) {
+      appliedT = hi;
+      note = ` Liquid fraction ${qPct}% is below the flash range reached in the search; temperature set to ${hi.toFixed(1)} K.`;
+    } else {
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (psiAt(mid) < psiTarget) lo = mid; else hi = mid;
+      }
+      appliedT = (lo + hi) / 2;
+    }
+    setFeed(F, zn, appliedT, P);
+    note += ` Temperature from the adiabatic flash: ${appliedT.toFixed(1)} K (liquid fraction ${((1 - outputs()[31]) * 100).toFixed(0)}%).`;
   }
-  setFeed(F, zn, T, P);
-  logMsg(`Feed set directly: ${F.toFixed(2)} mol/s, pentane ${(zn[0] * 100).toFixed(0)}%, hexane ${(zn[1] * 100).toFixed(0)}%, heptane ${(zn[2] * 100).toFixed(0)}%, ${T.toFixed(1)} K, ${P.toFixed(0)} kPa.${note}`);
+  logMsg(`Feed set directly: ${F.toFixed(2)} mol/s, pentane ${(zn[0] * 100).toFixed(0)}%, hexane ${(zn[1] * 100).toFixed(0)}%, heptane ${(zn[2] * 100).toFixed(0)}%, ${appliedT.toFixed(1)} K, ${appliedP.toFixed(0)} kPa.${note}`);
+  const btn = $("btnFeedApply");
+  btn.textContent = "Applied \u2713";
+  setTimeout(() => { btn.textContent = "Apply feed"; }, 1200);
+  syncFeedInputs();
   refreshOutputs();
 });
 
@@ -659,6 +713,11 @@ function renderTileHead(tile) {
     dot.style.background = p.color;
     chip.appendChild(dot);
     chip.appendChild(document.createTextNode(p.short));
+    chip.draggable = true;
+    chip.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", `series:${tile.n}:${id}`);
+      e.dataTransfer.effectAllowed = "move";
+    });
     const x = document.createElement("button");
     x.textContent = "×";
     x.title = `Remove ${p.name}`;
@@ -700,7 +759,11 @@ function addTile(seriesIds, guides, fixedTitle) {
     e.stopPropagation();
     el.classList.remove("dragover");
     const data = e.dataTransfer.getData("text/plain");
-    if (data.startsWith("tile:")) {
+    if (data.startsWith("series:")) {
+      const [, fromN, pid] = data.split(":");
+      const src = tiles.find((t) => t.n === parseInt(fromN, 10));
+      if (src && src !== tile && src.series.includes(pid)) moveSeries(src, pid, tile);
+    } else if (data.startsWith("tile:")) {
       const dragged = tiles.find((t) => t.n === parseInt(data.slice(5), 10));
       if (dragged && dragged !== tile) moveTileBefore(dragged, tile);
     } else if (data.startsWith("param:")) {
@@ -725,6 +788,14 @@ function moveTileToEnd(dragged) {
   $("plotGrid").appendChild(dragged.el);
   tiles = tiles.filter((t) => t !== dragged);
   tiles.push(dragged);
+}
+function moveSeries(src, pid, dst) {
+  if (dst.series.includes(pid) || dst.series.length >= 6) return;
+  dst.series.push(pid);
+  dst.fixedTitle = null;
+  renderTileHead(dst);
+  drawTile(dst);
+  removeSeries(src, pid);
 }
 function addSeries(tile, pid) {
   if (tile.series.includes(pid) || tile.series.length >= 6) return;
@@ -845,7 +916,14 @@ function drawAllTiles() {
     e.preventDefault();
     panel.classList.remove("dragover");
     const data = e.dataTransfer.getData("text/plain");
-    if (data.startsWith("tile:")) {
+    if (data.startsWith("series:")) {
+      const [, fromN, pid] = data.split(":");
+      const src = tiles.find((t) => t.n === parseInt(fromN, 10));
+      if (src && src.series.includes(pid)) {
+        const t = addTile([pid]);
+        removeSeries(src, pid);
+      }
+    } else if (data.startsWith("tile:")) {
       const dragged = tiles.find((t) => t.n === parseInt(data.slice(5), 10));
       if (dragged) moveTileToEnd(dragged);
     } else if (data.startsWith("param:")) {
