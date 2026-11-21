@@ -50,6 +50,9 @@
   .sChip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .sChip button { border: none; background: none; padding: 0 1px; font-size: 11px; color: #55503f; }
   .tile canvas { width: 100%; height: 108px; display: block; }
+  .feedForm { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: end; margin-top: 6px; }
+  .feedForm label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); }
+  .feedForm input { width: 92px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
   .plotsLayout { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 12px; align-items: start; }
   @media (max-width: 900px) { .plotsLayout { grid-template-columns: 1fr; } }
   .tileHead { cursor: grab; }
@@ -155,6 +158,17 @@
         <button class="dist" data-d="warmWater" disabled>Cooling supply warms to 35 &deg;C</button>
         <button class="dist" data-d="restore" disabled>Restore the nominal feed</button>
       </div>
+      <div style="margin-top:10px"><span class="sect">Set the feed directly</span></div>
+      <div class="feedForm">
+        <label>Flow, mol/s <input type="number" id="inFeedF" step="0.1" min="0.5" max="30"></label>
+        <label>Pentane, % <input type="number" id="inFeedZ0" step="1" min="0" max="100"></label>
+        <label>Hexane, % <input type="number" id="inFeedZ1" step="1" min="0" max="100"></label>
+        <label>Heptane, % <input type="number" id="inFeedZ2" step="1" min="0" max="100"></label>
+        <label>Temperature, K <input type="number" id="inFeedT" step="0.5" min="250" max="420"></label>
+        <label>Pressure, kPa <input type="number" id="inFeedP" step="1" min="60" max="500"></label>
+        <button id="btnFeedApply" disabled>Apply feed</button>
+      </div>
+      <p class="small">The three percentages are normalised to sum to 100. A temperature above the feed's bubble point at its pressure is capped at the bubble point: a hotter feed at that pressure would be a vapour, which the feed specification does not admit.</p>
       <p class="small">Distillate specification: pentane mole fraction at least 0.95. Bottoms specification: pentane mole fraction at most 0.05. Practice rounds are not scored.</p>
     </div>
     <div class="card" style="margin-top:12px">
@@ -411,7 +425,7 @@ function buildPlant() {
   dyn.botLbl = txt(root, 428, 606, "", "num");
   // Overhead line: straight right, one bend down into the
   // condenser top.
-  pipe(root, `205,100 352,100 352,300`, "#6b675a", 3);
+  pipe(root, `205,100 427,100 427,300`, "#6b675a", 3);
   valveGlyph(root, "inlet", 300, 100);
   // Relief branch (straight up).
   pipe(root, `225,100 225,58`, "#6b675a", 2.5);
@@ -447,8 +461,8 @@ function buildPlant() {
   dyn.condLbl2.setAttribute("text-anchor", "end");
   // Riser: straight up the shared right edge, one bend into the
   // drum side.
-  dyn.riser = pipe(root, `494,300 494,140`, "#56b4e9", 4);
-  valveGlyph(root, "outlet", 494, 230, "leftbelow", -90);
+  dyn.riser = pipe(root, `484,300 484,140`, "#56b4e9", 4);
+  valveGlyph(root, "outlet", 484, 230, "leftbelow", -90);
   dyn.riserLbl = txt(root, 528, 300, "", "num");
   dyn.marginLbl = txt(root, 528, 316, "", "num");
   // Distillate: straight out of the drum side.

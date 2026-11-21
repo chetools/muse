@@ -39,8 +39,9 @@ function soundValve(idx, value) {
   if (!audio || !$("chkSound").checked) return;
   const prev = lastOpeningVal[idx];
   lastOpeningVal[idx] = value;
-  if (prev === undefined || Math.abs(value - prev) < 0.01) return;
-  const n = Math.min(6, Math.max(1, Math.round(Math.abs(value - prev) / 4)));
+  if (prev !== undefined && Math.abs(value - prev) < 0.01) return;
+  const n = prev === undefined ? 2
+    : Math.min(6, Math.max(1, Math.round(Math.abs(value - prev) / 4)));
   for (let i = 0; i < n; i++) click(i * 0.05, 1000 + Math.random() * 400);
 }
 let alarmSoundAt = 0;
@@ -137,7 +138,8 @@ function syncValvePanel() {
 }
 $("chkSound").addEventListener("change", () => {
   ensureAudio();
-  if ($("chkSound").checked) { click(0.02); click(0.12); }
+  if ($("chkSound").checked) { click(0.02); click(0.12); logMsg("Sound on."); }
+  else logMsg("Sound off.");
 });
 $("vHandBack").addEventListener("click", () => {
   if (!selected) return;
@@ -181,6 +183,8 @@ let riserPhase = 0;
 
 let bubV = { R: 9, S: 9 };
 function refreshOutputs() {
+  if (!nominalOpenings) nominalOpenings = getOpenings();
+  if (!feedInputsSynced) { feedInputsSynced = true; syncFeedInputs(); }
   const o = outputs();
   bubV = { R: o[12], S: o[11] };
   sampleHistory(o);
@@ -254,6 +258,7 @@ function refreshOutputs() {
   // Readout table.
   const xd = [o[40], o[41], o[42]], xb = [o[49], o[50], o[51]];
   const specD = xd[0] >= 0.95, specB = xb[0] <= 0.05;
+  const fiR = feedInfo();
   $("readouts").innerHTML = `
     <span class="sect">Pressures</span>
     <span>Column</span><span class="v">${f1(P.col)} kPa</span>
@@ -280,12 +285,19 @@ function refreshOutputs() {
     <span>Reboiler duty</span><span class="v">${kW(o[24])}</span>
     <span>Cooling tank</span><span class="v">${f1(o[5])} K</span>
     <span>Water leaving condenser</span><span class="v">${f1(o[6])} K</span>
+    <span class="sect">Feed</span>
+    <span>Flow</span><span class="v">${f2(fiR.F)} mol/s</span>
+    <span>Pentane</span><span class="v">${pct(fiR.z[0])}</span>
+    <span>Hexane</span><span class="v">${pct(fiR.z[1])}</span>
+    <span>Heptane</span><span class="v">${pct(fiR.z[2])}</span>
+    <span>Temperature</span><span class="v">${f1(fiR.T)} K</span>
+    <span>Pressure</span><span class="v">${f1(fiR.P)} kPa</span>
     <span class="sect">Products</span>
     <span>Distillate pentane</span><span class="v ${specD ? "spec-ok" : "spec-bad"}">${pct(xd[0])}</span>
     <span>Bottoms pentane</span><span class="v ${specB ? "spec-ok" : "spec-bad"}">${pct(xb[0])}</span>`;
   segSet(segDist, xd);
   segSet(segBot, xb);
-  const fiNow = feedInfo();
+  const fiNow = fiR;
   for (let c = 0; c < 3; c++) dyn.feedZ[c].textContent = `${COMP_NAMES[c]} ${Math.round(fiNow.z[c] * 100)}%`;
   dyn.feedTP.textContent = `${fiNow.T.toFixed(0)} K · ${fiNow.P.toFixed(0)} kPa`;
   lastTrayClock = simClock;
@@ -339,10 +351,13 @@ function feedBubbleT(z, P) {
 }
 const NOMINAL_FEED = { F: 10, z: [0.4, 0.3, 0.3] };
 let nominalFeedState = null;
+let nominalOpenings = null;
+let feedInputsSynced = false;
 document.querySelectorAll(".dist").forEach((b) => {
   b.addEventListener("click", () => {
     const fi = feedInfo();
     if (!nominalFeedState) nominalFeedState = fi;
+    if (!nominalOpenings) nominalOpenings = getOpenings();
     const d = b.dataset.d;
     if (d === "feedUp") { setFeed(fi.F * 1.2, fi.z, fi.T, fi.P); logMsg("Disturbance: feed flow +20%."); }
     if (d === "feedDown") { setFeed(fi.F / 1.2, fi.z, fi.T, fi.P); logMsg("Disturbance: feed flow −20%."); }
@@ -353,10 +368,55 @@ document.querySelectorAll(".dist").forEach((b) => {
       const n = nominalFeedState || { ...NOMINAL_FEED, T: fi.T, P: fi.P };
       setFeed(n.F, n.z, n.T, n.P);
       W.dg_set_supply(sim, 298.0);
-      logMsg("Feed and cooling supply restored to nominal.");
+      if (nominalOpenings) {
+        nominalOpenings.forEach((v, i) => setOpening(i, v));
+        if (selected) syncValvePanel();
+      }
+      logMsg("Feed, cooling supply and valve openings restored to nominal; flow rates return to the nominal point.");
     }
+    syncFeedInputs();
     refreshOutputs();
   });
+});
+
+function syncFeedInputs() {
+  if (!W || !sim) return;
+  const fi = feedInfo();
+  const vals = {
+    inFeedF: fi.F.toFixed(2),
+    inFeedZ0: Math.round(fi.z[0] * 100),
+    inFeedZ1: Math.round(fi.z[1] * 100),
+    inFeedZ2: Math.round(fi.z[2] * 100),
+    inFeedT: fi.T.toFixed(1),
+    inFeedP: fi.P.toFixed(0),
+  };
+  for (const [id, v] of Object.entries(vals)) {
+    const el = $(id);
+    if (el && document.activeElement !== el) el.value = v;
+  }
+}
+$("btnFeedApply").addEventListener("click", () => {
+  const F = parseFloat($("inFeedF").value);
+  const zIn = [0, 1, 2].map((i) => parseFloat($("inFeedZ" + i).value));
+  let T = parseFloat($("inFeedT").value);
+  const P = parseFloat($("inFeedP").value);
+  if ([F, T, P, ...zIn].some((v) => !isFinite(v))) {
+    logMsg("Feed entry incomplete; nothing applied.");
+    return;
+  }
+  const zc = zIn.map((v) => Math.max(0, v));
+  const sum = zc[0] + zc[1] + zc[2];
+  if (sum <= 0) { logMsg("Feed composition is all zeros; nothing applied."); return; }
+  const zn = zc.map((v) => v / sum);
+  const Tb = feedBubbleT(zn, P);
+  let note = "";
+  if (T > Tb) {
+    T = Tb;
+    note = ` Temperature capped at the bubble point, ${Tb.toFixed(1)} K.`;
+  }
+  setFeed(F, zn, T, P);
+  logMsg(`Feed set directly: ${F.toFixed(2)} mol/s, pentane ${(zn[0] * 100).toFixed(0)}%, hexane ${(zn[1] * 100).toFixed(0)}%, heptane ${(zn[2] * 100).toFixed(0)}%, ${T.toFixed(1)} K, ${P.toFixed(0)} kPa.${note}`);
+  refreshOutputs();
 });
 
 // ---------- Run controls and the main loop ----------
@@ -383,12 +443,14 @@ function doReset() {
   W.dg_set_supply(sim, 298.0);
   simClock = 0;
   nominalFeedState = null;
+  nominalOpenings = null;
   $("overBar").style.display = "none";
   prevAlarm = { hp: false, relief: false, flash: false, ruptured: false };
   playing = true;
   $("btnPlay").textContent = "Pause";
   logMsg("Reset to the nominal point.");
   refreshOutputs();
+  syncFeedInputs();
 }
 $("btnReset").addEventListener("click", doReset);
 $("btnOverReset").addEventListener("click", doReset);
