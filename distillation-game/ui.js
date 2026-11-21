@@ -133,7 +133,7 @@ function segSet(segs, x) {
 }
 function tempColor(t) {
   const u = Math.min(1, Math.max(0, (t - 315) / 95));
-  return `hsl(${Math.round(215 - 215 * u)}, 70%, ${Math.round(72 - 22 * u)}%)`;
+  return `hsl(${Math.round(215 - 215 * u)}, 72%, ${Math.round(64 - 20 * u)}%)`;
 }
 let prevAlarm = { hp: false, relief: false, flash: false, ruptured: false };
 let riserPhase = 0;
@@ -159,18 +159,19 @@ function refreshOutputs() {
   dyn.topT.textContent = `top ${f1(o[9])} K`;
   dyn.rebT.textContent = `${f1(o[10])} K, level ${pct(o[33])}`;
   const rebY = 84 + 32 * 12 + 14;
-  dyn.rebLiq.setAttribute("y", rebY + 58 - 2 - o[33] * 54);
-  dyn.rebLiq.setAttribute("height", o[33] * 54);
+  dyn.rebLiq.setAttribute("y", rebY + 46 - o[33] * 44);
+  dyn.rebLiq.setAttribute("height", o[33] * 44);
   dyn.feedLbl.textContent = `F = ${f2(o[37])} mol/s`;
   // Drum and condenser levels.
-  dyn.drumLiq.setAttribute("y", 108 + 82 - 2 - o[32] * 78);
-  dyn.drumLiq.setAttribute("height", o[32] * 78);
+  dyn.drumLiq.setAttribute("y", 96 + 58 - o[32] * 56);
+  dyn.drumLiq.setAttribute("height", o[32] * 56);
   dyn.drumLbl.textContent = `P ${f1(P.drum)} kPa`;
   dyn.drumLbl2.textContent = `level ${pct(o[32])}, ${f1(o[4])} K`;
-  dyn.condFlood.setAttribute("y", 286 + 92 - 2 - o[23] * 88);
-  dyn.condFlood.setAttribute("height", o[23] * 88);
+  dyn.condFlood.setAttribute("y", 296 + 60 - o[23] * 58);
+  dyn.condFlood.setAttribute("height", o[23] * 58);
   dyn.condLbl.textContent = `flooded ${pct(o[23])}, condensing at ${f1(o[7])} K`;
-  dyn.riserLbl.textContent = `${f2(o[20])} mol/s, margin ${f2(o[21])} K`;
+  dyn.riserLbl.textContent = `riser ${f2(o[20])} mol/s`;
+  dyn.marginLbl.textContent = `margin ${f2(o[21])} K`;
   dyn.riser.setAttribute("stroke", o[21] < 0 ? "#b3541e" : "#56b4e9");
   dyn.reliefLbl.textContent = o[27] > 0 ? `LIFTING ${f2(o[27])} mol/s` : "";
   dyn.distLbl.textContent = `${f2(o[15])} mol/s`;
