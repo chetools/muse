@@ -15,7 +15,7 @@ function ensureAudio() {
   try {
     audio = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audio.createGain();
-    masterGain.gain.value = 0.5;
+    masterGain.gain.value = 0.9;
     masterGain.connect(audio.destination);
     if (audio.state === "suspended") audio.resume();
   } catch (e) { audio = null; }
@@ -28,10 +28,10 @@ function click(delay, freq) {
   const t = audio.currentTime + delay;
   const o = audio.createOscillator(), g = audio.createGain();
   o.type = "square"; o.frequency.value = freq || 1800;
-  g.gain.setValueAtTime(0.06, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+  g.gain.setValueAtTime(0.16, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
   o.connect(g); g.connect(masterGain);
-  o.start(t); o.stop(t + 0.04);
+  o.start(t); o.stop(t + 0.07);
 }
 let lastOpeningVal = {};
 function soundValve(idx, value) {
@@ -41,7 +41,7 @@ function soundValve(idx, value) {
   lastOpeningVal[idx] = value;
   if (prev === undefined || Math.abs(value - prev) < 0.01) return;
   const n = Math.min(6, Math.max(1, Math.round(Math.abs(value - prev) / 4)));
-  for (let i = 0; i < n; i++) click(i * 0.05, 1400 + Math.random() * 500);
+  for (let i = 0; i < n; i++) click(i * 0.05, 1000 + Math.random() * 400);
 }
 let alarmSoundAt = 0;
 function soundAlarm(kind) {
@@ -55,7 +55,7 @@ function soundAlarm(kind) {
     const t = audio.currentTime + i * 0.22;
     const o = audio.createOscillator(), g = audio.createGain();
     o.type = "sine"; o.frequency.value = freq;
-    g.gain.setValueAtTime(0.12, t);
+    g.gain.setValueAtTime(0.3, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
     o.connect(g); g.connect(masterGain);
     o.start(t); o.stop(t + 0.2);
@@ -135,7 +135,10 @@ function syncValvePanel() {
     mode === 1 ? "You claimed this seat from the autopilot." : "";
   $("vHandBack").style.display = mode === 1 ? "" : "none";
 }
-$("chkSound").addEventListener("change", ensureAudio);
+$("chkSound").addEventListener("change", () => {
+  ensureAudio();
+  if ($("chkSound").checked) { click(0.02); click(0.12); }
+});
 $("vHandBack").addEventListener("click", () => {
   if (!selected) return;
   W.dg_release_seat(sim, VALVES[selected].idx);
@@ -196,7 +199,11 @@ function refreshOutputs() {
       sx += x[c] * 104;
     });
     const Lj = j > 6 ? o[13] : o[14];
-    const depth = Math.min(20, 6 + 7 * Math.pow(Math.max(0, Lj) / (j > 6 ? 5 : 15), 2 / 3));
+    const target = Math.min(20, 6 + 7 * Math.pow(Math.max(0, Lj) / (j > 6 ? 5 : 15), 2 / 3));
+    if (trayDepthVis[j] === undefined) trayDepthVis[j] = target;
+    const dtTray = Math.max(0, simClock - lastTrayClock);
+    trayDepthVis[j] += (target - trayDepthVis[j]) * (1 - Math.exp(-dtTray / 20));
+    const depth = trayDepthVis[j];
     const plateY = 84 + (13 - j) * 32;
     dyn.traySegs[j].forEach((r) => {
       r.setAttribute("y", plateY - depth);
@@ -278,6 +285,10 @@ function refreshOutputs() {
     <span>Bottoms pentane</span><span class="v ${specB ? "spec-ok" : "spec-bad"}">${pct(xb[0])}</span>`;
   segSet(segDist, xd);
   segSet(segBot, xb);
+  const fiNow = feedInfo();
+  for (let c = 0; c < 3; c++) dyn.feedZ[c].textContent = `${COMP_NAMES[c]} ${Math.round(fiNow.z[c] * 100)}%`;
+  dyn.feedTP.textContent = `${fiNow.T.toFixed(0)} K · ${fiNow.P.toFixed(0)} kPa`;
+  lastTrayClock = simClock;
   // Alarms.
   const alarm = { hp: o[36] > 0, relief: o[35] > 0, flash: o[21] < 0, ruptured: o[34] > 0 };
   const bar = $("alarmBar");
@@ -364,6 +375,7 @@ $("selAp").addEventListener("change", (e) => {
 });
 function doReset() {
   HISTORY.length = 0;
+  trayDepthVis = {};
   lastSampleT = -1;
   W.dg_reset(sim);
   $("selAp").value = "0";
@@ -415,6 +427,8 @@ loadEngine().catch((e) => {
 
 // ---------- Tray bubbling (vapour-rate driven) ----------
 const trayVis = {};
+let trayDepthVis = {};
+let lastTrayClock = 0;
 let bubLast = performance.now();
 function animateBubbles(now) {
   requestAnimationFrame(animateBubbles);
@@ -446,7 +460,8 @@ let lastSampleT = -1;
 function sampleHistory(o) {
   if (simClock - lastSampleT < 1.0) return;
   lastSampleT = simClock;
-  HISTORY.push({ t: simClock, v: Array.from(o) });
+  const fi = feedInfo();
+  HISTORY.push({ t: simClock, v: Array.from(o), f: [fi.F, fi.T, fi.P, fi.z[0], fi.z[1], fi.z[2]] });
   if (HISTORY.length > 7200) HISTORY.shift();
 }
 const COMP_NAMES = ["pentane", "hexane", "heptane"];
@@ -462,32 +477,37 @@ function defParam(id, name, short, group, unit, color, frac, get) {
 (function buildCatalogue() {
   let ci = 0;
   const col = () => SERIES_COLORS[(ci++) % SERIES_COLORS.length];
-  const P = (id, name, idx) => defParam(id, name, name, "Pressures", "kPa", col(), false, (o) => o[idx]);
+  const P = (id, name, idx) => defParam(id, name, name, "Pressures", "kPa", col(), false, (s) => s.v[idx]);
   P("pcol", "Column pressure", 0); P("pcond", "Condenser pressure", 1);
   P("pdrum", "Drum pressure", 2); P("pchest", "Steam chest pressure", 3);
-  defParam("lvl_drum", "Drum level", "drum level", "Levels and margin", "", col(), true, (o) => o[32]);
-  defParam("lvl_reb", "Reboiler level", "reboiler level", "Levels and margin", "", col(), true, (o) => o[33]);
-  defParam("flooded", "Condenser flooded fraction", "flooded", "Levels and margin", "", col(), true, (o) => o[23]);
-  defParam("margin", "Subcooling margin", "margin", "Levels and margin", "K", col(), false, (o) => o[21]);
-  const F = (id, name, idx) => defParam(id, name, name, "Flows", "mol/s", col(), false, (o) => o[idx]);
+  defParam("lvl_drum", "Drum level", "drum level", "Levels and margin", "", col(), true, (s) => s.v[32]);
+  defParam("lvl_reb", "Reboiler level", "reboiler level", "Levels and margin", "", col(), true, (s) => s.v[33]);
+  defParam("flooded", "Condenser flooded fraction", "flooded", "Levels and margin", "", col(), true, (s) => s.v[23]);
+  defParam("margin", "Subcooling margin", "margin", "Levels and margin", "K", col(), false, (s) => s.v[21]);
+  const F = (id, name, idx) => defParam(id, name, name, "Flows", "mol/s", col(), false, (s) => s.v[idx]);
   F("feed", "Feed flow", 37); F("vrec", "Vapour, rectifying", 12);
   F("vstrip", "Vapour, stripping", 11); F("refluxf", "Reflux flow", 13);
   F("distf", "Distillate flow", 15); F("botf", "Bottoms flow", 16);
   F("vin", "Vapour into condenser", 17); F("bypassf", "Bypass vapour", 18);
   F("condrate", "Condensation rate", 19); F("drain", "Condensate to drum", 20);
   F("steamf", "Steam flow", 26); F("relieff", "Relief flow", 27);
-  const T = (id, name, idx) => defParam(id, name, name, "Temperatures", "K", col(), false, (o) => o[idx]);
+  defParam("feedz0", "Feed pentane (light key)", "pentane", "Feed", "", COMP_COLORS[0], true, (s) => s.f[3]);
+  defParam("feedz1", "Feed hexane (heavy key)", "hexane", "Feed", "", COMP_COLORS[1], true, (s) => s.f[4]);
+  defParam("feedz2", "Feed heptane", "heptane", "Feed", "", COMP_COLORS[2], true, (s) => s.f[5]);
+  defParam("feedT", "Feed temperature", "temperature", "Feed", "K", col(), false, (s) => s.f[1]);
+  defParam("feedP", "Feed pressure", "pressure", "Feed", "kPa", col(), false, (s) => s.f[2]);
+  const T = (id, name, idx) => defParam(id, name, name, "Temperatures", "K", col(), false, (s) => s.v[idx]);
   T("ttop", "Top temperature", 9); T("tdrum", "Drum temperature", 4);
   T("tcond", "Condensing temperature", 7); T("tpool", "Reboiler liquid temperature", 8);
   T("treb", "Reboiler temperature", 10); T("twout", "Water leaving condenser", 6);
   T("ttank", "Cooling tank temperature", 5);
-  defParam("qcond", "Condenser duty", "condenser", "Duties", "kW", col(), false, (o) => o[25] / 1000);
-  defParam("qreb", "Reboiler duty", "reboiler", "Duties", "kW", col(), false, (o) => o[24] / 1000);
+  defParam("qcond", "Condenser duty", "condenser", "Duties", "kW", col(), false, (s) => s.v[25] / 1000);
+  defParam("qreb", "Reboiler duty", "reboiler", "Duties", "kW", col(), false, (s) => s.v[24] / 1000);
   const compGroup = (prefix, label, base) => {
     for (let c = 0; c < 3; c++) {
       defParam(`${prefix}${c}`, `${label} ${COMP_NAMES[c]}${KEY_TAG[c]}`,
         COMP_NAMES[c], `${label} composition`, "", COMP_COLORS[c], true,
-        (o) => o[base + c]);
+        (s) => s.v[base + c]);
     }
   };
   compGroup("xd", "Distillate", 40);
@@ -498,10 +518,10 @@ function defParam(id, name, short, group, unit, color, frac, get) {
     const stage = j === 0 ? "Reboiler" : `Tray ${j}`;
     for (let c = 0; c < 3; c++) {
       defParam(`xs${j}_${c}`, `${stage} ${COMP_NAMES[c]}`, `${stage} ${COMP_NAMES[c]}`,
-        "Tray compositions", "", COMP_COLORS[c], true, (o) => o[52 + j * 3 + c]);
+        "Tray compositions", "", COMP_COLORS[c], true, (s) => s.v[52 + j * 3 + c]);
     }
     defParam(`ts${j}`, `${stage} temperature`, `${stage}`, "Tray temperatures", "K",
-      col(), false, (o) => o[91 + j]);
+      col(), false, (s) => s.v[91 + j]);
   }
 })();
 function buildPalette() {
@@ -670,6 +690,7 @@ function buildDefaultTiles() {
   tiles = [];
   addTile(["pcol"], [{ y: 360, label: "alarm 360" }, { y: 400, label: "relief 400" }], "Column pressure");
   addTile(["lvl_drum", "lvl_reb", "flooded"], [], "Levels and flooding");
+  addTile(["feed", "distf", "botf", "refluxf"], [], "Flows");
   addTile(["xd0", "xd1", "xd2"], [{ y: 0.95, label: "spec 0.95" }], "Distillate composition");
   addTile(["xb0", "xb1", "xb2"], [{ y: 0.05, label: "spec 0.05" }], "Bottoms composition");
   addTile(["qcond", "qreb"], [], "Duties");
@@ -698,7 +719,7 @@ function drawTile(tile) {
   if (allFrac && tile.series.length) { yLo = 0; yHi = 1; }
   if (yLo === Infinity) {
     for (const s of vis) for (const id of tile.series) {
-      const v = PLOT_PARAMS[id].get(s.v);
+      const v = PLOT_PARAMS[id].get(s);
       if (v < yLo) yLo = v;
       if (v > yHi) yHi = v;
     }
@@ -742,7 +763,7 @@ function drawTile(tile) {
     ctx.beginPath();
     let started = false;
     for (const s of vis) {
-      const x = X(s.t), y = Y(p.get(s.v));
+      const x = X(s.t), y = Y(p.get(s));
       if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
     }
     ctx.stroke();
