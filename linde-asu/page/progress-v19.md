@@ -46,5 +46,16 @@ unchanged. Build and publication only in this record.
   The page carries no ?selftest verdict hook (grep count 0, as in
   v18); the live-run replacement above is the direct substitute
   check.
-- [ ] Published: main and gh-pages commits and served-bytes
-  verification recorded in ../PUBLISH-LOG.md.
+- [x] Published: main pushed e61c22e → 92cdd83 (local commit
+  2d12691; compare view 22 files, all linde-asu, 0 deletions);
+  gh-pages pushed 701682e → 4b38c5b (local commit d27df06; compare
+  view 1 file, linde-asu/index.html; remote blob SHA
+  e8d66b983cddff4f35f378ba2c2ee90f05292f9d matches the local
+  git hash-object). Served bytes verified: the live page at
+  https://chetools.github.io/muse/linde-asu/ is byte-identical to
+  dist/linde-asu-v19.html (SHA-256
+  579556543634ce8a6c8c3cdbd30821009fbaabdcd90463bd5ed65929e428b521,
+  5,438,289 bytes). The published-page browser check ran on the
+  byte-identical local build (headless Chromium cannot tunnel to
+  the public site from this environment; curl fetched the live
+  bytes for the comparison).
