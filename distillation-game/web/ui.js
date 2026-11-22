@@ -326,7 +326,7 @@ function refreshOutputs() {
   bar.style.display = "none";
   if (alarm.relief) {
     bar.className = "relief"; bar.style.display = "block";
-    bar.textContent = "RELIEF VALVE LIFTING — vapour is being lost to the flare and the score penalty is heavy.";
+    bar.textContent = "RELIEF VALVE LIFTING — vapour is being lost to the flare; in a scored round the penalty for relief lifting is heavy.";
   } else if (alarm.hp) {
     bar.className = "hp"; bar.style.display = "block";
     bar.textContent = "HIGH PRESSURE ALARM — column pressure is above 360 kPa. The relief valve lifts at 400 kPa.";
@@ -381,7 +381,7 @@ document.querySelectorAll(".dist").forEach((b) => {
     if (d === "feedDown") { const sp = outputs()[38] / 1.2; feedSetpoint(sp); logMsg(`Disturbance: feed setpoint −20% (now ${sp.toFixed(1)} mol/s, valve on automatic).`); }
     if (d === "feedLight") { const z = [0.55, 0.25, 0.20]; setFeed(z, feedBubbleT(z, outputs()[0]), fi.P); logMsg("Disturbance: feed richer in pentane (arrives as a saturated liquid)."); }
     if (d === "feedHeavy") { const z = [0.25, 0.35, 0.40]; setFeed(z, feedBubbleT(z, outputs()[0]), fi.P); logMsg("Disturbance: feed leaner in pentane (arrives as a saturated liquid)."); }
-    if (d === "warmWater") { W.dg_set_supply(sim, 308.15); logMsg("Disturbance: cooling supply warmed to 35 °C."); }
+    if (d === "warmWater") { W.dg_set_supply(sim, 308.15); logMsg("Disturbance: cooling supply warmed to 308.15 K."); }
     if (d === "restore") {
       const n = nominalFeedState || { ...NOMINAL_FEED, T: fi.T, P: fi.P };
       setFeed(n.z, n.T, n.P);
@@ -1186,7 +1186,7 @@ const EXERCISES = {
   cooling() {
     doReset();
     W.dg_set_supply(sim, 308.15);
-    logMsg("Exercise loaded: cooling supply warmed to 35 °C (308.15 K).");
+    logMsg("Exercise loaded: cooling supply warmed to 308.15 K.");
   },
   pressure() {
     doReset();

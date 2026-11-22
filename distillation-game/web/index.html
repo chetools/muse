@@ -236,19 +236,28 @@ in mol/s) is 10 mol/s with feed mole fractions 0.40 pentane, 0.30
 hexane, 0.30 heptane. The nominal column pressure <i>P</i> (absolute
 pressure, in kPa) is 150 kPa; the playable range is 100 kPa to
 300 kPa.</p>
-<p>The separation matters beyond this game because distillation is the
-default industrial method for separating liquid mixtures whose
+<p>Beyond this game, the separation matters because distillation is the default industrial method for separating liquid mixtures whose
 components boil at different temperatures, and its operating cost is
-dominated by the heat supplied at the reboiler (the vessel that boils
-the column bottoms) and removed at the condenser (the exchanger that
-condenses the overhead vapour). Every control action in the game —
+dominated by the heat supplied at the reboiler and removed at the condenser. Every control action in the game —
 opening a valve, warming the cooling water, raising the pressure —
 moves product purity and energy use together, through the relations
 set out below.</p>
+<p>The key points rest on four terms. Relative volatility is the ratio of two components'
+equilibrium ratios: the larger it is, the more each tray enriches the
+vapour in the lighter component (see
+<a href="#theory-alpha">Relative volatility</a>). Flooding, in this
+plant, is the pooling of condensate in the condenser: liquid pooled
+over the lower tubes leaves less area exposed for condensing (see
+<a href="#theory-flooded">Flooded-condenser pressure control</a>). A
+liquid is subcooled when its temperature is below its bubble point at
+the pressure it is about to enter; a liquid that is not subcooled
+partly flashes to vapour when the pressure drops (see
+<a href="#theory-riser">Riser lift</a>). Boilup is the vapour flow
+generated in the reboiler (see
+<a href="#theory-stages">Stages and constant molal overflow</a>).</p>
 <p>Key points the game demonstrates:</p>
 <ul>
-<li>Separation per tray is set by the relative volatility, which falls
-as pressure rises, so the same column separates less well at high
+<li>Separation per tray is set by the relative volatility, which decreases as pressure rises, so the same column separates less well at high
 pressure (see <a href="#theory-alpha">Relative volatility</a>; try it
 in the <a href="#units-pressure">Pressure control unit</a>).</li>
 <li>A drum level is controlled by the sum of its outflows; the
@@ -269,16 +278,11 @@ regulator holds a fixed pressure upstream of the steam valve, so the
 chest pressure follows the balance of steam in and steam condensed
 (see <a href="#theory-valves">Valve law</a>; try it in the
 <a href="#units-valves">Valves unit</a>).</li>
-<li>Boilup is bought with steam: the reboiler duty follows the steam
+<li>Steam supplies the boilup: the reboiler duty follows the steam
 chest saturation temperature, which follows the chest pressure (see
 <a href="#theory-boilup">Boilup and the steam chest</a>).</li>
 </ul>
-<p>Each key point is demonstrated in the Game panel by the change
-named in its Theory section, and practised in isolation in the Units
-panel, where each exercise loads a preset state into the same game.
-The Process panel walks the plant unit by unit in flow order. All
-quantities are in SI units; pressures are absolute unless a pressure
-difference is stated.</p>
+<p>Pressures are absolute unless a pressure difference is stated.</p>
 </section>
 
 <section id="theory-vle">
@@ -287,48 +291,40 @@ difference is stated.</p>
 (mole fraction of component <i>i</i> in the liquid, dimensionless)
 sits in contact with vapour of mole fractions <i>y<sub>i</sub></i>
 (mole fraction of component <i>i</i> in the vapour, dimensionless).
-The model treats the liquid as an ideal mixture, so Raoult's law
-applies: the partial pressure of component <i>i</i> in the vapour is
+In the model the liquid is an ideal mixture, so Raoult's law applies: the partial pressure of component <i>i</i> in the vapour is
 its liquid mole fraction times its pure-component vapour pressure
 <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) (the pressure at which
 pure <i>i</i> boils at temperature <i>T</i>, in kPa, with <i>T</i> in
 K). Summing over the three components gives the tray pressure:</p>
-<div class="eq"><i>P</i> = Σ<sub><i>i</i></sub> <i>x<sub>i</sub></i> <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>)</div>
+<div class="eq"><i>P</i> = Σ<sub><i>i</i></sub> <i>x<sub>i</sub></i> <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) (1)</div>
 <p>and the vapour composition follows term by term:</p>
-<div class="eq"><i>y<sub>i</sub></i> = <i>x<sub>i</sub></i> <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) / <i>P</i></div>
+<div class="eq"><i>y<sub>i</sub></i> = <i>x<sub>i</sub></i> <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) / <i>P</i> (2)</div>
 <p>The equilibrium ratio <i>K<sub>i</sub></i> (dimensionless) collects
 the same relation:</p>
-<div class="eq"><i>K<sub>i</sub></i> = <i>y<sub>i</sub></i> / <i>x<sub>i</sub></i> = <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) / <i>P</i></div>
+<div class="eq"><i>K<sub>i</sub></i> = <i>y<sub>i</sub></i> / <i>x<sub>i</sub></i> = <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) / <i>P</i> (3)</div>
 <p>Pentane has the highest vapour pressure at any temperature in the
 operating range, so <i>K</i> for pentane is the largest of the three
 and the vapour leaving a tray is always richer in pentane than the
 liquid it left. That enrichment, repeated tray by tray, is the whole
 mechanism of the separation [3].</p>
-<p>In the game: watch the tray composition bands on the drawing. The
-top tray liquid at the nominal point has pentane mole fraction 0.911;
-the reboiler liquid has 0.0215. The gradient between them is built by
+<p>On the drawing, the tray composition bands show the gradient. The top tray liquid at the nominal point has pentane mole fraction 0.911; the reboiler liquid has 0.0215. The gradient between them is built by
 the per-tray enrichment above.</p>
 </section>
 
 <section id="theory-antoine">
 <h3>Antoine relation and bubble point</h3>
-<p>The pure-component vapour pressure is computed from the Antoine
-relation, with constants <i>A</i>, <i>B</i>, and <i>C</i> fitted per
-component (dimensionless, in K, and in K respectively, for the form
-used here):</p>
-<div class="eq">ln(<i>P<sub>i</sub></i><sup>sat</sup> / kPa) = <i>A<sub>i</sub></i> − <i>B<sub>i</sub></i> / (<i>T</i> + <i>C<sub>i</sub></i>)</div>
+<p>Pure-component vapour pressure comes from the Antoine relation, with constants <i>A<sub>i</sub></i>, <i>B<sub>i</sub></i>, and <i>C<sub>i</sub></i> fitted per component (dimensionless, in K, and in K respectively, for the form used here):</p>
+<div class="eq">ln(<i>P<sub>i</sub></i><sup>sat</sup> / kPa) = <i>A<sub>i</sub></i> − <i>B<sub>i</sub></i> / (<i>T</i> + <i>C<sub>i</sub></i>) (4)</div>
 <p>The primary constants are the appendix values recorded in the
 model source [2]; an independent constant set from the NIST Chemistry
-WebBook [1] is carried in the model as a cross-check and agrees with
+WebBook [1] is included in the model as a cross-check and agrees with
 the primary set to within 0.53 K on the pure boiling points at
 101.325 kPa (model values 309.73 K, 342.42 K, and 372.08 K for
 pentane, hexane, and heptane; NIST averages 309.2 K, 341.9 K, and
 371.6 K).</p>
 <p>A liquid mixture boils when the Raoult sum reaches the imposed
-pressure. The bubble point (the temperature at which the first vapour
-bubble forms from a liquid of stated composition, in K) is the
-temperature solving</p>
-<div class="eq">Σ<sub><i>i</i></sub> <i>x<sub>i</sub></i> <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) = <i>P</i></div>
+pressure. Solving for the temperature at which the first vapour bubble forms gives the bubble point (in K), the temperature solving</p>
+<div class="eq">Σ<sub><i>i</i></sub> <i>x<sub>i</sub></i> <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) = <i>P</i> (5)</div>
 <p>Each tray temperature in the game is the bubble point of that
 tray's liquid at the column pressure. For the feed composition
 (0.40, 0.30, 0.30) the bubble point is 328.48 K at 100 kPa, 341.92 K
@@ -343,9 +339,9 @@ contact already raises the pentane fraction from 0.40 to 0.72.</p>
 <i>j</i>, <i>α<sub>ij</sub></i> (dimensionless), is the ratio of
 their equilibrium ratios, and for an ideal mixture the pressure
 cancels:</p>
-<div class="eq"><i>α<sub>ij</sub></i> = <i>K<sub>i</sub></i> / <i>K<sub>j</sub></i> = <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) / <i>P<sub>j</sub></i><sup>sat</sup>(<i>T</i>)</div>
+<div class="eq"><i>α<sub>ij</sub></i> = <i>K<sub>i</sub></i> / <i>K<sub>j</sub></i> = <i>P<sub>i</sub></i><sup>sat</sup>(<i>T</i>) / <i>P<sub>j</sub></i><sup>sat</sup>(<i>T</i>) (6)</div>
 <p>It still depends on temperature, and the tray temperature rises
-with pressure, so relative volatility falls as pressure rises. At the
+with pressure, so relative volatility decreases as pressure rises. At the
 feed bubble point:</p>
 <table class="dtab">
 <tr><th>Pressure (kPa)</th><th>Bubble point (K)</th><th><i>α</i> pentane/hexane</th><th><i>α</i> hexane/heptane</th><th><i>α</i> pentane/heptane</th></tr>
@@ -359,15 +355,11 @@ liquid is multiplied by about <i>α</i> at each stage, compounding to
 <i>α</i><sup><i>N</i></sup> over <i>N</i> stages, where <i>N</i> is
 the number of stages (dimensionless) [3]. For <i>N</i> = 12 and the
 pentane/hexane pair,
-<i>α</i><sup>12</sup> falls from 3.27 × 10<sup>5</sup> at 100 kPa to
-5.33 × 10<sup>4</sup> at 300 kPa — a factor of 0.163. The operating
-column draws products, so its achieved split is smaller, but it moves
+<i>α</i><sup>12</sup> decreases from 3.27 × 10<sup>5</sup> at 100 kPa to 5.33 × 10<sup>4</sup> at 300 kPa — a factor of 0.163. An operating column draws products, so its achieved split is smaller, but it moves
 the same way: in the model, at fixed flows, raising the pressure from
 100 kPa to 300 kPa moves the distillate pentane mole fraction from
 0.977 to 0.945.</p>
-<p>In the game: raise the column pressure with the condenser inlet
-valve and watch the distillate pentane reading fall out of
-specification (at least 0.95) even though no flow setpoint changed.
+<p>Raising the column pressure with the condenser inlet valve moves the distillate pentane reading out of specification (at least 0.95) even though no flow setpoint changed.
 The <a href="#units-pressure">Pressure control exercise</a> practises
 recovering from this.</p>
 </section>
@@ -427,120 +419,89 @@ vapour feed), the section balances are [3]:</p>
 <text x="182" y="56" class="flab">feed tray 6</text>
 <text x="512" y="56" class="flab">feed tray 6</text>
 </svg></div>
-<p class="figcap"><b>Fig. T2 | The nominal column enriches pentane upward and cools upward.</b> Tray-by-tray liquid composition and temperature at the nominal initial state, computed from the reference model: pentane mole fraction rises from 0.022 in the reboiler to 0.911 on the top tray, and the temperature falls from 366.12 K to 323.67 K. The step at the feed tray (stage 6, dashed) is the feed joining the traffic.</p>
+<p class="figcap"><b>Fig. T2 | The nominal column enriches pentane upward and cools upward.</b> Tray-by-tray liquid composition and temperature at the nominal initial state, computed from the reference model: pentane mole fraction rises from 0.022 in the reboiler to 0.911 on the top tray, and the temperature decreases from 366.12 K to 323.67 K. The step at the feed tray (stage 6, dashed) is the feed joining the traffic.</p>
 
-<div class="eq"><i>V<sub>R</sub></i> = <i>L<sub>R</sub></i> + <i>D</i></div>
-<div class="eq"><i>L<sub>S</sub></i> = <i>L<sub>R</sub></i> + (1 − <i>ψ</i>) <i>F</i></div>
-<div class="eq"><i>V<sub>S</sub></i> = <i>V<sub>R</sub></i> − <i>ψ</i> <i>F</i></div>
-<div class="eq"><i>B</i> = <i>F</i> − <i>D</i></div>
+<div class="eq"><i>V<sub>R</sub></i> = <i>L<sub>R</sub></i> + <i>D</i> (7)</div>
+<div class="eq"><i>L<sub>S</sub></i> = <i>L<sub>R</sub></i> + (1 − <i>ψ</i>) <i>F</i> (8)</div>
+<div class="eq"><i>V<sub>S</sub></i> = <i>V<sub>R</sub></i> − <i>ψ</i> <i>F</i> (9)</div>
+<div class="eq"><i>B</i> = <i>F</i> − <i>D</i> (10)</div>
 <p>At the nominal point (<i>ψ</i> = 0): <i>L<sub>R</sub></i> = 5
 mol/s, <i>D</i> = 4 mol/s, <i>V<sub>R</sub></i> = 9 mol/s,
 <i>L<sub>S</sub></i> = 15 mol/s, <i>V<sub>S</sub></i> = 9 mol/s,
-<i>B</i> = 6 mol/s. The vapour flow <i>V<sub>S</sub></i> is the
-boilup: the vapour generated in the reboiler.</p>
-<p>The model assumes constant molal overflow: the molar liquid and
-vapour flows are constant within each section, which follows if every
+<i>B</i> = 6 mol/s. Boilup is the vapour flow <i>V<sub>S</sub></i>: the vapour generated in the reboiler.</p>
+<p>Constant molal overflow is assumed in the model: the molar liquid and vapour flows are constant within each section, which follows if every
 component has the same molar latent heat and sensible-heat effects
-are neglected. The assumption is stated here because it is an
-approximation for this mixture: the molar latent heats at the normal
+are neglected. For this mixture the assumption is an approximation: the molar latent heats at the normal
 boiling points are 25.79 kJ/mol (pentane), 28.85 kJ/mol (hexane), and
 31.7 kJ/mol (heptane) [1], a spread of about 20 percent, so the real
-flows would drift somewhat from tray to tray. The model also takes
-every stage to be an equilibrium stage, the column pressure to be
-uniform (no pressure drop per tray), and each tray to hold a constant
-200 mol of liquid. Tray temperatures then run from 366.12 K at the
-reboiler to 323.67 K at the top tray at the nominal point, falling
-monotonically as the liquid becomes richer in pentane.</p>
+flows would drift somewhat from tray to tray. Every stage is also taken to be an equilibrium stage, the column pressure to be uniform (no pressure drop per tray), and each tray to hold a constant 200 mol of liquid. Tray temperatures then run from 366.12 K at the
+reboiler to 323.67 K at the top tray at the nominal point, decreasing monotonically as the liquid becomes richer in pentane.</p>
 </section>
 
 <section id="theory-reflux">
 <h3>Reflux ratio, level, and split</h3>
 <p>The reflux ratio <i>R</i> (dimensionless) is the split of drum
 liquid between return to the column and product:</p>
-<div class="eq"><i>R</i> = <i>L<sub>R</sub></i> / <i>D</i></div>
+<div class="eq"><i>R</i> = <i>L<sub>R</sub></i> / <i>D</i> (11)</div>
 <p>At the nominal point <i>R</i> = 5 / 4 = 1.25. Raising the reflux at
 fixed boilup enriches the top stages further (more liquid washing
 down against the rising vapour) and lowers the distillate rate.</p>
-<p>The drum level obeys a separate balance. With <i>M</i><sub>drum</sub>
+<p>A separate balance governs the drum level. With <i>M</i><sub>drum</sub>
 the drum holdup (in mol), <i>t</i> time (in s), and
 <i>C</i><sub>drain</sub> the condensate flow arriving from the riser
 (in mol/s):</p>
-<div class="eq">d<i>M</i><sub>drum</sub>/d<i>t</i> = <i>C</i><sub>drain</sub> − <i>L<sub>R</sub></i> − <i>D</i></div>
+<div class="eq">d<i>M</i><sub>drum</sub>/d<i>t</i> = <i>C</i><sub>drain</sub> − <i>L<sub>R</sub></i> − <i>D</i> (12)</div>
 <p>Only the sum <i>L<sub>R</sub></i> + <i>D</i> appears: the level
-cannot tell the two outflows apart. One operator action (say, the
-reflux valve) can therefore be assigned to the level and the other
+cannot tell the two outflows apart. One operator action (say, the reflux valve) can be assigned to the level and the other
 (the distillate valve) sets the split — or the reverse — but a single
-valve cannot hold the level and set the ratio at once. This is the
-most common beginner error in the game: chasing purity with the
-reflux valve while the drum quietly drains or fills.</p>
-<p>In the game: the <a href="#units-split">split exercise</a> starts
-with the reflux valve opened to 75 percent. The drum level falls
-while the distillate pentane rises; restore the level with the
-distillate valve only.</p>
+valve cannot hold the level and set the ratio at once. Purity control with the reflux valve alone leaves the drum level uncontrolled: the drum quietly drains or fills.</p>
+<p>The <a href="#units-split">split exercise</a> starts with the reflux valve opened to 75 percent. The drum level decreases while the distillate pentane rises; restore the level with the distillate valve only.</p>
 </section>
 
 <section id="theory-boilup">
 <h3>Boilup and the steam chest</h3>
-<p>The reboiler is heated by steam condensing in a chest at pressure
-<i>P</i><sub>chest</sub> (in kPa). The steam condenses at its
-saturation temperature <i>T</i><sub>steam</sub> (in K), which the
+<p>Steam condensing in a chest at pressure <i>P</i><sub>chest</sub> (in kPa) heats the reboiler. Steam condenses at its saturation temperature <i>T</i><sub>steam</sub> (in K), which the
 model computes from an integrated Clausius–Clapeyron relation
 anchored at 373.15 K and 101.325 kPa with a molar latent heat of
 steam of 40.7 kJ/mol; it gives 416.77 K at 400 kPa and 424.84 K at
 500 kPa, within about 1 K of the steam tables over the game's range.
 The reboiler duty <i>Q</i><sub>reb</sub> (heat flow, in W) is</p>
-<div class="eq"><i>Q</i><sub>reb</sub> = <i>U</i><sub>reb</sub> <i>A</i><sub>reb</sub> (<i>T</i><sub>steam</sub> − <i>T</i><sub>reb</sub>)</div>
+<div class="eq"><i>Q</i><sub>reb</sub> = <i>U</i><sub>reb</sub> <i>A</i><sub>reb</sub> (<i>T</i><sub>steam</sub> − <i>T</i><sub>reb</sub>) (13)</div>
 <p>where <i>U</i><sub>reb</sub> is the overall heat transfer
 coefficient (in W/(m<sup>2</sup> K)), <i>A</i><sub>reb</sub> is the
 reboiler area (in m<sup>2</sup>), and <i>T</i><sub>reb</sub> is the
-reboiler liquid temperature (in K). The model uses assumed design
-values <i>U</i><sub>reb</sub> = 900 W/(m<sup>2</sup> K) and
-<i>A</i><sub>reb</sub> = 12 m<sup>2</sup>. At the nominal point the
+reboiler liquid temperature (in K). Assumed design values in the model are <i>U</i><sub>reb</sub> = 900 W/(m<sup>2</sup> K) and <i>A</i><sub>reb</sub> = 12 m<sup>2</sup>. At the nominal point the
 chest pressure is 182.35 kPa, so <i>T</i><sub>steam</sub> = 390.65 K
 against <i>T</i><sub>reb</sub> = 366.12 K, and
-<i>Q</i><sub>reb</sub> = 264.9 kW. The steam consumption follows from
-the latent heat: 6.51 mol/s of steam at the nominal point.</p>
+<i>Q</i><sub>reb</sub> = 264.9 kW. From the latent heat, the steam consumption is 6.51 mol/s at the nominal point.</p>
 <p>Two consequences matter in play. First, boilup responds to the
 chest pressure, not directly to a valve: the regulator and the steam
 flow valve set the chest pressure through the steam balance (see
 <a href="#theory-valves">Valve law</a>). Second, if the column
 pressure rises, <i>T</i><sub>reb</sub> rises with it and the
-temperature difference shrinks, so the duty falls unless the chest
-pressure is raised — the plant partly regulates itself, which is also
+temperature difference shrinks, so the duty decreases unless the chest pressure is raised — the plant partly regulates itself, which is also
 what caps the pressure escalation in
 <a href="#theory-relief">the relief section</a>.</p>
 </section>
 
 <section id="theory-energy">
 <h3>Energy balance and condenser duty</h3>
-<p>The condenser duty <i>Q</i><sub>cond</sub> (in W) is computed from
-the exposed area:</p>
-<div class="eq"><i>Q</i><sub>cond,max</sub> = <i>U</i> <i>A</i><sub>exp</sub> Δ<i>T</i><sub>lm</sub></div>
+<p>The condenser duty capacity <i>Q</i><sub>cond,max</sub> (in W) is computed from the exposed area:</p>
+<div class="eq"><i>Q</i><sub>cond,max</sub> = <i>U</i> <i>A</i><sub>exp</sub> Δ<i>T</i><sub>lm</sub> (14)</div>
 <p>where <i>U</i> is the overall coefficient (in W/(m<sup>2</sup>
 K)), <i>A</i><sub>exp</sub> is the tube area not submerged by pooled
 condensate (in m<sup>2</sup>), and Δ<i>T</i><sub>lm</sub> is the
 logarithmic mean of the two end temperature differences between the
-condensing side and the cooling water (in K). The water-side
-coefficient scales with the circulation rate to the power 0.8, the
-standard turbulent-flow form [3]; the model's reference value is
-1392.9 W/(m<sup>2</sup> K) at the reference circulation of 40 kg/s,
-and the total condenser area is 60 m<sup>2</sup> (assumed design
-values). The condensation rate is the smaller of the vapour supply
-and the duty divided by the molar latent heat of the condensing
-vapour: at the nominal point the duty capacity is about 389 kW, the
+condensing side and the cooling water (in K). Circulation rate scales the water-side coefficient to the power 0.8, the standard turbulent-flow form [3]; the model's reference value is 1392.9 W/(m<sup>2</sup> K) at the reference circulation of 40 kg/s, and the total condenser area is 60 m<sup>2</sup> (assumed design values). Condensation rate is the smaller of the vapour supply and the duty divided by the molar latent heat of the condensing vapour: at the nominal point the duty capacity is about 389 kW, the
 vapour supply limits first, and the realised duty is 239.7 kW.</p>
-<p>The two duties at the nominal point, <i>Q</i><sub>reb</sub> =
-264.9 kW in and <i>Q</i><sub>cond</sub> = 239.7 kW out, need not be
-equal: the feed enters and the products leave at different
+<p>At the nominal point, the two duties — <i>Q</i><sub>reb</sub> = 264.9 kW in and <i>Q</i><sub>cond</sub> = 239.7 kW out — need not be equal: the feed enters and the products leave at different
 temperatures and compositions, condensate leaves subcooled, and the
 nominal point is the game's starting state, close to but not exactly
 a steady state of the integrated plant — at fixed nominal openings
 the plant relaxes slowly (the column pressure drifts down over about
 15 minutes) and the operating point the player settles at is the one
 they hold with the valves.</p>
-<p>In the game: halve the pump speed and watch
-<i>Q</i><sub>cond</sub> and the column pressure. The duty falls
-through both <i>U</i> (circulation to the power 0.8) and, as the
+<p>Halving the pump speed shows the coupling in <i>Q</i><sub>cond</sub> and the column pressure. The duty decreases through both <i>U</i> (circulation to the power 0.8) and, as the
 condenser floods in response, <i>A</i><sub>exp</sub>.</p>
 </section>
 
@@ -553,7 +514,7 @@ the model uses the square-root law of the standard sizing equations
 [6], with a sizing constant <i>K<sub>v</sub></i> (in mol/s per
 (kPa)<sup>1/2</sup> at 100 percent opening, a stated design value per
 valve):</p>
-<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √Δ<i>P</i></div>
+<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √Δ<i>P</i> (15)</div>
 <p>where <i>W</i> is the molar flow (in mol/s) and only the positive
 part of Δ<i>P</i> drives flow. Doubling the opening doubles the flow
 at fixed Δ<i>P</i>; doubling the flow at fixed opening needs four
@@ -563,26 +524,20 @@ none.</p>
 <p>For a vapour stream the model uses the compressible form, with the
 downstream pressure floored at a fraction <i>r<sub>c</sub></i>
 (dimensionless) of the upstream pressure:</p>
-<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √(<i>P</i><sub>up</sub><sup>2</sup> − <i>P</i><sub>dn</sub><sup>2</sup>) / (100 kPa)</div>
+<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √(<i>P</i><sub>up</sub><sup>2</sup> − <i>P</i><sub>dn</sub><sup>2</sup>) / (100 kPa) (16)</div>
 <p>with <i>P</i><sub>dn</sub> replaced by max(<i>P</i><sub>dn</sub>,
 <i>r<sub>c</sub></i> <i>P</i><sub>up</sub>) inside the root. When the
-downstream pressure falls below <i>r<sub>c</sub></i> times the
+downstream pressure decreases below <i>r<sub>c</sub></i> times the
 upstream pressure, the flow no longer responds to the downstream
-pressure at all: the throat is choked. The model takes
-<i>r<sub>c</sub></i> = 0.40 for hydrocarbon vapour valves and 0.35
-for the steam valve (design values adopted in the model
-specification).</p>
+pressure at all: the throat is choked. For hydrocarbon vapour valves the model takes <i>r<sub>c</sub></i> = 0.40 and for the steam valve 0.35 (design values adopted in the model specification).</p>
 <p>Two pairs of valves are in series on one stream, and they work
-differently. The condenser inlet and outlet valves are two passive
-throttles with the condenser between them: their pressure drops add
+differently. On the condenser, the inlet and outlet valves are two passive throttles with the condenser between them: their pressure drops add
 to the total available drop, and the split between them shifts as
 either valve moves, so parking one fully open and throttling the
 other gives the cleaner control. The steam pair is not two passive
 throttles: the regulator holds the pressure upstream of the steam
 flow valve at its setpoint (400 kPa at the nominal point), and the
-steam valve throttles against that fixed upstream pressure. The
-chest pressure is then not a shared drop at all — it is set by the
-balance between the steam the valve admits and the steam condensed
+steam valve throttles against that fixed upstream pressure. Chest pressure is then not a shared drop at all — it is set by the balance between the steam the valve admits and the steam condensed
 in the reboiler, and it rises when the valve is opened.</p>
 <p>Valve sizes were set so that most valves sit at 50 percent opening
 at the nominal point, with travel in both directions. The exceptions
@@ -593,11 +548,8 @@ vapour bypass sits at 1 percent, as a pressure trim.</p>
 
 <section id="theory-flooded">
 <h3>Flooded-condenser pressure control</h3>
-<p>The condenser sits below the reflux drum and is deliberately run
-partly flooded. The flooded fraction <i>f</i> (dimensionless) is the
-condenser liquid holdup <i>M<sub>c</sub></i> (in mol) over its
-capacity of 2000 mol:</p>
-<div class="eq"><i>f</i> = <i>M<sub>c</sub></i> / 2000 mol</div>
+<p>Below the reflux drum, the condenser is deliberately run partly flooded. Condenser liquid holdup <i>M<sub>c</sub></i> (in mol) over its capacity of 2000 mol gives the flooded fraction <i>f</i> (dimensionless):</p>
+<div class="eq"><i>f</i> = <i>M<sub>c</sub></i> / 2000 mol (17)</div>
 <p>Tubes below the pooled liquid condense almost no vapour — they
 subcool the pool instead — so the exposed area is
 <i>A</i><sub>exp</sub> = <i>A</i> (1 − <i>f</i>) with
@@ -610,12 +562,10 @@ toward the entering cooling-water temperature in proportion to
 <i>f</i>. Flooded-condenser control, including the hot vapour bypass
 variant used here, is a standard industrial arrangement with known
 failure modes [4, 5].</p>
-<p>The bypass valve admits hot vapour directly into the drum vapour
-space. That raises the drum pressure toward the condenser pressure,
+<p>Hot vapour enters the drum vapour space directly through the bypass valve. That raises the drum pressure toward the condenser pressure,
 which reduces the pressure difference that lifts condensate up the
 riser (next section), backs liquid up into the condenser, and so
-raises the flooding. The outlet valve acts from the other side: it
-throttles the drainage directly. Between them, the pair sets both the
+raises the flooding. From the other side, the outlet valve throttles the drainage directly. Between them, the pair sets both the
 flooding and the drum feed rate, which is why the autopilot and the
 player both work the overhead as a system rather than as single
 valves.</p>
@@ -629,30 +579,27 @@ liquid of density <i>ρ</i> (in kg/m<sup>3</sup>; the model uses
 580 kg/m<sup>3</sup>) through a height <i>h</i> (in m) against
 gravitational acceleration <i>g</i> = 9.80665 m/s<sup>2</sup> costs a
 pressure head:</p>
-<div class="eq">Δ<i>P</i><sub>head</sub> = <i>ρ g h</i> = 8.53 kPa</div>
-<p>The riser driving pressure Δ<i>P</i><sub>drive</sub> (in kPa) is
-what remains after paying it, with <i>P</i><sub>cond</sub> the
+<div class="eq">Δ<i>P</i><sub>head</sub> = <i>ρ g h</i> = 8.53 kPa (18)</div>
+<p>What remains after paying it is the riser driving pressure Δ<i>P</i><sub>drive</sub> (in kPa), with <i>P</i><sub>cond</sub> the
 condenser pressure (in kPa), <i>P</i><sub>drum</sub> the drum
 pressure (in kPa), and Δ<i>P</i><sub>pool</sub> the head of liquid
 pooled in the condenser itself (in kPa; 2.28 kPa at the nominal
 flooded fraction):</p>
-<div class="eq">Δ<i>P</i><sub>drive</sub> = (<i>P</i><sub>cond</sub> − <i>P</i><sub>drum</sub>) + Δ<i>P</i><sub>pool</sub> − Δ<i>P</i><sub>head</sub></div>
-<p>The riser flow then follows the liquid valve law through the
-outlet valve. At the nominal point: (148 − 140) + 2.28 − 8.53 = 1.74 kPa of
+<div class="eq">Δ<i>P</i><sub>drive</sub> = (<i>P</i><sub>cond</sub> − <i>P</i><sub>drum</sub>) + Δ<i>P</i><sub>pool</sub> − Δ<i>P</i><sub>head</sub> (19)</div>
+<p>Riser flow then follows the liquid valve law through the outlet valve. At the nominal point: (148 − 140) + 2.28 − 8.53 = 1.74 kPa of
 drive, which is why the outlet valve is large and why small pressure
 changes move the drainage a lot.</p>
-<p>The second condition is thermal. The subcooling margin
+<p>A second condition is thermal. The subcooling margin
 <i>ΔT</i><sub>sub</sub> (in K) is the bubble point of the pooled
 liquid at the drum pressure minus the pool temperature:</p>
-<div class="eq"><i>ΔT</i><sub>sub</sub> = <i>T</i><sub>bubble</sub>(<i>P</i><sub>drum</sub>) − <i>T</i><sub>pool</sub></div>
+<div class="eq"><i>ΔT</i><sub>sub</sub> = <i>T</i><sub>bubble</sub>(<i>P</i><sub>drum</sub>) − <i>T</i><sub>pool</sub> (20)</div>
 <p>At the nominal point the margin is +1.84 K. If the margin goes
 negative, the liquid is above its bubble point at the lower drum
 pressure and part of it flashes to vapour in the riser; the model
 flashes a fraction min(0.30, <i>c<sub>p</sub></i> (−<i>ΔT</i><sub>sub</sub>) / <i>λ</i>),
 with <i>c<sub>p</sub></i> the liquid molar heat capacity (170
 J/(mol K), assumed) and <i>λ</i> the molar latent heat (in J/mol),
-and the flashed vapour binds the riser so the delivered liquid falls
-further. A warm condenser (little subcooling) and a wide-open bypass
+and the flashed vapour binds the riser so the delivered liquid decreases further. A warm condenser (little subcooling) and a wide-open bypass
 (small pressure difference) together are the usual route into this
 state.</p>
 </section>
@@ -683,13 +630,7 @@ through the flows and pressure in the relations above.</p>
 <section id="theory-relief">
 <h3>Pressure escalation and relief</h3>
 <p>Column pressure rises when vapour is generated faster than it is
-condensed or drawn off. The protection sequence is fixed: a
-high-pressure alarm at 360 kPa, a relief valve that lifts at its set
-pressure of 400 kPa, a design pressure of 500 kPa, and a rupture
-pressure of 600 kPa. The relief valve is choked at its throat, so its
-capacity grows in proportion to the upstream pressure; it reaches its
-stated capacity of 25 mol/s at the design pressure, along a 25 kPa
-lift ramp above the set pressure.</p>
+condensed or drawn off. Protection follows a fixed sequence: a high-pressure alarm at 360 kPa, a relief valve that lifts at its set pressure of 400 kPa, a design pressure of 500 kPa, and a rupture pressure of 600 kPa. The relief valve begins to lift at the set pressure and is fully open 25 kPa above it, at 425 kPa. Its throat is choked, so its capacity grows in proportion to the upstream pressure and reaches its stated capacity of 25 mol/s at the design pressure of 500 kPa.</p>
 <p>With the relief path available, rupture is not reachable in this
 plant: the maximum credible vapour generation (full 900 kPa steam
 supply, no cooling) is about 17 mol/s, below the relief capacity,
@@ -700,16 +641,12 @@ path to be isolated, which occurs only in the fault scenario. A pump
 trip (cooling circulation lost) is the normal upset: pressure rises,
 the relief lifts (peak 403 kPa in the model test), and the pressure
 is held below the design pressure with inventory lost to the flare.
-Relief lifting is therefore a heavy penalty in play but not the end
-of the round; rupture ends it.</p>
+In a scored round, the penalty for relief lifting is heavy but does not end the round; rupture ends it.</p>
 </section>
 
 <section id="theory-dof">
 <h3>What the operator controls</h3>
-<p>The plant state is carried by the tray compositions, the drum and
-condenser pool compositions, four liquid holdups (condenser, drum,
-reboiler, and stripping pool), four pressures, and two temperatures
-(the drum temperature and the cooling-tank temperature). Against that state, the
+<p>Tray compositions, the drum and condenser pool compositions, four liquid holdups (condenser, drum, reboiler, and stripping pool), four pressures, and two temperatures (the drum temperature and the cooling-tank temperature) make up the plant state. Against that state, the
 operator sets eleven openings — condenser inlet, hot vapour bypass,
 condenser outlet, reflux, distillate, bottoms, steam regulator
 setpoint, steam flow valve, cooling pump speed, makeup valve, and the
@@ -718,8 +655,7 @@ mode. The feed supply composition, temperature, and pressure and the
 cooling supply temperature are scenario quantities: the player can
 change them in practice, and the disturbances change them without
 asking.</p>
-<p>The count matters because it is smaller than the list of things
-that must be held: two product compositions, two levels, the column
+<p>That count matters because it is smaller than the list of things that must be held: two product compositions, two levels, the column
 pressure, the condenser flooding, and the riser margin, with the
 steam and cooling costs to be kept down at the same time. The
 pairings that work are the ones the balances allow — level to a sum
@@ -730,10 +666,9 @@ are built from exactly these pairings.</p>
 
 <section id="theory-conclusion">
 <h3>Conclusion</h3>
-<p>The game's behaviour follows from a small set of relations:
+<p>A small set of relations produces the game's behaviour:
 Raoult's law and the Antoine relation set what each tray can do;
-relative volatility, falling with pressure, sets how much the 12
-trays achieve; the section balances and the reflux split set the
+relative volatility, decreasing with pressure, sets how much the 12 trays achieve; the section balances and the reflux split set the
 products; the valve law turns openings into flows; the flooded
 condenser and the riser couple the overhead pressure, level, and
 drainage into one system; and the steam chest turns a pressure into
@@ -779,9 +714,7 @@ here is necessary but not sufficient on a real unit.</p>
 </aside>
 <div class="docbody">
 <h2 class="ptitle">Process</h2>
-<p>The plant is walked in the order the material flows. Each unit is
-described the same way: what enters, what happens inside and why, and
-what leaves and where it goes. Quantities are the nominal point of
+<p>Quantities are the nominal point of
 the game (the starting state; see the Theory panel on why the plant
 relaxes slowly from it). Symbols are as defined in the Theory panel.</p>
 
@@ -828,7 +761,7 @@ relaxes slowly from it). Symbols are as defined in the Theory panel.</p>
 <text x="352" y="330" class="flab">cooling loop serves the condenser;</text>
 <text x="352" y="348" class="flab">steam header 900 kPa serves the chest</text>
 </svg></div>
-<p class="figcap"><b>Fig. P1 | One pass through the plant, in flow order.</b> Feed enters at tray 6; overhead vapour is condensed, lifted up the riser to the drum, and split into reflux and distillate; liquid from tray 1 is boiled in the reboiler, whose vapour is the boilup and whose draw is the bottoms. Flows are the nominal point, in mol/s; duties are in kW (kilowatt). The drawing is in flow order, not to elevation — the drum sits above the condenser, as Fig. U6 shows — and only the feed and inlet valves are drawn; the other nine openings are on the drawing in the Game panel.</p>
+<p class="figcap"><b>Fig. P1 | One pass through the plant, in flow order.</b> Feed enters at tray 6; overhead vapour is condensed, lifted up the riser to the drum, and split into reflux and distillate; liquid from tray 1 is boiled in the reboiler, whose vapour is the boilup and whose draw is the bottoms. Flows are the nominal point, in mol/s; duties are in kW. The drawing is in flow order, not to elevation — the drum sits above the condenser, as Fig. U6 shows — and only the feed and inlet valves are drawn; the other nine openings are on the drawing in the Game panel.</p>
 <section id="process-balance">
 <h3>Nominal balance</h3>
 <table class="dtab">
@@ -867,145 +800,57 @@ of 10 mol/s, and the effective opening is 50 percent.
 
 <section id="process-feedtray">
 <h3>Feed tray entry</h3>
-<p><strong>Enters:</strong> the feed stream at the supply pressure.
-<strong>Inside:</strong> entering tray 6, the feed is let down to the
-column pressure at constant enthalpy (an isenthalpic flash): a feed
-above its bubble point at the column pressure partly vaporises, and
-the vapour fraction at entry, <i>ψ</i>, is shown on the drawing and
-in the readings. The nominal feed is a saturated liquid, so
-<i>ψ</i> = 0. <strong>Leaves:</strong> the liquid part joins the
-liquid flowing down from tray 7 (raising <i>L<sub>S</sub></i> to
-15 mol/s); the vapour part joins the vapour rising to tray 7
-(reducing the boilup needed below the feed tray by
-<i>ψ</i><i>F</i>).</p>
+<p>The feed stream arrives at the supply pressure and is let down to the column pressure on entering tray 6, at constant enthalpy (an isenthalpic flash). A feed above its bubble point at the column pressure partly vaporises; the vapour fraction at entry, <i>ψ</i>, is shown on the drawing and in the readings, and the nominal feed is a saturated liquid, so <i>ψ</i> = 0. Of the two parts, the liquid joins the liquid flowing down from tray 7 (raising <i>L<sub>S</sub></i> to 15 mol/s) and the vapour joins the vapour rising to tray 7 (reducing the boilup needed below the feed tray by <i>ψ</i><i>F</i>).</p>
 </section>
 
 <section id="process-trays">
 <h3>Trays: rectifying and stripping</h3>
-<p><strong>Enters:</strong> vapour from below and liquid from above
-on every tray; reflux (5.00 mol/s) on the top tray; boilup vapour
-(9.00 mol/s) from the reboiler below tray 1. <strong>Inside:</strong>
-vapour and liquid leave each tray in equilibrium at the tray's bubble
-point. Going up, each tray's liquid is richer in pentane than the one
-below: 0.052 on tray 1, 0.383 on the feed tray, 0.911 on tray 12,
-while the temperature falls from 360.64 K on tray 1 to 323.67 K on
-tray 12. The six trays above the feed
-tray (rectifying) wash heptane out of the rising vapour with
-reflux; the feed tray and the five below it (stripping) strip
-pentane out of the falling liquid with boilup. <strong>Leaves:</strong>
-overhead vapour at 9.00 mol/s from the top tray; liquid at 15.00
-mol/s from tray 1 into the reboiler pool.</p>
+<p>Every tray receives vapour from below and liquid from above; the top tray also receives reflux (5.00 mol/s), and tray 1 receives boilup vapour (9.00 mol/s) from the reboiler below it. Vapour and liquid leave each tray in equilibrium at the tray's bubble point. Going up, each tray's liquid is richer in pentane than the one below: 0.052 on tray 1, 0.383 on the feed tray, 0.911 on tray 12, while the temperature decreases from 360.64 K on tray 1 to 323.67 K on tray 12. The six trays above the feed tray (rectifying) wash heptane out of the rising vapour with reflux; the feed tray and the five below it (stripping) strip pentane out of the falling liquid with boilup. Overhead vapour leaves the top tray at 9.00 mol/s, and liquid leaves tray 1 at 15.00 mol/s into the reboiler pool.</p>
 </section>
 
 <section id="process-overhead">
 <h3>Overhead vapour line and branch</h3>
-<p><strong>Enters:</strong> overhead vapour, 9.00 mol/s at the column
-pressure. <strong>Inside:</strong> the line branches. The main path
-runs through the condenser inlet valve (79.1 percent open) into the
-condenser: 8.95 mol/s at the nominal point. The branch runs through
-the hot vapour bypass valve (1 percent open) straight into the drum
-vapour space: 0.05 mol/s, which condenses in the drum and holds the
-drum pressure up toward the condenser pressure. A relief branch
-leaves the same line (see <a href="#process-relief">Relief path</a>).
-<strong>Leaves:</strong> vapour to the condenser and a small bypass
-flow to the drum.</p>
+<p>Overhead vapour arrives at 9.00 mol/s at the column pressure, and the line branches. The main path runs through the condenser inlet valve (79.1 percent open) into the condenser: 8.95 mol/s at the nominal point. The branch runs through the hot vapour bypass valve (1 percent open) straight into the drum vapour space: 0.05 mol/s, which condenses in the drum and holds the drum pressure up toward the condenser pressure. A relief branch leaves the same line (see <a href="#process-relief">Relief path</a>). Vapour leaves by both paths, to the condenser and, in the small bypass flow, to the drum.</p>
 </section>
 
 <section id="process-condenser">
 <h3>Condenser</h3>
-<p><strong>Enters:</strong> vapour through the inlet valve (8.95
-mol/s), cooling water from the surge tank at 307.00 K.
-<strong>Inside:</strong> vapour condenses on the exposed tubes at
-321.98 K. The vessel runs 40 percent flooded: 800 mol of condensate
-pooled over the lower tubes, which subcool the pool to 318.39 K
-instead of condensing. The realised duty is 239.7 kW; the cooling
-water leaves at 309.86 K. <strong>Leaves:</strong> pooled condensate
-toward the outlet valve and riser; warmed cooling water back to the
-surge tank.</p>
+<p>Vapour enters through the inlet valve (8.95 mol/s), and cooling water enters from the surge tank at 307.00 K. On the exposed tubes the vapour condenses at 321.98 K. The vessel runs 40 percent flooded: 800 mol of condensate pooled over the lower tubes, which subcool the pool to 318.39 K instead of condensing. The realised duty is 239.7 kW; the cooling water leaves at 309.86 K. Pooled condensate leaves toward the outlet valve and riser, and warmed cooling water returns to the surge tank.</p>
 </section>
 
 <section id="process-riser">
 <h3>Riser</h3>
-<p><strong>Enters:</strong> condensate through the condenser outlet
-valve (50 percent open). <strong>Inside:</strong> the liquid climbs
-1.5 m to the drum against a lift head of 8.53 kPa, paid from the
-condenser-to-drum difference of 8.0 kPa plus the pooled-liquid head
-of 2.28 kPa, leaving 1.74 kPa of drive. The pool is subcooled by a
-margin of +1.84 K at the drum pressure, so nothing flashes on the
-way up. <strong>Leaves:</strong> 8.95 mol/s of liquid into the reflux
-drum.</p>
+<p>Condensate arrives through the condenser outlet valve (50 percent open) and climbs 1.5 m to the drum against a lift head of 8.53 kPa, paid from the condenser-to-drum difference of 8.0 kPa plus the pooled-liquid head of 2.28 kPa, leaving 1.74 kPa of drive. Subcooled by a margin of +1.84 K at the drum pressure, the pool flashes nothing on the way up. Liquid enters the reflux drum at 8.95 mol/s.</p>
 </section>
 
 <section id="process-drum">
 <h3>Reflux drum</h3>
-<p><strong>Enters:</strong> condensate from the riser (8.95 mol/s)
-and bypass vapour (0.05 mol/s, which condenses here).
-<strong>Inside:</strong> the drum is the inventory buffer of the
-overhead system: 1500 mol of liquid (50 percent level) at 140.0 kPa
-and 320.22 K, composition equal to the distillate composition. Its
-level moves with the difference between what arrives and the sum of
-the two outflows. <strong>Leaves:</strong> reflux and distillate,
-below.</p>
+<p>Condensate from the riser (8.95 mol/s) and bypass vapour (0.05 mol/s, which condenses here) both enter the drum. As the inventory buffer of the overhead system, the drum holds 1500 mol of liquid (50 percent level) at 140.0 kPa and 320.22 K, of composition equal to the distillate composition. Its level moves with the difference between what arrives and the sum of the two outflows. Reflux and distillate leave below.</p>
 </section>
 
 <section id="process-products">
 <h3>Reflux and distillate</h3>
-<p><strong>Enters:</strong> drum liquid. <strong>Inside:</strong> two
-valves split it, both 50 percent open at the nominal point, driven by
-the drum pressure plus the liquid head above their outlets.
-<strong>Leaves:</strong> reflux, 5.00 mol/s down to the top tray;
-distillate, 4.00 mol/s out as product, meeting the specification
-pentane mole fraction 0.968 (at least 0.95 required).</p>
+<p>Drum liquid is split by two valves, both 50 percent open at the nominal point and driven by the drum pressure plus the liquid head above their outlets. Reflux leaves at 5.00 mol/s down to the top tray; distillate leaves at 4.00 mol/s as product, meeting the specification pentane mole fraction 0.968 (at least 0.95 required).</p>
 </section>
 
 <section id="process-reboiler">
 <h3>Reboiler and steam chest</h3>
-<p><strong>Enters:</strong> liquid from tray 1 (15.00 mol/s) into the
-reboiler pool (1000 mol, 25 percent of its 4000 mol capacity, at
-366.12 K); steam from the 900 kPa supply header through the regulator
-(set 400 kPa) and the steam flow valve (50 percent open) into the
-chest at 182.35 kPa. <strong>Inside:</strong> steam condenses at
-390.65 K and delivers 264.9 kW; part of the pool boils off as boilup
-with the equilibrium vapour composition of the pool liquid.
-<strong>Leaves:</strong> boilup vapour, 9.00 mol/s, up to tray 1;
-steam condensate (the game does not track the steam-side condensate
-beyond the chest); bottoms, below.</p>
+<p>Liquid from tray 1 (15.00 mol/s) enters the reboiler pool (1000 mol, 25 percent of its 4000 mol capacity, at 366.12 K). Steam from the 900 kPa supply header passes the regulator (set 400 kPa) and the steam flow valve (50 percent open) into the chest at 182.35 kPa, condenses at 390.65 K, and delivers 264.9 kW; part of the pool boils off as boilup with the equilibrium vapour composition of the pool liquid. Boilup vapour leaves at 9.00 mol/s, up to tray 1; steam condensate is not tracked beyond the chest; bottoms leaves below.</p>
 </section>
 
 <section id="process-bottoms">
 <h3>Bottoms</h3>
-<p><strong>Enters:</strong> reboiler pool liquid. <strong>Inside:</strong>
-the bottoms valve (50 percent open) lets the pool liquid out against
-the downstream pressure, driven by the column pressure plus the pool
-head; together with the boilup it sets the reboiler level.
-<strong>Leaves:</strong> bottoms product, 6.00 mol/s, composition
-0.022 / 0.479 / 0.500, meeting the specification pentane mole
-fraction 0.022 (at most 0.05 required).</p>
+<p>Reboiler pool liquid leaves through the bottoms valve (50 percent open), driven by the column pressure plus the pool head against the downstream pressure; with the boilup, the valve sets the reboiler level. Bottoms product leaves at 6.00 mol/s, composition 0.022 / 0.479 / 0.500, meeting the specification pentane mole fraction 0.022 (at most 0.05 required).</p>
 </section>
 
 <section id="process-cooling">
 <h3>Cooling loop</h3>
-<p><strong>Enters:</strong> warm water returning from the condenser
-at 309.86 K into the surge tank (2000 kg of water, well mixed, at
-307.00 K). <strong>Inside:</strong> the circulating pump (half speed)
-moves 20 kg/s around the loop — tank to condenser and back — and the
-pump speed also sets the condenser water-side coefficient. The makeup
-valve (half open) admits 5 kg/s of cold supply water at 298 K; an
-equal flow of warm water overflows, which is how the loop rejects
-heat slowly. The tank also loses heat to the surroundings.
-<strong>Leaves:</strong> water at the tank temperature to the
-condenser; overflow to drain.</p>
+<p>Warm water returning from the condenser at 309.86 K enters the surge tank (2000 kg of water, well mixed, at 307.00 K). The circulating pump (half speed) moves 20 kg/s around the loop — tank to condenser and back — and the pump speed also sets the condenser water-side coefficient. Through the makeup valve (half open), 5 kg/s of cold supply water at 298 K enters; an equal flow of warm water overflows, which is how the loop rejects heat slowly. The tank also loses heat to the surroundings. Water leaves at the tank temperature to the condenser, and overflow leaves to drain.</p>
 </section>
 
 <section id="process-relief">
 <h3>Relief path</h3>
-<p><strong>Enters:</strong> overhead vapour, only when the column
-pressure passes the set pressure. <strong>Inside:</strong> the relief
-valve on the overhead line lifts at 400 kPa (alarm first at 360 kPa)
-and vents to the flare; its capacity reaches 25 mol/s at the design
-pressure of 500 kPa. <strong>Leaves:</strong> vapour to a safe
-location, with the inventory lost. The rupture pressure of 600 kPa
-is reached only if this path is isolated in the fault scenario.</p>
+<p>Overhead vapour enters this path only when the column pressure passes the set pressure. The relief valve on the overhead line lifts at 400 kPa (alarm first at 360 kPa) and vents to the flare; its capacity reaches 25 mol/s at the design pressure of 500 kPa. Vapour leaves to a safe location, with the inventory lost. The rupture pressure of 600 kPa is reached only if this path is isolated in the fault scenario.</p>
 </section>
 </div>
 </div>
@@ -1051,7 +896,7 @@ is reached only if this path is isolated in the fault scenario.</p>
         <button class="dist" data-d="feedDown" disabled>Feed flow &minus;20%</button>
         <button class="dist" data-d="feedLight" disabled>Feed richer in pentane</button>
         <button class="dist" data-d="feedHeavy" disabled>Feed leaner in pentane</button>
-        <button class="dist" data-d="warmWater" disabled>Cooling supply warms to 35 &deg;C</button>
+        <button class="dist" data-d="warmWater" disabled>Cooling supply warms to 308.15 K</button>
         <button class="dist" data-d="restore" disabled>Restore the nominal feed</button>
       </div>
       <div style="margin-top:10px"><span class="sect">Set the feed supply directly</span></div>
@@ -1063,7 +908,7 @@ is reached only if this path is isolated in the fault scenario.</p>
         <label>Pressure, kPa <input type="number" id="inFeedP" step="1" min="60" max="500"></label>
         <button id="btnFeedApply" disabled>Apply feed</button>
       </div>
-      <p class="small">The three percentages are normalised to sum to 100. The feed pressure must be at least the column pressure, or the feed cannot enter; a lower entry is raised to the column pressure. The supply is set as entered, liquid, two-phase, or vapour; what it becomes on entering the tray is shown under the feed inlet on the drawing and in the readings (vapour at entry). The flow itself is made by the feed valve on the drawing: its setpoint and automatic control are in the valve panel when the feed valve is selected.</p>
+      <p class="small">Each entered percentage is divided by the sum of the three entered percentages, so the three applied percentages sum to 100. The feed pressure must be at least the column pressure, or the feed cannot enter; a lower entry is raised to the column pressure. The supply is set as entered, liquid, two-phase, or vapour; what it becomes on entering the tray is shown under the feed inlet on the drawing and in the readings (vapour at entry). The flow itself is made by the feed valve on the drawing: its setpoint and automatic control are in the valve panel when the feed valve is selected.</p>
       <p class="small">Distillate specification: pentane mole fraction at least 0.95. Bottoms specification: pentane mole fraction at most 0.05. Practice rounds are not scored.</p>
     </div>
     <div class="card" style="margin-top:12px">
@@ -1155,9 +1000,7 @@ is reached only if this path is isolated in the fault scenario.</p>
 <section id="units-intro">
 <h3>How the unit panels work</h3>
 <p>Each unit below is one part of the plant, taken in the Process
-panel's order. The readings under each unit are the live state of
-that unit in the running game — they update as the game runs, on
-whichever panel is open. Each unit ends with an exercise: the button
+panel's order. Under each unit, the readings are the live state of that unit in the running game — they update as the game runs, on whichever panel is open. Each unit ends with an exercise: the button
 resets the game, loads the stated preset state, and takes you to the
 Game panel. The task, what to watch, and the success condition are
 stated in words; judge success from the readings and the drawing, as
@@ -1167,13 +1010,7 @@ an operator would. There is no separate score for the exercises.</p>
 <section id="units-steam">
 <h3>Steam chest and reboiler</h3>
 <p>Steam from the 900 kPa header passes the regulator (set 400 kPa)
-and the steam flow valve in series into the chest. The regulator
-holds the pressure upstream of the steam valve at its setpoint; the
-chest pressure is set by the balance between the steam the valve
-admits and the steam the reboiler condenses, and the duty follows
-the chest saturation temperature. The steam that condenses leaves
-the chest as condensate; the model carries no chest liquid
-inventory, so the chest state is its pressure alone (Theory: <a href="#theory-boilup">Boilup and
+and the steam flow valve in series into the chest. Holding the pressure upstream of the steam valve at its setpoint is the regulator's part; the chest pressure is set by the balance between the steam the valve admits and the steam the reboiler condenses, and the duty follows the chest saturation temperature. Condensate leaves the chest as it forms; the model includes no chest liquid inventory, so the chest state is its pressure alone (Theory: <a href="#theory-boilup">Boilup and
 the steam chest</a>; Process: <a href="#process-reboiler">Reboiler
 and steam chest</a>).</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 356" role="img" aria-label="Steam chest and reboiler schematic"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
@@ -1245,8 +1082,7 @@ pressure steady and both products in specification.</p>
 opening, and the flow follows from the pressure difference — the
 square-root law for liquids, the compressible law with choking for
 vapours (Theory: <a href="#theory-valves">Valve law and series
-valves</a>). The table below is the live state of all eleven
-openings.</p>
+valves</a>). All eleven openings are listed below in their live state.</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 336" role="img" aria-label="Globe valve cutaway and series pressure drop"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <path d="M60 190 L150 190 L150 150 L210 150 L210 190 L300 190 L300 226 L60 226 Z" class="fbox"/>
 <path d="M150 168 L210 168" class="fwall"/>
@@ -1281,20 +1117,9 @@ openings.</p>
 
 <div class="live" id="u-valve-table"></div>
 <div class="exercise">
-<p><strong>Exercise — one throttle at a time.</strong> The preset
-parks the steam flow valve fully open and sets the regulator to
-250 kPa.</p>
+<p>The preset for this exercise parks the steam flow valve fully open and sets the regulator to 250 kPa.</p>
 <button class="exBtn" data-ex="valves">Load the valves exercise</button>
-<p><strong>Task:</strong> first restore the boilup to about 9 mol/s
-using only the regulator; then set the regulator back to 400 kPa and
-do the same job using only the steam flow valve.
-<strong>Watch:</strong> the chest pressure as each control works
-in turn: with the valve parked open the regulator
-setpoint sets the chest pressure almost directly, while with the
-regulator fixed the valve opening sets how fast steam is admitted
-against that fixed upstream pressure.
-<strong>Success:</strong> boilup near 9 mol/s reached both ways, with
-the parked valve untouched in each half.</p>
+<p>Restore the boilup to about 9 mol/s using only the regulator; then set the regulator back to 400 kPa and do the same job using only the steam flow valve. As each control works in turn, watch the chest pressure: with the valve parked open the regulator setpoint sets the chest pressure almost directly, while with the regulator fixed the valve opening sets how fast steam is admitted against that fixed upstream pressure. Success is boilup near 9 mol/s reached both ways, with the parked valve untouched in each half.</p>
 </div>
 </section>
 
@@ -1342,24 +1167,16 @@ Process: <a href="#process-feedtray">Feed tray entry</a>).</p>
 <span>Feed temperature</span><b id="u-feed-t">—</b>
 <span>Feed pressure</span><b id="u-feed-p">—</b></div>
 <div class="exercise">
-<p><strong>Exercise — a flashing feed.</strong> The preset raises the
-feed temperature 10 K above its bubble point at the column pressure,
-so part of the feed enters as vapour.</p>
+<p>For this exercise the preset raises the feed temperature 10 K above its bubble point at the column pressure, so part of the feed enters as vapour.</p>
 <button class="exBtn" data-ex="feed">Load the feed exercise</button>
-<p><strong>Task:</strong> read the vapour fraction at entry from the
-readings. The boilup itself will not tell you the feed has flashed —
+<p>Read the vapour fraction at entry from the readings. The boilup itself will not tell you the feed has flashed —
 it is set by the reboiler duty and stays where the steam chest puts
-it. Instead, use the section balances of the Theory panel to work
+it. Instead, use the section balances of the Theory panel, Eqs. (7) to (10), to work
 out the new stripping liquid flow and, at unchanged boilup, the new
 rectifying vapour flow; then check both against the live readings
 in the Trays unit (the Game readings also show the vapour into the
 condenser).
-<strong>Watch:</strong> <i>ψ</i>, the stripping liquid flow falling
-below 15 mol/s, the vapour into the condenser rising above 9 mol/s,
-and the bottoms pentane drifting as the section traffic changes.
-<strong>Success:</strong> your two computed flows match the readings
-to one decimal place, and both products are back in specification
-within ten minutes of game time.</p>
+Watch <i>ψ</i>, the stripping liquid flow decreasing below 15 mol/s, the vapour into the condenser rising above 9 mol/s, and the bottoms pentane drifting as the section traffic changes. The exercise is complete when your two computed flows match the readings to one decimal place and both products are back in specification within ten minutes of game time.</p>
 </div>
 </section>
 
@@ -1367,13 +1184,11 @@ within ten minutes of game time.</p>
 <h3>Trays</h3>
 <p>On a real tray the liquid crosses the deck, rises over a weir,
 and falls through a downcomer to the tray below, as Fig. U4 shows;
-the model holds each tray's liquid holdup constant and draws the
-tray depth from the liquid rate. Each tray is an equilibrium stage: vapour leaves richer in pentane
+each tray's liquid holdup is held constant in the model, and the tray depth is drawn from the liquid rate. Each tray is an equilibrium stage: vapour leaves richer in pentane
 than the liquid it rose from, by the equilibrium ratio of the tray
 temperature (Theory: <a href="#theory-vle">Vapour–liquid
 equilibrium</a>, <a href="#theory-alpha">Relative volatility</a>).
-The live values below are the column ends; the full stage-by-stage
-picture is on the drawing in the Game panel.</p>
+Live values below are the column ends; the full stage-by-stage picture is on the drawing in the Game panel.</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 336" role="img" aria-label="One tray in cross-section with weir and downcomer"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <path d="M170 30 L170 306 M520 30 L520 306" class="fwall"/>
 <line x1="170" y1="120" x2="470" y2="120" class="fwall"/>
@@ -1415,27 +1230,15 @@ picture is on the drawing in the Game panel.</p>
 <span>Distillate pentane</span><b id="u-trays-xd">—</b>
 <span>Bottoms pentane</span><b id="u-trays-xb">—</b></div>
 <div class="exercise">
-<p><strong>Exercise — a richer feed.</strong> The preset changes the
-feed to 0.55 / 0.25 / 0.20 pentane / hexane / heptane, arriving as a
-saturated liquid (the same change as the Game panel disturbance).</p>
+<p>A richer feed is the preset here: 0.55 / 0.25 / 0.20 pentane / hexane / heptane, arriving as a saturated liquid (the same change as the Game panel disturbance).</p>
 <button class="exBtn" data-ex="trays">Load the trays exercise</button>
-<p><strong>Task:</strong> follow the composition front on the drawing
-as the richer feed works through the trays, then return both
-products to specification by changing one valve.
-<strong>Watch:</strong> the tray temperature numbers — they fall
-where pentane arrives — and the two product readings.
-<strong>Success:</strong> both products in specification, held for
-two minutes of game time.</p>
+<p>Follow the composition front on the drawing as the richer feed works through the trays, then return both products to specification by changing one valve. Watch the tray temperature numbers — they decrease where pentane arrives — and the two product readings. Both products in specification, held for two minutes of game time, complete the exercise.</p>
 </div>
 </section>
 
 <section id="units-condenser">
 <h3>Condenser</h3>
-<p>The condenser condenses on its exposed tubes only; the pooled
-liquid over the submerged tubes subcools instead. Flooding is
-therefore a controlled variable, not a fault (Theory:
-<a href="#theory-flooded">Flooded-condenser pressure control</a>;
-Process: <a href="#process-condenser">Condenser</a>).</p>
+<p>The readings below are this unit's live state: condenser pressure, flooded fraction, condensation rate, duty, condensing temperature, and vapour in. The flooded fraction is the overhead's control variable, set by the outlet and bypass valves, and the pressure follows it (Theory: <a href="#theory-flooded">Flooded-condenser pressure control</a>; Process: <a href="#process-condenser">Condenser</a>).</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 320" role="img" aria-label="Flooded condenser with exposed and submerged tubes"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs><rect x="170" y="80" width="340" height="150" class="fbox"/><rect x="172" y="166" width="336" height="62" class="fliq"/><circle cx="215" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="215" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="215" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><text x="340" y="66" text-anchor="middle">overhead vapour in, 8.95 mol/s</text><line x1="340" y1="70" x2="340" y2="80" class="fpipe" marker-end="url(#fah)"/><text x="8" y="118">exposed tubes:</text><text x="8" y="136">vapour condenses</text><text x="8" y="154">on them</text><text x="8" y="196">submerged tubes:</text><text x="8" y="214">they subcool</text><text x="8" y="232">the pool</text><text x="520" y="150" class="flab">pool level: 40 %</text><text x="520" y="168" class="flab">flooded at nominal</text><text x="520" y="206">condensate out,</text><text x="520" y="224">to the riser; pool</text><text x="520" y="242">318.39 K, condensing</text><text x="520" y="260">at 321.98 K; duty</text><text x="520" y="278">239.7 kW</text><text x="170" y="262">cooling water in, 307.00 K</text><line x1="230" y1="248" x2="262" y2="234" class="fpipe" marker-end="url(#fah)"/><text x="510" y="284" text-anchor="end">cooling water out, 309.86 K</text><line x1="450" y1="248" x2="424" y2="234" class="fpipe" marker-end="url(#fah)"/></svg></div>
 <p class="figcap"><b>Fig. U5 | Only the exposed tubes condense; the submerged tubes subcool.</b> Raising the pool covers more tubes, cuts the condensing area, and so raises the column pressure — the flooded-condenser control of the Theory panel.</p>
 <figure class="photofig"><img src="img/hx-cutopen.jpg" alt="Photograph of the tube ends inside a shell-and-tube heat exchanger cut open"><figcaption class="figcap"><b>Photo U5 | The tubes, seen end-on.</b> The open ends of the tubes inside a shell-and-tube exchanger that has been cut open: cooling water flows inside tubes of this kind while vapour condenses on their outside in the condenser of this plant. Credit: Bitjungle, Wikimedia Commons, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0); image resized to 500 px width.</figcaption></figure>
@@ -1447,26 +1250,15 @@ Process: <a href="#process-condenser">Condenser</a>).</p>
 <span>Condensing temperature</span><b id="u-cond-t">—</b>
 <span>Vapour in</span><b id="u-cond-vin">—</b></div>
 <div class="exercise">
-<p><strong>Exercise — a slow pump.</strong> The preset cuts the
-cooling-water pump to quarter speed.</p>
+<p>The preset cuts the cooling-water pump to quarter speed.</p>
 <button class="exBtn" data-ex="condenser">Load the condenser exercise</button>
-<p><strong>Task:</strong> hold the column pressure below the 360 kPa
-alarm for five minutes of game time without the relief valve lifting.
-<strong>Watch:</strong> the duty first (it falls through the
-water-side coefficient), then the flooded fraction as condensate
-backs up, then the pressure. <strong>Success:</strong> pressure
-steady below the alarm with the pump still at quarter speed — the
-recovery must come from the overhead valves and the makeup, not from
-restoring the pump.</p>
+<p>Hold the column pressure below the 360 kPa alarm for five minutes of game time without the relief valve lifting. Watch the duty first (it decreases through the water-side coefficient), then the flooded fraction as condensate backs up, then the pressure. Success is a pressure steady below the alarm with the pump still at quarter speed — the recovery must come from the overhead valves and the makeup, not from restoring the pump.</p>
 </div>
 </section>
 
 <section id="units-riser">
 <h3>Riser and reflux drum</h3>
-<p>Condensate climbs 1.5 m from the condenser to the drum. The lift
-is paid from the condenser-to-drum pressure difference, which the
-bypass and outlet valves set between them, and the liquid must be
-subcooled or it flashes on the way up (Theory:
+<p>Condensate climbs 1.5 m from the condenser to the drum. The condenser-to-drum pressure difference, set between them by the bypass and outlet valves, pays for the lift, and the liquid must be subcooled or it flashes on the way up (Theory:
 <a href="#theory-riser">Riser lift, subcooling, and flashing</a>;
 Process: <a href="#process-riser">Riser</a>,
 <a href="#process-drum">Reflux drum</a>).</p>
@@ -1508,26 +1300,16 @@ Process: <a href="#process-riser">Riser</a>,
 <span>Drum level</span><b id="u-riser-lvl">—</b>
 <span>Drum pressure</span><b id="u-riser-pdrum">—</b></div>
 <div class="exercise">
-<p><strong>Exercise — back the condensate up.</strong> The preset
-opens the bypass to 12 percent and closes the outlet valve to
-30 percent.</p>
+<p>In this exercise the preset opens the bypass to 12 percent and closes the outlet valve to 30 percent, backing the condensate up.</p>
 <button class="exBtn" data-ex="riser">Load the riser exercise</button>
-<p><strong>Task:</strong> restore the drainage to about 9 mol/s with
-the subcooling margin positive, changing only the bypass and outlet
-valves. <strong>Watch:</strong> the condenser flooded fraction rising
-while the drainage is throttled, and the drum level falling — the two
-inventories move in opposite directions. <strong>Success:</strong>
-drainage steady near 9 mol/s, margin above zero, drum level back
-between 40 and 60 percent.</p>
+<p>Restore the drainage to about 9 mol/s with the subcooling margin positive, changing only the bypass and outlet valves. Watch the condenser flooded fraction rising while the drainage is throttled, and the drum level decreasing — the two inventories move in opposite directions. Success is drainage steady near 9 mol/s, margin above zero, and drum level back between 40 and 60 percent.</p>
 </div>
 </section>
 
 <section id="units-cooling">
 <h3>Cooling loop</h3>
 <p>Water circulates tank → condenser → tank at a rate set by the pump
-speed, which also sets the condenser water-side coefficient. The
-makeup valve admits cold supply water and displaces warm water over
-the overflow: a slow, whole-loop cooling that costs water (Process:
+speed, which also sets the condenser water-side coefficient. Cold supply water enters through the makeup valve and displaces warm water over the overflow: a slow, whole-loop cooling that costs water (Process:
 <a href="#process-cooling">Cooling loop</a>).</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 320" role="img" aria-label="Cooling-water loop with surge tank, pump, makeup and overflow"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <rect x="60" y="110" width="150" height="100" class="fbox"/>
@@ -1560,9 +1342,7 @@ the overflow: a slow, whole-loop cooling that costs water (Process:
 <span>Makeup opening</span><b id="u-cool-makeup">—</b>
 <span>Condenser duty</span><b id="u-cool-q">—</b></div>
 <div class="exercise">
-<p><strong>Exercise — warm supply.</strong> The preset warms the
-cooling supply to 35 °C (308.15 K), the same change as the Game panel
-disturbance.</p>
+<p><strong>Exercise — warm supply.</strong> The preset warms the cooling supply to 308.15 K, the same change as the Game panel disturbance.</p>
 <button class="exBtn" data-ex="cooling">Load the cooling exercise</button>
 <p><strong>Task:</strong> keep the column pressure below the 360 kPa
 alarm for five minutes of game time. <strong>Watch:</strong> how
@@ -1580,9 +1360,7 @@ how long each took to act.</p>
 throttles vapour toward the condenser, the bypass and outlet valves
 set the flooding, and the cooling sets the duty (Theory:
 <a href="#theory-flooded">Flooded-condenser pressure control</a>,
-<a href="#theory-relief">Pressure escalation and relief</a>). The
-protection sequence — alarm 360 kPa, relief 400 kPa, design 500 kPa,
-rupture 600 kPa — is marked on the pressure bar on the drawing.</p>
+<a href="#theory-relief">Pressure escalation and relief</a>). Alarm 360 kPa, relief 400 kPa, design 500 kPa, and rupture 600 kPa are marked on the pressure bar on the drawing, in that sequence.</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 336" role="img" aria-label="Column-top branch, bypass, and relief path"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <rect x="40" y="120" width="70" height="130" class="fbox"/>
 <text x="75" y="108" text-anchor="middle">column top</text>
@@ -1616,27 +1394,15 @@ rupture 600 kPa — is marked on the pressure bar on the drawing.</p>
 <span>High-pressure alarm</span><b id="u-pres-alarm">—</b>
 <span>Distillate pentane</span><b id="u-pres-xd">—</b></div>
 <div class="exercise">
-<p><strong>Exercise — pressure costs purity.</strong> The preset
-closes the condenser inlet valve to 30 percent, throttling the
-vapour path so the column pressure climbs.</p>
+<p>The preset closes the condenser inlet valve to 30 percent, throttling the vapour path so the column pressure climbs.</p>
 <button class="exBtn" data-ex="pressure">Load the pressure exercise</button>
-<p><strong>Task:</strong> let the pressure rise, note the distillate
-pentane as it crosses the 0.95 specification limit, then bring the
-pressure back under 200 kPa and the product back into specification.
-<strong>Watch:</strong> the relative-volatility effect of Theory
-<a href="#theory-alpha">§ Relative volatility</a> appearing in a
-product reading, with no flow setpoint changed.
-<strong>Success:</strong> pressure steady under 200 kPa and
-distillate pentane at or above 0.95, held for two minutes.</p>
+<p>Let the pressure rise, note the distillate pentane as it crosses the 0.95 specification limit, then bring the pressure back under 200 kPa and the product back into specification. What to watch is the relative-volatility effect of Theory <a href="#theory-alpha">§ Relative volatility</a> appearing in a product reading, with no flow setpoint changed. Success is pressure steady under 200 kPa and distillate pentane at or above 0.95, held for two minutes.</p>
 </div>
 </section>
 
 <section id="units-split">
 <h3>Reflux, distillate, and bottoms</h3>
-<p>The drum's two outlet valves share one job between them: their
-combined flow sets the drum level, their split sets the reflux ratio
-and so the separation. The bottoms valve does the same single job
-for the reboiler level, against the boilup (Theory:
+<p>Between them, the drum's two outlet valves share one job: their combined flow sets the drum level, their split sets the reflux ratio and so the separation. For the reboiler level, the bottoms valve does the same single job against the boilup (Theory:
 <a href="#theory-reflux">Reflux ratio, level, and split</a>;
 Process: <a href="#process-products">Reflux and distillate</a>,
 <a href="#process-bottoms">Bottoms</a>).</p>
@@ -1674,16 +1440,9 @@ Process: <a href="#process-products">Reflux and distillate</a>,
 <span>Distillate pentane</span><b id="u-split-xd">—</b>
 <span>Bottoms pentane</span><b id="u-split-xb">—</b></div>
 <div class="exercise">
-<p><strong>Exercise — hold the level, keep the split.</strong> The
-preset opens the reflux valve to 75 percent.</p>
+<p>The preset opens the reflux valve to 75 percent.</p>
 <button class="exBtn" data-ex="split">Load the split exercise</button>
-<p><strong>Task:</strong> bring the drum level back to between 40 and
-60 percent using only the distillate valve, leaving the reflux valve
-where the preset put it. <strong>Watch:</strong> the distillate
-pentane improving as the reflux rises, while the distillate rate
-falls — purity is bought with product rate. <strong>Success:</strong>
-drum level steady in band, reflux valve untouched, both products in
-specification.</p>
+<p>Bring the drum level back to between 40 and 60 percent using only the distillate valve, leaving the reflux valve where the preset put it. Watch the distillate pentane improving as the reflux rises, while the distillate rate decreases — purity is gained at the cost of product rate. Success is a drum level steady in band, the reflux valve untouched, and both products in specification.</p>
 </div>
 </section>
 </div>
@@ -1739,11 +1498,11 @@ const VALVES = {
   bypass:     { idx: 1, kind: "pct",  name: "Hot vapour bypass valve",
     desc: "Vapour from the column top straight into the drum vapour space, bypassing the condenser. It sets the condenser-to-drum pressure difference that lifts the condensate up the riser." },
   outlet:     { idx: 2, kind: "pct",  name: "Condenser outlet valve",
-    desc: "Condensate leaving the condenser up the riser to the drum. Together with the bypass it sets how flooded the condenser runs." },
+    desc: "Condensate leaving the condenser up the riser to the drum. The bypass and this valve together set how flooded the condenser runs." },
   reflux:     { idx: 3, kind: "pct",  name: "Reflux valve",
-    desc: "Drum liquid returned to the top tray. Together with the distillate valve it sets the drum level; their split sets the reflux ratio." },
+    desc: "Drum liquid returned to the top tray. Paired with the distillate valve, it sets the drum level; their split sets the reflux ratio." },
   distillate: { idx: 4, kind: "pct",  name: "Distillate valve",
-    desc: "Drum liquid leaving as distillate product. Together with the reflux valve it sets the drum level; their split sets the reflux ratio." },
+    desc: "Drum liquid leaving as distillate product. The drum level is set by this valve and the reflux valve together; their split sets the reflux ratio." },
   bottoms:    { idx: 5, kind: "pct",  name: "Bottoms valve",
     desc: "Reboiler liquid leaving as bottoms product. Sets the reboiler level with the boilup." },
   feed:       { idx: 10, kind: "pct",  name: "Feed valve",
