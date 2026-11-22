@@ -126,6 +126,24 @@ every downloaded package (POST /api/check-all with
 automatic pass's follow-up stage, which completes the acoustic
 checks of videos downloaded in the same pass, now runs only the
 packages that owe one instead of the full sweep again.
+
+v37: three fixes from the teacher's report (2026-11-22).
+(1) The browser no longer opens before the app is ready: the
+launchers opened it before starting the server, so it showed
+a cannot-connect error; main() now opens it from a thread
+that waits until /api/status answers, and the launchers no
+longer open it at all (--no-browser suppresses it).
+(2) The download log states how an unchanged submission was
+decided: "checked against the local record, 0 bytes
+downloaded" for the normal pre-fetch skip, or the fetched
+byte count when the ZIP hash had to settle it — the v36
+wording read as if every submission was downloaded first.
+(3) A degraded acoustic result (video present, no similarity
+measured) is no longer retried on every automatic pass: the
+check fingerprint now also records the acoustic tooling
+(the ffmpeg program found, or None), and the retry is owed
+only when that changes; a pre-v37 fingerprint, which has no
+tooling entry, earns a degraded result exactly one retry.
 """
 
 import argparse
@@ -143,6 +161,7 @@ import zipfile
 import sys
 import threading
 import time
+import webbrowser
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 import urllib.error
@@ -1495,18 +1514,31 @@ def _package_check_inputs(cfg, pkg, dl_state):
         "threshold": float(cfg.get("acoustic_threshold", 0.85)),
         "worker": cfg.get("worker_base_url"),
         "app": audit.USER_AGENT,
+        # v37: the acoustic tooling itself — the ffmpeg program
+        # the fingerprinting runs through, by path, or None when
+        # none is found. A degraded result (video present, no
+        # similarity measured) is owed one retry when this
+        # changes, and only then: before v37 a degraded result
+        # was retried on every pass, so a machine whose
+        # fingerprinting could not run re-ran the acoustic part
+        # every 10 minutes to the same outcome. A path-only
+        # change (the portable folder moved, a new drive letter)
+        # does not by itself re-run a measured result.
+        "acoustic_tool": audit.find_ffmpeg(),
     }
 
 
 def _acoustic_degraded(existing):
     """True when the stored acoustic result never measured
-    anything (v36): the YouTube video was present, but no
+    anything: the YouTube video was present, but no
     similarity was computed — Chromaprint unavailable or the
     fingerprinting failed — so the result rests on duration
-    alone, or on nothing. Such a result is not final: if the
-    tooling is later fixed, the acoustic check is owed again.
-    (The no-link and not-downloaded states have available False
-    and are complete as they stand.)"""
+    alone, or on nothing. (The no-link and not-downloaded
+    states have available False and are complete as they
+    stand.) Since v37 a degraded result is owed one retry
+    only when the acoustic tooling in the check fingerprint
+    changes (see _check_mode); it is not retried on every
+    pass, as v36 retried it."""
     yt = (existing or {}).get("youtube") or {}
     return bool(yt.get("available")) \
         and not yt.get("acoustic_configured") \
@@ -1514,11 +1546,25 @@ def _acoustic_degraded(existing):
 
 
 def _check_mode(existing, inputs, force):
-    """What one package is owed (v36): "full" for the whole check,
-    "youtube" when only the acoustic part can have changed (or
-    never actually measured), or None when the stored check
-    stands. An entry carrying an error, or no fingerprint (every
-    store written before v36), is always owed a full check once."""
+    """What one package is owed: "full" for the whole check,
+    "youtube" when only the acoustic part can have changed,
+    or None when the stored check stands. An entry carrying
+    an error, or no fingerprint (every store written before
+    v36), is always owed a full check once.
+
+    v37: a stored check whose fingerprint still matches stands
+    even when its acoustic part is degraded (video present,
+    nothing measured). v36 retried that case on every pass;
+    re-running unchanged tooling on an unchanged video can
+    only reproduce the same unmeasured result, so the retry
+    is now owed only when the fingerprint's acoustic_tool
+    entry changes — ffmpeg appearing where none was found,
+    for example — and a fingerprint written before v37 has
+    no such entry, so a degraded pre-v37 result earns exactly
+    one retry under v37 and then stands. A tooling-path-only
+    change does not re-run a result that did measure: the
+    fingerprint is left as stored in that case, which is
+    harmless — the decision is the same on every later pass."""
     if force:
         return "full"
     if existing is None or existing.get("error"):
@@ -1527,9 +1573,12 @@ def _check_mode(existing, inputs, force):
     if not stored:
         return "full"
     if stored == inputs:
-        return "youtube" if _acoustic_degraded(existing) else None
+        return None
     diff = {k for k in inputs if stored.get(k) != inputs.get(k)}
-    if diff <= {"video", "threshold"}:
+    if diff <= {"video", "threshold", "acoustic_tool"}:
+        if diff == {"acoustic_tool"} \
+                and not _acoustic_degraded(existing):
+            return None
         return "youtube"
     return "full"
 
@@ -1540,8 +1589,9 @@ def run_checks(cfg, force=False, only_keys=None, stats=None):
     "check_inputs" fingerprint still matches its inputs is skipped
     — its result is a deterministic function of those inputs, so
     re-running could only reproduce it. A package owed only an
-    acoustic update (its video arrived or changed, or the
-    threshold moved) gets that part alone. Everything else — no
+    acoustic update (its video arrived or changed, the
+    threshold moved, or — for a result that never measured —
+    the acoustic tooling changed) gets that part alone. Everything else — no
     stored check, an error entry, a changed package, a pre-v36
     entry with no fingerprint, or force — gets the full check.
     only_keys, when given, restricts the run to those store keys
@@ -1677,8 +1727,24 @@ def _log_download_record(rec):
     elif "error" in rec:
         log_activity("download", f"submission for {name}{where}: {rec['error']}")
     elif rec.get("skipped"):
-        log_activity("download",
-                     f"submission for {name}{where} unchanged — skipped")
+        # v37: say how the skip was decided and what it cost, so
+        # the log cannot be read as a download that then turned
+        # out unnecessary. A pre-fetch skip (the normal case
+        # since v32) matched the Canvas listing against the
+        # local download record and fetched no bytes at all;
+        # the fallback fetched the ZIP and matched its hash.
+        if rec.get("fetched_bytes"):
+            log_activity(
+                "download",
+                f"submission for {name}{where} unchanged — skipped "
+                f"(ZIP fetched, {rec['fetched_bytes']} bytes, and "
+                "its hash matched the local record)")
+        else:
+            log_activity(
+                "download",
+                f"submission for {name}{where} unchanged — skipped "
+                "(checked against the local record, 0 bytes "
+                "downloaded)")
     else:
         log_activity("download", f"submission downloaded — {name}{where}")
 
@@ -3309,7 +3375,7 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <p class="mut" id="rdestimate"></p>
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
-<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes; Run integrity checks re-checks every downloaded package in full. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
+<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
 <div id="viewctl">
 <label>Course <select id="fcourse"><option value="">All courses</option></select></label>
@@ -5909,7 +5975,8 @@ class Handler(BaseHTTPRequestHandler):
                 # package) is never stamped here — it is still owed
                 # a full check; and the refresh applies only when
                 # the inputs that moved since the full check are
-                # the acoustic ones (video, threshold) — if the
+                # the acoustic ones (video, threshold, and —
+                # since v37 — the acoustic tooling) — if the
                 # package itself or the Worker changed, the stored
                 # integrity results belong to the old inputs and
                 # the package is still owed its full check.
@@ -5919,7 +5986,7 @@ class Handler(BaseHTTPRequestHandler):
                 stored = entry["check_inputs"]
                 diff = {k for k in set(stored) | set(current)
                         if stored.get(k) != current.get(k)}
-                if diff <= {"video", "threshold"}:
+                if diff <= {"video", "threshold", "acoustic_tool"}:
                     entry["check_inputs"] = current
             store[pkg["key"]] = entry
             write_json_atomic(_state_file(cfg, "audit-results.json"),
@@ -6276,10 +6343,43 @@ def package_detail(cfg, user_id):
             "transcript": "\n".join(parsed["transcript_lines"])}
 
 
+def _open_browser_when_ready(port, open_fn=None, timeout_s=30.0):
+    """Open the browser only once the server answers (v37).
+
+    Before v37 the launchers (run-web.bat, run-web-portable.bat)
+    opened the browser before starting this program, so the
+    browser landed on a port nothing was listening on yet and
+    showed a cannot-connect error while the app was still
+    starting. Polls /api/status until it answers 200, then opens
+    the page; gives up after timeout_s and logs it — the app
+    itself keeps running either way. Runs in a daemon thread
+    started by main(); never called on import or by the tests.
+    open_fn is injectable for tests."""
+    open_fn = open_fn or webbrowser.open
+    url = f"http://127.0.0.1:{port}/"
+    probe = f"http://127.0.0.1:{port}/api/status"
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(probe, timeout=2) as resp:
+                if resp.status == 200:
+                    open_fn(url)
+                    return True
+        except Exception:  # noqa: BLE001 - not ready yet; keep waiting
+            pass
+        time.sleep(0.25)
+    log_activity("system", "browser was not opened automatically — "
+                           "the app did not answer within "
+                           f"{int(timeout_s)} s; open {url} by hand")
+    return False
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="web.py",
                                  description="Teacher audit web front end")
     ap.add_argument("--port", type=int, default=8766)
+    ap.add_argument("--no-browser", action="store_true",
+                    help="do not open the browser once the app is ready")
     args = ap.parse_args(argv)
     srv = QuietServer(("127.0.0.1", args.port), Handler)
     print(f"Teacher Audit web app: http://127.0.0.1:{args.port}")
@@ -6291,6 +6391,9 @@ def main(argv=None):
                     "starts as soon as a Canvas token is saved"))
     threading.Thread(target=ytdlp_update_check, daemon=True).start()
     threading.Thread(target=auto_loop, daemon=True).start()
+    if not args.no_browser:
+        threading.Thread(target=_open_browser_when_ready,
+                         args=(args.port,), daemon=True).start()
     srv.serve_forever()
     return 0
 

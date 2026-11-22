@@ -32,7 +32,7 @@ exit /b 1
 
 :start_app
 echo Starting Teacher Audit at http://127.0.0.1:8766
+echo The browser opens by itself once the app is ready.
 echo Keep this window open while you work. Close it to stop the app.
-start "" http://127.0.0.1:8766
 ".venv\Scripts\python.exe" web.py --port 8766
 pause

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Teacher audit app (audit v36) — the single audit app, for
+"""Teacher audit app (audit v37) — the single audit app, for
 HW Signing v2 submissions only. (v24 adds prompt-package
 management to the web front end, in web.py; v25 fixes the
 Packages page's student-link verification to fetch metadata
@@ -16,7 +16,13 @@ the version and User-Agent — making both views local-first
 with a parallel Canvas scan; v36 is likewise a web.py change
 apart from the version and User-Agent: integrity checks are
 incremental there, each stored check carrying a fingerprint
-of its inputs so an unchanged package is not re-checked.)
+of its inputs so an unchanged package is not re-checked;
+v37 is likewise a web.py and launcher change apart from the
+version and User-Agent: the browser opens only once the
+server answers, the download log states when a skip was
+decided from the local record with no bytes fetched, and a
+degraded acoustic result is retried only when the acoustic
+tooling changes, not on every pass.)
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -123,7 +129,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/36.0"
+USER_AGENT = "HWSigning-Teacher-Audit/37.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default

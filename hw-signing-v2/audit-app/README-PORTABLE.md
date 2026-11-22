@@ -11,8 +11,10 @@ folder, and no setup download is needed.
 
 1. Put the folder anywhere writable: a folder on the computer,
    or a USB drive (NTFS; see Notes).
-2. Double-click `run-web.bat`. A console window opens and the
-   browser opens at http://127.0.0.1:8766.
+2. Double-click `run-web.bat`. A console window opens, and
+   the browser opens by itself at http://127.0.0.1:8766 once
+   the app is ready (a few seconds; if it has not opened
+   after half a minute, open that address by hand).
 3. Keep the console window open while you work. Close it to
    stop the app. On a USB drive, stop the app and use Windows
    "Eject" before unplugging.
@@ -111,10 +113,18 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v36 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v37 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs).
+  installs). v37: the browser opens only once the app
+  answers, the download log states when an unchanged
+  submission was decided from the local record with no bytes
+  downloaded, and an acoustic result that could not measure
+  a video is retried only when the acoustic tooling changes,
+  not on every pass. The first pass after updating does one
+  full check of each package (the checker version is part of
+  each stored check's fingerprint); later passes skip
+  unchanged packages as before.
 - Python: CPython 3.13.18, python-build-standalone
   (`cpython-3.13.18+20261110-x86_64-pc-windows-msvc-install_only`),
   trimmed of debug symbols, the test suite and Tk.

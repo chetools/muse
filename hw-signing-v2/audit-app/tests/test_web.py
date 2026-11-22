@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/36.0",
-          "user agent bumped to 36.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/37.0",
+          "user agent bumped to 37.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2657,7 +2657,8 @@ def main():
     # is skipped, a changed video or threshold earns only the
     # acoustic re-check, a changed package (or a changed ZIP
     # watermark, or a fingerprint-less pre-v36 entry) earns a
-    # full check, a degraded acoustic result is retried, an
+    # full check, a degraded acoustic result stands until the
+    # acoustic tooling changes (v37; v36 retried it every pass), an
     # error entry is always retried, only_keys restricts a run,
     # and the manual endpoint forces a full re-check unless
     # asked for the incremental pass. The counters wrap the real
@@ -2839,11 +2840,32 @@ def main():
               "degraded acoustic result (premise for the retry)")
         base36 = dict(counts36)
         web.run_checks(cfg36)
-        check(counts36["pkg"] == base36["pkg"]
-              and counts36["yt"] > base36["yt"],
-              "v36: a degraded acoustic result is retried on "
-              "the next pass, acoustic part only — never "
-              "fingerprinted as final")
+        check(counts36 == base36,
+              "v37: a degraded acoustic result is NOT retried "
+              "on the next pass when nothing changed — the "
+              "stored check stands, acoustic part included")
+        web.run_checks(cfg36)
+        check(counts36 == base36,
+              "v37: and it is not retried on the pass after "
+              "that either — no every-pass acoustic re-check")
+        # The retry is owed when the acoustic tooling changes:
+        # a different ffmpeg found, the fingerprint changes,
+        # and the acoustic part alone runs — once.
+        _orig_ff37 = audit.find_ffmpeg
+        audit.find_ffmpeg = lambda: "/elsewhere/ffmpeg"
+        try:
+            web.run_checks(cfg36)
+            check(counts36["pkg"] == base36["pkg"]
+                  and counts36["yt"] > base36["yt"],
+                  "v37: a degraded result earns one acoustic "
+                  "retry when the acoustic tooling changes")
+            base36 = dict(counts36)
+            web.run_checks(cfg36)
+            check(counts36 == base36,
+                  "v37: after that one retry the degraded "
+                  "result stands again under the new tooling")
+        finally:
+            audit.find_ffmpeg = _orig_ff37
         audit.youtube_cross_check = fake_yt36
         web.run_checks(cfg36)
     finally:
@@ -2940,6 +2962,51 @@ def main():
     finally:
         audit.check_package = _orig_cp36
         audit.youtube_cross_check = _orig_yt36
+
+    # ---------------------------------------------------------
+    # 16. v37: browser opens only once the server answers; the
+    # download log states how a skip was decided; launchers no
+    # longer open the browser themselves.
+    opened37 = []
+    port37 = server.server_address[1]
+    ok37 = web._open_browser_when_ready(
+        port37, open_fn=opened37.append, timeout_s=10)
+    check(ok37 and opened37 == [f"http://127.0.0.1:{port37}/"],
+          "v37: the browser opener waits for /api/status and "
+          "then opens the app page")
+    import socket as _sock37
+    _s37 = _sock37.socket()
+    _s37.bind(("127.0.0.1", 0))
+    dead37 = _s37.getsockname()[1]
+    _s37.close()
+    opened37b = []
+    ok37b = web._open_browser_when_ready(
+        dead37, open_fn=opened37b.append, timeout_s=1.0)
+    check(not ok37b and opened37b == [],
+          "v37: when the app never answers, the browser is "
+          "not opened and the opener reports failure")
+    for bat37 in ("run-web.bat", "run-web-portable.bat"):
+        raw37 = (web.HERE / bat37).read_bytes()
+        check(b'start "" http' not in raw37
+              and b"browser opens by itself" in raw37,
+              f"v37: {bat37} no longer opens the browser "
+              "before the app is ready")
+    web._log_download_record(
+        {"user_name": "Log Probe", "skipped": True,
+         "fetched_bytes": 0})
+    web._log_download_record(
+        {"user_name": "Log Probe", "skipped": True,
+         "fetched_bytes": 123})
+    status, act37 = call("GET", "/api/activity")
+    msgs37 = [e["msg"] for e in act37["entries"]]
+    check(any("checked against the local record, 0 bytes "
+              "downloaded" in m for m in msgs37),
+          "v37: a pre-fetch skip logs that it was decided "
+          "from the local record with 0 bytes downloaded")
+    check(any("its hash matched the local record" in m
+              and "123 bytes" in m for m in msgs37),
+          "v37: a post-fetch skip logs the fetched byte "
+          "count and the hash match that decided it")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
