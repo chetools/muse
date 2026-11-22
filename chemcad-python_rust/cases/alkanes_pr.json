@@ -1,0 +1,10 @@
+{
+  "name": "methane/ethane/propane, Peng-Robinson (existing tested system; parameters from the Phase 2 / parity batteries)",
+  "components": [
+    {"name": "C1", "Tc": 190.6, "Pc": 4.599e6, "omega": 0.011, "cp": [35.8, 0, 0, 0]},
+    {"name": "C2", "Tc": 305.3, "Pc": 4.872e6, "omega": 0.099, "cp": [52.5, 0, 0, 0]},
+    {"name": "C3", "Tc": 369.8, "Pc": 4.248e6, "omega": 0.152, "cp": [73.6, 0, 0, 0]}
+  ],
+  "thermo": {"model": "eos", "eos_kind": "PR"},
+  "reactions": []
+}

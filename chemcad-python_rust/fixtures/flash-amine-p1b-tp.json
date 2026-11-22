@@ -1,0 +1,292 @@
+{
+ "case_id": "flash-amine-p1b-tp",
+ "unit": "IFLASH",
+ "mixture": [
+  "water",
+  "monoethanolamine",
+  "carbon dioxide"
+ ],
+ "thermo": {
+  "k_model": "Amine (ChemCAD, ThermalModes modek=12)",
+  "enthalpy_model": "Amine package (ChemCAD)",
+  "parameters": null,
+  "note": "Comparison fixture. Feed is a CO2-loaded aqueous MEA solution at CO2 loading 0.20 mol CO2 per mol MEA (case input chosen for this anchor, not plant data). ChemCAD databank amine speciation parameters are not readable. The local thermo_packages.py framework carries no amine reaction/speciation data set, so no local evaluation is claimed; the fixture is frozen for the future amine data build."
+ },
+ "inputs": {
+  "spec": {
+   "mode": "TP",
+   "grid_T_K": [
+    333,
+    363,
+    393
+   ],
+   "grid_P_kPa": [
+    101,
+    500
+   ]
+  },
+  "feed": {
+   "flows_lbmol_per_h": [
+    100.0,
+    30.0,
+    6.0
+   ],
+   "mole_fractions": [
+    0.7352941176470589,
+    0.22058823529411764,
+    0.04411764705882353
+   ]
+  }
+ },
+ "points": [
+  {
+   "T_K": 333,
+   "P_kPa": 101,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN amine_p1b_T333_P101",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 333.000014 P_kPa 101.000001 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 136.000000 H_Btu_lbmol 0.0000 flows 100.000000,30.000000,6.000000",
+    "CHAIN DONE amine_p1b_T333_P101",
+    "CHAIN ALL DONE"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 17.13571175555556,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     3.7799364166666667,
+     0.7559872833333333
+    ],
+    "mole_fractions": [
+     0.7352941176470589,
+     0.22058823529411764,
+     0.04411764705882353
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 333,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN amine_p1b_T333_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 333.000014 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 136.000000 H_Btu_lbmol 0.0000 flows 100.000000,30.000000,6.000000",
+    "CHAIN DONE amine_p1b_T333_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 17.13571175555556,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     3.7799364166666667,
+     0.7559872833333333
+    ],
+    "mole_fractions": [
+     0.7352941176470589,
+     0.22058823529411764,
+     0.04411764705882353
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 363,
+   "P_kPa": 101,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN amine_p1b_T363_P101",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 363.000014 P_kPa 101.000001 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 136.000000 H_Btu_lbmol 0.0000 flows 100.000000,30.000000,6.000000",
+    "CHAIN DONE amine_p1b_T363_P101"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 17.13571175555556,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     3.7799364166666667,
+     0.7559872833333333
+    ],
+    "mole_fractions": [
+     0.7352941176470589,
+     0.22058823529411764,
+     0.04411764705882353
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 363,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN amine_p1b_T363_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 363.000014 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 136.000000 H_Btu_lbmol 0.0000 flows 100.000000,30.000000,6.000000",
+    "CHAIN DONE amine_p1b_T363_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 17.13571175555556,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     3.7799364166666667,
+     0.7559872833333333
+    ],
+    "mole_fractions": [
+     0.7352941176470589,
+     0.22058823529411764,
+     0.04411764705882353
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 393,
+   "P_kPa": 101,
+   "psi": 0.60336006,
+   "raw": [
+    "CHAIN BEGIN amine_p1b_T393_P101",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 393.000014 P_kPa 101.000001 psi 0.60336006",
+    "CCR VAPOR rate_lbmol_h 82.056740 H_Btu_lbmol 0.0000 flows 74.861412,4.546844,2.648481",
+    "CCR LIQUID rate_lbmol_h 53.943264 H_Btu_lbmol 0.0000 flows 25.138586,25.453156,3.351520",
+    "CHAIN DONE amine_p1b_T393_P101"
+   ],
+   "vapour": {
+    "total_mol_per_s": 10.338975325298279,
+    "flows_mol_per_s": [
+     9.432379247396234,
+     0.5728927072167445,
+     0.3337029926916583
+    ],
+    "mole_fractions": [
+     0.9123127728447413,
+     0.05541097538118136,
+     0.03227621521400923
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 6.7967369342488,
+    "flows_mol_per_s": [
+     3.1674085561635614,
+     3.2070437094499225,
+     0.42228441663955557
+    ],
+    "mole_fractions": [
+     0.46601900100075516,
+     0.4718504983309872,
+     0.06213046359226612
+    ]
+   },
+   "K": [
+    1.957672907940642,
+    0.1174333302119614,
+    0.5194909766941914
+   ],
+   "balance_max_rel_dev": 1.6666666654193327e-07
+  },
+  {
+   "T_K": 393,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN amine_p1b_T393_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 393.000014 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 136.000000 H_Btu_lbmol 0.0000 flows 100.000000,30.000000,6.000000",
+    "CHAIN DONE amine_p1b_T393_P500",
+    "CHAIN ALL DONE"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 17.13571175555556,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     3.7799364166666667,
+     0.7559872833333333
+    ],
+    "mole_fractions": [
+     0.7352941176470589,
+     0.22058823529411764,
+     0.04411764705882353
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  }
+ ],
+ "tolerances": {
+  "T_K": 0.1,
+  "compositions": 0.002,
+  "duty_percent": 0.5
+ },
+ "source": {
+  "sim_file": "base_p1b.ccsim (slate water/MEA/CO2 per chemcad-vs-claude make_p1b_base.py)",
+  "captured": "2026-11-21",
+  "runner": "cc_chain.py capture_case via run_job.ps1, one Dispatch per chain"
+ }
+}

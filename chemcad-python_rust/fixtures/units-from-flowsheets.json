@@ -1,0 +1,1012 @@
+{
+ "case": "units-from-flowsheets",
+ "purpose": "unit-level verification fixtures derived from the two converged ChemCAD flowsheet fixtures, for the Phase 3 and Phase 4 fixture-match checks of PLAN.md",
+ "source_fixtures": [
+  "flowsheet-linde-asu-stored.json",
+  "flowsheet-nh3-loop-iso557.json"
+ ],
+ "components_by_source_case": {
+  "flowsheet-linde-asu-stored": [
+   "Nitrogen",
+   "Oxygen",
+   "Argon"
+  ],
+  "flowsheet-nh3-loop-iso557": [
+   "Hydrogen",
+   "Nitrogen",
+   "Ammonia",
+   "Methane",
+   "Argon"
+  ]
+ },
+ "field_definitions": {
+  "T_K": "stream temperature, in kelvin (K)",
+  "P_Pa": "stream pressure, in pascal (Pa)",
+  "vapour_fraction": "stream vapour fraction, dimensionless, 0 to 1",
+  "flows_mol_s": "component molar flow rates, in moles per second (mol/s), in the component order of components_by_source_case for the unit's source case",
+  "total_mol_s": "total molar flow rate, in mol/s",
+  "enthalpy_rate_W": "total enthalpy rate of the stream, in watts (W), on the source fixture's enthalpy datum",
+  "molar_enthalpy_J_mol": "enthalpy rate divided by total flow, in joules per mole (J/mol)",
+  "type_recorded": "unit type as recorded in the source fixture; null in every case here, because neither source fixture records a unit type or a non-empty label",
+  "inferred_role": "identification inferred from the source fixture's process text and the unit's stream behaviour; not a recorded value",
+  "component_balance_worst_mol_s": "largest per-component difference between total inlet and total outlet flow, in mol/s; for the Gibbs converter this is not a closure (reaction changes component totals) and the element balance in its stoichiometry fields is the closure"
+ },
+ "si_verification": {
+  "method": "every stored stream value re-derived from the raw capture lines stored in the same source fixture, with factors degR * 5/9 = K, psia * 6894.757 = Pa, lbmol/h * (453.59237 / 3600) = mol/s, Btu/h * 0.29307107 = W; the source fixtures are already SI and no further conversion is applied in this file",
+  "linde_worst_deviation": {
+   "T_K": 1.4210854715202004e-14,
+   "P_Pa_rel": 0.0,
+   "flows_rel": 0.0,
+   "enthalpy_rate_W_rel": 0.0
+  },
+  "nh3_worst_deviation": {
+   "T_K": 1.1368683772161603e-13,
+   "P_Pa_rel": 0.0,
+   "flows_rel": 0.0,
+   "enthalpy_rate_W_rel": 0.0
+  }
+ },
+ "units": [
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 1,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "compressor (inferred: one inlet, one outlet, component flows unchanged, pressure rises from 101325 Pa to 600001 Pa and temperature rises from 298.15 K to 557.67 K)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 1,
+     "T_K": 298.1499888888889,
+     "P_Pa": 101325.34887199999,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      58.19444453550078,
+      2.583333411049631
+     ],
+     "total_mol_s": 277.77777893081264,
+     "enthalpy_rate_W": -2268.667871314227,
+     "molar_enthalpy_J_mol": -8.16720430282976
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 2,
+     "T_K": 557.6710555555555,
+     "P_Pa": 600001.0387753289,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      58.19444453550078,
+      2.583333411049631
+     ],
+     "total_mol_s": 277.77777893081264,
+     "enthalpy_rate_W": 2125867.2047232,
+     "molar_enthalpy_J_mol": 7653.12190523598
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0,
+   "component_balance_relative_to_inlet_total": 0.0,
+   "enthalpy_rate": {
+    "in_W": -2268.667871314227,
+    "out_W": 2125867.2047232,
+    "out_minus_in_W": 2128135.872594514
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 2,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "heater/cooler, the aftercooler (inferred: one inlet, one outlet, component flows unchanged, temperature returns to 298.15 K at near-constant pressure)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 2,
+     "T_K": 557.6710555555555,
+     "P_Pa": 600001.0387753289,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      58.19444453550078,
+      2.583333411049631
+     ],
+     "total_mol_s": 277.77777893081264,
+     "enthalpy_rate_W": 2125867.2047232,
+     "molar_enthalpy_J_mol": 7653.12190523598
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 3,
+     "T_K": 298.1499888888889,
+     "P_Pa": 595001.0299464989,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      58.19444453550078,
+      2.583333411049631
+     ],
+     "total_mol_s": 277.77777893081264,
+     "enthalpy_rate_W": -13232.002017477549,
+     "molar_enthalpy_J_mol": -47.63520706518898
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0,
+   "component_balance_relative_to_inlet_total": 0.0,
+   "enthalpy_rate": {
+    "in_W": 2125867.2047232,
+    "out_W": -13232.002017477549,
+    "out_minus_in_W": -2139099.2067406774
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 3,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "multi-stream heat exchanger, the LNG exchanger (inferred: four inlets and four outlets; each outlet's component flows are identical to exactly one inlet's, giving the four passes listed in pass_pairing_stream_ids; total enthalpy rate is conserved, as the enthalpy_rate block shows)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 4,
+     "T_K": 298.1499888888889,
+     "P_Pa": 595001.0299464989,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      190.9600064100575,
+      51.21110902407714,
+      2.273333265645964
+     ],
+     "total_mol_s": 244.4444486997806,
+     "enthalpy_rate_W": -11644.159079126399,
+     "molar_enthalpy_J_mol": -47.63519540354712
+    },
+    {
+     "id": 5,
+     "T_K": 298.1499888888889,
+     "P_Pa": 595001.0299464989,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      26.04000087409875,
+      6.983333369459669,
+      0.31000003200557413
+     ],
+     "total_mol_s": 33.33333427556399,
+     "enthalpy_rate_W": -1587.840154175985,
+     "molar_enthalpy_J_mol": -47.63520327877908
+    },
+    {
+     "id": 10,
+     "T_K": 81.12121666666667,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      13.915018191713527,
+      2.360823925941892
+     ],
+     "total_mol_s": 233.27584310191764,
+     "enthalpy_rate_W": -1487979.85046186,
+     "molar_enthalpy_J_mol": -6378.628111148933
+    },
+    {
+     "id": 13,
+     "T_K": 92.30621111111112,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 0.0,
+     "flows_mol_s": [
+      5.726919673934434e-10,
+      44.279418783914416,
+      0.22250933391028221
+     ],
+     "total_mol_s": 44.50192811839739,
+     "enthalpy_rate_W": -567005.830027494,
+     "molar_enthalpy_J_mol": -12741.151990515442
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 6,
+     "T_K": 100.15,
+     "P_Pa": 590001.028012426,
+     "vapour_fraction": 0.89197379,
+     "flows_mol_s": [
+      190.9600064100575,
+      51.21110902407714,
+      2.273333265645964
+     ],
+     "total_mol_s": 244.4444486997806,
+     "enthalpy_rate_W": -1616834.40780876,
+     "molar_enthalpy_J_mol": -6614.322462256068
+    },
+    {
+     "id": 14,
+     "T_K": 293.1499888888889,
+     "P_Pa": 125000.22761550698,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      13.915018191713527,
+      2.360823925941892
+     ],
+     "total_mol_s": 233.27584310191764,
+     "enthalpy_rate_W": -36232.971318372096,
+     "molar_enthalpy_J_mol": -155.32243217546534
+    },
+    {
+     "id": 15,
+     "T_K": 92.13666111111111,
+     "P_Pa": 125000.22761550698,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      5.726919673934434e-10,
+      44.279418783914416,
+      0.22250933391028221
+     ],
+     "total_mol_s": 44.50192811839739,
+     "enthalpy_rate_W": -269775.3811043367,
+     "molar_enthalpy_J_mol": -6062.105452748008
+    },
+    {
+     "id": 16,
+     "T_K": 153.15000555555557,
+     "P_Pa": 590001.028012426,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      26.04000087409875,
+      6.983333369459669,
+      0.31000003200557413
+     ],
+     "total_mol_s": 33.33333427556399,
+     "enthalpy_rate_W": -145375.120098335,
+     "molar_enthalpy_J_mol": -4361.253479670848
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0,
+   "component_balance_relative_to_inlet_total": 0.0,
+   "enthalpy_rate": {
+    "in_W": -2068217.6797226563,
+    "out_W": -2068217.8803298038,
+    "out_minus_in_W": -0.20060714753344655
+   },
+   "spec_recorded": null,
+   "pass_pairing_stream_ids": [
+    {
+     "inlet_stream_id": 4,
+     "outlet_stream_id": 6
+    },
+    {
+     "inlet_stream_id": 10,
+     "outlet_stream_id": 14
+    },
+    {
+     "inlet_stream_id": 13,
+     "outlet_stream_id": 15
+    },
+    {
+     "inlet_stream_id": 5,
+     "outlet_stream_id": 16
+    }
+   ],
+   "pass_pairing_basis": "component flows identical between the paired streams"
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 5,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "expander (inferred: one inlet, one outlet, component flows unchanged, pressure falls from 590001 Pa to 130000 Pa, temperature falls, and the enthalpy rate falls by the work taken out)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 16,
+     "T_K": 153.15000555555557,
+     "P_Pa": 590001.028012426,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      26.04000087409875,
+      6.983333369459669,
+      0.31000003200557413
+     ],
+     "total_mol_s": 33.33333427556399,
+     "enthalpy_rate_W": -145375.120098335,
+     "molar_enthalpy_J_mol": -4361.253479670848
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 7,
+     "T_K": 108.44342777777779,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      26.04000087409875,
+      6.983333369459669,
+      0.31000003200557413
+     ],
+     "total_mol_s": 33.33333427556399,
+     "enthalpy_rate_W": -185413.15327765577,
+     "molar_enthalpy_J_mol": -5562.394441097916
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0,
+   "component_balance_relative_to_inlet_total": 0.0,
+   "enthalpy_rate": {
+    "in_W": -145375.120098335,
+    "out_W": -185413.15327765577,
+    "out_minus_in_W": -40038.03317932077
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 9,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "high-pressure SCDS column (inferred: the two-phase inlet is separated into two liquid outlets of different composition; the process text names an HP column and this is one of the two units with a separation pattern)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 6,
+     "T_K": 100.15,
+     "P_Pa": 590001.028012426,
+     "vapour_fraction": 0.89197379,
+     "flows_mol_s": [
+      190.9600064100575,
+      51.21110902407714,
+      2.273333265645964
+     ],
+     "total_mol_s": 244.4444486997806,
+     "enthalpy_rate_W": -1616834.40780876,
+     "molar_enthalpy_J_mol": -6614.322462256068
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 8,
+     "T_K": 99.67233333333334,
+     "P_Pa": 570001.013381377,
+     "vapour_fraction": 0.0,
+     "flows_mol_s": [
+      87.65229793697728,
+      51.03093709479791,
+      1.934381453246122
+     ],
+     "total_mol_s": 140.6176164850213,
+     "enthalpy_rate_W": -1592157.091037085,
+     "molar_enthalpy_J_mol": -11322.600473793998
+    },
+    {
+     "id": 11,
+     "T_K": 95.89202222222222,
+     "P_Pa": 570001.013381377,
+     "vapour_fraction": 0.0,
+     "flows_mol_s": [
+      103.30771099303783,
+      0.1801714756868522,
+      0.33895169900174915
+     ],
+     "total_mol_s": 103.82683416772643,
+     "enthalpy_rate_W": -1141817.725232866,
+     "molar_enthalpy_J_mol": -10997.327756216888
+    }
+   ],
+   "component_balance_worst_mol_s": 2.5199576043632987e-06,
+   "component_balance_relative_to_inlet_total": 1.0308917292935687e-08,
+   "enthalpy_rate": {
+    "in_W": -1616834.40780876,
+    "out_W": -2733974.816269951,
+    "out_minus_in_W": -1117140.408461191
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 10,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "low-pressure SCDS column (inferred: three inlets and two outlets of different composition; the process text names an LP column)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 7,
+     "T_K": 108.44342777777779,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      26.04000087409875,
+      6.983333369459669,
+      0.31000003200557413
+     ],
+     "total_mol_s": 33.33333427556399,
+     "enthalpy_rate_W": -185413.15327765577,
+     "molar_enthalpy_J_mol": -5562.394441097916
+    },
+    {
+     "id": 9,
+     "T_K": 82.99639444444443,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 0.16848406,
+     "flows_mol_s": [
+      87.65229793697728,
+      51.03093709479791,
+      1.934381453246122
+     ],
+     "total_mol_s": 140.6176164850213,
+     "enthalpy_rate_W": -1592155.332610665,
+     "molar_enthalpy_J_mol": -11322.587968771768
+    },
+    {
+     "id": 12,
+     "T_K": 79.73137777777778,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 0.17413381,
+     "flows_mol_s": [
+      103.30771099303783,
+      0.1801714756868522,
+      0.33895169900174915
+     ],
+     "total_mol_s": 103.82683416772643,
+     "enthalpy_rate_W": -1141720.7187086958,
+     "molar_enthalpy_J_mol": -10996.393445497048
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 10,
+     "T_K": 81.12121666666667,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      13.915018191713527,
+      2.360823925941892
+     ],
+     "total_mol_s": 233.27584310191764,
+     "enthalpy_rate_W": -1487979.85046186,
+     "molar_enthalpy_J_mol": -6378.628111148933
+    },
+    {
+     "id": 13,
+     "T_K": 92.30621111111112,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 0.0,
+     "flows_mol_s": [
+      5.726919673934434e-10,
+      44.279418783914416,
+      0.22250933391028221
+     ],
+     "total_mol_s": 44.50192811839739,
+     "enthalpy_rate_W": -567005.830027494,
+     "molar_enthalpy_J_mol": -12741.151990515442
+    }
+   ],
+   "component_balance_worst_mol_s": 8.819278946248232e-06,
+   "component_balance_relative_to_inlet_total": 3.1749403389202965e-08,
+   "enthalpy_rate": {
+    "in_W": -2919289.2045970163,
+    "out_W": -2054985.6804893538,
+    "out_minus_in_W": 864303.5241076625
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 11,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "valve (inferred: one inlet, one outlet, component flows unchanged, pressure falls from 570001 Pa to 130000 Pa, and the enthalpy rate changes by only 97.0 W on 1141818 W, 0.0085 percent, the isenthalpic pattern of a throttling valve)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 11,
+     "T_K": 95.89202222222222,
+     "P_Pa": 570001.013381377,
+     "vapour_fraction": 0.0,
+     "flows_mol_s": [
+      103.30771099303783,
+      0.1801714756868522,
+      0.33895169900174915
+     ],
+     "total_mol_s": 103.82683416772643,
+     "enthalpy_rate_W": -1141817.725232866,
+     "molar_enthalpy_J_mol": -10997.327756216888
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 12,
+     "T_K": 79.73137777777778,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 0.17413381,
+     "flows_mol_s": [
+      103.30771099303783,
+      0.1801714756868522,
+      0.33895169900174915
+     ],
+     "total_mol_s": 103.82683416772643,
+     "enthalpy_rate_W": -1141720.7187086958,
+     "molar_enthalpy_J_mol": -10996.393445497048
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0,
+   "component_balance_relative_to_inlet_total": 0.0,
+   "enthalpy_rate": {
+    "in_W": -1141817.725232866,
+    "out_W": -1141720.7187086958,
+    "out_minus_in_W": 97.0065241700504
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 12,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "valve (inferred: one inlet, one outlet, component flows unchanged, pressure falls from 570001 Pa to 130000 Pa, and the enthalpy rate changes by only 1.8 W on 1592157 W, 0.00011 percent, the isenthalpic pattern of a throttling valve)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 8,
+     "T_K": 99.67233333333334,
+     "P_Pa": 570001.013381377,
+     "vapour_fraction": 0.0,
+     "flows_mol_s": [
+      87.65229793697728,
+      51.03093709479791,
+      1.934381453246122
+     ],
+     "total_mol_s": 140.6176164850213,
+     "enthalpy_rate_W": -1592157.091037085,
+     "molar_enthalpy_J_mol": -11322.600473793998
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 9,
+     "T_K": 82.99639444444443,
+     "P_Pa": 130000.22954957999,
+     "vapour_fraction": 0.16848406,
+     "flows_mol_s": [
+      87.65229793697728,
+      51.03093709479791,
+      1.934381453246122
+     ],
+     "total_mol_s": 140.6176164850213,
+     "enthalpy_rate_W": -1592155.332610665,
+     "molar_enthalpy_J_mol": -11322.587968771768
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0,
+   "component_balance_relative_to_inlet_total": 0.0,
+   "enthalpy_rate": {
+    "in_W": -1592157.091037085,
+    "out_W": -1592155.332610665,
+    "out_minus_in_W": 1.7584264201577753
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 13,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "divider / splitter (inferred: one inlet and two outlets whose component flows are the same fractions of the inlet for every component, 0.88 and 0.12)",
+   "mapping_basis": "src/tgt recorded on every stream in the source fixture; inlets are the streams with tgt equal to the unit id, outlets the streams with src equal to the unit id",
+   "inlet_streams": [
+    {
+     "id": 3,
+     "T_K": 298.1499888888889,
+     "P_Pa": 595001.0299464989,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      217.00000098426221,
+      58.19444453550078,
+      2.583333411049631
+     ],
+     "total_mol_s": 277.77777893081264,
+     "enthalpy_rate_W": -13232.002017477549,
+     "molar_enthalpy_J_mol": -47.63520706518898
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 4,
+     "T_K": 298.1499888888889,
+     "P_Pa": 595001.0299464989,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      190.9600064100575,
+      51.21110902407714,
+      2.273333265645964
+     ],
+     "total_mol_s": 244.4444486997806,
+     "enthalpy_rate_W": -11644.159079126399,
+     "molar_enthalpy_J_mol": -47.63519540354712
+    },
+    {
+     "id": 5,
+     "T_K": 298.1499888888889,
+     "P_Pa": 595001.0299464989,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      26.04000087409875,
+      6.983333369459669,
+      0.31000003200557413
+     ],
+     "total_mol_s": 33.33333427556399,
+     "enthalpy_rate_W": -1587.840154175985,
+     "molar_enthalpy_J_mol": -47.63520327877908
+    }
+   ],
+   "component_balance_worst_mol_s": 6.299894039329956e-06,
+   "component_balance_relative_to_inlet_total": 2.2679618447446434e-08,
+   "enthalpy_rate": {
+    "in_W": -13232.002017477549,
+    "out_W": -13231.999233302384,
+    "out_minus_in_W": 0.002784175165288616
+   },
+   "spec_recorded": null,
+   "outlet_fractions_of_inlet_total": [
+    0.8800000116663956,
+    0.1200000028939193
+   ]
+  },
+  {
+   "source_case": "flowsheet-nh3-loop-iso557",
+   "unit_id": 1,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "mixer (documented: first unit in the process text; the source fixture's checks record a mixer unit closure)",
+   "mapping_basis": "src/tgt are null in the source fixture; mapping from the source fixture's process text, raw CCR PAR unit numbers, and checks, accepted only because the balance closure recomputed here matches the closure recorded in the source fixture's checks",
+   "inlet_streams": [
+    {
+     "id": 1,
+     "T_K": 308.1499888888889,
+     "P_Pa": 18200032.8264169,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      1642.5975774216556,
+      556.8392668560089,
+      0.0,
+      25.909889162743053,
+      8.264361002947194
+     ],
+     "total_mol_s": 2233.611094443355,
+     "enthalpy_rate_W": -1584415.6187230349,
+     "molar_enthalpy_J_mol": -709.3516067611994
+    },
+    {
+     "id": 9,
+     "T_K": 294.14998333333335,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      4449.440392759114,
+      1974.667889577075,
+      950.0454264287953,
+      841.7768840432446,
+      158.8275229192575
+     ],
+     "total_mol_s": 8374.758115727485,
+     "enthalpy_rate_W": -114630355.89516069,
+     "molar_enthalpy_J_mol": -13687.601995320812
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 2,
+     "T_K": 295.9787333333333,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      6091.39613697722,
+      2530.3756198669666,
+      949.6906919958792,
+      866.9977537961697,
+      167.0187207329025
+     ],
+     "total_mol_s": 10605.478923369137,
+     "enthalpy_rate_W": -116142555.72498949,
+     "molar_enthalpy_J_mol": -10951.184436288846
+    }
+   ],
+   "component_balance_worst_mol_s": 1.13153656611712,
+   "component_balance_relative_to_inlet_total": 0.00010666451588357729,
+   "enthalpy_rate": {
+    "in_W": -116214771.51388372,
+    "out_W": -116142555.72498949,
+    "out_minus_in_W": 72215.78889423609
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-nh3-loop-iso557",
+   "unit_id": 2,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "compressor (documented: raw CCR PAR lines for unit 2 set an outlet pressure of 2726.7144 psia, 188 bar, and an efficiency of 0.75; the process text states 188 bar, efficiency 0.75)",
+   "mapping_basis": "src/tgt are null in the source fixture; mapping from the source fixture's process text, raw CCR PAR unit numbers, and checks, accepted only because the balance closure recomputed here matches the closure recorded in the source fixture's checks",
+   "inlet_streams": [
+    {
+     "id": 2,
+     "T_K": 295.9787333333333,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      6091.39613697722,
+      2530.3756198669666,
+      949.6906919958792,
+      866.9977537961697,
+      167.0187207329025
+     ],
+     "total_mol_s": 10605.478923369137,
+     "enthalpy_rate_W": -116142555.72498949,
+     "molar_enthalpy_J_mol": -10951.184436288846
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 3,
+     "T_K": 300.5998055555556,
+     "P_Pa": 18800033.1964008,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      6091.39613697722,
+      2530.3756198669666,
+      949.6906919958792,
+      866.9977537961697,
+      167.0187207329025
+     ],
+     "total_mol_s": 10605.478923369137,
+     "enthalpy_rate_W": -114648033.9421031,
+     "molar_enthalpy_J_mol": -10810.264653817429
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0,
+   "component_balance_relative_to_inlet_total": 0.0,
+   "enthalpy_rate": {
+    "in_W": -116142555.72498949,
+    "out_W": -114648033.9421031,
+    "out_minus_in_W": 1494521.782886386
+   },
+   "spec_recorded": {
+    "outlet_pressure_Pa": 18800033.1964008,
+    "efficiency": 0.75,
+    "spec_basis": "raw CCR PAR lines for unit 2 in the source fixture (par 3 outlet pressure, par 5 efficiency) and the process text"
+   }
+  },
+  {
+   "source_case": "flowsheet-nh3-loop-iso557",
+   "unit_id": 3,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "Gibbs converter (documented: raw CCR PAR lines for unit 3 set the isothermal mode at 1494.27 degR, 830.15 K, 557 degrees Celsius; the process text states an isothermal Gibbs converter at 557 degrees Celsius)",
+   "mapping_basis": "src/tgt are null in the source fixture; mapping from the source fixture's process text, raw CCR PAR unit numbers, and checks, accepted only because the balance closure recomputed here matches the closure recorded in the source fixture's checks",
+   "inlet_streams": [
+    {
+     "id": 3,
+     "T_K": 300.5998055555556,
+     "P_Pa": 18800033.1964008,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      6091.39613697722,
+      2530.3756198669666,
+      949.6906919958792,
+      866.9977537961697,
+      167.0187207329025
+     ],
+     "total_mol_s": 10605.478923369137,
+     "enthalpy_rate_W": -114648033.9421031,
+     "molar_enthalpy_J_mol": -10810.264653817429
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 4,
+     "T_K": 830.1500000000001,
+     "P_Pa": 18800033.1964008,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      4573.6099180699275,
+      2024.4468802312026,
+      1961.5483602642278,
+      866.9977537961697,
+      167.0187207329025
+     ],
+     "total_mol_s": 9593.62163309443,
+     "enthalpy_rate_W": 19691937.5526976,
+     "molar_enthalpy_J_mol": 2052.6072744799244
+    }
+   ],
+   "component_balance_worst_mol_s": 1517.786218907292,
+   "component_balance_relative_to_inlet_total": 0.14311340674704046,
+   "enthalpy_rate": {
+    "in_W": -114648033.9421031,
+    "out_W": 19691937.5526976,
+    "out_minus_in_W": 134339971.4948007
+   },
+   "spec_recorded": null,
+   "element_balance_worst_mol_of_atoms_s": 0.0005669904603564646,
+   "stoichiometry": {
+    "h2_consumed_per_n2_consumed": 3.0,
+    "nh3_formed_per_2_n2_consumed": 1.000000186782056
+   }
+  },
+  {
+   "source_case": "flowsheet-nh3-loop-iso557",
+   "unit_id": 4,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "flash separator (documented: raw CCR PAR lines for unit 4 set 529.47 degR, 294.15 K, 21 degrees Celsius, and 2613.5848 psia, 180.2 bar; the source fixture's checks record a flash unit closure)",
+   "mapping_basis": "src/tgt are null in the source fixture; mapping from the source fixture's process text, raw CCR PAR unit numbers, and checks, accepted only because the balance closure recomputed here matches the closure recorded in the source fixture's checks",
+   "inlet_streams": [
+    {
+     "id": 4,
+     "T_K": 830.1500000000001,
+     "P_Pa": 18800033.1964008,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      4573.6099180699275,
+      2024.4468802312026,
+      1961.5483602642278,
+      866.9977537961697,
+      167.0187207329025
+     ],
+     "total_mol_s": 9593.62163309443,
+     "enthalpy_rate_W": 19691937.5526976,
+     "molar_enthalpy_J_mol": 2052.6072744799244
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 6,
+     "T_K": 294.14998333333335,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      4551.3919558042835,
+      2019.9141064782168,
+      971.8140802523786,
+      861.0647781963578,
+      162.46679530207194
+     ],
+     "total_mol_s": 8566.651716033308,
+     "enthalpy_rate_W": -117256908.64658259,
+     "molar_enthalpy_J_mol": -13687.600772554471
+    },
+    {
+     "id": 7,
+     "T_K": 294.14998333333335,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 0.0,
+     "flows_mol_s": [
+      22.21799502509339,
+      4.5326255794785775,
+      989.7343934099417,
+      5.933037842764939,
+      4.551930596743658
+     ],
+     "total_mol_s": 1026.9699824540223,
+     "enthalpy_rate_W": -66606543.4271272,
+     "molar_enthalpy_J_mol": -64857.34205002354
+    }
+   ],
+   "component_balance_worst_mol_s": 0.0001481735071138246,
+   "component_balance_relative_to_inlet_total": 1.5445002187983012e-08,
+   "enthalpy_rate": {
+    "in_W": 19691937.5526976,
+    "out_W": -183863452.0737098,
+    "out_minus_in_W": -203555389.62640738
+   },
+   "spec_recorded": null
+  },
+  {
+   "source_case": "flowsheet-nh3-loop-iso557",
+   "unit_id": 5,
+   "type_recorded": null,
+   "label_recorded": null,
+   "inferred_role": "divider (documented: raw CCR PAR lines for unit 5 set split fractions 0.0224 and 0.9776; the source fixture's checks record a divider unit closure)",
+   "mapping_basis": "src/tgt are null in the source fixture; mapping from the source fixture's process text, raw CCR PAR unit numbers, and checks, accepted only because the balance closure recomputed here matches the closure recorded in the source fixture's checks",
+   "inlet_streams": [
+    {
+     "id": 6,
+     "T_K": 294.14998333333335,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      4551.3919558042835,
+      2019.9141064782168,
+      971.8140802523786,
+      861.0647781963578,
+      162.46679530207194
+     ],
+     "total_mol_s": 8566.651716033308,
+     "enthalpy_rate_W": -117256908.64658259,
+     "molar_enthalpy_J_mol": -13687.600772554471
+    }
+   ],
+   "outlet_streams": [
+    {
+     "id": 8,
+     "T_K": 294.14998333333335,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      101.95117245173972,
+      45.24607452353664,
+      21.76863492390125,
+      19.28785005385486,
+      3.639256129087853
+     ],
+     "total_mol_s": 191.89298808212033,
+     "enthalpy_rate_W": -2626554.8029193897,
+     "molar_enthalpy_J_mol": -13687.601767894506
+    },
+    {
+     "id": 9,
+     "T_K": 294.14998333333335,
+     "P_Pa": 18020031.405417897,
+     "vapour_fraction": 1.0,
+     "flows_mol_s": [
+      4449.440392759114,
+      1974.667889577075,
+      950.0454264287953,
+      841.7768840432446,
+      158.8275229192575
+     ],
+     "total_mol_s": 8374.758115727485,
+     "enthalpy_rate_W": -114630355.89516069,
+     "molar_enthalpy_J_mol": -13687.601995320812
+    }
+   ],
+   "component_balance_worst_mol_s": 0.00039059342998370994,
+   "component_balance_relative_to_inlet_total": 4.559464338356104e-08,
+   "enthalpy_rate": {
+    "in_W": -117256908.64658259,
+    "out_W": -117256910.69808008,
+    "out_minus_in_W": -2.0514974892139435
+   },
+   "spec_recorded": {
+    "outlet_fractions_of_inlet_total": [
+     0.0224,
+     0.9776
+    ],
+    "spec_basis": "raw CCR PAR lines for unit 5 in the source fixture (par 3 and par 4) and the process text purge fraction 0.0224"
+   }
+  }
+ ],
+ "excluded_units": [
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 4,
+   "reason": "no inlet stream or no outlet stream in the fixture has this unit as target or source (inlets found: [], outlets found: []), so no inlet/outlet pair can be formed"
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 6,
+   "reason": "no inlet stream or no outlet stream in the fixture has this unit as target or source (inlets found: [], outlets found: []), so no inlet/outlet pair can be formed"
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 7,
+   "reason": "no inlet stream or no outlet stream in the fixture has this unit as target or source (inlets found: [], outlets found: []), so no inlet/outlet pair can be formed"
+  },
+  {
+   "source_case": "flowsheet-linde-asu-stored",
+   "unit_id": 8,
+   "reason": "no inlet stream or no outlet stream in the fixture has this unit as target or source (inlets found: [], outlets found: []), so no inlet/outlet pair can be formed"
+  }
+ ],
+ "excluded_streams": [
+  {
+   "source_case": "flowsheet-nh3-loop-iso557",
+   "stream_id": 5,
+   "reason": "zero component flows, T_K 0 and P_Pa 0 in the source fixture: an unused placeholder stream that belongs to no unit in the documented mapping (streams used as inlets: [1, 2, 3, 4, 6, 9]; as outlets: [2, 3, 4, 6, 7, 8, 9])"
+  }
+ ]
+}

@@ -1,0 +1,86 @@
+{
+ "case": "flowsheet-furfural-decanter-nrtl",
+ "source_sim": "p1c_fs.ccsim (databank NRTL, modek 10, three-phase flag i3pf 1), feed and FLAS T+P spec written by COM per the October P1c procedure",
+ "process": "Decanter: 1250 kg/h condensed furfural/water azeotrope (35 mass percent furfural) at 20 degC, 101.325 kPa",
+ "components": [
+  "Water",
+  "Furfural",
+  "Nitrogen"
+ ],
+ "streams": [
+  {
+   "id": 1,
+   "src": null,
+   "tgt": null,
+   "T_K": 293.1499888888889,
+   "P_Pa": 101324.65939629999,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -3842349.87932694,
+   "flows_mol_s": [
+    12.529229494440207,
+    1.2650187207777777,
+    0.0
+   ]
+  },
+  {
+   "id": 2,
+   "src": null,
+   "tgt": null,
+   "T_K": 293.1499888888889,
+   "P_Pa": 101324.65939629999,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": 0.0,
+   "flows_mol_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "id": 3,
+   "src": null,
+   "tgt": null,
+   "T_K": 293.1499888888889,
+   "P_Pa": 101324.65939629999,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": 0.0,
+   "flows_mol_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "id": 4,
+   "src": null,
+   "tgt": null,
+   "T_K": 293.1499888888889,
+   "P_Pa": 101324.65939629999,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -3842349.87932694,
+   "flows_mol_s": [
+    12.529229494440207,
+    1.2650187207777777,
+    0.0
+   ]
+  }
+ ],
+ "finding": "ChemCAD returns a single liquid phase (vapour and second-liquid outlets zero, feed enthalpy and composition on the liquid outlet) under databank NRTL, and identically under the UNIQUAC, Margules and immiscible variants captured in the same chain, and identically in the October 2026 runs. The published decanter split (aqueous 865 kg/h) rests on measured solubility data, not on this model configuration. Recorded as a comparison case: the stream enthalpy of the feed/liquid outlet is captured, the split is not reproduced.",
+ "checks": {
+  "variants_identical": true
+ },
+ "raw": [
+  "CCR LOAD rc=0",
+  "CCR PUT feed rc=3",
+  "CCR SAVE rc=0",
+  "CCR RUN rc=0",
+  "CCR SEQRUN unit=1 rc=0",
+  "CCR UERR unit=1 err=",
+  "CCR TOPO nstreams=4 nunits=1 ncomp=3 comps=Water,Furfural,Nitrogen",
+  "CCR STREAM id=1 rc=3 T_R=527.66998 P_psia=14.6959 VF=0 H=-13110642 flows=99.440002,10.04,0",
+  "CCR STREAM id=2 rc=3 T_R=527.66998 P_psia=14.6959 VF=1 H=0 flows=0,0,0",
+  "CCR STREAM id=3 rc=3 T_R=527.66998 P_psia=14.6959 VF=0 H=0 flows=0,0,0",
+  "CCR STREAM id=4 rc=3 T_R=527.66998 P_psia=14.6959 VF=0 H=-13110642 flows=99.440002,10.04,0",
+  "CHAIN DONE dec_base"
+ ]
+}

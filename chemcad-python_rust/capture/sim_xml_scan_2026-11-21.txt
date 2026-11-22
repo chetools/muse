@@ -1,0 +1,819 @@
+C:\Users\carlo\base_n1.ccsim
+  modek=['9'] compIDs=['10', '2', '3', '4', '46', '49', '5', '6', '7', '8', '9'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_n1b.ccsim
+  modek=['9'] compIDs=['10', '2', '3', '4', '46', '49', '5', '6', '7', '8', '9'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_nc6.ccsim
+  modek=['9'] compIDs=['2', '3', '4', '46', '49', '5'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_nc8.ccsim
+  modek=['9'] compIDs=['2', '3', '4', '46', '49', '5', '6', '9'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_p1b.ccsim
+  modek=['12'] compIDs=['250', '49', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_p1c.ccsim
+  modek=['10'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_p1c_v1.ccsim
+  modek=['10'] compIDs=['164', '41', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_p1c_v2.ccsim
+  modek=['9'] compIDs=['164', '41', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_p1c_v3.ccsim
+  modek=['9'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_p2.ccsim
+  modek=['9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\base_p5.ccsim
+  modek=['10'] compIDs=['473', '62', '931'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_gs_c123.ccsim
+  modek=['2', '9'] compIDs=['160', '2', '3', '4', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_gs_c567.ccsim
+  modek=['2', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_gs_h123.ccsim
+  modek=['2', '9'] compIDs=['1', '160', '2', '3', '4', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_gs_probe.ccsim
+  modek=['2', '9'] compIDs=['160', '2', '3', '4', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk00.ccsim
+  modek=['0'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk01.ccsim
+  modek=['1'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk02.ccsim
+  modek=['2'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk03.ccsim
+  modek=['3'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk04.ccsim
+  modek=['4'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk05.ccsim
+  modek=['5'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk06.ccsim
+  modek=['6'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk07.ccsim
+  modek=['7'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk08.ccsim
+  modek=['8'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk09.ccsim
+  modek=['9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk10.ccsim
+  modek=['10'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk11.ccsim
+  modek=['11'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk12.ccsim
+  modek=['12'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk13.ccsim
+  modek=['13'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk14.ccsim
+  modek=['14'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk15.ccsim
+  modek=['15'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk16.ccsim
+  modek=['16'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk17.ccsim
+  modek=['17'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk18.ccsim
+  modek=['18'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk19.ccsim
+  modek=['19'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk20.ccsim
+  modek=['20'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk21.ccsim
+  modek=['21'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk22.ccsim
+  modek=['22'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk23.ccsim
+  modek=['23'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk24.ccsim
+  modek=['24'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk25.ccsim
+  modek=['25'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk26.ccsim
+  modek=['26'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk27.ccsim
+  modek=['27'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk28.ccsim
+  modek=['28'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk29.ccsim
+  modek=['29'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk30.ccsim
+  modek=['30'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_m2_mk31.ccsim
+  modek=['31'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk00.ccsim
+  modek=['0', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk01.ccsim
+  modek=['1', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk02.ccsim
+  modek=['2', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk03.ccsim
+  modek=['3', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk04.ccsim
+  modek=['4', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk05.ccsim
+  modek=['5', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk06.ccsim
+  modek=['6', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk07.ccsim
+  modek=['7', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk08.ccsim
+  modek=['8', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk09.ccsim
+  modek=['9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk10.ccsim
+  modek=['10', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk11.ccsim
+  modek=['11', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk12.ccsim
+  modek=['12', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk13.ccsim
+  modek=['13', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk14.ccsim
+  modek=['14', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk15.ccsim
+  modek=['15', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk16.ccsim
+  modek=['16', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk17.ccsim
+  modek=['17', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk18.ccsim
+  modek=['18', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk19.ccsim
+  modek=['19', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk20.ccsim
+  modek=['20', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk21.ccsim
+  modek=['21', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk22.ccsim
+  modek=['22', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk23.ccsim
+  modek=['23', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk24.ccsim
+  modek=['24', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk25.ccsim
+  modek=['25', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk26.ccsim
+  modek=['26', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk27.ccsim
+  modek=['27', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk28.ccsim
+  modek=['28', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk29.ccsim
+  modek=['29', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk30.ccsim
+  modek=['30', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_mk31.ccsim
+  modek=['31', '9'] compIDs=['10', '11', '160', '450', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_p1c_base.ccsim
+  modek=['10'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_p1c_imms.ccsim
+  modek=['10'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_p1c_marg.ccsim
+  modek=['10', '15'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_p1c_uq.ccsim
+  modek=['10', '14'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_p3_fs.ccsim
+  modek=['9'] compIDs=['1', '2', '46', '63', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\ccr_work.ccsim
+  modek=['10', '9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_e0.ccsim
+  modek=['9'] compIDs=['160', '450', '46', '47', '62', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_e1.ccsim
+  modek=['9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_e2.ccsim
+  modek=['9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_e3.ccsim
+  modek=['9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_e4.ccsim
+  modek=['9'] compIDs=['0', '134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_etoh_B.ccsim
+  modek=['10', '9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_etoh_N.ccsim
+  modek=['9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_etoh_S.ccsim
+  modek=['9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_etoh_T.ccsim
+  modek=['10', '9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_test_full.ccsim
+  modek=['10', '9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_test_modek.ccsim
+  modek=['10', '9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dg_test_noset.ccsim
+  modek=['10', '9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_am_7104.ccsim
+  modek=['10', '9'] compIDs=['117', '140', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_b_65368.ccsim
+  modek=['10', '9'] compIDs=['0', '134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_dib_7201.ccsim
+  modek=['3'] compIDs=['11', '4', '5', '6', '7'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_ew_7102.ccsim
+  modek=['10', '9'] compIDs=['134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_iw_7105.ccsim
+  modek=['10', '9'] compIDs=['145', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_lpg_7101.ccsim
+  modek=['9'] compIDs=['160', '4', '450', '5', '6', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_mw_7103.ccsim
+  modek=['10', '9'] compIDs=['117', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_n_65370.ccsim
+  modek=['9'] compIDs=['0', '134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_s_65367.ccsim
+  modek=['9'] compIDs=['0', '134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\dgx_t_65366.ccsim
+  modek=['10', '9'] compIDs=['0', '134', '160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\Linde_ASU.ccsim
+  modek=['9'] compIDs=['46', '47', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p1c_base.ccsim
+  modek=['10', '9'] compIDs=['164', '46', '47', '62', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p1c_fs.ccsim
+  modek=['10'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p1c_fs_imms.ccsim
+  modek=['10'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p1c_fs_marg.ccsim
+  modek=['10', '15'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p1c_fs_uq.ccsim
+  modek=['10', '14'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p1c_work.ccsim
+  modek=['10'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p1c_work2.ccsim
+  modek=['10'] compIDs=['164', '46', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p2_fs.ccsim
+  modek=['10'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p2_gamma.ccsim
+  modek=['10', '9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p2_test.ccsim
+  modek=['10', '9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\p3_fs.ccsim
+  modek=['9'] compIDs=['1', '2', '46', '63', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\probe.ccsim
+  modek=['9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\probe_gibs.ccsim
+  modek=['9'] compIDs=['1', '2', '46', '63', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\scan.ccsim
+  modek=['9'] compIDs=['46', '47', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\scan60.ccsim
+  modek=['9'] compIDs=['1', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '2', '20', '21', '22', '23', '24', '25', '26', '27'] unitTypes=[]
+  names=[]
+C:\Users\carlo\scan60np.ccsim
+  modek=['9'] compIDs=['1', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '2', '20', '21', '22', '23', '24', '25', '26', '27'] unitTypes=[]
+  names=[]
+C:\Users\carlo\scanB.ccsim
+  modek=['9'] compIDs=['100', '101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', '113', '114', '115', '116', '117', '118', '119'] unitTypes=[]
+  names=[]
+C:\Users\carlo\scanC.ccsim
+  modek=['9'] compIDs=['261', '262', '263', '264', '265', '266', '267', '268', '269', '270', '271', '272', '273', '274', '275', '276', '277', '278', '279', '280'] unitTypes=[]
+  names=[]
+C:\Users\carlo\test1.ccsim
+  modek=['9'] compIDs=['46', '47', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\thermo_test.ccsim
+  modek=['2', '9'] compIDs=['160', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\1 Thermodynamics\1 - Thermodynamics - chemicals.ccsim
+  modek=['10'] compIDs=['125', '226', '40', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\1 Thermodynamics\2 - Thermodynamics - hydrocarbons.ccsim
+  modek=['3'] compIDs=['3', '4', '6', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\1 Thermodynamics\3 - Local thermodynamics.ccsim
+  modek=['10'] compIDs=['134', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\1 Thermodynamics\4 - BIP regression.ccsim
+  modek=['10'] compIDs=['140', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\2 Phase Equilibria\1 - Flash calculations.ccsim
+  modek=['10'] compIDs=['38', '40', '41', '45'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\2 Phase Equilibria\2 - VLE non-ideal.ccsim
+  modek=['10'] compIDs=['100', '153', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\2 Phase Equilibria\3 - VLE azeotropes.ccsim
+  modek=['10'] compIDs=['134', '38', '40', '41', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\2 Phase Equilibria\4 - VLLE and LLE.ccsim
+  modek=['10'] compIDs=['134', '38', '40', '41', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\3 Separators\1 - Distillation basics.ccsim
+  modek=['3'] compIDs=['40', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\3 Separators\2 - Distillation models.ccsim
+  modek=['3'] compIDs=['10', '2', '3', '4', '5', '6', '7', '8'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\3 Separators\3 - Distillation column design.ccsim
+  modek=['3'] compIDs=['40', '41', '42'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\3 Separators\4 - Distillation column performance.ccsim
+  modek=['3'] compIDs=['40', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\3 Separators\5 - Absorption and stripping.ccsim
+  modek=['3'] compIDs=['14', '16', '4', '46'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\3 Separators\6 - Liquid-liquid extraction.ccsim
+  modek=['10'] compIDs=['140', '40', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\3 Separators\7 - Reactive distillation.ccsim
+  modek=['10'] compIDs=['130', '134', '155', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\4 Reactors\1 - Reactor models.ccsim
+  modek=['10'] compIDs=['130', '134', '155', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\4 Reactors\2 - Equilibrium reactor - input parameters.ccsim
+  modek=['9'] compIDs=['1', '117', '2', '3', '4', '46', '47', '48', '49', '6', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\4 Reactors\3 - Equilibrium reactor - conversion.ccsim
+  modek=['9'] compIDs=['1', '2', '46', '48', '49', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\4 Reactors\4 - Kinetic reactor.ccsim
+  modek=['10'] compIDs=['130', '134', '155', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\5 Heat Exchangers\1 - Heat exchangers - principles.ccsim
+  modek=['8'] compIDs=['62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\5 Heat Exchangers\2 - Heat exchangers - use cases.ccsim
+  modek=['8'] compIDs=['10', '11', '46', '47', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\5 Heat Exchangers\3 - Exchanger design sizing costing.ccsim
+  modek=['5'] compIDs=['134', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\5 Heat Exchangers\4 - CC-THERM modes.ccsim
+  modek=['5'] compIDs=['134', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\6 Recycle\1 - Single recycle - NaCl solution.ccsim
+  modek=['3'] compIDs=['473', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\6 Recycle\2 - Nested recycle part 1 - inner loop.ccsim
+  modek=['3'] compIDs=['473', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\6 Recycle\3 - Nested recycle part 2 - outer loop.ccsim
+  modek=['3'] compIDs=['473', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\7 Pressure\1 - Flow models.ccsim
+  modek=['8'] compIDs=['62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\7 Pressure\2 - Single-branch piping configurations.ccsim
+  modek=['8'] compIDs=['130'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\8 Reports and Charts\1 - Report options.ccsim
+  modek=['3'] compIDs=['40', '41', '42'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\8 Reports and Charts\2 - Charts - phase equilibria.ccsim
+  modek=['10'] compIDs=['134', '40', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\8 Reports and Charts\3 - Charts - distillation.ccsim
+  modek=['3'] compIDs=['40', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\8 Reports and Charts\4 - Charts - exchangers & reactor.ccsim
+  modek=['10'] compIDs=['130', '134', '155', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\9 Tools\1 - UnitOp tools.ccsim
+  modek=['8'] compIDs=['130', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\9 Tools\2.1 - META unit - parent simulation.ccsim
+  modek=['8'] compIDs=['130', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\9 Tools\2.2 - META unit - child simulation.ccsim
+  modek=['8'] compIDs=['130', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\9 Tools\3 - Sensitivity analysis - distillation.ccsim
+  modek=['3'] compIDs=['40', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\9 Tools\4 - Controller - simple applications.ccsim
+  modek=['8'] compIDs=['62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\9 Tools\5 - Controller - refrigeration cycle.ccsim
+  modek=['8'] compIDs=['62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\_Process Simulation Essentials\9 Tools\6 - Controller - separators.ccsim
+  modek=['3'] compIDs=['14', '4', '40', '41', '46'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Biodiesel\Acid-catalyzed biodiesel.ccsim
+  modek=['10'] compIDs=['117', '268', '429', '431', '474', '62', '8001', '8002', '930', '931', '985'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Biodiesel\Alkali-catalyzed biodiesel.ccsim
+  modek=['10'] compIDs=['117', '268', '429', '431', '474', '62', '8001', '8003', '930', '931', '985'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Biodiesel\Hexane extraction biodiesel.ccsim
+  modek=['10'] compIDs=['10', '117', '268', '431', '62', '8001', '8002', '930', '931'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Biodiesel\Waste oil pretreatment process.ccsim
+  modek=['10'] compIDs=['117', '268', '429', '431', '474', '549', '62', '8001', '8002', '985'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\Bulk removal of CO2 - Selexol Pikes Peak plant.ccsim
+  modek=['29'] compIDs=['2', '2277', '3', '4', '46', '49', '50'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\CO2 compression.ccsim
+  modek=['33'] compIDs=['46', '49', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\CO2 removal Benfield process.ccsim
+  modek=['10'] compIDs=['1002', '1004', '1059', '1060', '1210', '1226', '2', '22', '3', '46', '47', '49', '62', '98'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\Post-combustion CC - MEA.ccsim
+  modek=['12'] compIDs=['250', '46', '47', '49', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\Pre-combustion CC - Selexol pressure letdown.ccsim
+  modek=['29'] compIDs=['1', '2', '2277', '3', '4', '46', '48', '49', '50', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\Pre-combustion CC - Selexol selective removal Claus.ccsim
+  modek=['29'] compIDs=['1', '2277', '48', '49', '50', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\Pre-combustion CC - Selexol thermal regeneration.ccsim
+  modek=['29'] compIDs=['1', '2277', '48', '49', '50', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Carbon Capture\Supercritical CO2 density using REFPROP with sensitivity analysis.ccsim
+  modek=['3'] compIDs=['49'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Custom Unit Operations\Ethylene glycol and water VBA viscosity example.ccsim
+  modek=['10'] compIDs=['135', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Custom Unit Operations\Excel UnitOp - Data Map.ccsim
+  modek=['5'] compIDs=['1', '38', '40'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Custom Unit Operations\VBA and parser UnitOps - liquid level controller.ccsim
+  modek=['3'] compIDs=['62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Custom Unit Operations\VBA UnitOp - Norden wash filter.ccsim
+  modek=['5'] compIDs=['134', '62', '8001'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Atmospheric distillation of crude oil.ccsim
+  modek=['2'] compIDs=['4', '5', '5001', '5002', '5003', '5004', '5005', '5006', '5007', '5008', '5009', '5010', '5011', '5012', '5013', '5014', '5015', '5016', '5017', '5018'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Azeotropic distillation of EtOH with entrainer.ccsim
+  modek=['10'] compIDs=['134', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Citronella batch distillation.ccsim
+  modek=['8'] compIDs=['8001', '8002', '8003'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Deisobutanizer.ccsim
+  modek=['3'] compIDs=['11', '4', '5', '6', '7'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Divided wall column.ccsim
+  modek=['34'] compIDs=['40', '41', '42'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\HCl-water packed column.ccsim
+  modek=['23'] compIDs=['104', '46', '47', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\IPA azeotropic distillation with entrainer.ccsim
+  modek=['14'] compIDs=['145', '38', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Membrane UnitOp.ccsim
+  modek=['8'] compIDs=['46', '47', '49', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Propane-propylene splitter.ccsim
+  modek=['9'] compIDs=['23', '3', '4', '6'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Reactive distillation - ethyl acetate.ccsim
+  modek=['10'] compIDs=['130', '134', '155', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Vacuum.ccsim
+  modek=['11'] compIDs=['5001', '5002', '5003', '5004', '5005', '5006', '5007', '5008', '5009', '5010', '5011', '5012', '5013', '5014', '5015', '5016', '5017', '5018', '5019', '5020'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Distillation and absorption\Wet desulfurization of flue gas.ccsim
+  modek=['8'] compIDs=['1002', '1004', '1026', '1030', '1059', '1060', '1182', '46', '49', '51', '62', '638'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Dynamics\Batch fermentation.ccsim
+  modek=['19'] compIDs=['1041', '134', '46', '49', '62', '776', '8013', '8014'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Dynamics\Dynamic column with control systems.ccsim
+  modek=['10'] compIDs=['117', '134', '140', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Dynamics\Dynamic column with ramp signals.ccsim
+  modek=['3'] compIDs=['10', '11', '12', '3', '4', '5', '6', '7', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Dynamics\Vessel reactor with cooling jacket.ccsim
+  modek=['3'] compIDs=['117', '456', '46', '5', '6', '62', '68', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Economics\Monte Carlo analysis on IRR - Gas sweetening.ccsim
+  modek=['12'] compIDs=['2', '250', '3', '49', '50', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\Lean oil absorption - no recycles.ccsim
+  modek=['9'] compIDs=['10', '2', '3', '4', '46', '49', '5', '5001', '5002', '5003', '5004', '5005', '5006', '6', '62', '7', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\Lean oil absorption system.ccsim
+  modek=['9'] compIDs=['10', '2', '3', '4', '46', '49', '5', '5001', '5002', '5003', '5004', '5005', '5006', '6', '62', '7', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\Liquid ring compressor.ccsim
+  modek=['13'] compIDs=['3', '50', '62', '63'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\LLE desulfurization with amine.ccsim
+  modek=['12'] compIDs=['2', '3', '4', '428', '5', '50', '6', '62', '7', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\MDEA gas sweetening.ccsim
+  modek=['8'] compIDs=['2', '49', '50', '62', '744'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\MEA gas sweetening.ccsim
+  modek=['12'] compIDs=['2', '250', '3', '49', '50', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\Natural gas expansion - temp control.ccsim
+  modek=['9'] compIDs=['10', '11', '2', '3', '4', '46', '5', '6', '62', '7', '8'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\Natural gas phase envelope using REFPROP.ccsim
+  modek=['3'] compIDs=['10', '2', '3', '4', '46', '49', '5', '6', '7', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\Sour water stripper.ccsim
+  modek=['13'] compIDs=['50', '62', '63'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Gas Processing\TEG gas dehydration-regeneration.ccsim
+  modek=['25'] compIDs=['10', '11', '176', '2', '3', '4', '46', '49', '5', '50', '6', '62', '7', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\META unit\Liquid ring compressor.ccsim
+  modek=['13'] compIDs=['3', '50', '62', '63'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\META unit\META - multiple streams.ccsim
+  modek=['13'] compIDs=['3', '50', '62', '63'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\META unit\META - single stream.ccsim
+  modek=['3'] compIDs=['3', '50', '62', '63'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Optimization\Data reconciliation - MEK plant.ccsim
+  modek=['14'] compIDs=['1', '153', '450', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Optimization\Monte Carlo analysis - Light hydrocarbon refrigeration.ccsim
+  modek=['3'] compIDs=['3', '4', '6'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Optimization\Multi-objective - HTXR area vs steam.ccsim
+  modek=['3'] compIDs=['111', '46', '47', '51', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Optimization\Single-objective - maximize profit equation.ccsim
+  modek=['29'] compIDs=['104', '105', '1253', '23', '255', '259', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Optimization\Single-objective - minimize column reboiler duty.ccsim
+  modek=['3'] compIDs=['10', '11', '12', '2', '3', '4', '5', '6', '7', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Optimization\Single-objective - minimize total power consumption.ccsim
+  modek=['9'] compIDs=['2', '3', '4', '46', '6'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\OTS\OTS - amine treatment.ccsim
+  modek=['12'] compIDs=['2', '250', '3', '49', '50', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Four branches - additional discharge pipe.ccsim
+  modek=['3'] compIDs=['10', '11', '117', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Four branches - closed valve.ccsim
+  modek=['3'] compIDs=['10', '11', '117', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Four branches - fixed outlet pressure.ccsim
+  modek=['3'] compIDs=['10', '11', '117', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Four branches.ccsim
+  modek=['3'] compIDs=['10', '11', '117', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Initial pressure estimates.ccsim
+  modek=['3'] compIDs=['10', '11', '117', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Pressure configurations.ccsim
+  modek=['8'] compIDs=['130'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Pressure loop - calculate NPSHa.ccsim
+  modek=['8'] compIDs=['130'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Pressure loop - pump performance curve.ccsim
+  modek=['8'] compIDs=['130'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Single branch.ccsim
+  modek=['3'] compIDs=['10', '11', '117', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Piping\Three branches.ccsim
+  modek=['3'] compIDs=['10', '11', '117', '281', '41'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\Bio-oxidation reactor.ccsim
+  modek=['8'] compIDs=['40', '49', '62', '776', '8032', '8033'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\EREA shift and methanation reactors.ccsim
+  modek=['9'] compIDs=['1', '117', '2', '3', '4', '46', '47', '48', '49', '6', '62', '8'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\Gasification.ccsim
+  modek=['3'] compIDs=['1', '108', '109', '46', '47', '48', '49', '50', '51', '62', '64', '8001', '977', '987', '993'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\KREA configuration modes.ccsim
+  modek=['8'] compIDs=['1', '22', '3'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\Rate regression - adiabatic data set.ccsim
+  modek=['8'] compIDs=['8036', '8037', '8038', '8039'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\Rate regression - comp data different temps.ccsim
+  modek=['8'] compIDs=['8006', '8007', '8008', '8009', '8010', '8011'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\Rate regression - heat of reaction data.ccsim
+  modek=['8'] compIDs=['8038', '8039', '8040', '8041'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Reactors\Rate regression - RC1 data.ccsim
+  modek=['5'] compIDs=['130', '447', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Refining\Blending of crude oil.ccsim
+  modek=['3'] compIDs=['4', '5', '5001', '5002', '5003', '5004', '5005', '5006', '5007', '5008', '5009', '5010', '5011', '5012', '5013', '5014', '5015', '5016', '5017', '5018'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Refining\Cat cracker gas separation.ccsim
+  modek=['9'] compIDs=['1', '10', '2', '22', '23', '24', '29', '3', '35', '4', '5', '50', '5001', '5002', '5003', '5004', '5005', '5006', '5007', '5008'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Refining\Hydrotreater unit.ccsim
+  modek=['3'] compIDs=['1', '10', '2', '3', '4', '5', '50', '6', '62', '63', '7', '8', '8001', '8002'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - emergency relief system design.ccsim
+  modek=['3'] compIDs=['62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - emergency relief system test.ccsim
+  modek=['8'] compIDs=['62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - four dynamic vessels.ccsim
+  modek=['9'] compIDs=['22', '4'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - non-tempered reaction.ccsim
+  modek=['3'] compIDs=['178', '45'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - tempered reaction.ccsim
+  modek=['3'] compIDs=['178', '45'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - three dynamic vessels.ccsim
+  modek=['9'] compIDs=['22'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - two dynamic vessels.ccsim
+  modek=['9'] compIDs=['22'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\DIERS - two-phase rigorous design.ccsim
+  modek=['3'] compIDs=['4'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\Rating calculation from DIERS final report.ccsim
+  modek=['3'] compIDs=['4'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\Rigorous sizing - two-phase vent with outlet pipe.ccsim
+  modek=['9'] compIDs=['22'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\Sizing relief device of a dynamic vessel - AIChE guidelines.ccsim
+  modek=['10'] compIDs=['134', '140', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\Sizing relief device of dynamic vessel - Fisher and Forrest.ccsim
+  modek=['3'] compIDs=['11'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Relief Cases\Sizing safety relief valve for flashing liquid.ccsim
+  modek=['3'] compIDs=['63'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\ACN extractive distillation with sensitivity analysis.ccsim
+  modek=['10'] compIDs=['125', '139', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\Ammonia syngas plant.ccsim
+  modek=['3'] compIDs=['1', '2', '3', '4', '46', '47', '48', '49', '6', '62', '98'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\Benzene hydrogenation to cyclohexane.ccsim
+  modek=['3'] compIDs=['1', '2', '38', '40', '46'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\CS2 removal From BTX with sensitivity analysis.ccsim
+  modek=['22'] compIDs=['102', '40', '41', '43', '452'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\Extractor design with sensitivity analysis.ccsim
+  modek=['10'] compIDs=['140', '40', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\Glycerol evaporation plant.ccsim
+  modek=['7'] compIDs=['268', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\MEK by sec-butanol dehydrogenation.ccsim
+  modek=['14'] compIDs=['1', '153', '450', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\MEK with sensitivity analysis.ccsim
+  modek=['7'] compIDs=['1', '153', '450', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\Multiple effect sugar evaporator.ccsim
+  modek=['10'] compIDs=['1730', '62'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Specialty Chemicals\Phthalic anhydride process.ccsim
+  modek=['3'] compIDs=['1855', '272', '358', '42', '445', '46', '47', '48', '49', '532', '62', '8001'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Tutorials\CC-BATCH tutorial.ccsim
+  modek=['9'] compIDs=['10', '4', '6', '8'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Tutorials\CC-STEADY STATE tutorial.ccsim
+  modek=['9'] compIDs=['10', '2', '3', '4', '46', '5', '6', '7', '8'] unitTypes=[]
+  names=['\r\n            ', '\r\n                ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Utility and power\Dew point water-air system.ccsim
+  modek=['8'] compIDs=['46', '47', '62'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Utility and power\Gas turbine simulation.ccsim
+  modek=['3'] compIDs=['1', '2', '46', '47', '48', '49', '62', '98'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Utility and power\Industrial power plant.ccsim
+  modek=['8'] compIDs=['62'] unitTypes=[]
+  names=['\r\n            ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Utility and power\Low-GWP refrigeration cycle using REFPROP with sensitivity analysis.ccsim
+  modek=['3'] compIDs=['1802', '2357', '2420', '245', '4', '5'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Utility and power\Optimized heat pump performance using REFPROP with sensitivity analysis.ccsim
+  modek=['3'] compIDs=['220', '4', '49'] unitTypes=[]
+  names=[]
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Utility and power\Power plant steam balance.ccsim
+  modek=['8'] compIDs=['62'] unitTypes=[]
+  names=['\r\n            ']
+C:\Users\carlo\OneDrive\Documents\My Simulations\Examples NXT-1.2.1\Utility and power\Refrigerant blend selection using REFPROP with sensitivity analysis.ccsim
+  modek=['3'] compIDs=['1231', '645'] unitTypes=[]
+  names=[]

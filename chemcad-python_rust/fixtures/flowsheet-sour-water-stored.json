@@ -1,0 +1,61 @@
+{
+ "case_id": "flowsheet-sour-water-stored",
+ "unit": "FLOWSHEET (stored state)",
+ "title": "Sour water stripper (ChemCAD example, Examples NXT-1.2.1)",
+ "components": [
+  "Hydrogen Sulfide",
+  "Water",
+  "Ammonia"
+ ],
+ "nstreams": 3,
+ "nunits": 1,
+ "streams": [
+  {
+   "id": 1,
+   "src": 0,
+   "tgt": 1,
+   "T_K": 333.1499888888889,
+   "P_Pa": 412976.65276991396,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -137284374.4751911,
+   "flows_mol_s": [
+    0.5638909146383333,
+    484.19096789270475,
+    0.9055593547410452
+   ]
+  },
+  {
+   "id": 2,
+   "src": 1,
+   "tgt": 0,
+   "T_K": 337.49355555555553,
+   "P_Pa": 98994.921006,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -166244.03399886328,
+   "flows_mol_s": [
+    0.5638900704525336,
+    0.4777726736565689,
+    0.9055606147198508
+   ]
+  },
+  {
+   "id": 3,
+   "src": 1,
+   "tgt": 0,
+   "T_K": 376.88208888888886,
+   "P_Pa": 115694.015565243,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -135474947.8275897,
+   "flows_mol_s": [
+    1.866314248222997e-08,
+    483.7133351270947,
+    2.7808478146064e-06
+   ]
+  }
+ ],
+ "note": "Stored-state stream dump (run_flag 0, not re-solved this session). Stream-level fixture: it anchors the package slate and stream states, not a local package evaluation. Enthalpy is the GetStreamByID total rate converted Btu/h -> W.",
+ "source": {
+  "captured": "2026-11-21",
+  "runner": "cc_chain.py dump_case via run_chain_hb.ps1, one Dispatch"
+ }
+}

@@ -1,0 +1,99 @@
+{
+  "case_id": "flash-ew-nrtl-tp-355k",
+  "unit": "IFLASH",
+  "mixture": [
+    "ethanol",
+    "water"
+  ],
+  "thermo": {
+    "k_model": "NRTL (ChemCAD databank, ThermalModes record)",
+    "enthalpy_model": null,
+    "parameters": null,
+    "note": "Databank parameter set not readable from the sim; this is a comparison case, not a replication case (PLAN pitfall P-a). Local ChemSep NRTL gives psi 0.7676, x_ethanol 0.2597, y_ethanol 0.5727 at the same state: vapour composition agrees within 0.0012, liquid differs by 0.017, consistent with the recorded 0.24 K databank bubble offset."
+  },
+  "inputs": {
+    "spec": {
+      "mode": "TP",
+      "T_K": 355.0,
+      "P_kPa": 101.325
+    },
+    "feed": {
+      "T_K": 355.0,
+      "P_kPa": 101.325,
+      "flows_mol_per_s": [
+        6.2998940277777775,
+        6.2998940277777775
+      ],
+      "mole_fractions": [
+        0.5,
+        0.5
+      ]
+    }
+  },
+  "outputs": {
+    "psi": 0.75709325,
+    "vapour": {
+      "total_mol_per_s": 9.53923313597806,
+      "flows_mol_per_s": [
+        5.452560423005636,
+        4.086673216963945
+      ],
+      "mole_fractions": [
+        0.5715931611358595,
+        0.42840689169768753
+      ]
+    },
+    "liquid": {
+      "total_mol_per_s": 3.0605549195774975,
+      "flows_mol_per_s": [
+        0.8473342347615445,
+        2.213220810813833
+      ],
+      "mole_fractions": [
+        0.2768564057914429,
+        0.7231436353768692
+      ]
+    },
+    "stream_enthalpy": null,
+    "enthalpy_note": "IFlash stream getters returned H = 0 for both phases in both captures; enthalpy fixtures require flowsheet stream reads (GetStreamByID), scheduled with the Phase 3 harness extension."
+  },
+  "balance_check": {
+    "ethanol_in_out_lbmol_h": [
+      50.0,
+      50.000005
+    ],
+    "water_in_out_lbmol_h": [
+      50.0,
+      50.0
+    ]
+  },
+  "tolerances": {
+    "T_K": 0.1,
+    "mole_fraction": 0.002,
+    "duty_pct": 0.5
+  },
+  "source": {
+    "sim_file": "dgx_ew_7102.ccsim",
+    "captured": "2026-11-21",
+    "runner": "ccr_capture.py",
+    "chain": "run_job (kill + cold retry after first-attempt hang)"
+  },
+  "raw": [
+    "CCR LoadSim 0",
+    "CCR ncomp 3",
+    "CCR define 2 calc 0",
+    "CCR T_K 355.000000 P_kPa 101.325001 psi 0.75709325",
+    "CCR VAPOR rate_lbmol_h 75.709473 H_Btu_lbmol 0.0000 flows 43.275017,32.434460,0.000000",
+    "CCR LIQUID rate_lbmol_h 24.290527 H_Btu_lbmol 0.0000 flows 6.724988,17.565540,0.000000",
+    "DONE"
+  ],
+  "companion_case": {
+    "case_id": "flash-ew-nrtl-tp-360k",
+    "note": "Same feed at 360 K: psi = 1.0 (single-phase vapour), vapour flows equal the feed. Consistent with the local dew point of the equimolar vapour, 357.3 K (ChemSep parameters).",
+    "raw": [
+      "CCR T_K 360.000000 P_kPa 101.325001 psi 1.00000000",
+      "CCR VAPOR rate_lbmol_h 100.000000 flows 50.000000,50.000000,0.000000",
+      "CCR LIQUID rate_lbmol_h 0.000000 flows 0.000000,0.000000,0.000000"
+    ]
+  }
+}

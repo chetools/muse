@@ -1,0 +1,279 @@
+{
+ "case": "flowsheet-linde-asu-stored",
+ "source_sim": "Linde_ASU.ccsim (October 2026 build; converged state stored in the sim, dumped in-process)",
+ "process": "Linde double-column air separation unit: compressor, aftercooler, divider, multi-pass LNG exchanger, expander, HP and LP SCDS columns",
+ "components": [
+  "Nitrogen",
+  "Oxygen",
+  "Argon"
+ ],
+ "streams": [
+  {
+   "id": 1,
+   "src": 0,
+   "tgt": 1,
+   "T_K": 298.1499888888889,
+   "P_Pa": 101325.34887199999,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -2268.667871314227,
+   "flows_mol_s": [
+    217.00000098426221,
+    58.19444453550078,
+    2.583333411049631
+   ]
+  },
+  {
+   "id": 2,
+   "src": 1,
+   "tgt": 2,
+   "T_K": 557.6710555555555,
+   "P_Pa": 600001.0387753289,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": 2125867.2047232,
+   "flows_mol_s": [
+    217.00000098426221,
+    58.19444453550078,
+    2.583333411049631
+   ]
+  },
+  {
+   "id": 3,
+   "src": 2,
+   "tgt": 13,
+   "T_K": 298.1499888888889,
+   "P_Pa": 595001.0299464989,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -13232.002017477549,
+   "flows_mol_s": [
+    217.00000098426221,
+    58.19444453550078,
+    2.583333411049631
+   ]
+  },
+  {
+   "id": 4,
+   "src": 13,
+   "tgt": 3,
+   "T_K": 298.1499888888889,
+   "P_Pa": 595001.0299464989,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -11644.159079126399,
+   "flows_mol_s": [
+    190.9600064100575,
+    51.21110902407714,
+    2.273333265645964
+   ]
+  },
+  {
+   "id": 5,
+   "src": 13,
+   "tgt": 3,
+   "T_K": 298.1499888888889,
+   "P_Pa": 595001.0299464989,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -1587.840154175985,
+   "flows_mol_s": [
+    26.04000087409875,
+    6.983333369459669,
+    0.31000003200557413
+   ]
+  },
+  {
+   "id": 6,
+   "src": 3,
+   "tgt": 9,
+   "T_K": 100.15,
+   "P_Pa": 590001.028012426,
+   "vapour_fraction": 0.89197379,
+   "enthalpy_rate_W": -1616834.40780876,
+   "flows_mol_s": [
+    190.9600064100575,
+    51.21110902407714,
+    2.273333265645964
+   ]
+  },
+  {
+   "id": 7,
+   "src": 5,
+   "tgt": 10,
+   "T_K": 108.44342777777779,
+   "P_Pa": 130000.22954957999,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -185413.15327765577,
+   "flows_mol_s": [
+    26.04000087409875,
+    6.983333369459669,
+    0.31000003200557413
+   ]
+  },
+  {
+   "id": 8,
+   "src": 9,
+   "tgt": 12,
+   "T_K": 99.67233333333334,
+   "P_Pa": 570001.013381377,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -1592157.091037085,
+   "flows_mol_s": [
+    87.65229793697728,
+    51.03093709479791,
+    1.934381453246122
+   ]
+  },
+  {
+   "id": 9,
+   "src": 12,
+   "tgt": 10,
+   "T_K": 82.99639444444443,
+   "P_Pa": 130000.22954957999,
+   "vapour_fraction": 0.16848406,
+   "enthalpy_rate_W": -1592155.332610665,
+   "flows_mol_s": [
+    87.65229793697728,
+    51.03093709479791,
+    1.934381453246122
+   ]
+  },
+  {
+   "id": 10,
+   "src": 10,
+   "tgt": 3,
+   "T_K": 81.12121666666667,
+   "P_Pa": 130000.22954957999,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -1487979.85046186,
+   "flows_mol_s": [
+    217.00000098426221,
+    13.915018191713527,
+    2.360823925941892
+   ]
+  },
+  {
+   "id": 11,
+   "src": 9,
+   "tgt": 11,
+   "T_K": 95.89202222222222,
+   "P_Pa": 570001.013381377,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -1141817.725232866,
+   "flows_mol_s": [
+    103.30771099303783,
+    0.1801714756868522,
+    0.33895169900174915
+   ]
+  },
+  {
+   "id": 12,
+   "src": 11,
+   "tgt": 10,
+   "T_K": 79.73137777777778,
+   "P_Pa": 130000.22954957999,
+   "vapour_fraction": 0.17413381,
+   "enthalpy_rate_W": -1141720.7187086958,
+   "flows_mol_s": [
+    103.30771099303783,
+    0.1801714756868522,
+    0.33895169900174915
+   ]
+  },
+  {
+   "id": 13,
+   "src": 10,
+   "tgt": 3,
+   "T_K": 92.30621111111112,
+   "P_Pa": 130000.22954957999,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -567005.830027494,
+   "flows_mol_s": [
+    5.726919673934434e-10,
+    44.279418783914416,
+    0.22250933391028221
+   ]
+  },
+  {
+   "id": 14,
+   "src": 3,
+   "tgt": 0,
+   "T_K": 293.1499888888889,
+   "P_Pa": 125000.22761550698,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -36232.971318372096,
+   "flows_mol_s": [
+    217.00000098426221,
+    13.915018191713527,
+    2.360823925941892
+   ]
+  },
+  {
+   "id": 15,
+   "src": 3,
+   "tgt": 0,
+   "T_K": 92.13666111111111,
+   "P_Pa": 125000.22761550698,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -269775.3811043367,
+   "flows_mol_s": [
+    5.726919673934434e-10,
+    44.279418783914416,
+    0.22250933391028221
+   ]
+  },
+  {
+   "id": 16,
+   "src": 3,
+   "tgt": 5,
+   "T_K": 153.15000555555557,
+   "P_Pa": 590001.028012426,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -145375.120098335,
+   "flows_mol_s": [
+    26.04000087409875,
+    6.983333369459669,
+    0.31000003200557413
+   ]
+  }
+ ],
+ "checks": {
+  "overall_balance_worst_mol_s": 7.559872834406178e-06,
+  "overall_balance_relative": 2.7215542090892554e-08,
+  "product_stream_ids": [
+   14,
+   15
+  ]
+ },
+ "raw": [
+  "CCR LOAD rc=0",
+  "CCR TOPO nstreams=16 nunits=13 ncomp=3 comps=Nitrogen,Oxygen,Argon",
+  "CCR UNIT id=1 label=",
+  "CCR UNIT id=2 label=",
+  "CCR UNIT id=3 label=",
+  "CCR UNIT id=4 label=",
+  "CCR UNIT id=5 label=",
+  "CCR UNIT id=6 label=",
+  "CCR UNIT id=7 label=",
+  "CCR UNIT id=8 label=",
+  "CCR UNIT id=9 label=",
+  "CCR UNIT id=10 label=",
+  "CCR UNIT id=11 label=",
+  "CCR UNIT id=12 label=",
+  "CCR UNIT id=13 label=",
+  "CCR STREAM id=1 src=0 tgt=1 rc=3 T_R=536.66998 P_psia=14.696 VF=1 H=-7741.0161 flows=1722.2512,461.86844,20.502991",
+  "CCR STREAM id=2 src=1 tgt=2 rc=3 T_R=1003.8079 P_psia=87.022797 VF=1 H=7253760 flows=1722.2512,461.86844,20.502991",
+  "CCR STREAM id=3 src=2 tgt=13 rc=3 T_R=536.66998 P_psia=86.297607 VF=1 H=-45149.465 flows=1722.2512,461.86844,20.502991",
+  "CCR STREAM id=4 src=13 tgt=3 rc=3 T_R=536.66998 P_psia=86.297607 VF=1 H=-39731.52 flows=1515.5811,406.44421,18.042631",
+  "CCR STREAM id=5 src=13 tgt=3 rc=3 T_R=536.66998 P_psia=86.297607 VF=1 H=-5417.9355 flows=206.67015,55.424213,2.4603591",
+  "CCR STREAM id=6 src=3 tgt=9 rc=3 T_R=180.27 P_psia=85.572418 VF=0.89197379 H=-5516868 flows=1515.5811,406.44421,18.042631",
+  "CCR STREAM id=7 src=5 tgt=10 rc=3 T_R=195.19817 P_psia=18.85494 VF=1 H=-632655.94 flows=206.67015,55.424213,2.4603591",
+  "CCR STREAM id=8 src=9 tgt=12 rc=3 T_R=179.4102 P_psia=82.671661 VF=0 H=-5432665.5 flows=695.66486,405.01425,15.352492",
+  "CCR STREAM id=9 src=12 tgt=10 rc=3 T_R=149.39351 P_psia=18.85494 VF=0.16848406 H=-5432659.5 flows=695.66486,405.01425,15.352492",
+  "CCR STREAM id=10 src=10 tgt=3 rc=3 T_R=146.01819 P_psia=18.85494 VF=1 H=-5077198 flows=1722.2512,110.43851,18.737013",
+  "CCR STREAM id=11 src=9 tgt=11 rc=3 T_R=172.60564 P_psia=82.671661 VF=0 H=-3896043.8 flows=819.91626,1.4299564,2.6901381",
+  "CCR STREAM id=12 src=11 tgt=10 rc=3 T_R=143.51648 P_psia=18.85494 VF=0.17413381 H=-3895712.8 flows=819.91626,1.4299564,2.6901381",
+  "CCR STREAM id=13 src=10 tgt=3 rc=3 T_R=166.15118 P_psia=18.85494 VF=0 H=-1934704.2 flows=4.5452508e-09,351.42987,1.7659768",
+  "CCR STREAM id=14 src=3 tgt=0 rc=3 T_R=527.66998 P_psia=18.129751 VF=1 H=-123632.03 flows=1722.2512,110.43851,18.737013",
+  "CCR STREAM id=15 src=3 tgt=0 rc=3 T_R=165.84599 P_psia=18.129751 VF=1 H=-920511.81 flows=4.5452508e-09,351.42987,1.7659768",
+  "CCR STREAM id=16 src=3 tgt=5 rc=3 T_R=275.67001 P_psia=85.572418 VF=1 H=-496040.5 flows=206.67015,55.424213,2.4603591",
+  "CHAIN DONE linde",
+  "CHAIN ALL DONE"
+ ]
+}

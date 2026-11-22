@@ -1,0 +1,3 @@
+CLSID {2B03C5E1-25B6-11D4-BBD3-0050DACD255C}
+no LocalServer32 [WinError 2] The system cannot find the file specified
+no InprocServer32 [WinError 2] The system cannot find the file specified

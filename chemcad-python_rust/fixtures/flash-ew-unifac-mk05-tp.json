@@ -1,0 +1,90 @@
+{
+ "case_id": "flash-ew-unifac-mk05-tp",
+ "title": "Ethanol/water TP flash, ChemCAD databank UNIFAC (ThermalModes modek=5), equimolar feed",
+ "components": [
+  "Ethanol",
+  "Water"
+ ],
+ "thermalmodes_modek": 5,
+ "inputs": {
+  "feed": {
+   "mole_fractions": [
+    0.5,
+    0.5
+   ]
+  }
+ },
+ "tolerances": {
+  "T_K": 0.1,
+  "P_kPa": 0.1,
+  "compositions": 0.002
+ },
+ "points": [
+  {
+   "T_K": 355,
+   "P_kPa": 101,
+   "psi": 0.77430034,
+   "balance_max_rel_dev": 2.0000000020559128e-08,
+   "raw": [
+    "CHAIN BEGIN ewunifac_T355_P101",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 2 calc 0",
+    "CCR T_K 355.000000 P_kPa 101.000001 psi 0.77430034",
+    "CCR VAPOR rate_lbmol_h 77.430145 H_Btu_lbmol 0.0000 flows 43.648220,33.781925,0.000000",
+    "CCR LIQUID rate_lbmol_h 22.569857 H_Btu_lbmol 0.0000 flows 6.351782,16.218075,0.000000",
+    "CHAIN DONE ewunifac_T355_P101",
+    "CHAIN ALL DONE",
+    "CHAIN START cases=1"
+   ],
+   "vapour": {
+    "total_mol_per_s": 9.756034161109346,
+    "mole_fractions": [
+     0.5637109422951488,
+     0.43628905770485127
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 2.8437541464419698,
+    "mole_fractions": [
+     0.281427658137134,
+     0.718572341862866
+    ]
+   },
+   "K": [
+    2.003040305372061,
+    0.6071609388329529
+   ]
+  },
+  {
+   "T_K": 360,
+   "P_kPa": 101,
+   "psi": 1.0,
+   "balance_max_rel_dev": 0.0,
+   "raw": [
+    "CHAIN BEGIN ewunifac_T360_P101",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 2 calc 0",
+    "CCR T_K 360.000000 P_kPa 101.000001 psi 1.00000000",
+    "CCR VAPOR rate_lbmol_h 100.000000 H_Btu_lbmol 0.0000 flows 50.000000,50.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CHAIN DONE ewunifac_T360_P101",
+    "CHAIN ALL DONE"
+   ],
+   "vapour": {
+    "total_mol_per_s": 12.599788055555555,
+    "mole_fractions": [
+     0.5,
+     0.5
+    ]
+   }
+  }
+ ],
+ "note": "Databank comparison case: ChemCAD's databank UNIFAC group parameters and interaction parameters are not readable, so this is not a parameter-identical replication of python/unifac.py (published Fredenslund parameters). Captured 2026-11-21 from ew2_mk05.ccsim (all-member modek edit of dgx_ew_7102.ccsim).",
+ "source": {
+  "captured": "2026-11-21",
+  "sim": "ew2_mk05.ccsim",
+  "runner": "cc_chain.py flash_case via run_chain_hb.ps1"
+ }
+}

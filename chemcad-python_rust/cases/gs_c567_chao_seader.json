@@ -1,0 +1,64 @@
+{
+ "name": "pentane/hexane/heptane Grayson-Streed anchor case: library reduced Chao-Seader polynomial fitted to ChemCAD modek=2 captures of 2026-11-21 (fixtures/flash-gs-c567-tp.json); K reproduced within 6.2% max, 2.7% mean over the 18 fitted K values; vapour fugacity from SRK; critical properties are the published Poling values, NOT ChemCAD databank values",
+ "components": [
+  {
+   "name": "n-pentane",
+   "Tc": 469.7,
+   "Pc": 3370000.0,
+   "omega": 0.251,
+   "cp": [
+    120.0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "n-hexane",
+   "Tc": 507.6,
+   "Pc": 3025000.0,
+   "omega": 0.301,
+   "cp": [
+    143.0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "n-heptane",
+   "Tc": 540.2,
+   "Pc": 2736000.0,
+   "omega": 0.35,
+   "cp": [
+    166.0,
+    0,
+    0,
+    0
+   ]
+  }
+ ],
+ "thermo": {
+  "model": "chao_seader",
+  "eos_kind": "SRK",
+  "coeffs0": [
+   -168.27910139541842,
+   40.29424528382799,
+   263.55684876872937,
+   -140.21218290303852,
+   -364.2820878557713,
+   339.3689760746635,
+   604.0285792997827
+  ],
+  "coeffs1": [
+   225.69842688642564,
+   -56.72708112908221,
+   -421.394482155222,
+   281.1686522490279,
+   945.9249136169792,
+   -907.2819546218332,
+   -1658.8034440589431
+  ]
+ },
+ "reactions": []
+}

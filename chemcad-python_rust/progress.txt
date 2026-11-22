@@ -1,0 +1,573 @@
+chemcad-python_rust programme — progress (renamed from chemcad-replication on 2026-11-22 at the user's direction)
+
+2026-11-21 Plan approved; all groups confirmed by user including solids
+and batch as build phases. Phase 0 inventory complete
+(INVENTORY.md: 66 itypes from CCXToolKit.dll table recovered
+2026-10-24; thermo model list from installed help).
+
+Phase 1 (ChemCAD fixture capture) BLOCKED: distillation-game chat has
+an active ChemCAD anchor session on nvidia4060 with timeouts observed;
+concurrent COM sessions are an interference risk. Unblocks when that
+session finishes or the user assigns the ChemCAD slot to this programme.
+
+Phase 2 chunk 1 DONE (local, no ChemCAD needed):
+- python/eos.py: Peng-Robinson and SRK mixture EOS, fugacity
+  coefficients, K-values. Parameters are caller-supplied inputs.
+- python/flash.py: TP flash, successive substitution + safeguarded
+  Rachford-Rice.
+- python/test_phase2_eos_flash.py: ALL PASS. phi -> 1 at low P for both
+  EOS; PR hexane K = 0.995 at its boiling point (341.9 K, 101325 Pa);
+  methane/ethane/propane PR flash at 250 K, 2 MPa: psi = 0.7245,
+  balance residual 5.6e-17; PR vs Raoult psi at 1 atm for the alkane
+  mixture: 0.5764 vs 0.5647.
+- Bug found and fixed during the battery: first Rachford-Rice bracket
+  let psi escape [0, 1] (poles lie outside [0, 1]; bracket is [0, 1]
+  with bisection fallback). Recorded here; test now guards it.
+
+Next in Phase 2: activity-coefficient models (NRTL, UNIQUAC, Wilson,
+van Laar, Margules, UNIFAC), enthalpy models, remaining flash modes
+(PH, PS, VF, duty), three-phase flash with stability analysis.
+ChemCAD fixture checks attach to each as Phase 1 unblocks.
+
+Phase 2 chunk 2 DONE (local):
+- python/activity.py: multicomponent NRTL, UNIQUAC, Wilson; binary
+  van Laar and three-suffix Margules. All parameters caller-supplied.
+- python/test_phase2_activity.py: ALL PASS. Pure limits for all five
+  models; multicomponent NRTL reproduces the game's independently
+  validated binary NRTL (ethanol/water) to 1e-10 at 8 state points;
+  van Laar / Margules infinite-dilution limits exact; Wilson and
+  UNIQUAC ideal limits exact; Gibbs-Duhem residuals < 1e-5 for NRTL
+  and UNIQUAC on a ternary.
+- Bug found and fixed: UNIQUAC combinatorial term divided by x_i and
+  failed at pure-component compositions; rewritten in the ratio form
+  (r_i / sum(x r)) so the pure limit needs no division by zero.
+
+Next in Phase 2: UNIFAC (group parameters as caller inputs), enthalpy
+models, remaining flash modes (PH, PS, VF, duty), three-phase flash
+with tangent-plane stability analysis.
+
+Phase 2 chunk 3 DONE (local):
+- python/enthalpy.py: ideal-gas Cp-polynomial enthalpy; latent-heat
+  (gamma) route with Watson correlation; EOS residual enthalpy
+  (analytic alpha derivative) for PR/SRK.
+- python/flash_modes.py: VF, PH (adiabatic) and duty flash modes on
+  the TP core.
+- python/test_phase2_enthalpy_modes.py: ALL PASS. VF and PH round
+  trips recover T and psi on both the Raoult route and the PR route
+  (EOS PH: T recovered to 0.001 K, psi to 1e-4); EOS residual enthalpy
+  -0.055 J/mol at 100 Pa.
+- Defect found and fixed: at 210 K / 2 MPa the PR mixture gives a
+  single Z root, so K = 1 for every component and the Rachford-Rice
+  slope is zero; the solver divided by it. Guard added (all-unity K
+  reports single-phase; zero slope falls back to bisection), and the
+  earlier EOS and activity batteries still pass after the change.
+
+Next in Phase 2: UNIFAC; three-phase flash with tangent-plane
+stability analysis; pressure-entropy flash (needs the entropy model,
+with the compressor work in Phase 3).
+
+2026-11-21 07:49 EST — PAUSED at the user's direction. The user first
+said to restart this programme when the multiplayer distillation
+session is no longer using ChemCAD, then said "pause for now". The
+pause governs: no work on this programme, local or ChemCAD, until the
+user says to resume. State at pause: Phase 0 complete; Phase 2 chunks
+1-3 complete and passing (EOS, TP flash, activity models, enthalpy,
+VF/PH/duty flash); Phase 1 not started; Phases 3-8 not started.
+
+2026-11-21 08:59 EST — Restart order set (via the "CamCAD simultaneous
+work and stability" side chat): the distillation multiplayer session
+restarts FIRST and holds the ChemCAD slot exclusively until its
+ChemCAD work is done. This replication programme is SECOND and starts
+only when that work is complete and a go message arrives here. Pause
+stands in full until then: no ChemCAD use, no local build work.
+
+Warm-trial observation (2026-11-21 09:26 EST, read-only check from
+the "CamCAD simultaneous work and stability" side chat, recorded for
+the trial report): job 1 hit the 240 s timeout with no output and a
+CCNXT CPU delta of 0.59 s over the window; the monitor declared it
+HUNG at 09:23:12, cold-restarted, re-held the server (workdir
+C:\Users\carlo\ChemCADWork), and the retry completed in 15.4 s with
+BUBBLE T = 353.027 K -- the expected control value. During job 2 two
+CCNXT processes existed: the re-held server (pid 21484, from
+09:23:17) and a second instance (pid 1076, from 09:23:48) apparently
+spawned by job 2's own Python Dispatch instead of attaching to the
+held server; its CPU stayed nearly flat with no output at the 130 s
+sample. Instance-selection inconsistency is a likely cause of the
+intermittent slow/hung loads seen all morning. Possible later driver
+refinement: count CCNXT instances in the monitor samples and treat a
+job that spawned a second instance as suspect before 240 s.
+
+Warm-server acceptance trial COMPLETE (2026-11-21, chain run from
+this session, log cc_warm_log.txt on the PC):
+- All three jobs returned BUBBLE T = 353.027 K, exactly the expected
+  control value. CHAIN DONE at 09:33:02.
+- BUT every job's first attempt hung (240 s timeout, no output, flat
+  CPU), and only the cold-retry completed: durations 15.4 s (job 1),
+  15.2 s (job 2), 12.1 s (job 3). Total chain time about 14 minutes
+  for three identical jobs.
+- Verdict: acceptance PASSES on values (3 of 3 exact) and on the
+  monitor/restart behaviour (hangs detected, cold retries succeeded,
+  no chain failure). The warm-attach benefit was NOT demonstrated:
+  a fresh job attaching while the driver holds the server hung in
+  3 of 3 first attempts, consistent with the two-CCNXT observation
+  recorded above. Production capture in Phase 1 therefore uses
+  single-case run_job.ps1 runs (or warm chains only where the
+  240 s + retry cost per job is acceptable), until the driver is
+  refined (instance counting in the monitor is the recorded first
+  refinement).
+
+Phase 1 COMPLETE (2026-11-21):
+- capture/ccr_capture.py (TP and VP flash through IFlash) deployed to
+  the PC; fixtures/FIXTURE_FORMAT.md defines the frozen format.
+- Trial captures on dgx_ew_7102.ccsim (ethanol/water, databank NRTL):
+  360 K case: psi = 1.0, consistent with the local dew point 357.3 K.
+  355 K case: psi = 0.75709, vapour 75.709 lbmol/h (y_ethanol 0.5716),
+  liquid 24.291 lbmol/h (x_ethanol 0.2769); component balances close
+  exactly (50.000 in, 50.000 out, both components). Frozen as
+  fixtures/flash-ew-nrtl-tp-355k.json (comparison case: databank
+  parameters not readable; local ChemSep NRTL comparison recorded in
+  the fixture).
+- Operational finding, consistent across the trial and both captures:
+  the FIRST run against a ChemCAD instance left over from a previous
+  run hangs (240 s, no output); killing CCNXT and retrying cold
+  completes in 12-32 s every time. Working rule for this programme:
+  kill any pre-existing CCNXT before each capture run.
+- IFlash stream getters return H = 0: enthalpy fixtures need
+  flowsheet stream reads (GetStreamByID); scheduled as a harness
+  extension with Phase 3.
+
+Phase 2 chunk 4 (three-phase flash) COMPLETE (2026-11-21):
+- python/flash3.py: tangent-plane stability screening + VLLE flash.
+  Two solver failures diagnosed and fixed in sequence: (1) damped
+  Newton on the phase fractions walked out of the physical region
+  from a singular start (both liquids at the feed); (2) successive
+  substitution stalled at a spurious fixed point -- liquids mutually
+  consistent but vapour summation off by 0.17 -- because the test
+  specification itself was impossible: at fixed T the VLLE pressure
+  is the tie line's bubble pressure (127.9 kPa for the test values),
+  so no three-phase state exists at 101.325 kPa. Final form: one
+  bounded least-squares system (fugacity equalities + vapour
+  summation + balances), vapour pressures scaled so the tie line
+  sits at 101.325 kPa. Residuals at machine precision; liquid
+  compositions match an independent LLE-only solve to 0.001.
+- ChemCAD fixture flash-p2-nrtl-vp-030 frozen: water/1-butanol/
+  2-butanol, VF 0.30, databank NRTL (modek=10, i3pf=1): T = 363.4716 K,
+  agreeing with October's independent capture to 0.002 K; balances
+  exact; merged liquid only (interface limit). The base sim's own
+  modek gives 339.05 K on the same spec -- model code is part of
+  every fixture spec from now on. Capture runner gained the
+  vpflashx variant mode (XML modek/i3pf edit, October's method).
+
+Phase 2 chunk 5 (UNIFAC) COMPLETE (2026-11-21): python/unifac.py,
+original UNIFAC, all group/interaction parameters caller-supplied.
+Structural battery passes: pure limit gamma = 1 to 1e-8, Gibbs-Duhem
+4.8e-10, ethanol gamma in water 4.83 at x = 0.05 with a synthetic
+interaction subset (labelled synthetic in the test).
+
+Phase 2 chunk 6 (entropy + PS flash) COMPLETE (2026-11-21) -- PHASE 2
+COMPLETE. python/entropy.py (ideal-gas entropy from Cp polynomials;
+cubic-EOS residual entropy with analytic da_mix/dT) and
+python/psflash.py (pressure-entropy flash; single-phase isentropic
+solve for the Phase 3 compressor/expander). Battery: residual entropy
+-> 0 at 100 Pa (both EOS); Maxwell relation (dS_dep/dP)_T =
+-(dV/dT)_P + R/P holds to 1e-9 (validates da_mix/dT); PS round trip
+recovers 250.0000 K and psi 0.7245; isentropic methane compression
+300 K / 0.5 MPa -> 2 MPa gives 416.0 K against the 414.0 K ideal-gas
+estimate, entropy conserved to 4e-8.
+
+Phase 3 COMPLETE (2026-11-21): python/units_simple.py -- ThermoEOS
+context (equilibrium stream enthalpy/entropy via the Phase 2 flash
+and EOS residual properties) and the simple units: mixer, splitter,
+separator, heater/cooler (T-out and duty modes), valve, pump,
+compressor, expander, pipe (Darcy-Weisbach, Haaland, laminar exact).
+Battery test_phase3_units.py: 16 of 16 pass, including mixer
+enthalpy balance to 3e-9, separator psi = 0.7245 (the Phase 2 flash
+value), compressor at efficiency 1 reproducing the Phase 2
+isentropic temperature 416.0 K, expander at efficiency 1 returning
+exactly to the compressor inlet temperature with equal work, valve
+Joule-Thomson cooling 300 -> 280.5 K at conserved enthalpy, and
+laminar pipe drop equal to Hagen-Poiseuille.
+Fixture note: unit-level ChemCAD fixtures are read from flowsheet
+streams, so they belong with the Phase 7 flowsheet work; the IFlash
+fixtures of Phase 1 already anchor the thermo core every unit uses.
+The IFlash H = 0 limitation recorded in Phase 1 stands.
+
+Phase 4 COMPLETE (2026-11-21): python/reactors.py -- stoichiometric
+(sequential key conversions; isothermal/adiabatic/duty), equilibrium
+(extent solve on fugacity-based ln Q - ln K, formation-data K under
+the stated zero-delta-Cp approximation, K override hook), Gibbs
+(element-constrained minimisation with EOS fugacity fixed-point),
+kinetic CSTR and PFR (isothermal; adiabatic PFR), batch (isothermal,
+constant volume). Battery: WGS equilibrium extent 48.54 mol/s vs
+48.55 hand-solved from K; Gibbs extent agrees to 0.01 with exact
+element balances; CSTR/PFR/batch first-order conversions match the
+analytic values. Two defects found and fixed on the way: (1) the
+Rachford-Rice boundary evaluation divided by zero when a K value
+underflows to exactly 0 at low temperature (pole at psi = 1) --
+boundary now evaluated just inside 1, all earlier batteries re-run
+green; (2) an impossible adiabatic specification silently returned
+the temperature bracket ceiling -- it now raises. Stated scope
+limit: adiabatic reactor work is gas-phase; EOS-route enthalpy for
+condensing aqueous mixtures is not ChemCAD-grade (ChemCAD pairs
+activity models with a latent-heat enthalpy route), recorded in the
+reactors.py docstring.
+
+Phase 5 COMPLETE (2026-11-21): python/columns.py (RaoultThermo
+adapter; Fenske-Underwood-Gilliland shortcut, Nmin 9.177 and
+Rmin 1.049 on the alkane case; rigorous tower in the validated
+two-section CMO formulation -- stage compositions match the
+distillation-game reference column to 4e-10 and temperatures to
+< 0.001 K on the 12-tray pentane/hexane/heptane case; absorber in
+the same linear-solve form, within 0.02 of the Kremser value) and
+python/extraction.py (countercurrent LLE cascade on the flash3
+stage solver; balances close, stage-count ordering correct, single
+stage matches a standalone split). Two test-side defects corrected
+during the battery: an overall duty closure is not a valid check on
+a CMO solver (duties are end-section balances), and an absorber
+test carrier needs a very LARGE K (nearly insoluble), not ~0.
+
+Warm-hang mechanism analysis (2026-11-21 09:41 EST, from the
+"CamCAD simultaneous work and stability" side chat, answering the
+user's "why, and can it be fixed?"): a fresh Dispatch while a CCNXT
+instance exists does not reliably attach -- it spawns a rival
+instance that blocks at startup at flat CPU indefinitely (signature
+of waiting on an exclusively held resource; which resource is not
+established). Cold cost is only ~15 s, so startup was never the
+bottleneck. IMMEDIATE RULE adopted for all capture work in this
+programme: kill any lingering CCNXT (and orphan Python) before
+EVERY run, not only after failures; a pre-existing instance is
+itself the hang risk. A warm chain can only be fixed by removing
+the second client: one Python chain process that Dispatches once
+and runs all cases in-process (LoadSim/compute/CloseSimulation per
+case, heartbeat to a tailed log, done-marker file for exact resume,
+monitor kills and restarts the chain at the failed case). That
+design needs its own acceptance trial (control case x3 in-process,
+no restart) before any production use; until then production stays
+on single-case runs. Trial queued as a Phase 1 follow-on, after the
+Python build phases.
+
+Phase 5 extraction debugging record (2026-11-21): three defects in
+sequence. (1) The stage split least-squares converged to the trivial
+root xR = xE = z (all residuals vanish there); fixed by initialising
+one phase from the tangent-plane stability screening, as in flash3.
+(2) The cascade's convergence measure covered compositions only;
+the phase fractions were still moving -- added to the measure.
+(3) The split solver's own balance residual (~1e-5 mole fraction on
+trace components, where the log-fugacity terms dominate its
+tolerance) accumulated across stages to 3.3e-3 mol/s; the cascade
+now conserves by construction (lever-rule phase fraction on the
+best-separated component, extract flows from the split, raffinate
+flows as the remainder), bringing the overall residual to 2.4e-6
+mol/s on 200 mol/s, the one-sweep Jacobi lag at tolerance. A stage
+audit confirmed per-stage conservation. Runtime note: a 5-stage
+cascade takes ~1 min because each stage split runs the stability
+screening; acceptable, optimise only if Phase 7 needs it.
+
+Phase 6 COMPLETE (2026-11-21): python/exchangers.py (LMTD, Bowman
+F factor for 1-2 shells, effectiveness-NTU rating for counter and
+parallel flow, design sizing, air cooler in the simple form) and
+python/solids.py (cyclone and hydrocyclone cut sizes with the
+Lapple fractional-efficiency curve, Ruth constant-pressure
+filtration, centrifuge sigma capacity, screen partition curve,
+baghouse two-term pressure drop, dryer balance with a reported
+closure gap, MSMPR crystallizer moments, Bond crusher power).
+All empirical constants are caller-supplied, per the programme
+rule. Battery: NTU rating and LMTD design return the same UA at
+consistent terminals; Bond energy matches the hand value; Lapple
+efficiency is 0.5 at the cut size by construction and 0.9 at
+3 d50; dryer water balance closes.
+
+Phase 7 solver COMPLETE (2026-11-21): python/flowsheet.py --
+sequential-modular execution, tear streams, direct / Wegstein
+(bounded q) / Broyden (scipy broyden1) convergence, secant design
+specifications. Battery on a recycle loop (mixer, stoichiometric
+reactor at 10 percent per-pass conversion, 95 percent recycle
+splitter; loop gain 0.855): direct substitution 539 passes,
+Wegstein 105, Broyden 12, all to the same fixed point, matching
+the hand solution (product 100 mol/s total, 31.034 mol/s
+unconverted component) and closing the overall balance. The
+design specification recovered a 0.20 conversion from a product
+rate target to 1e-4.
+Deferred within Phase 7, explicitly: unit-level ChemCAD fixture
+capture from flowsheet streams. The capture interface returns
+stream enthalpies only from a built flowsheet (units plus
+streams); the existing sims are unit-level flash sims, and
+constructing flowsheet sims is a separate build task. It is
+scheduled with the Phase 1 follow-on session (the in-process
+chain acceptance trial), not dropped.
+
+PHASE 8 COMPLETE (2026-11-21): Rust port at rust/ (crate ccr, zero
+external dependencies). Modules: linalg (Gaussian solve, LM
+least-squares with central-difference Jacobian and bound clamping,
+bisection), eos, flash, activity, unifac, thermo (enthalpy/entropy,
+PS flash, isentropic), units, reactors, columns, exchangers,
+solids, flash3 (+ extraction), flowsheet (direct + Wegstein tear
+solver). Parity battery tests/parity.rs against
+fixtures/rust-parity.json (generated by python/gen_parity.py from
+the Python library): 11/11 PASS -- EOS ln phi, TP flash, NRTL,
+UNIQUAC, UNIFAC, PS round trip, compressor, valve, WGS equilibrium
+and Gibbs extents, stoichiometric adiabatic T, CSTR/PFR conversion,
+shortcut, rigorous tower (x, T, duties), absorber, flash3, HX,
+solids, flowsheet recycle fixed point (product 31.0345/68.9655,
+Wegstein faster than direct). Documented deviations from the
+Python structure, each forced by the zero-dependency LM solver and
+recorded in the code: (1) extraction solved as one coupled
+least-squares system over all stages (successive substitution
+limit-cycled), initialised from a few substitution sweeps, stage
+balances weighted x50, balance closes to 2.3e-3 mol/s on 200 (1e-5
+relative; flows match Python to ~1e-3 relative); (2) Gibbs reactor
+on an RREF independent-reaction basis with extents bounded by the
+limiting reagent (the floored residuals have a spurious stationary
+point beyond it) and amounts set from the feed each phi pass;
+(3) equilibrium extents started at 10 percent of limiting (log
+residuals singular at zero conversion); (4) PFR/batch by fixed-step
+RK4 (Python RK45), parity at 1e-4; (5) flash3/LLE trial
+compositions floored at 1e-12 against NaN logarithms; LLE phase
+identity enforced by continuity with the raffinate inlet.
+PROGRAMME COMPLETE: Phases 0-8 done. Deferred item stands as
+recorded: unit-level ChemCAD fixture capture from flowsheet
+streams, scheduled with the Phase 1 in-process chain follow-on
+(acceptance trial: control case x3 in-process, no restart).
+
+DEFERRED ITEM COMPLETE (2026-11-21): in-process chain + flowsheet
+stream fixture capture.
+- capture/cc_chain.py (deployed C:\Users\carlo\cc_chain.py): ONE
+  Python process, ONE Dispatch; per case LoadSim (retried), run,
+  dump all streams via GetStreamByID (T, P, VF, H, component
+  flows), CloseSimulation. Modes: run (SSRunAllUnits), seqN
+  (SSRunSelectedUnits per unit x N passes), dec (furfural decanter
+  spec), p3 (ammonia loop procedure), probe (unit connections),
+  0 = dump stored state. Heartbeat CHAIN BEGIN/DONE per case.
+- ACCEPTANCE TRIAL PASSED: control case p1c_fs.ccsim run_dump x3
+  in one chain process, no restart, no hang; all three dumps
+  identical line for line. In-process warm operation works; the
+  October/November warm-server failure was the second client, as
+  the 09:41 analysis inferred. Whole production chain (7 cases)
+  then ran in a single process with no restart.
+- Enthalpy units settled: flowsheet GetStreamByID H is a TOTAL
+  rate in Btu/h (verified: Linde feed air -7,741 Btu/h over
+  2,204.62 lbmol/h = -3.5 Btu/lbmol at 298 K; compressor outlet
+  7,253,760 Btu/h = 3,290 Btu/lbmol at 558 K, matching a
+  constant-Cp estimate; furfural feed -13,110,642 Btu/h =
+  -119,755 Btu/lbmol formation-inclusive). The IFlash getters of
+  Phase 1 remain H = 0; flowsheet streams carry enthalpy.
+- Fixtures frozen (builder capture/build_flowsheet_fixtures.py,
+  raw chain output capture/chain_final_out.txt):
+  (1) flowsheet-linde-asu-stored.json - Linde double-column ASU,
+  16 streams with enthalpies from the converged state stored in
+  Linde_ASU.ccsim; overall component balance closes to
+  7.6e-6 mol/s (2.7e-8 relative).
+  (2) flowsheet-nh3-loop-iso557.json - ammonia synthesis loop
+  converged in-process (specs per October p3_run2/p3_final:
+  isothermal Gibbs converter 557 degC, purge 0.0224, SSRunAllUnits
+  x8): converter feed NH3 0.0895, inerts 0.0975, liquid NH3
+  product 8,151 lbmol/h at 0.9637, converter outlet NH3 0.2045 -
+  all matching October's p3_final run. Unit closures: flash and
+  divider exact (<=4e-4 mol/s), Gibbs stoichiometry H2/N2 =
+  3.0000 and NH3/(2 N2) = 1.0000; element balance closes to
+  0.11 percent, residual = tear drift (mixer lag 1.13 mol/s;
+  October observed the same slow drift). NOTE: sequential
+  per-unit runs (SSRunSelectedUnits) return rc=-1 and leave a
+  one-iteration tear lag; SSRunAllUnits is the correct driver.
+  Also GetNoOfStreams under-reports (8 vs the 9 streams present;
+  stream 9 is the recycle).
+  (3) flowsheet-furfural-decanter.json - FINDING: the flowsheet
+  FLAS decanter returns a single liquid phase under databank
+  NRTL and identically under UNIQUAC, Margules and immiscible
+  variants (unit runs cleanly, rc=0, no error string), as in
+  October. The published split rests on measured solubility
+  data. Comparison case; feed/liquid stream enthalpy captured.
+  p2_fs.ccsim's flowsheet FLAS likewise never ran in flowsheet
+  context (seq rc=-1); its anchor remains the Phase 2 IFlash
+  three-phase fixture.
+- Rust checks (rust/tests/chemcad_flowsheet.rs, 3/3 pass; full
+  suite 18/18): Linde compressor molar enthalpy rise, Rust PR +
+  constant Cp 29.1 J/(mol K) gives 7,600 J/mol vs ChemCAD 7,661
+  (0.8 percent). NH3 converter Gibbs: outlet NH3 0.1787 vs
+  ChemCAD 0.20446 (within the stated 0.03 tolerance; gap =
+  zero-DeltaCp approximation in Delta G(T) + databank vs
+  published parameters). NH3 separator flash: documented
+  non-replication - PR with published constants gives all K = 1
+  at 294.15 K / 180.2 bar (single EOS root) where the databank
+  model splits (VF 0.91926, liquid NH3 0.9637); pinned by test.
+PROGRAMME FULLY COMPLETE: no deferred items remain.
+
+FIX ROUND (2026-11-21, local code only, no ChemCAD use in this
+round; responding to REVIEW-FRESH-2026-11-21.md). STATUS
+CORRECTION: the "PROGRAMME COMPLETE / FULLY COMPLETE" lines above
+are accurate only for Phases 0-8 plus the deferred fixture-capture
+item. Against the full INVENTORY (66 itypes and the full thermo
+model list) the programme is NOT complete: dynamics, batch column,
+fired heater, multi-stream exchanger, most specialty thermo
+models and several solids units remain unbuilt. The accurate
+status is in GAPS.md; FIX-REPORT-2026-11-21.md records this round.
+Done this round:
+- Case-file layer: python/casefile.py + cases/*.json (JSON loader;
+  components, Antoine, thermo selection for EOS/NRTL/UNIQUAC/
+  Wilson/van Laar/Margules/UNIFAC/regular-solution/Henry/
+  Chao-Seader, Arrhenius kinetics as data with the callable route
+  kept as override in the reactor APIs). python/thermo_extra.py:
+  Antoine Psat correlation (did not exist), Henry's law with
+  temperature dependence, regular solution, Chao-Seader /
+  Grayson-Streed structure (coefficients as data, unanchored -
+  see GAPS.md).
+- Columns: ActivityThermo and EOSThermo adapters shipped in
+  columns.py; rigorous_tower gained partial condenser, multiple
+  saturated-liquid feeds and liquid side draws (defaults unchanged;
+  Phase 5 battery and Rust tower parity unchanged).
+- Enthalpy wiring: thermo_gamma.ThermoGamma wires the latent-heat
+  route into units (mixer/heater/separator/valve) with an explicit
+  include_excess flag (True without a supplied excess function
+  raises); casefile.GammaRx gives stoichiometric reactors the
+  gamma route. Defect found and fixed in this round: the gamma
+  vapour enthalpy must carry the latent heat at the reference
+  temperature on the liquid datum; ThermoGamma implements that
+  (enthalpy.h_vapour_pure_gamma_route returns the ideal-gas part
+  only and is not used there).
+- Wrappers: decanter and vessel in thermo_gamma.py (Python).
+- Rust: rust/src/casefile.rs (zero-dependency JSON parser, case
+  loader, Antoine, Henry, regular solution, Chao-Seader,
+  Arrhenius), tests/fix_parity.rs 4/4; fixtures/rust-parity.json
+  gained a "fix" block from gen_parity.py.
+- Verification: trial battery before edits passed; after edits all
+  13 Python batteries pass (12 original + test_fix_cases.py, 28
+  checks) and cargo test passes (parity 11/11, fix_parity 4/4,
+  chemcad_flowsheet 3/3 from the capture round). Grep for chemical
+  names in new library code: 0 hits.
+Remaining: see GAPS.md (specialty models, dynamics, batch column,
+FIRE, LNGH, full MESH tower, Rust decanter/vessel wrappers, Rust
+kij in the case loader).
+
+FIX ROUND 2 (2026-11-21, local code only, no ChemCAD use;
+responding to the Round 1 remainder in GAPS.md). Trial battery
+before edits passed. Done this round (verification levels in
+FIX-REPORT-ROUND2-2026-11-21.md and GAPS.md):
+- Rust kij: CubicEOS::with_kij, case loader applies kij;
+  parity ln phi / flash psi vs Python (round2_parity 5/5 with
+  the items below).
+- Rust decanter + vessel wrappers (units2.rs).
+- Dynamics utilities (dynamics.py / dynamics.rs): Tank, Delay,
+  Ramp, LeadLag, PID - signal/stream scope, not coupled to the
+  steady solver. TSWT/DVSL/CVAL/NODE remain gaps.
+- Thermo (thermo_round2.py / thermo2.rs): Flory-Huggins binary
+  form; BWRS pure + mixture (synthetic test set, no anchor);
+  reduced PC-SAFT (hard chain + dispersion, NO association);
+  extended Debye-Huckel + single-salt Pitzer-lite; generic
+  speciation hook (Python only). Case-file fields bwrs/pcsaft/
+  fh_r added. VTPR not implemented (could not verify the
+  SRK zero-interaction limit locally); full SAFT association,
+  ESD and the PPAQ/amine/sour/TEG packages remain gaps.
+- Units (units_round2.py): fired heater as a design estimate;
+  Rayleigh batch distillation (analytic binary check) and
+  simple binary batch rectification (no tray holdup); tower
+  pumparounds in columns.py (defaults unchanged, Phase 5
+  battery identical). Tower stage efficiency NOT shipped
+  (formulation unverified this round); full MESH remains.
+- Verification: all 14 Python batteries pass (new
+  test_round2.py, 40 checks); cargo test 23/23 (parity 11,
+  fix_parity 4, chemcad_flowsheet 3, round2_parity 5); grep
+  for chemical names in new library code: 0 hits.
+Status: the programme is still NOT complete against the full
+INVENTORY; GAPS.md is the accurate status record.
+
+ROUND 3 (2026-11-21, parallel subagent round directed from the
+"ChemCAD remaining tasks and checks" chat; local code only, no
+ChemCAD use in the round itself): trial run first (K-tables /
+polynomial user-K, thermo_userk.py, 25 checks), then 9 parallel
+agents on disjoint new files (A variants, B SAFT association,
+C VTPR gate, D specialty-package framework, E dynamics2,
+F columns_mesh, G batch MESH + LNGH, H solids2 + flowsheet
+tools, I Rust round3 in a scratch crate). Coordinator
+reconciliation: all deliverables verified on disk at the
+reported sizes; Rust round3.rs integrated into the main crate
+(pub mod round3 in rust/src/lib.rs, tests/round3_parity.rs
+copied in); scratch crate retained at rust-scratch-round3/.
+Full verification: Python 25/25 battery files FAILURES: none;
+cargo test in rust/ 26/26 (parity 11, fix_parity 4,
+round2_parity 5, chemcad_flowsheet 3, round3_parity 3).
+Status record: GAPS.md Round 3 section. Remaining gaps after
+Round 3: ESD, full PSRK mixing rule, polymer UNIFAC, named
+specialty packages (framework present, data + anchor missing),
+batch energy-balance MESH, MESH stripper/absorber variants and
+Rust MESH port, unconfirmed name expansions, and ChemCAD
+anchoring for every Round 2/3 model — anchor jobs queued in
+~/workspace/chemcad-remote/queue/ (BWRS, PC-SAFT/SAFT,
+Flory-Huggins/electrolyte, VTPR/SAFT-association, packages +
+MESH tower) behind the claimed Chao-Seader job.
+
+2026-11-21 anchor queue run (all 6 jobs, serial, one CCNXT at
+a time): PC-SAFT/SAFT comparison anchor frozen (modek scan
+0-31, candidate codes 22/24; 35-point fixture vs teqp PC-SAFT:
+classification 35/35, K within 1.03%) and library pcsaft found
+DEFECTIVE for m > 1 (Z -> m, not 1) with fix path recorded.
+Chao-Seader/Grayson-Streed anchored per mixture family after
+the GetFlash fix (fixtures 30 + 35 points; fitted case data
+K within 7.25% / 6.16% max; universal set fails, recorded).
+Amine fixture frozen (6 points, base_p1b modek=12).
+Not obtained, blockers recorded in GAPS.md: BWRS (code not
+confirmable), Flory-Huggins + electrolyte (no polymer/salt
+sim, databank IDs unverifiable), VTPR (code not confirmable),
+SAFT-association (blocked by the pcsaft defect), sour water
+and TEG (no sims), stage-level MESH (capture route returns
+stream data only). Queue drained: pending 0.
+
+Completion session 2026-11-21 (evening, coordinator run):
+- Trial control passed (gs_c567 replay exact). PC inventory
+  refreshed: 273 sims scanned (capture/sim_xml_scan_2026-11-21.txt).
+- PC-SAFT fixed (Helmholtz assembly + I2 table + C1 28 eta^2),
+  teqp-verified, Python + Rust; cargo 28/28 at that point.
+- New fixtures: flash-game-c567-pr-tp.json (70 pts, a6 DONE,
+  no game refit), flash-apisrk-c567-tp.json (35 pts, b2 DONE),
+  flash-amine-p1b-grid2-tp.json (30 pts, a5 grid),
+  flash-ew-saft-mk22-tp.json (3 pts, a1 partial),
+  flash-ew-unifac-mk05-tp.json (2 pts, b6 comparison),
+  flowsheet-{teg-dehydration,sour-water,hcl-column,
+  mea-sweetening}-stored.json (b4 stream fixtures).
+- Amine local data set built (thermo_packages_amine.py);
+  anchored at loading 0.20; wider-grid deviations recorded
+  in GAPS.md (classification 24/30, coupling failures noted).
+- Rust Chao-Seader replay test added (b7 DONE).
+- Not obtainable (refreshed evidence in GAPS.md): BWRS (a2),
+  MESH stage profile (a3), user-K (b1), VTPR (b5),
+  Flory-Huggins polymer (b3); electrolyte partial via the
+  HCl column fixture. User GUI routes named in GAPS.md.
+- Session infrastructure: SSH drops at ~26 s idle; chains ran
+  under run_chain_hb.ps1 heartbeat wrapper. LoadSim hangs on
+  dgx-derived sims frequent; ccr/base sims reliable.
+
+Local code session 2026-11-21 (evening, coordinator run;
+ChemCAD disconnected, no ChemCAD use): trial run first
+(UNIFAC), then 4 parallel agents (amine, packages, MESH,
+ESD/PSRK/variants), coordinator close-out.
+- UNIFAC: published Hansen et al. 1991 data set shipped
+  (python/unifac_data.py); test_unifac_anchor.py 8/8; flash
+  psi deviation vs ChemCAD -0.00577 recorded (outside the
+  0.002 tolerance; compositions/K within tolerance).
+  CH2CO/CNH2 pair missing from the published table, coded
+  to raise, not guessed.
+- Packages: package_fixtures.py + test_package_fixtures.py
+  41/41; stored-fixture balance closures TEG 1.77e-5 worst
+  unit, sour water 2.95e-7, HCl 1.93e-8, MEA sweetening
+  1.28e-7; missing data per package named in
+  PACKAGES-FIXTURES-2026-11-21.md (carbamate ln K = None,
+  Aroua 1999 coefficients not in hand).
+- Amine: grid2 non-convergences diagnosed as a solver
+  defect (free-CO2 Jacobian ~1e8) and fixed (log unknowns +
+  continuation; 0 failures in 72 evaluations); published-
+  constant set built (mode="published") but worse on the
+  anchor (-0.0203 vs fitted +9.2e-6), so the fitted set
+  stays default; anchor test unchanged 17/17.
+- MESH: Rust port shipped (columns_mesh.rs, mesh_parity
+  5/5, agreement to 3.7e-11 K); stripper/absorber variants
+  in Python (test_mesh_variants.py 6/6) and Rust
+  (mesh_variants_parity 2/2); locally verified only.
+- ESD not implemented (mixture rules/reference values not
+  openly published); full PSRK not implemented (zero-
+  interaction gate fails structurally: arithmetic vs
+  geometric mean, 6.8e-4 to 7.5e-2 at 350 K; Dortmund
+  matrix is consortium data); Hiranuma/T.K. Wilson mapping
+  still unasserted (no ChemCAD-side primary source).
+- Final verification (coordinator re-run): Python suite
+  35/35 test files OK; cargo test 35 passed, 0 failed.
+  GAPS.md gained a "Local code session 2026-11-21" section
+  superseding the stale UNIFAC and MESH entries.

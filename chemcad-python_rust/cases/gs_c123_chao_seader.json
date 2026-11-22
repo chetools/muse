@@ -1,0 +1,64 @@
+{
+ "name": "methane/ethane/propane Grayson-Streed anchor case: library reduced Chao-Seader polynomial fitted to ChemCAD modek=2 captures of 2026-11-21 (fixtures/flash-gs-c123-tp.json); K reproduced within 7.3% max, 2.9% mean over the 18 fitted K values; vapour fugacity from SRK; critical properties are the published Poling values, NOT ChemCAD databank values",
+ "components": [
+  {
+   "name": "methane",
+   "Tc": 190.6,
+   "Pc": 4599000.0,
+   "omega": 0.011,
+   "cp": [
+    35.8,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "ethane",
+   "Tc": 305.3,
+   "Pc": 4872000.0,
+   "omega": 0.099,
+   "cp": [
+    52.5,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "propane",
+   "Tc": 369.8,
+   "Pc": 4248000.0,
+   "omega": 0.152,
+   "cp": [
+    73.6,
+    0,
+    0,
+    0
+   ]
+  }
+ ],
+ "thermo": {
+  "model": "chao_seader",
+  "eos_kind": "SRK",
+  "coeffs0": [
+   11.722873430970923,
+   -6.182456928693209,
+   -3.7426690245072463,
+   1.1232535600772389,
+   -9.875931557012864,
+   -1.7031155185753453,
+   14.124913359620466
+  ],
+  "coeffs1": [
+   5.422912083553087,
+   -5.420416790677076,
+   3.3922341711837034,
+   -2.9382453125851793,
+   -2.104566854471317,
+   5.15682326686543,
+   -16.612425499186955
+  ]
+ },
+ "reactions": []
+}

@@ -1,0 +1,18 @@
+{
+  "name": "methanol/ethanol, NRTL (ILLUSTRATIVE parameters: Antoine coefficients converted from published log10/mmHg sets to the log10/Pa form of thermo_extra.py; NRTL tau values and Arrhenius block are illustrative, not fitted or ChemCAD-anchored)",
+  "components": [
+    {"name": "MeOH", "Tc": 512.6, "Pc": 8.09e6, "omega": 0.565, "cp": [44.0, 0, 0, 0],
+     "antoine": [10.2059, 1582.271, -33.424], "lam_ref": 35200.0, "T_ref_lam": 337.7,
+     "Hf": -200700.0, "Gf": -162300.0},
+    {"name": "EtOH", "Tc": 513.9, "Pc": 6.14e6, "omega": 0.645, "cp": [65.0, 0, 0, 0],
+     "antoine": [10.3291, 1642.89, -42.85], "lam_ref": 38600.0, "T_ref_lam": 351.4,
+     "Hf": -235100.0, "Gf": -168600.0}
+  ],
+  "thermo": {"model": "nrtl",
+             "tau": [[0.0, 0.30], [0.50, 0.0]],
+             "alpha": [[0.0, 0.30], [0.30, 0.0]]},
+  "reactions": [
+    {"nu": [-1.0, 1.0],
+     "arrhenius": {"A": 1000.0, "Ea": 50000.0, "orders": [1.0, 0.0]}}
+  ]
+}

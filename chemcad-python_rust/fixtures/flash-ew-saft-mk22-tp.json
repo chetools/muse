@@ -1,0 +1,90 @@
+{
+ "case_id": "flash-ew-saft-mk22-tp",
+ "unit": "IFLASH",
+ "mixture": [
+  "ethanol",
+  "water"
+ ],
+ "thermo": {
+  "k_model": "ChemCAD ThermalModes modek=22 (SAFT-family candidate, unconfirmed)",
+  "parameters": null,
+  "note": "Comparison case: databank parameters not readable. Sim ew2_mk22.ccsim (modek edit of dgx_ew_7102.ccsim in every non-economics XML member). SPARSE GRID: LoadSim hung on most CCNXT starts in the 2026-11-21 completion session (approved hang criteria: timeout, no output, flat CCNXT CPU); these 3 points were obtained by single-case cold retries. At 350 K / 101 kPa ChemCAD modek=22 gives psi=0.851 with liquid ethanol mole fraction 0.0052 (K_ethanol about 117), a near-immiscible split unlike the databank NRTL result at 355 K (psi=0.757, liquid ethanol 0.277) and unlike teqp PC-SAFT with Gross (2002) association parameters: the ChemCAD databank SAFT-family model for ethanol/water does NOT reproduce the published-parameter PC-SAFT+association behaviour. Recorded as the comparison result."
+ },
+ "inputs": {
+  "spec": {
+   "mode": "TP"
+  },
+  "feed": {
+   "flows_lbmol_per_h": [
+    50.0,
+    50.0
+   ],
+   "mole_fractions": [
+    0.5,
+    0.5
+   ]
+  }
+ },
+ "points": [
+  {
+   "T_K": 330,
+   "P_kPa": 101,
+   "psi": 0.0,
+   "balance_max_rel_dev": 0.0,
+   "liquid": {
+    "total_mol_per_s": 12.599788055555555,
+    "mole_fractions": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  {
+   "T_K": 340,
+   "P_kPa": 101,
+   "psi": 0.0,
+   "balance_max_rel_dev": 0.0,
+   "liquid": {
+    "total_mol_per_s": 12.599788055555555,
+    "mole_fractions": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  {
+   "T_K": 350,
+   "P_kPa": 101,
+   "psi": 0.85136479,
+   "balance_max_rel_dev": 0.0,
+   "vapour": {
+    "total_mol_per_s": 10.727028889744261,
+    "mole_fractions": [
+     0.5863875413744,
+     0.4136124586256
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 1.872759291809175,
+    "mole_fractions": [
+     0.005178283677530721,
+     0.9948217163224693
+    ]
+   },
+   "K": [
+    113.23974851335693,
+    0.4157654098611659
+   ]
+  }
+ ],
+ "tolerances": {
+  "T_K": 0.1,
+  "compositions": 0.002,
+  "duty_percent": 0.5
+ },
+ "source": {
+  "sim_file": "ew2_mk22.ccsim",
+  "captured": "2026-11-21",
+  "runner": "cc_chain.py capture_case via run_chain_hb.ps1, one Dispatch per case (cold retries)"
+ }
+}

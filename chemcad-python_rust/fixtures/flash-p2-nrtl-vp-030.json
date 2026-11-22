@@ -1,0 +1,95 @@
+{
+  "case_id": "flash-p2-nrtl-vp-030",
+  "unit": "IFLASH",
+  "mixture": [
+    "water",
+    "1-butanol",
+    "2-butanol"
+  ],
+  "thermo": {
+    "k_model": "NRTL (ChemCAD databank), ThermalModes modek=10, three-phase flag i3pf=1",
+    "enthalpy_model": null,
+    "parameters": null,
+    "note": "Comparison case (databank parameters not readable). The plain base sim (its own modek) gives T = 339.05 K on the same spec; the model code is part of the case. IFlash returns the two liquids merged, so the liquid split is not observable through this interface (October finding, re-confirmed by construction)."
+  },
+  "inputs": {
+    "spec": {
+      "mode": "VP",
+      "VF": 0.3,
+      "P_kPa": 101.325
+    },
+    "feed": {
+      "flows_mol_per_s": [
+        9.68671705711111,
+        1.5258343335277778,
+        1.3884966437222221
+      ],
+      "mole_fractions": [
+        0.7688,
+        0.1211,
+        0.1102
+      ]
+    }
+  },
+  "outputs": {
+    "T_K": 363.471646,
+    "psi": 0.30000001,
+    "vapour": {
+      "flows_mol_per_s": [
+        2.625381045754989,
+        0.5177833762257138,
+        0.6371474683700193
+      ],
+      "mole_fractions": [
+        0.69452,
+        0.13696,
+        0.16853
+      ]
+    },
+    "liquid_merged": {
+      "flows_mol_per_s": [
+        7.06133563336248,
+        1.0080510832999445,
+        0.7513493013500833
+      ],
+      "mole_fractions": [
+        0.80057,
+        0.11429,
+        0.08518
+      ]
+    }
+  },
+  "balance_check": {
+    "in_out_lbmol_h": [
+      [
+        76.88,
+        76.879997
+      ],
+      [
+        12.11,
+        12.110001
+      ],
+      [
+        11.02,
+        11.020001
+      ]
+    ]
+  },
+  "cross_check": "T agrees with the October 2026 screening study's independent capture of the same case (363.47 K) to 0.002 K.",
+  "tolerances": {
+    "T_K": 0.1,
+    "mole_fraction": 0.002,
+    "duty_pct": 0.5
+  },
+  "source": {
+    "sim_file": "base_p2.ccsim (variant ccr_work.ccsim, modek=10, i3pf=1)",
+    "captured": "2026-11-21",
+    "runner": "ccr_capture.py vpflashx",
+    "chain": "run_job"
+  },
+  "raw": [
+    "CCR T_K 363.471646 P_kPa 101.325001 psi 0.30000001",
+    "CCR VAPOR rate_lbmol_h 30.002979 flows 20.836708,4.109461,5.056811",
+    "CCR LIQUID rate_lbmol_h 70.007019 flows 56.043289,8.000540,5.963190"
+  ]
+}

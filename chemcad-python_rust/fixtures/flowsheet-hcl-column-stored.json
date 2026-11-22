@@ -1,0 +1,80 @@
+{
+ "case_id": "flowsheet-hcl-column-stored",
+ "unit": "FLOWSHEET (stored state)",
+ "title": "HCl-water packed column (ChemCAD example, Examples NXT-1.2.1)",
+ "components": [
+  "Nitrogen",
+  "Oxygen",
+  "HydrogenChloride",
+  "Water"
+ ],
+ "nstreams": 4,
+ "nunits": 1,
+ "streams": [
+  {
+   "id": 1,
+   "src": 0,
+   "tgt": 1,
+   "T_K": 310.9277666666667,
+   "P_Pa": 344737.85,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -8989864.220218299,
+   "flows_mol_s": [
+    0.0,
+    0.0,
+    0.12599788055555555,
+    31.49947013888889
+   ]
+  },
+  {
+   "id": 2,
+   "src": 0,
+   "tgt": 1,
+   "T_K": 310.9277666666667,
+   "P_Pa": 344737.85,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -345305.771562454,
+   "flows_mol_s": [
+    10.079830444444443,
+    2.519957611111111,
+    3.7799364166666667,
+    0.0
+   ]
+  },
+  {
+   "id": 3,
+   "src": 1,
+   "tgt": 0,
+   "T_K": 334.0856944444444,
+   "P_Pa": 101325.34887199999,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -724020.2969779859,
+   "flows_mol_s": [
+    10.079717046351943,
+    2.5198556788257416,
+    5.763232767102066e-07,
+    3.064788700359925
+   ]
+  },
+  {
+   "id": 4,
+   "src": 1,
+   "tgt": 0,
+   "T_K": 364.44763333333333,
+   "P_Pa": 101325.34887199999,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -8611151.9221429,
+   "flows_mol_s": [
+    0.00011378325290111267,
+    0.0001019362228032118,
+    3.9059337932307,
+    28.434680052552277
+   ]
+  }
+ ],
+ "note": "Stored-state stream dump (run_flag 0, not re-solved this session). Stream-level fixture: it anchors the package slate and stream states, not a local package evaluation. Enthalpy is the GetStreamByID total rate converted Btu/h -> W.",
+ "source": {
+  "captured": "2026-11-21",
+  "runner": "cc_chain.py dump_case via run_chain_hb.ps1, one Dispatch"
+ }
+}

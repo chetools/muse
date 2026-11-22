@@ -1,0 +1,1451 @@
+{
+ "case_id": "flash-gs-c567-tp",
+ "unit": "IFLASH",
+ "mixture": [
+  "n-pentane",
+  "n-hexane",
+  "n-heptane"
+ ],
+ "thermo": {
+  "k_model": "Grayson-Streed (ChemCAD, ThermalModes modek=2)",
+  "enthalpy_model": "SRK (ChemCAD pairing for this sim)",
+  "parameters": null,
+  "note": "ChemCAD databank Grayson-Streed parameters are not readable from the sim; comparison case. Local verification fits the library reduced Chao-Seader polynomial (thermo_extra) to these K-values with SRK vapour fugacity coefficients; see test_gs_anchor.py for the recorded fit quality."
+ },
+ "inputs": {
+  "spec": {
+   "mode": "TP",
+   "grid_T_K": [
+    230,
+    260,
+    290,
+    320,
+    350,
+    370
+   ],
+   "grid_P_kPa": [
+    15,
+    50,
+    100,
+    150,
+    200,
+    250,
+    300,
+    500,
+    1000,
+    2000
+   ]
+  },
+  "feed": {
+   "flows_lbmol_per_h": [
+    100.0,
+    100.0,
+    100.0
+   ],
+   "mole_fractions": [
+    0.3333333333333333,
+    0.3333333333333333,
+    0.3333333333333333
+   ]
+  }
+ },
+ "points": [
+  {
+   "T_K": 230,
+   "P_kPa": 100,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T230_P100",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 230.000000 P_kPa 100.000002 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T230_P100"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 230,
+   "P_kPa": 1000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T230_P1000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 230.000000 P_kPa 1000.000044 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T230_P1000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 230,
+   "P_kPa": 2000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T230_P2000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 230.000000 P_kPa 2000.000088 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T230_P2000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 230,
+   "P_kPa": 300,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T230_P300",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 230.000000 P_kPa 299.999992 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T230_P300"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 230,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T230_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 230.000000 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T230_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 260,
+   "P_kPa": 100,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T260_P100",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 260.000000 P_kPa 100.000002 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T260_P100"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 260,
+   "P_kPa": 1000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T260_P1000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 260.000000 P_kPa 1000.000044 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T260_P1000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 260,
+   "P_kPa": 2000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T260_P2000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 260.000000 P_kPa 2000.000088 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T260_P2000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 260,
+   "P_kPa": 300,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T260_P300",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 260.000000 P_kPa 299.999992 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T260_P300"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 260,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T260_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 260.000000 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T260_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 290,
+   "P_kPa": 100,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T290_P100",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 290.000000 P_kPa 100.000002 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T290_P100"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 290,
+   "P_kPa": 1000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T290_P1000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 290.000000 P_kPa 1000.000044 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T290_P1000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 290,
+   "P_kPa": 15,
+   "psi": 0.59018821,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T290_P15",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 290.000000 P_kPa 15.000000 psi 0.59018821",
+    "CCR VAPOR rate_lbmol_h 177.056473 H_Btu_lbmol 0.0000 flows 83.561172,60.007828,33.487469",
+    "CCR LIQUID rate_lbmol_h 122.943535 H_Btu_lbmol 0.0000 flows 16.438829,39.992176,66.512527",
+    "CHAIN DONE gs_c567_T290_P15"
+   ],
+   "vapour": {
+    "total_mol_per_s": 22.30874033664195,
+    "flows_mol_per_s": [
+     10.528530568738235,
+     7.560859144742323,
+     4.21935011916987
+    ],
+    "mole_fractions": [
+     0.4719464393713524,
+     0.3389191424817324,
+     0.18913439555525313
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 15.490624838007765,
+    "flows_mol_per_s": [
+     2.0712576128152027,
+     5.038929414804756,
+     8.380437432394165
+    ],
+    "mole_fractions": [
+     0.13371039802946938,
+     0.3252889710711507,
+     0.5410006064979342
+    ]
+   },
+   "K": [
+    3.5296165917278683,
+    1.0419017323756739,
+    0.34960107860059364
+   ],
+   "balance_max_rel_dev": 4.0000000041118256e-08
+  },
+  {
+   "T_K": 290,
+   "P_kPa": 2000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T290_P2000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 290.000000 P_kPa 2000.000088 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T290_P2000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 290,
+   "P_kPa": 300,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T290_P300",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 290.000000 P_kPa 299.999992 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T290_P300"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 290,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T290_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 290.000000 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T290_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 320,
+   "P_kPa": 100,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T320_P100",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 320.000000 P_kPa 100.000002 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T320_P100"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 320,
+   "P_kPa": 1000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T320_P1000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 320.000000 P_kPa 1000.000044 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T320_P1000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 320,
+   "P_kPa": 2000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T320_P2000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 320.000000 P_kPa 2000.000088 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T320_P2000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 320,
+   "P_kPa": 300,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T320_P300",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 320.000000 P_kPa 299.999992 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T320_P300"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 320,
+   "P_kPa": 50,
+   "psi": 0.49420786,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T320_P50",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 320.000000 P_kPa 50.000001 psi 0.49420786",
+    "CCR VAPOR rate_lbmol_h 148.262360 H_Btu_lbmol 0.0000 flows 73.340340,48.511566,26.410458",
+    "CCR LIQUID rate_lbmol_h 151.737640 H_Btu_lbmol 0.0000 flows 26.659662,51.488434,73.589546",
+    "CHAIN DONE gs_c567_T320_P50"
+   ],
+   "vapour": {
+    "total_mol_per_s": 18.68074312616478,
+    "flows_mol_per_s": [
+     9.240727399223834,
+     6.11235449843095,
+     3.3276617325015163
+    ],
+    "mole_fractions": [
+     0.49466594218519117,
+     0.3272008215706266,
+     0.1781332632233832
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 19.11862104050189,
+    "flows_mol_per_s": [
+     3.3590609083274834,
+     6.487433557124605,
+     9.272126827045561
+    ],
+    "mole_fractions": [
+     0.17569577330977337,
+     0.33932539085226315,
+     0.4849788490186087
+    ]
+   },
+   "K": [
+    2.815468652811778,
+    0.964268605861813,
+    0.36730109691144114
+   ],
+   "balance_max_rel_dev": 3.9999999899009705e-08
+  },
+  {
+   "T_K": 320,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T320_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 320.000000 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T320_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 350,
+   "P_kPa": 100,
+   "psi": 0.97232157,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T350_P100",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 350.000000 P_kPa 100.000002 psi 0.97232157",
+    "CCR VAPOR rate_lbmol_h 291.696472 H_Btu_lbmol 0.0000 flows 99.106049,97.739265,94.851173",
+    "CCR LIQUID rate_lbmol_h 8.303528 H_Btu_lbmol 0.0000 flows 0.893957,2.260741,5.148830",
+    "CHAIN DONE gs_c567_T350_P100"
+   ],
+   "vapour": {
+    "total_mol_per_s": 36.75313723753296,
+    "flows_mol_per_s": [
+     12.487152124235035,
+     12.314940237057794,
+     11.951046766208336
+    ],
+    "mole_fractions": [
+     0.33975744828343346,
+     0.33507181053598756,
+     0.3251707926038954
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 1.0462269291337112,
+    "flows_mol_per_s": [
+     0.11263668730780278,
+     0.2848485744850472,
+     0.6487416673408611
+    ],
+    "mole_fractions": [
+     0.10765990070726564,
+     0.2722627056836564,
+     0.620077393609078
+    ]
+   },
+   "K": [
+    3.1558402529764202,
+    1.230693016491614,
+    0.5244035598706188
+   ],
+   "balance_max_rel_dev": 5.999999999062311e-08
+  },
+  {
+   "T_K": 350,
+   "P_kPa": 1000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T350_P1000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 350.000000 P_kPa 1000.000044 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T350_P1000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 350,
+   "P_kPa": 150,
+   "psi": 0.20835312,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T350_P150",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 350.000000 P_kPa 149.999996 psi 0.20835312",
+    "CCR VAPOR rate_lbmol_h 62.505936 H_Btu_lbmol 0.0000 flows 35.840385,18.038761,8.626789",
+    "CCR LIQUID rate_lbmol_h 237.494049 H_Btu_lbmol 0.0000 flows 64.159615,81.961243,91.373207",
+    "CHAIN DONE gs_c567_T350_P150"
+   ],
+   "vapour": {
+    "total_mol_per_s": 7.8756154581412,
+    "flows_mol_per_s": [
+     4.515812548295125,
+     2.272845653848214,
+     1.0869571299999805
+    ],
+    "mole_fractions": [
+     0.5733917015497536,
+     0.28859276661339817,
+     0.13801551583836774
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 29.92374681855726,
+    "flows_mol_per_s": [
+     8.083975507260432,
+     10.326942905698864,
+     11.512830421564054
+    ],
+    "mole_fractions": [
+     0.27015251653737227,
+     0.34510861785846264,
+     0.3847389329742742
+    ]
+   },
+   "K": [
+    2.1224740339238406,
+    0.8362374964851125,
+    0.3587251094434891
+   ],
+   "balance_max_rel_dev": 4.0000000041118256e-08
+  },
+  {
+   "T_K": 350,
+   "P_kPa": 2000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T350_P2000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 350.000000 P_kPa 2000.000088 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T350_P2000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 350,
+   "P_kPa": 300,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T350_P300",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 350.000000 P_kPa 299.999992 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T350_P300"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 350,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T350_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 350.000000 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T350_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 370,
+   "P_kPa": 100,
+   "psi": 1.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T370_P100",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 370.000000 P_kPa 100.000002 psi 1.00000000",
+    "CCR VAPOR rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CCR LIQUID rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CHAIN DONE gs_c567_T370_P100"
+   ],
+   "vapour": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 370,
+   "P_kPa": 1000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T370_P1000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 370.000000 P_kPa 1000.000044 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T370_P1000"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 370,
+   "P_kPa": 200,
+   "psi": 0.71740329,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T370_P200",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 370.000000 P_kPa 200.000003 psi 0.71740329",
+    "CCR VAPOR rate_lbmol_h 215.220993 H_Btu_lbmol 0.0000 flows 86.471191,73.153008,55.596786",
+    "CCR LIQUID rate_lbmol_h 84.779022 H_Btu_lbmol 0.0000 flows 13.528812,26.847000,44.403210",
+    "CHAIN DONE gs_c567_T370_P200"
+   ],
+   "vapour": {
+    "total_mol_per_s": 27.117388969062056,
+    "flows_mol_per_s": [
+     10.89518679511463,
+     9.2171239642636,
+     7.005077201700783
+    ],
+    "mole_fractions": [
+     0.40177860809330995,
+     0.33989717722378504,
+     0.2583241775118099
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 10.681977087572818,
+    "flows_mol_per_s": [
+     1.7046016384345668,
+     3.382665099275,
+     5.59471034986325
+    ],
+    "mole_fractions": [
+     0.15957735393550543,
+     0.3166703196930014,
+     0.5237523263714932
+    ]
+   },
+   "K": [
+    2.5177670777502192,
+    1.0733471250267506,
+    0.49321819590082877
+   ],
+   "balance_max_rel_dev": 8.000000008223651e-08
+  },
+  {
+   "T_K": 370,
+   "P_kPa": 2000,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T370_P2000",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 370.000000 P_kPa 2000.000088 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T370_P2000",
+    "CHAIN ALL DONE",
+    "CHAIN START cases=5"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 370,
+   "P_kPa": 250,
+   "psi": 0.24164037,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T370_P250",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 370.000000 P_kPa 250.000011 psi 0.24164037",
+    "CCR VAPOR rate_lbmol_h 72.492119 H_Btu_lbmol 0.0000 flows 39.324341,21.775221,11.392553",
+    "CCR LIQUID rate_lbmol_h 227.507889 H_Btu_lbmol 0.0000 flows 60.675663,78.224777,88.607452",
+    "CHAIN DONE gs_c567_T370_P250",
+    "CHAIN ALL DONE"
+   ],
+   "vapour": {
+    "total_mol_per_s": 9.133853350981122,
+    "flows_mol_per_s": [
+     4.954783620243936,
+     2.743631694628825,
+     1.435437532116836
+    ],
+    "mole_fractions": [
+     0.5424636711198909,
+     0.30038052826128586,
+     0.15715574544041125
+    ]
+   },
+   "liquid": {
+    "total_mol_per_s": 28.665511823668595,
+    "flows_mol_per_s": [
+     7.645004939303142,
+     9.856156108930971,
+     11.164351153428122
+    ],
+    "mole_fractions": [
+     0.26669696275894855,
+     0.3438332505471931,
+     0.38946979988021424
+    ]
+   },
+   "K": [
+    2.0340076823829127,
+    0.8736226871113993,
+    0.4035120193882715
+   ],
+   "balance_max_rel_dev": 4.999999987376214e-08
+  },
+  {
+   "T_K": 370,
+   "P_kPa": 300,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T370_P300",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 370.000000 P_kPa 299.999992 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T370_P300"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  },
+  {
+   "T_K": 370,
+   "P_kPa": 500,
+   "psi": 0.0,
+   "raw": [
+    "CHAIN BEGIN gs_c567_T370_P500",
+    "CCR LOAD rc=0",
+    "CCR ncomp 3",
+    "CCR define 3 calc 0",
+    "CCR T_K 370.000000 P_kPa 500.000022 psi 0.00000000",
+    "CCR VAPOR rate_lbmol_h 0.000000 H_Btu_lbmol 0.0000 flows 0.000000,0.000000,0.000000",
+    "CCR LIQUID rate_lbmol_h 300.000000 H_Btu_lbmol 0.0000 flows 100.000000,100.000000,100.000000",
+    "CHAIN DONE gs_c567_T370_P500"
+   ],
+   "vapour": {
+    "total_mol_per_s": 0.0,
+    "flows_mol_per_s": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mole_fractions": null
+   },
+   "liquid": {
+    "total_mol_per_s": 37.79936416666667,
+    "flows_mol_per_s": [
+     12.599788055555555,
+     12.599788055555555,
+     12.599788055555555
+    ],
+    "mole_fractions": [
+     0.3333333333333333,
+     0.3333333333333333,
+     0.3333333333333333
+    ]
+   },
+   "balance_max_rel_dev": 0.0
+  }
+ ],
+ "tolerances": {
+  "T_K": 0.1,
+  "compositions": 0.002,
+  "duty_percent": 0.5
+ },
+ "source": {
+  "sim_file": "ccr_gs_c567.ccsim",
+  "captured": "2026-11-21",
+  "runner": "cc_chain.py capture_case via run_job.ps1, one Dispatch"
+ }
+}

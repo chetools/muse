@@ -1,0 +1,213 @@
+{
+ "case": "flowsheet-nh3-loop-iso557",
+ "source_sim": "p3_fs.ccsim (October 2026 P3 flowsheet), run in-process: specs of p3_run2/p3_final written by COM, SSRunAllUnits x8",
+ "process": "Ammonia synthesis loop: mixer, compressor (188 bar, eta 0.75), isothermal Gibbs converter at 557 degC, separator flash at 21 degC / 180.2 bar, purge divider at 0.0224",
+ "components": [
+  "Hydrogen",
+  "Nitrogen",
+  "Ammonia",
+  "Methane",
+  "Argon"
+ ],
+ "streams": [
+  {
+   "id": 1,
+   "src": null,
+   "tgt": null,
+   "T_K": 308.1499888888889,
+   "P_Pa": 18200032.8264169,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -1584415.6187230349,
+   "flows_mol_s": [
+    1642.5975774216556,
+    556.8392668560089,
+    0.0,
+    25.909889162743053,
+    8.264361002947194
+   ]
+  },
+  {
+   "id": 2,
+   "src": null,
+   "tgt": null,
+   "T_K": 295.9787333333333,
+   "P_Pa": 18020031.405417897,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -116142555.72498949,
+   "flows_mol_s": [
+    6091.39613697722,
+    2530.3756198669666,
+    949.6906919958792,
+    866.9977537961697,
+    167.0187207329025
+   ]
+  },
+  {
+   "id": 3,
+   "src": null,
+   "tgt": null,
+   "T_K": 300.5998055555556,
+   "P_Pa": 18800033.1964008,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -114648033.9421031,
+   "flows_mol_s": [
+    6091.39613697722,
+    2530.3756198669666,
+    949.6906919958792,
+    866.9977537961697,
+    167.0187207329025
+   ]
+  },
+  {
+   "id": 4,
+   "src": null,
+   "tgt": null,
+   "T_K": 830.1500000000001,
+   "P_Pa": 18800033.1964008,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": 19691937.5526976,
+   "flows_mol_s": [
+    4573.6099180699275,
+    2024.4468802312026,
+    1961.5483602642278,
+    866.9977537961697,
+    167.0187207329025
+   ]
+  },
+  {
+   "id": 5,
+   "src": null,
+   "tgt": null,
+   "T_K": 0.0,
+   "P_Pa": 0.0,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": 0.0,
+   "flows_mol_s": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "id": 6,
+   "src": null,
+   "tgt": null,
+   "T_K": 294.14998333333335,
+   "P_Pa": 18020031.405417897,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -117256908.64658259,
+   "flows_mol_s": [
+    4551.3919558042835,
+    2019.9141064782168,
+    971.8140802523786,
+    861.0647781963578,
+    162.46679530207194
+   ]
+  },
+  {
+   "id": 7,
+   "src": null,
+   "tgt": null,
+   "T_K": 294.14998333333335,
+   "P_Pa": 18020031.405417897,
+   "vapour_fraction": 0.0,
+   "enthalpy_rate_W": -66606543.4271272,
+   "flows_mol_s": [
+    22.21799502509339,
+    4.5326255794785775,
+    989.7343934099417,
+    5.933037842764939,
+    4.551930596743658
+   ]
+  },
+  {
+   "id": 8,
+   "src": null,
+   "tgt": null,
+   "T_K": 294.14998333333335,
+   "P_Pa": 18020031.405417897,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -2626554.8029193897,
+   "flows_mol_s": [
+    101.95117245173972,
+    45.24607452353664,
+    21.76863492390125,
+    19.28785005385486,
+    3.639256129087853
+   ]
+  },
+  {
+   "id": 9,
+   "src": null,
+   "tgt": null,
+   "T_K": 294.14998333333335,
+   "P_Pa": 18020031.405417897,
+   "vapour_fraction": 1.0,
+   "enthalpy_rate_W": -114630355.89516069,
+   "flows_mol_s": [
+    4449.440392759114,
+    1974.667889577075,
+    950.0454264287953,
+    841.7768840432446,
+    158.8275229192575
+   ]
+  }
+ ],
+ "checks": {
+  "element_balance_worst_mol_s": 5.103739952608976,
+  "element_balance_relative": 0.001124992620235679,
+  "unit_closure_mol_s": {
+   "mixer": 1.13153656611712,
+   "flash": 0.0001481735071138246,
+   "divider": 0.00039059342998370994
+  },
+  "gibbs_H2_per_N2_consumed": 3.0,
+  "gibbs_NH3_per_2N2_consumed": 1.000000186782056,
+  "rust_checks": "tests/chemcad_flowsheet.rs in the Rust crate: converter Gibbs check gives outlet NH3 mole fraction 0.1787 against ChemCAD 0.20446 (tolerance 0.03; gap attributed to the zero-heat-capacity-change approximation in the formation-data Gibbs energy and databank-versus-published parameters); separator flash is a documented non-replication (PR with published constants gives all K = 1 at 294.15 K / 180.2 bar, a single EOS root, where the databank model splits). The Linde compressor enthalpy check in the same file agrees with ChemCAD within 0.8 percent.",
+  "october_crosscheck": "Converter feed NH3 mole fraction 0.0895 and inerts 0.0975, liquid NH3 product 8151 lbmol/h at NH3 fraction 0.9637, converter outlet NH3 fraction 0.2045: all match the October 2026 p3_final run of the same procedure."
+ },
+ "raw": [
+  "CCR LOAD rc=0",
+  "CCR TOPO nstreams=9 nunits=5 ncomp=5 comps=Hydrogen,Nitrogen,Ammonia,Methane,Argon",
+  "CCR PUT S1 rc=5",
+  "CCR PUT S9 rc=5",
+  "CCR REFLASH S9 rc=0",
+  "CCR PAR unit=2 par=2 val=0 rc=1",
+  "CCR PAR unit=2 par=3 val=2726.7144 rc=1",
+  "CCR PAR unit=2 par=4 val=0 rc=1",
+  "CCR PAR unit=2 par=5 val=0.75 rc=1",
+  "CCR PAR unit=3 par=2 val=2 rc=1",
+  "CCR PAR unit=3 par=3 val=1 rc=1",
+  "CCR PAR unit=3 par=4 val=1494.27 rc=1",
+  "CCR PAR unit=3 par=18 val=4 rc=1",
+  "CCR PAR unit=3 par=19 val=5 rc=1",
+  "CCR PAR unit=4 par=2 val=2 rc=1",
+  "CCR PAR unit=4 par=3 val=529.47 rc=1",
+  "CCR PAR unit=4 par=4 val=2613.5847599999997 rc=1",
+  "CCR PAR unit=5 par=2 val=0 rc=1",
+  "CCR PAR unit=5 par=3 val=0.0224 rc=1",
+  "CCR PAR unit=5 par=4 val=0.9776 rc=1",
+  "CCR PAR unit=5 par=17 val=1 rc=1",
+  "CCR SAVE rc=0",
+  "CCR CONV iter=1 rc=0 S3_tot=8.399e+04 NH3=0.0895 inerts=0.0971",
+  "CCR CONV iter=2 rc=0 S3_tot=8.402e+04 NH3=0.0895 inerts=0.0972",
+  "CCR CONV iter=3 rc=0 S3_tot=8.405e+04 NH3=0.0895 inerts=0.0973",
+  "CCR CONV iter=4 rc=0 S3_tot=8.407e+04 NH3=0.0895 inerts=0.0973",
+  "CCR CONV iter=5 rc=0 S3_tot=8.41e+04 NH3=0.0895 inerts=0.0974",
+  "CCR CONV iter=6 rc=0 S3_tot=8.412e+04 NH3=0.0895 inerts=0.0974",
+  "CCR CONV iter=7 rc=0 S3_tot=8.415e+04 NH3=0.0895 inerts=0.0975",
+  "CCR CONV iter=8 rc=0 S3_tot=8.417e+04 NH3=0.0895 inerts=0.0975",
+  "CCR STREAM id=1 rc=5 T_R=554.66998 P_psia=2639.6917 VF=1 H=-5406250.5 flows=13036.708,4419.4336,0,205.6375,65.59127",
+  "CCR STREAM id=2 rc=5 T_R=532.76172 P_psia=2613.5847 VF=1 H=-3.9629485e+08 flows=48345.227,20082.684,7537.3545,6881.0503,1325.5677",
+  "CCR STREAM id=3 rc=5 T_R=541.07965 P_psia=2726.7144 VF=1 H=-3.9119533e+08 flows=48345.227,20082.684,7537.3545,6881.0503,1325.5677",
+  "CCR STREAM id=4 rc=5 T_R=1494.27 P_psia=2726.7144 VF=1 H=67191680 flows=36299.102,16067.309,15568.106,6881.0503,1325.5677",
+  "CCR STREAM id=5 rc=0 T_R=0 P_psia=0 VF=0 H=0 flows=0,0,0,0,0",
+  "CCR STREAM id=6 rc=5 T_R=529.46997 P_psia=2613.5847 VF=1 H=-4.0009718e+08 flows=36122.766,16031.334,7712.9399,6833.9624,1289.4407",
+  "CCR STREAM id=7 rc=5 T_R=529.46997 P_psia=2613.5847 VF=0 H=-2.2727096e+08 flows=176.33626,35.973824,7855.167,47.088394,36.127041",
+  "CCR STREAM id=8 rc=5 T_R=529.46997 P_psia=2613.5847 VF=1 H=-8962177 flows=809.1499,359.10187,172.76985,153.08075,28.883471",
+  "CCR STREAM id=9 rc=5 T_R=529.46997 P_psia=2613.5847 VF=1 H=-3.9113501e+08 flows=35313.613,15672.231,7540.1699,6680.8813,1260.5571",
+  "CHAIN DONE p3loop"
+ ]
+}
