@@ -51,6 +51,18 @@ pre code{background:none;padding:0}
 .inputs label{font:600 14px/1.4 system-ui,sans-serif;display:block}
 .inputs input{width:100%;font:16px/1.4 system-ui,sans-serif;padding:8px;margin-top:4px;border:1px solid var(--rule);border-radius:4px}
 .inputs .hint{font:400 13px/1.4 system-ui,sans-serif;color:var(--ink2)}
+.appgrid{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:8px 24px;align-items:start}
+.appgrid .inputs{display:block;margin:0}
+.appgrid .inputs label{margin-bottom:12px}
+.appgroup{border:1px solid var(--rule);padding:10px 12px;margin:0 0 12px;min-width:0}
+.appgroup h3{font:600 15px/1.3 system-ui,sans-serif;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+button.help{font:600 13px/1 system-ui,sans-serif;background:var(--tint);border:1px solid var(--rule);border-radius:50%;width:24px;height:24px;cursor:pointer;color:var(--accent);flex:none}
+.guide{font:15px/1.5 system-ui,sans-serif;max-width:46ch;border:1px solid var(--rule);background:var(--paper);padding:12px 16px;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+.guide p{margin:0}
+.appresults{min-width:0}
+.appinputs{min-width:0}
+section#panel-app{width:min(1120px,calc(100vw - 32px));position:relative;left:50%;transform:translateX(-50%)}
+@media(max-width:800px){.appgrid{grid-template-columns:minmax(0,1fr)}}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}
 .metric{border:1px solid var(--rule);padding:12px;min-width:0}
 .metric .v{font:600 22px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums}
@@ -83,40 +95,62 @@ footer{max-width:var(--measure);margin:40px auto 0;padding:16px;border-top:1px s
 <p class="subtitle">Multi-stage vacuum systems with interstage condensation: how a
 motive steam jet makes vacuum, why one stage cannot reach low pressure,
 and what each added stage costs.</p>
-<p class="bootline" id="bootline">Runtime loading. The display below shows the design basis
+<p class="bootline" id="bootline">Runtime loading. The App panel shows the design basis
 until the first live run replaces it.</p>
 <progress id="bootprogress" max="100" value="20" aria-label="Runtime loading progress"></progress>
 <p class="bootline" id="bootdone" hidden>Runtime ready.</p>
 </header>
 <nav class="tabs" role="tablist" aria-label="Panels">
-<button role="tab" aria-selected="true" data-panel="app" id="tab-app">App</button>
+<button role="tab" aria-selected="true" data-panel="theory" id="tab-theory">Theory</button>
+<button role="tab" aria-selected="false" data-panel="app" id="tab-app">App</button>
 <button role="tab" aria-selected="false" data-panel="process" id="tab-process">Process</button>
-<button role="tab" aria-selected="false" data-panel="theory" id="tab-theory">Theory</button>
 <button role="tab" aria-selected="false" data-panel="economics" id="tab-economics">Economics</button>
 <button role="tab" aria-selected="false" data-panel="safety" id="tab-safety">Safety</button>
 <button role="tab" aria-selected="false" data-panel="code" id="tab-code">Code</button>
 <button role="tab" aria-selected="false" data-panel="references" id="tab-references">References</button>
 </nav>
 <main id="main">
-<section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app">
+<section class="panel long" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory">
+@@THEORY_HTML@@
+</section>
+<section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app" hidden>
 <h2 id="app">App</h2>
+<div class="appgrid">
+<div class="appinputs">
 <p>Suction pressure, load, motive steam pressure, cooling-water
 temperature, and number of stages set the motive steam each stage
 needs and the condenser duties. Change an input to recompute.</p>
 <form class="inputs" id="inputs">
+<div class="appgroup">
+<h3>Suction and load <button type="button" class="help" popovertarget="guide-load" aria-label="Guidance: suction and load">?</button></h3>
 <label>Suction pressure, p (kPa abs)<input type="number" id="in-ps" value="2" min="0.5" max="30" step="0.1"><span class="hint">Range 0.5–30 kPa abs.</span></label>
 <label>Dry gas flow (kg/h)<input type="number" id="in-dry" value="50" min="5" max="200" step="1"><span class="hint">Range 5–200 kg/h, as air.</span></label>
 <label>Condensable vapour flow (kg/h)<input type="number" id="in-cond" value="100" min="0" max="500" step="1"><span class="hint">Range 0–500 kg/h, as water.</span></label>
+</div>
+<div class="appgroup">
+<h3>Motive steam <button type="button" class="help" popovertarget="guide-motive" aria-label="Guidance: motive steam">?</button></h3>
 <label>Motive steam pressure (MPa abs)<input type="number" id="in-pm" value="0.8" min="0.4" max="1.2" step="0.05"><span class="hint">Range 0.4–1.2 MPa abs, saturated.</span></label>
+</div>
+<div class="appgroup">
+<h3>Cooling water <button type="button" class="help" popovertarget="guide-cw" aria-label="Guidance: cooling water">?</button></h3>
 <label>Cooling-water temperature (°C)<input type="number" id="in-tcw" value="25" min="15" max="35" step="1"><span class="hint">Range 15–35 °C.</span></label>
+</div>
+<div class="appgroup">
+<h3>Stages <button type="button" class="help" popovertarget="guide-stages" aria-label="Guidance: stages">?</button></h3>
 <label>Number of stages<input type="number" id="in-n" value="3" min="1" max="5" step="1"><span class="hint">Range 1–5, whole number.</span></label>
+</div>
+<div class="appgroup">
+<h3>Economics <button type="button" class="help" popovertarget="guide-econ" aria-label="Guidance: economics">?</button></h3>
 <label>Steam price (USD/t)<input type="number" id="in-price" value="30" min="0" max="200" step="1"><span class="hint">Economics assumption.</span></label>
 <label>Operating hours (h/yr)<input type="number" id="in-hours" value="8000" min="1000" max="8760" step="100"><span class="hint">Economics assumption.</span></label>
+</div>
 </form>
 <button class="run" id="runbtn" disabled>Run</button>
 <p class="stale" id="stalenote" hidden>Inputs changed since the displayed run.</p>
 <p class="error" id="aperror" role="alert" hidden></p>
 <div aria-live="polite" id="liveregion" class="bootline"></div>
+</div>
+<div class="appresults">
 <div class="metrics" id="metrics"></div>
 <div class="chart" id="chart-pressure" style="height:340px"></div>
 <p class="chartcap">Stage suction pressures and the final discharge pressure (log scale) against position in the train, at the current inputs.</p>
@@ -125,12 +159,16 @@ needs and the condenser duties. Change an input to recompute.</p>
 <div id="stagetable"></div>
 <div id="warnings"></div>
 <div id="econ"></div>
+</div>
+</div>
+<div class="guide" id="guide-load" popover><p><strong>Suction and load.</strong> The suction pressure is the vacuum the train must hold; the dry gas and condensable vapour flows are the load it must remove. Lower suction pressure or a larger load raises every stage's work. Look at the total motive steam card and at the stage table: the first stage carries the full inlet load.</p></div>
+<div class="guide" id="guide-motive" popover><p><strong>Motive steam.</strong> The motive pressure sets the energy of the jet that entrains the suction flow. A lower motive pressure raises the entrainment ratio of each stage, so the train draws more steam for the same load. Look at the entrainment ratio column of the stage table and the total motive steam card.</p></div>
+<div class="guide" id="guide-cw" popover><p><strong>Cooling water.</strong> The cooling-water temperature sets the lowest temperature each interstage condenser can reach, and so how much vapour survives into the next stage. Warmer water passes more vapour downstream. Look at the total condenser duty, the cooling-water card, and the motive steam of the later stages.</p></div>
+<div class="guide" id="guide-stages" popover><p><strong>Stages.</strong> The number of stages divides the overall compression from suction pressure to atmospheric pressure into equal stage ratios. Fewer stages raise the ratio each stage must bridge, and past a ratio of about 6 a stage leaves the range of the entrainment correlation. Look at the compression ratio per stage card and at any warnings below the stage table.</p></div>
+<div class="guide" id="guide-econ" popover><p><strong>Economics.</strong> The steam price and operating hours convert the computed flows into an annual operating cost. They change no flow, pressure, or duty on this panel. Look at the annual operating cost card and the Economics section below the stage table.</p></div>
 </section>
 <section class="panel long" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
 @@PROCESS_HTML@@
-</section>
-<section class="panel long" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory" hidden>
-@@THEORY_HTML@@
 </section>
 <section class="panel long" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
 @@ECONOMICS_HTML@@
@@ -171,7 +209,7 @@ panel.</p>
 @@KATEX_JS@@
 <script>
 "use strict";
-var PANELS=["app","process","theory","economics","safety","code","references"];
+var PANELS=["theory","app","process","economics","safety","code","references"];
 var displayedParams=null, liveReady=false, firstLiveDone=false, runTimer=null, runPending=false;
 function showPanel(name){
   PANELS.forEach(function(p){
@@ -332,8 +370,18 @@ function boot(){
   };
   document.head.appendChild(s);
 }
-var hash=(location.hash||"#app").slice(1);
-if(PANELS.indexOf(hash)>=0){showPanel(hash);}else{showPanel("app");}
+if(!("popover" in HTMLElement.prototype)){
+  document.querySelectorAll(".guide[popover]").forEach(function(g){g.removeAttribute("popover");});
+  document.querySelectorAll("button.help").forEach(function(b){b.hidden=true;});
+}
+var hash=(location.hash||"#theory").slice(1);
+if(PANELS.indexOf(hash)>=0){showPanel(hash);}
+else{
+  var target=document.getElementById(hash);
+  var owner=target?target.closest("section.panel"):null;
+  if(owner){showPanel(owner.id.replace("panel-",""));target.scrollIntoView();if(history.replaceState){history.replaceState(null,"","#"+hash);}}
+  else{showPanel("theory");}
+}
 boot();
 </script>
 </body>

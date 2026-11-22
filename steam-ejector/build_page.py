@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v8"
+VERSION = "v9"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -221,6 +221,15 @@ def md_to_html(md_text):
                 i += 1
             out.append("<ul>" + "".join(f"<li>{x}</li>" for x in items)
                        + "</ul>")
+            continue
+        if re.match(r"^\d+\.\s+", stripped):
+            items = []
+            while i < n and re.match(r"^\d+\.\s+", lines[i].strip()):
+                items.append(inline_md(
+                    re.sub(r"^\d+\.\s+", "", lines[i].strip())))
+                i += 1
+            out.append("<ol>" + "".join(f"<li>{x}</li>" for x in items)
+                       + "</ol>")
             continue
         buf = []
         while i < n and lines[i].strip() and not re.match(

@@ -434,3 +434,27 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   and in the built page; the old Symbols-note wording and "The
   One more definition" absent from both source and built page.
 - Not published.
+
+## v9 — Theory-first restructure (2026-11-22)
+
+- Panel order Theory; App; Process; Economics; Safety; Code;
+  References; the page opens on Theory. Model, numbers, sheet,
+  economics and safety content unchanged.
+- `text/theory.md`: relevance passage, "Key points" (five
+  numbered key points, each with a guided experiment whose
+  numbers were verified against `python/balance.py` first),
+  "How the demonstration is done" roadmap, and a closing
+  "Conclusion and discussion". Derivations T1–T14 unchanged.
+- `template.html`: App panel restructured — grouped parameters
+  in a left column, results and charts right, App panel width
+  min(1120px, 100vw-32px); one native popover guidance element
+  per control group with an inline-section fallback; section
+  deep links open their owning panel.
+- `build_page.py`: VERSION v9; numbered-list support in
+  md_to_html.
+- Verification: test_balance.py 14 passed; build checks pass
+  (622 KaTeX expressions); browser QA at desktop, 2560 px and
+  390 px widths (shots/v9-*.png); live run verified through the
+  local CDN mirror — SELFTEST pass, precomputed display replaced,
+  auto-run on change reproduces the key point 1 figure
+  (946.1 kg/h at two stages).

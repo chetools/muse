@@ -15,6 +15,68 @@ full in an expandable block under the step that uses it, with its
 assumptions and its alternative route named. A symbol is defined
 where it first appears.
 
+Steam ejectors hold vacuum on condensers, evaporators, and
+distillation columns across the process industries, and they are
+the standard choice where a rotating machine would face a wet,
+corrosive, or very large volumetric flow: there are no moving
+parts to wear or to seal against the vacuum, and the motive fluid
+is steam, which the plant already makes. The cost of that
+robustness is steam consumption, and the design questions are
+therefore quantitative ones — how many stages a given suction
+pressure needs, how much motive steam each stage draws, and how
+much of the load the interstage condensers can remove before the
+next stage sees it. Those are the questions this page answers
+with a live model.
+
+## Key points
+
+Five quantities organise everything that follows. The stage
+compression ratio $C_r$, the discharge pressure of a stage
+divided by its suction pressure, is dimensionless, as is the
+entrainment ratio $R_a$, the motive steam mass flow divided by
+the entrained mass flow of one stage. Pressures in this opening
+are in kPa absolute and mass flows in kg/h, the units of the App
+panel.
+
+1. One stage bridges only a limited ratio. A single stage works at a compression ratio of at most about 6 (§T9); the design basis compresses from a suction pressure of 2 kPa to atmospheric pressure, an overall ratio of 50.7, so it needs three stages at $C_r = 3.70$ each. Guided experiment: in the App, set the number of stages from 3 to 2. The compression ratio per stage rises from 3.70 to 7.12, the total motive steam rises from 635.2 kg/h to 946.1 kg/h, and warnings appear, because a ratio of 7.12 is outside the range of the entrainment correlation of §T10.
+2. The entrainment ratio sets the steam bill. Each stage draws $R_a$ kg of motive steam per kg of gas and vapour it entrains (§T10), so the total motive steam is the sum over stages of $R_a$ times the load each stage actually sees. Guided experiment: in the App, lower the motive steam pressure from 0.8 MPa to 0.4 MPa. Every stage's entrainment ratio in the stage table rises (stage 1 from 1.86 to 2.20), and the total motive steam rises from 635.2 kg/h to 754.1 kg/h: a weaker jet entrains less per kg of steam.
+3. Interstage condensation unloads the later stages. A condenser after each stage removes most of the vapour, so a later stage entrains a much smaller flow than the stage before it (§T11). Guided experiment: in the App, raise the condensable vapour flow from 100 kg/h to 300 kg/h. Stage 1 motive steam rises from 278.3 kg/h to 649.4 kg/h and the first intercondenser duty rises from 231.3 kW to 623.2 kW, while stages 2 and 3 are unchanged: the first condenser condenses the extra vapour, and the vapour that survives it is set by the cooling water, not by the inlet flow.
+4. Cooling-water temperature caps what a condenser can remove. The vapour surviving a condenser is the vapour in equilibrium at the condenser outlet temperature, which is the cooling-water temperature plus 5 K (§T11), so warmer cooling water passes more vapour to every later stage. Guided experiment: in the App, raise the cooling-water temperature from 25 °C to 35 °C. The total motive steam rises from 635.2 kg/h to 1,406.9 kg/h and the total condenser duty rises from 523.6 kW to 1,059.8 kW.
+5. Suction pressure is the strongest cost lever. Lower suction pressure raises both the overall compression ratio and every stage's entrainment ratio, and the motive steam sweep in the App shows the combined effect as a curve. Guided experiment: in the App, raise the suction pressure from 2 kPa to 5 kPa. The total motive steam falls from 635.2 kg/h to 437.2 kg/h, and the diamond on the sweep chart moves along the curve to the new point.
+
+## How the demonstration is done
+
+The App panel is the demonstration. Its inputs are the suction
+pressure, the dry gas flow, the condensable vapour flow, the
+motive steam pressure, the cooling-water temperature, the number
+of stages, and two economics assumptions, the steam price and
+the operating hours. Its outputs are the metric cards (total
+motive steam with its uncertainty band, compression ratio per
+stage, total condenser duty, cooling-water flow, and annual
+operating cost), the chart of stage suction pressures through
+the train, the sweep chart of total motive steam against suction
+pressure, and the stage table, which gives each stage's suction
+and discharge pressures, entrainment ratio, motive steam,
+condenser duty, and cooling-water flow. Every guided experiment
+above changes one of those inputs and reads the effect off those
+outputs. The Process panel supplies the physical route each key
+point refers to:
+
+| Key point | Process sections |
+|---|---|
+| 1. Limited ratio of one stage | First, second, and third stage ejectors |
+| 2. Entrainment ratio sets the steam bill | Motive steam supply; Inside one stage |
+| 3. Interstage condensation unloads later stages | First and second barometric intercondensers; Surface aftercondenser |
+| 4. Cooling-water temperature caps removal | First and second barometric intercondensers; Hot well |
+| 5. Suction pressure is the cost lever | Follow the gas through the system; Stream table |
+
+The derivations below then justify each relation the model uses,
+in the order the fluid meets them: §T1 to §T8 build the single
+stage, §T9 and §T10 give the stage ratio and the entrainment
+correlation, §T11 gives the interstage condenser, §T12 covers
+off-design behaviour, and §T13 and §T14 state what the model
+computes and work the design basis in full.
+
 ## Symbols
 
 | Symbol | Meaning | SI unit |
@@ -999,3 +1061,32 @@ kg/h of motive steam; the aftercondenser condenses 155.9 kg/h at
 45.1 m3/h; the vent carries 51.4 kg/h of gas. The App panel
 reproduces these numbers live, and the Code panel walks through
 the same arithmetic cell by cell.
+
+## Conclusion and discussion
+
+The five key points reduce to one accounting. Key point 1 sets
+the number of stages: the overall ratio from suction to
+atmosphere, divided into equal stage ratios, must keep each
+stage at a compression ratio the entrainment correlation covers.
+Key point 2 then prices each stage: its motive steam is its
+entrainment ratio times the load it sees. Key points 3 and 4 set
+that load: the interstage condensers remove the condensable part
+of it, down to the vapour pressure the cooling water allows, so
+the cooling-water temperature — a utility condition, not an
+ejector dimension — moves the steam bill as strongly as the
+suction pressure does in key point 5. A design that looks cheap
+at 25 °C cooling water and dear at 35 °C is the same hardware;
+the model separates the two because the condenser limit of §T11
+is inside the stage calculation, not an afterthought.
+
+Two limits bound the whole account. The entrainment ratio comes
+from a semi-empirical correlation (§T10), so the page reports a
+band of 0.8 to 1.25 times the central motive steam, and warns
+when an input takes a stage outside the correlation's range —
+key point 1's two-stage experiment is the direct way to see that
+warning appear. And the model is a stage calculation, not a
+geometry: it computes pressures, flows, duties, and costs for a
+train of stages, and it does not size the nozzles, throats, or
+diffusers whose behaviour §T5 to §T8 derive. Within those limits,
+every number in the App panel traces to a section of this panel,
+and §T14 checks the chain once, in full, at the design basis.
