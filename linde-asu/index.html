@@ -54,6 +54,12 @@
   .pfdbox { border: 1px solid #999; padding: 8px; overflow-x: auto; background: #fff; }
   .subdiagram { border: 1px solid #999; padding: 8px; margin: 14px 0; background: #fff; }
   .subdiagram svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+  .sheetbox { border: 1px solid #999; padding: 8px; background: #fff; }
+  .sheetbox svg { width: 100%; height: auto; display: block; }
+  .sheetfig0 { margin: 0; }
+  @media (min-width: 761px) {
+    .sheetwide { width: calc(100% + 252px); margin-left: -252px; position: relative; z-index: 5; background: #fff; }
+  }
   figcaption { font-family: Arial, Helvetica, sans-serif; font-size: 13.5px; color: #333; margin-top: 6px; }
   .note { font-size: 14px; color: #333; }
   .err { color: #8b0000; font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
@@ -182,7 +188,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
       <div class="tocbody">
         <h2 id="process-pfd">Process flow diagram</h2>
         <p>Linde nitrogen–oxygen air separation unit with crude argon recovery, drawn under specification PFD-SPEC-001 with symbols from the traced symbol library. Stream values on the drawing are sample values on a basis of 1000 kmol/h of feed air, where kmol/h denotes kilomoles per hour; the balances of the displayed values close on every unit. The scalable vector graphics (SVG) file, the Portable Document Format (PDF) file at A3 size and a Portable Network Graphics (PNG) image are delivered with this page in the project record.</p>
-        <figure style="margin:0"><div class="pfdbox"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">
+        <figure class="sheetwide sheetfig0"><div class="sheetbox"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">
 <rect x="0" y="0" width="1680" height="1190" fill="white"/>
 <rect x="18" y="18" width="1644" height="1154" fill="none" stroke="#111111" stroke-width="2.4"/>
 <text x="60" y="78" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="bold" text-anchor="start" fill="#111111">PROCESS FLOW DIAGRAM</text>
@@ -6509,7 +6515,7 @@ Q 117.851602 187.854972 94.535025 198.064716
 <p>An air separation unit (ASU) separates air into a gaseous oxygen product, a gaseous nitrogen product and a crude argon product by cryogenic rectification: the air is compressed, purified, cooled to near its dew point and distilled in a pair of coupled columns, the arrangement shown on the diagram in the Process panel. No chemical reaction takes place; the separation is physical, and its cost is the work of compression and refrigeration.</p>
 <p>Air separation is the standard route to oxygen and nitrogen at large scale and high purity. Products are gases that are expensive to transport relative to their value, so the plant is sized to its market, and its economics turn on two quantities: electric power consumed per tonne of oxygen, the largest single operating cost, and capital cost per tonne of capacity, which falls as the plant grows. Both quantities are computed by the model of this page, and key points are stated in terms of them.</p>
 <p>Fig. T0 is the whole plant on one diagram, the map for everything that follows. Read from the left: the main air compressor C-101 and its aftercooler E-101 prepare the air, the molecular sieve unit V-101 removes the water and carbon dioxide that would freeze in the cold section, and the main heat exchanger E-102 cools the air against the returning products, with part of the air expanded in the turbine X-101 to supply the refrigeration. The separation itself is the coupled pair at the centre, the pressure column T-101 and the low-pressure column T-102 joined by the main condenser/reboiler E-103, with the crude argon column T-103 and its condenser E-105 at the right; the subcoolers E-104 and E-106 and the throttling valves VLV-101 and VLV-102 complete the cold box. The oxygen, nitrogen and crude argon products leave through the main heat exchanger, giving up their cold to the feed on the way out.</p>
-<figure class="subdiagram" id="theory-fig-t0"><div class="pfdbox"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">
+<figure class="subdiagram sheetwide" id="theory-fig-t0"><div class="sheetbox"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">
 <rect x="0" y="0" width="1680" height="1190" fill="white"/>
 <rect x="18" y="18" width="1644" height="1154" fill="none" stroke="#111111" stroke-width="2.4"/>
 <text x="60" y="78" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="bold" text-anchor="start" fill="#111111">PROCESS FLOW DIAGRAM</text>
