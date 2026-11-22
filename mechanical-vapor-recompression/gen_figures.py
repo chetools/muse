@@ -472,6 +472,9 @@ def fig_p7_machine():
     in the vertical direct-drive arrangement of the Piller
     VapoFan [16]. A front-view inset shows the spiral volute
     and the tangential discharge, which a section cannot show.
+    v12: the inset marks the impeller centre with the same
+    dash-dot centreline as the section, so the axis reads
+    identically in both views.
     """
     fig, ax = plt.subplots(figsize=(6.6, 5.2))
     ax.set_xlim(0, 13.2)
@@ -479,7 +482,10 @@ def fig_p7_machine():
     ax.axis("off")
     lw = 1.2
     cx = 4.6  # shaft centreline
-    ax.plot([cx, cx], [0.4, 10.25], color=GRAY, lw=0.5, ls=(0, (6, 3, 1, 3)))
+    # One centreline mark for the machine axis, used identically
+    # in the section and in the front-view inset (v12).
+    cl_ls = (0, (6, 3, 1, 3))
+    ax.plot([cx, cx], [0.4, 10.25], color=GRAY, lw=0.5, ls=cl_ls)
     # inlet pipe and casing cover (curved, converging to the eye)
     ax.plot([cx - 0.62, cx - 0.62, cx + 0.62, cx + 0.62],
             [10.15, 9.0, 9.0, 10.15], color=INK, lw=lw)
@@ -614,6 +620,14 @@ def fig_p7_machine():
             lw=1.2)
     ax.add_patch(plt.Circle((ix, iy), 0.68, facecolor="none",
                             edgecolor=GRAY, lw=0.9, ls="--"))
+    # The machine axis in the inset carries the same dash-dot
+    # centreline mark as the section, crossing at the impeller
+    # centre and extending slightly beyond the impeller circle;
+    # the volute spiral grows around that centre (v12).
+    ax.plot([ix - 0.85, ix + 0.85], [iy, iy], color=GRAY, lw=0.5,
+            ls=cl_ls, zorder=1)
+    ax.plot([ix, ix], [iy - 0.85, iy + 0.85], color=GRAY, lw=0.5,
+            ls=cl_ls, zorder=1)
     ax.plot([ix], [iy], "o", ms=3, color=INK)
     ax.annotate("", xy=(ix + 0.30, iy + 0.68), xytext=(ix - 0.38, iy + 0.60),
                 arrowprops=dict(arrowstyle="->", color=GRAY, lw=1.0,
@@ -625,10 +639,12 @@ def fig_p7_machine():
             color=INK, lw=lw)
     ax.annotate("", xy=(duct_x, iy + 1.5), xytext=(duct_x, iy + 0.45),
                 arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
-    ax.annotate("front view: spiral volute,\ntangential discharge",
+    ax.annotate("front view: spiral volute growing\n"
+                "around the impeller centre,\n"
+                "tangential discharge",
                 xy=(ix, iy - 1.62), fontsize=8.5, ha="center")
     ax.annotate("impeller (dashed)", xy=(ix - 0.62, iy - 0.35),
-                xytext=(8.30, 3.60), fontsize=8,
+                xytext=(7.45, 3.90), fontsize=8,
                 arrowprops=dict(arrowstyle="-", lw=0.7))
     # drive cabinet
     ax.add_patch(Rectangle((9.8, 0.65), 2.6, 1.95, facecolor="#ffffff",

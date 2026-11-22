@@ -1,0 +1,152 @@
+{
+  "desktop": {
+    "default_panel": "process",
+    "tab_order": [
+      "process",
+      "theory",
+      "app",
+      "economics",
+      "safety",
+      "code",
+      "references"
+    ],
+    "sheet_desktop": {
+      "svgL": 53.5,
+      "svgR": 1211.5,
+      "svgW": 1158,
+      "wrapClientW": 1158,
+      "wrapScrollW": 1158,
+      "pageScrollW": 1265,
+      "innerW": 1280,
+      "labelMinPx": 13,
+      "labelMedianPx": 14,
+      "labelCount": 65,
+      "scale": 0.965
+    },
+    "sheet_2560": {
+      "svgL": 693.5,
+      "svgR": 1851.5,
+      "svgW": 1158,
+      "wrapClientW": 1158,
+      "wrapScrollW": 1158,
+      "pageScrollW": 2545,
+      "innerW": 2560,
+      "labelMinPx": 13,
+      "labelMedianPx": 14,
+      "labelCount": 65,
+      "scale": 0.965
+    },
+    "artefact_scan": {
+      "dashCells": 0,
+      "placeholders": [],
+      "chartTitles": [
+        {
+          "id": "chart-lift",
+          "title": "Click to enter Plot title"
+        },
+        {
+          "id": "chart-cost",
+          "title": "Click to enter Plot title"
+        }
+      ],
+      "appHeadings": [
+        "App",
+        "Duty and temperature ?",
+        "Temperature lift ?",
+        "Compressor efficiency ?",
+        "Prices and hours ?",
+        "Derived quantities",
+        "Economics"
+      ]
+    },
+    "toc_geometry_desktop": {
+      "tocL": 0,
+      "tocR": 0,
+      "bodyL": 0,
+      "bodyR": 0,
+      "bodyW": 0,
+      "tocTop": 0,
+      "bodyTop": 0
+    },
+    "header_geometry_desktop": {
+      "header": {
+        "L": 53,
+        "R": 1213
+      },
+      "tabs": {
+        "L": 53,
+        "R": 1213
+      },
+      "grid": {
+        "L": 53,
+        "R": 1213
+      }
+    },
+    "header_geometry_2560": {
+      "header": {
+        "L": 693,
+        "R": 1853
+      },
+      "tabs": {
+        "L": 693,
+        "R": 1853
+      },
+      "grid": {
+        "L": 0,
+        "R": 0
+      },
+      "scrollW": 2545
+    },
+    "detail_block_expanded": true,
+    "booted": true,
+    "boot_s": 8.0,
+    "boot_progress_hidden_after_load": true,
+    "precomputed_at_first_paint": true,
+    "popover_opened": true,
+    "popover_dismissed": true,
+    "live_replaced_precomputed": true,
+    "metrics_changed_on_input": true,
+    "app_geometry": {
+      "inputsL": 53,
+      "inputsR": 353,
+      "resultsL": 377,
+      "scrollW": 1265,
+      "innerW": 1280
+    },
+    "sticky_nav_top_after_scroll": 0,
+    "console_errors": [],
+    "page_errors": []
+  },
+  "phone_theory": {
+    "tocAboveBody": true,
+    "scrollW": 375,
+    "innerW": 390
+  },
+  "phone_app": {
+    "inputsAboveResults": true,
+    "scrollW": 375
+  },
+  "sheet_phone": {
+    "svgL": 17,
+    "svgR": 358,
+    "svgW": 341,
+    "wrapClientW": 341,
+    "wrapScrollW": 341,
+    "pageScrollW": 375,
+    "innerW": 390,
+    "labelMinPx": 4,
+    "labelMedianPx": 4,
+    "labelCount": 65,
+    "scale": 0.284
+  },
+  "phone_page_errors": [],
+  "deep_link_panel_app": true,
+  "deep_link_theory_section": true,
+  "selftest": {
+    "pass": true,
+    "p_el_kw": 133.07396143789381,
+    "q_kw": 3203.611111111111,
+    "cop": 24.073914058733795
+  },
+  "selftest_page_errors": []
+}

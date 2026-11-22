@@ -261,7 +261,7 @@ compressor, above; Safety panel).
 
 [[FIG_P7]]
 
-Fig. P7 | Meridional section of a single-stage centrifugal MVR compressor: axial inlet to the impeller eye, curved blades throwing the flow out to a vaneless diffuser and volute, and a front-view inset showing the spiral volute and tangential discharge. Component arrangement after the manufacturer's literature [16].
+Fig. P7 | Meridional section of a single-stage centrifugal MVR compressor: axial inlet to the impeller eye, curved blades throwing the flow out to a vaneless diffuser and volute, and a front-view inset showing the spiral volute growing around the impeller centre and the tangential discharge. The machine axis carries the same centreline mark in both views. Component arrangement after the manufacturer's literature [16].
 
 ## Heating element, condensate and heat recovery
 

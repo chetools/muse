@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model, sweep_lift  # noqa: E402
 
-VERSION = "v11"
+VERSION = "v12"
 OUT = HERE / "dist" / f"mechanical-vapor-recompression-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -568,6 +568,32 @@ def main():
         'with notches cut into its rim" '
         f'src="data:image/jpeg;base64,{photo_b64}" '
         'style="width:170px;max-width:60%;height:auto"></figure>')
+    # v12: the Process overview (heading and prose) and the full
+    # sheet lead the panel OUTSIDE the contents grid, at the full
+    # reading-region width, so the whole sheet is visible at
+    # first view with no sideways scroll. The overview display is
+    # not a crop: the CROP_SCALE assertion below matches only the
+    # four crop figures, which carry an explicit px width.
+    grid_open = ('<div class="panelgrid">\n' + tocs["process"]
+                 + '\n<div class="panelbody">\n')
+    proc = panels["process"]
+    assert proc.startswith(grid_open), "process panel grid not found"
+    inner = proc[len(grid_open):]
+    assert inner.endswith("\n</div></div>")
+    inner = inner[: -len("\n</div></div>")]
+    sw_tag = '<div class="sheetwrap">'
+    s0 = inner.index(sw_tag)
+    s1 = inner.index("</div>", s0) + len("</div>")
+    sheet_div = inner[s0:s1]
+    assert "<div" not in sheet_div[len(sw_tag):], \
+        "nested div inside the sheet wrapper"
+    panels["process"] = (
+        '<div class="leadbody">\n' + inner[:s0] + "</div>\n"
+        + sheet_div + "\n" + grid_open + inner[s1:]
+        + "\n</div></div>")
+    assert panels["process"].index(sw_tag) < \
+        panels["process"].index('<div class="panelgrid">'), \
+        "sheet is not ahead of the contents grid"
     cap_table, sens_table = econ_tables()
     panels["economics"] = panels["economics"].replace(
         "[[ECON_CAPITAL_TABLE]]", cap_table)
@@ -622,6 +648,13 @@ def main():
         px, vb_w = float(m.group(1)), float(m.group(2))
         assert abs(px / vb_w - CROP_SCALE) < 0.01, \
             f"crop scale {px / vb_w} != {CROP_SCALE}"
+    # The overview sheet is a separate display from the crops:
+    # it scales to the full reading-region width (never a fixed
+    # px width, never sideways-scrolled) (v12).
+    assert ".sheetwrap svg{width:100%" in html_out, \
+        "overview sheet does not scale to fit its width"
+    assert "width:1200px" not in html_out, \
+        "overview sheet still at fixed native width"
     katex_count = html_out.count('class="katex"')
     assert katex_count >= len(tex_all), (katex_count, len(tex_all))
     assert html_mod.escape(balance_src) in html_out, \
