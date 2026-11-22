@@ -305,30 +305,16 @@ Change an input to recompute.</p>
 <h2 id="the-process-in-one-view">The process in one view</h2>
 <p>Mechanical vapour recompression (MVR) is a heat pump applied to an evaporator. An evaporator that boils a liquid at 80 °C produces vapour at 80 °C, and that vapour is normally worthless as a heating medium for the same evaporator, because heat flows only from a hotter body to a colder one and the vapour is at exactly the temperature of the boiling liquid. Compressing the vapour raises its pressure, and with the pressure its saturation temperature — the temperature at which it condenses. Compress it enough to condense at 88 °C and the same vapour, condensing in the heating chest (the calandria) of its own evaporator, releases its latent heat at a temperature 8 K above the boiling liquid, which is enough to drive the evaporation that produced it. The loop then needs no live steam in steady operation: the only steady energy input is the electricity that drives the compressor, and that input is small next to the heat circulated, because the compressor moves heat rather than making it. The ratio of heat delivered to electricity consumed is the coefficient of performance, derived in the Theory panel; at the design basis of this page it is 24.1, against a Carnot limit of 36.1 for the same temperatures [3].</p>
 <p>The plant on the sheet is a single-effect falling-film evaporator with MVR, concentrating a dilute aqueous feed. The stream values on the sheet are sample values at the design basis: a feed of 25,000 kg/h, of which 5,000 kg/h is evaporated, leaving 20,000 kg/h of concentrate and 5,000 kg/h of condensate. The balance closes exactly on the values shown: feed in equals concentrate plus condensate out, and the vapour raised equals the vapour compressed and condensed [1][3].</p>
-<div class="sheetwrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
+<div class="sheetwrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
 <rect x="50" y="300" width="110" height="110" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 50 330 Q 80 318 105 330 T 160 330" fill="none" stroke="#0072B2" stroke-width="1.5"/>
-<text x="105" y="445" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
+<text x="105" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
 <circle cx="105" cy="480" r="20" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 92 492 L 105 468 L 118 492 z" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
 <text x="105" y="525" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">P-101 feed pump</text>
-<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="500" x2="105" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="545" x2="300" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="300" y1="545" x2="300" y2="405" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 300 420 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 300 420)"/>
-<rect x="255" y="315" width="90" height="90" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 265 330 L 335 390 M 265 390 L 335 330" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
-<text x="300" y="290" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
-<line x1="345" y1="360" x2="420" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="360" x2="420" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
-<circle cx="200" cy="545" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="200" y="549" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
-<circle cx="420" cy="312" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="420" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
-<text x="200" y="570" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<rect x="250" y="330" width="100" height="60" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 262 342 L 338 378 M 262 378 L 338 342" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
+<text x="300" y="305" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
 <rect x="470" y="180" width="130" height="300" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 470 180 A 65 40 0 0 1 600 180" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <line x1="495" y1="240" x2="495" y2="430" stroke="#1b1b1b" stroke-width="1.2"/>
@@ -338,60 +324,74 @@ Change an input to recompute.</p>
 <rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#1b1b1b" stroke-width="1.2"/>
 <text x="535" y="208" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-102 falling-film</text>
 <text x="535" y="224" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">evaporator</text>
-<text x="612" y="505" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">calandria (heating chest) at the side;</text>
-<text x="612" y="522" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">separator in the head</text>
-<line x1="535" y1="480" x2="535" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="535" y1="560" x2="700" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 690 560 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 690 560)"/>
-<circle cx="620" cy="560" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="620" y="564" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
-<text x="770" y="545" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate</text>
-<text x="770" y="564" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">20,000 kg/h</text>
-<line x1="565" y1="155" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="565" y1="110" x2="800" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="800" y1="110" x2="800" y2="175" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 800 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 800 165)"/>
+<text x="535" y="170" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">separator</text>
+<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<text x="630" y="490" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">calandria</text>
+<text x="550" y="125" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">demister</text>
+<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="820" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
+<text x="820" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
+<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="125" y1="480" x2="200" y2="480" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="480" x2="200" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="360" x2="250" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 242 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 242 360)"/>
+<circle cx="162" cy="480" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="162" y="484" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
+<text x="165" y="548" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<line x1="350" y1="360" x2="390" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="360" x2="390" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
+<circle cx="390" cy="322" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="390" y="326" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
+<line x1="565" y1="144" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="565" y1="110" x2="820" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="820" y1="110" x2="820" y2="175" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 820 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(90 820 165)"/>
 <circle cx="680" cy="110" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
 <text x="680" y="114" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">3</text>
-<text x="680" y="92" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
-<rect x="520" y="128" width="90" height="16" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="565" y="140" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">demister</text>
-<circle cx="800" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 775 235 L 800 190 L 825 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="800" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
-<text x="800" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
-<line x1="840" y1="215" x2="900" y2="215" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="215" x2="900" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="360" x2="600" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 610 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 610 360)"/>
-<circle cx="900" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="900" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
-<text x="915" y="250" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
-<text x="915" y="266" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
-<line x1="600" y1="395" x2="880" y2="395" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="395" x2="880" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="470" x2="345" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 360 470 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 360 470)"/>
-<line x1="255" y1="470" x2="170" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="470" x2="170" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 72 600)"/>
-<circle cx="700" cy="395" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="700" y="399" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
-<text x="700" y="380" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
-<text x="115" y="585" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
-<line x1="985" y1="360" x2="905" y2="360" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
-<path d="M 912 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 912 360)"/>
-<text x="985" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam (dashed)</text>
-<line x1="640" y1="360" x2="640" y2="320" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 640 328 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 640 328)"/>
-<text x="648" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable vent</text>
-<rect x="430" y="580" width="360" height="34" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="442" y="601" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">Clean-in-place (CIP) connections at the evaporator</text>
-<text x="62" y="610" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start"></text>
-<rect x="820" y="580" width="330" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="985" y="601" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
-<text x="985" y="620" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
+<text x="750" y="88" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
+<line x1="860" y1="215" x2="930" y2="215" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="215" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="340" x2="660" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 670 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 670 340)"/>
+<circle cx="930" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="930" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
+<text x="950" y="300" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
+<text x="950" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
+<line x1="660" y1="450" x2="900" y2="450" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="450" x2="900" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="620" x2="330" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="330" y1="620" x2="330" y2="390" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 330 400 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 330 400)"/>
+<circle cx="750" cy="450" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="750" y="454" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
+<text x="750" y="435" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
+<text x="345" y="430" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">condensate in</text>
+<text x="258" y="520" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">condensate out</text>
+<line x1="270" y1="390" x2="270" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="270" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 72 600)"/>
+<text x="115" y="625" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
+<line x1="535" y1="480" x2="535" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="535" y1="580" x2="770" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 760 580 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 760 580)"/>
+<circle cx="650" cy="580" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="650" y="584" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
+<text x="650" y="606" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate 20,000 kg/h</text>
+<line x1="630" y1="306" x2="630" y2="240" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 630 248 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 630 248)"/>
+<text x="642" y="278" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable</text>
+<text x="642" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">vent</text>
+<line x1="1190" y1="340" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="930" cy="340" r="4" fill="#1b1b1b"/>
+<path d="M 1000 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 1000 340)"/>
+<text x="1190" y="322" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam</text>
+<rect x="760" y="645" width="390" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="955" y="666" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
+<text x="955" y="685" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
 <rect x="50" y="62" width="360" height="186" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
 <text x="60" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Stream</text>
 <text x="120" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Service</text>
@@ -433,30 +433,16 @@ Change an input to recompute.</p>
 <div class="tablewrap"><table><tr><th>Quantity</th><th>Design basis</th></tr><tr><td>Feed (kg/h)</td><td>25000</td></tr><tr><td>Evaporated (kg/h)</td><td>5000</td></tr><tr><td>Concentrate (kg/h)</td><td>20000</td></tr><tr><td>Condensate (kg/h)</td><td>5000</td></tr><tr><td>Suction pressure (kPa)</td><td>43.6</td></tr><tr><td>Discharge pressure (kPa)</td><td>64.9</td></tr><tr><td>Pressure ratio</td><td>1.49</td></tr><tr><td>Discharge temperature (degC)</td><td>128.9</td></tr><tr><td>Calandria duty (kW)</td><td>3203.6</td></tr><tr><td>Electric power (kW)</td><td>133.1</td></tr><tr><td>COP</td><td>24.07</td></tr><tr><td>Specific energy (kWh/t)</td><td>26.61</td></tr><tr><td>Heat-transfer area (m2)</td><td>183.1</td></tr><tr><td>Annual MVR cost (USD/yr)</td><td>106459</td></tr><tr><td>Annual steam cost (USD/yr)</td><td>1333333</td></tr></table></div><p>Mass closure: feed 25,000 kg/h in equals concentrate 20,000 kg/h plus condensate 5,000 kg/h out, exactly.</p>
 <h2 id="feed-tank-and-pump">Feed tank and pump</h2>
 <p>The feed enters the battery limits into the feed tank TK-101, which decouples the evaporator from upstream supply swings, and is drawn by the feed pump P-101. The design-basis feed is 25,000 kg/h of a dilute aqueous liquid at 75 °C, arriving warm from the upstream process. The evaporation fraction at the design basis — the evaporated mass flow divided by the feed mass flow — is 0.20, so four fifths of the feed leaves as concentrate. The pump sets the feed rate and provides the head to pass the preheater and the distributor at the top of the evaporator tubes; in the model the feed rate is not an independent input but follows from the evaporation rate through that fraction, which the Theory panel states as a design-basis assumption.</p>
-<figure><svg style="width:338px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="30 262 376 344" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
+<figure><svg style="width:351px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="30 262 390 400" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
 <rect x="50" y="300" width="110" height="110" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 50 330 Q 80 318 105 330 T 160 330" fill="none" stroke="#0072B2" stroke-width="1.5"/>
-<text x="105" y="445" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
+<text x="105" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
 <circle cx="105" cy="480" r="20" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 92 492 L 105 468 L 118 492 z" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
 <text x="105" y="525" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">P-101 feed pump</text>
-<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="500" x2="105" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="545" x2="300" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="300" y1="545" x2="300" y2="405" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 300 420 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 300 420)"/>
-<rect x="255" y="315" width="90" height="90" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 265 330 L 335 390 M 265 390 L 335 330" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
-<text x="300" y="290" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
-<line x1="345" y1="360" x2="420" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="360" x2="420" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
-<circle cx="200" cy="545" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="200" y="549" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
-<circle cx="420" cy="312" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="420" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
-<text x="200" y="570" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<rect x="250" y="330" width="100" height="60" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 262 342 L 338 378 M 262 378 L 338 342" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
+<text x="300" y="305" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
 <rect x="470" y="180" width="130" height="300" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 470 180 A 65 40 0 0 1 600 180" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <line x1="495" y1="240" x2="495" y2="430" stroke="#1b1b1b" stroke-width="1.2"/>
@@ -466,60 +452,74 @@ Change an input to recompute.</p>
 <rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#1b1b1b" stroke-width="1.2"/>
 <text x="535" y="208" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-102 falling-film</text>
 <text x="535" y="224" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">evaporator</text>
-<text x="612" y="505" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">calandria (heating chest) at the side;</text>
-<text x="612" y="522" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">separator in the head</text>
-<line x1="535" y1="480" x2="535" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="535" y1="560" x2="700" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 690 560 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 690 560)"/>
-<circle cx="620" cy="560" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="620" y="564" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
-<text x="770" y="545" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate</text>
-<text x="770" y="564" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">20,000 kg/h</text>
-<line x1="565" y1="155" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="565" y1="110" x2="800" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="800" y1="110" x2="800" y2="175" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 800 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 800 165)"/>
+<text x="535" y="170" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">separator</text>
+<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<text x="630" y="490" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">calandria</text>
+<text x="550" y="125" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">demister</text>
+<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="820" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
+<text x="820" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
+<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="125" y1="480" x2="200" y2="480" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="480" x2="200" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="360" x2="250" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 242 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 242 360)"/>
+<circle cx="162" cy="480" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="162" y="484" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
+<text x="165" y="548" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<line x1="350" y1="360" x2="390" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="360" x2="390" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
+<circle cx="390" cy="322" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="390" y="326" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
+<line x1="565" y1="144" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="565" y1="110" x2="820" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="820" y1="110" x2="820" y2="175" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 820 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(90 820 165)"/>
 <circle cx="680" cy="110" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
 <text x="680" y="114" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">3</text>
-<text x="680" y="92" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
-<rect x="520" y="128" width="90" height="16" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="565" y="140" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">demister</text>
-<circle cx="800" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 775 235 L 800 190 L 825 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="800" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
-<text x="800" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
-<line x1="840" y1="215" x2="900" y2="215" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="215" x2="900" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="360" x2="600" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 610 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 610 360)"/>
-<circle cx="900" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="900" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
-<text x="915" y="250" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
-<text x="915" y="266" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
-<line x1="600" y1="395" x2="880" y2="395" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="395" x2="880" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="470" x2="345" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 360 470 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 360 470)"/>
-<line x1="255" y1="470" x2="170" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="470" x2="170" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 72 600)"/>
-<circle cx="700" cy="395" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="700" y="399" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
-<text x="700" y="380" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
-<text x="115" y="585" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
-<line x1="985" y1="360" x2="905" y2="360" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
-<path d="M 912 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 912 360)"/>
-<text x="985" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam (dashed)</text>
-<line x1="640" y1="360" x2="640" y2="320" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 640 328 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 640 328)"/>
-<text x="648" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable vent</text>
-<rect x="430" y="580" width="360" height="34" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="442" y="601" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">Clean-in-place (CIP) connections at the evaporator</text>
-<text x="62" y="610" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start"></text>
-<rect x="820" y="580" width="330" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="985" y="601" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
-<text x="985" y="620" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
+<text x="750" y="88" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
+<line x1="860" y1="215" x2="930" y2="215" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="215" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="340" x2="660" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 670 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 670 340)"/>
+<circle cx="930" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="930" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
+<text x="950" y="300" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
+<text x="950" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
+<line x1="660" y1="450" x2="900" y2="450" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="450" x2="900" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="620" x2="330" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="330" y1="620" x2="330" y2="390" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 330 400 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 330 400)"/>
+<circle cx="750" cy="450" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="750" y="454" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
+<text x="750" y="435" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
+<text x="345" y="430" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">condensate in</text>
+<text x="258" y="520" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">condensate out</text>
+<line x1="270" y1="390" x2="270" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="270" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 72 600)"/>
+<text x="115" y="625" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
+<line x1="535" y1="480" x2="535" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="535" y1="580" x2="770" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 760 580 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 760 580)"/>
+<circle cx="650" cy="580" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="650" y="584" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
+<text x="650" y="606" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate 20,000 kg/h</text>
+<line x1="630" y1="306" x2="630" y2="240" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 630 248 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 630 248)"/>
+<text x="642" y="278" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable</text>
+<text x="642" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">vent</text>
+<line x1="1190" y1="340" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="930" cy="340" r="4" fill="#1b1b1b"/>
+<path d="M 1000 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 1000 340)"/>
+<text x="1190" y="322" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam</text>
+<rect x="760" y="645" width="390" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="955" y="666" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
+<text x="955" y="685" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
 <rect x="50" y="62" width="360" height="186" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
 <text x="60" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Stream</text>
 <text x="120" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Service</text>
@@ -558,36 +558,22 @@ Change an input to recompute.</p>
 <text x="380" y="236" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">43.6</text>
 </svg>
 </figure>
-<p>Fig. P1 | Feed tank, pump and condensate preheater. The feed is heated to its boiling point by the hot condensate before it reaches the evaporator, so the calandria duty is spent on evaporation, not on warming the feed. At the frame edges, the feed line leaves at the right for the evaporator (stream 2), the condensate return from the calandria enters at the right, and the condensate leaves at the bottom.</p>
+<p>Fig. P1 | Feed tank, pump and condensate preheater. The feed is heated to its boiling point by the hot condensate before it reaches the evaporator, so the calandria duty is spent on evaporation, not on warming the feed. At the frame edges, the feed line (stream 2) leaves at the top for the evaporator, the condensate return from the calandria enters at the right along the bottom lane and rises into the preheater, and the condensate leaves at the left.</p>
 <h2 id="condensate-preheater">Condensate preheater</h2>
 <p>The preheater E-101 is a shell-and-tube exchanger in which the incoming feed is heated by the condensate leaving the calandria at 88 °C. At the design basis the feed arrives warm, at 75 °C, and is heated to its boiling point, 80 °C, a duty of 145 kW; the condensate, flowing at one fifth of the feed rate, is cooled from 88 °C to 63 °C and supplies the same 145 kW, so the stage closes exactly. A plant whose feed arrives cold cannot close this balance on condensate alone — the condensate stream is too small — and adds a second stage against the warm concentrate or a steam trim; the design basis is the warm-feed case. This heat recovery is what allows the model to treat the calandria duty as latent heat only: a cold feed would consume part of the condensing vapour&#x27;s heat as sensible heat and would need either more area or a higher lift, a point the Theory panel derives as the feed sensible-heat term and then sets to zero for a feed entering at its boiling point. The sheet shows the single condensate stage of the design basis.</p>
 <h2 id="falling-film-evaporator-and-separator">Falling-film evaporator and separator</h2>
 <p>In the evaporator E-102 the preheated feed is distributed over the top of a bundle of vertical tubes and flows down their inner walls as a thin film, boiling as it falls. The heating medium — the compressed vapour — condenses on the outside of the tubes in the calandria. A falling film gives a high heat-transfer coefficient at a small temperature difference, which is precisely what MVR needs: every kelvin of temperature difference between the condensing vapour and the boiling liquid must be bought from the compressor as lift, so an evaporator type that boils well at a 7 K transfer difference, as at the design basis, directly cuts the electricity bill. The overall coefficient <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi></mrow><annotation encoding="application/x-tex">U</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">U</span></span></span></span>, in W/(m<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">^{2}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141em;"></span><span class="mord"><span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span> K), is assumed as 2500 W/(m<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mrow></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">^{2}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141em;"></span><span class="mord"><span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span> K) in the model, a value in the textbook range for water-like liquors in falling film [3].</p>
 <p>The mixture leaving the tube bottoms enters the separator space in the head of the vessel, where the vapour disengages from the concentrated liquid. The concentrate, 20,000 kg/h at the design basis, leaves from the bottom. The vapour passes a demister — a mesh or vane pack at the vapour outlet — before it reaches the compressor. The demister is not a detail: entrained droplets carry dissolved solids into the compressor and the calandria, where they deposit on the heating surface, and in food duty they carry product into the condensate. Entrainment rises sharply when the separator is run above its design vapour velocity, which is one form of the turndown and overload limits discussed below.</p>
-<figure><svg style="width:153px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="448 100 170 388" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
+<figure><svg style="width:140px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="445 100 155 460" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
 <rect x="50" y="300" width="110" height="110" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 50 330 Q 80 318 105 330 T 160 330" fill="none" stroke="#0072B2" stroke-width="1.5"/>
-<text x="105" y="445" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
+<text x="105" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
 <circle cx="105" cy="480" r="20" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 92 492 L 105 468 L 118 492 z" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
 <text x="105" y="525" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">P-101 feed pump</text>
-<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="500" x2="105" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="545" x2="300" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="300" y1="545" x2="300" y2="405" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 300 420 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 300 420)"/>
-<rect x="255" y="315" width="90" height="90" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 265 330 L 335 390 M 265 390 L 335 330" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
-<text x="300" y="290" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
-<line x1="345" y1="360" x2="420" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="360" x2="420" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
-<circle cx="200" cy="545" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="200" y="549" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
-<circle cx="420" cy="312" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="420" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
-<text x="200" y="570" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<rect x="250" y="330" width="100" height="60" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 262 342 L 338 378 M 262 378 L 338 342" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
+<text x="300" y="305" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
 <rect x="470" y="180" width="130" height="300" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 470 180 A 65 40 0 0 1 600 180" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <line x1="495" y1="240" x2="495" y2="430" stroke="#1b1b1b" stroke-width="1.2"/>
@@ -597,60 +583,74 @@ Change an input to recompute.</p>
 <rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#1b1b1b" stroke-width="1.2"/>
 <text x="535" y="208" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-102 falling-film</text>
 <text x="535" y="224" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">evaporator</text>
-<text x="612" y="505" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">calandria (heating chest) at the side;</text>
-<text x="612" y="522" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">separator in the head</text>
-<line x1="535" y1="480" x2="535" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="535" y1="560" x2="700" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 690 560 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 690 560)"/>
-<circle cx="620" cy="560" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="620" y="564" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
-<text x="770" y="545" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate</text>
-<text x="770" y="564" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">20,000 kg/h</text>
-<line x1="565" y1="155" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="565" y1="110" x2="800" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="800" y1="110" x2="800" y2="175" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 800 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 800 165)"/>
+<text x="535" y="170" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">separator</text>
+<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<text x="630" y="490" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">calandria</text>
+<text x="550" y="125" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">demister</text>
+<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="820" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
+<text x="820" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
+<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="125" y1="480" x2="200" y2="480" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="480" x2="200" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="360" x2="250" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 242 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 242 360)"/>
+<circle cx="162" cy="480" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="162" y="484" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
+<text x="165" y="548" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<line x1="350" y1="360" x2="390" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="360" x2="390" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
+<circle cx="390" cy="322" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="390" y="326" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
+<line x1="565" y1="144" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="565" y1="110" x2="820" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="820" y1="110" x2="820" y2="175" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 820 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(90 820 165)"/>
 <circle cx="680" cy="110" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
 <text x="680" y="114" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">3</text>
-<text x="680" y="92" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
-<rect x="520" y="128" width="90" height="16" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="565" y="140" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">demister</text>
-<circle cx="800" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 775 235 L 800 190 L 825 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="800" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
-<text x="800" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
-<line x1="840" y1="215" x2="900" y2="215" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="215" x2="900" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="360" x2="600" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 610 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 610 360)"/>
-<circle cx="900" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="900" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
-<text x="915" y="250" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
-<text x="915" y="266" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
-<line x1="600" y1="395" x2="880" y2="395" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="395" x2="880" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="470" x2="345" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 360 470 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 360 470)"/>
-<line x1="255" y1="470" x2="170" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="470" x2="170" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 72 600)"/>
-<circle cx="700" cy="395" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="700" y="399" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
-<text x="700" y="380" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
-<text x="115" y="585" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
-<line x1="985" y1="360" x2="905" y2="360" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
-<path d="M 912 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 912 360)"/>
-<text x="985" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam (dashed)</text>
-<line x1="640" y1="360" x2="640" y2="320" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 640 328 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 640 328)"/>
-<text x="648" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable vent</text>
-<rect x="430" y="580" width="360" height="34" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="442" y="601" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">Clean-in-place (CIP) connections at the evaporator</text>
-<text x="62" y="610" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start"></text>
-<rect x="820" y="580" width="330" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="985" y="601" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
-<text x="985" y="620" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
+<text x="750" y="88" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
+<line x1="860" y1="215" x2="930" y2="215" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="215" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="340" x2="660" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 670 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 670 340)"/>
+<circle cx="930" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="930" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
+<text x="950" y="300" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
+<text x="950" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
+<line x1="660" y1="450" x2="900" y2="450" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="450" x2="900" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="620" x2="330" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="330" y1="620" x2="330" y2="390" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 330 400 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 330 400)"/>
+<circle cx="750" cy="450" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="750" y="454" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
+<text x="750" y="435" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
+<text x="345" y="430" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">condensate in</text>
+<text x="258" y="520" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">condensate out</text>
+<line x1="270" y1="390" x2="270" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="270" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 72 600)"/>
+<text x="115" y="625" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
+<line x1="535" y1="480" x2="535" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="535" y1="580" x2="770" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 760 580 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 760 580)"/>
+<circle cx="650" cy="580" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="650" y="584" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
+<text x="650" y="606" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate 20,000 kg/h</text>
+<line x1="630" y1="306" x2="630" y2="240" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 630 248 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 630 248)"/>
+<text x="642" y="278" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable</text>
+<text x="642" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">vent</text>
+<line x1="1190" y1="340" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="930" cy="340" r="4" fill="#1b1b1b"/>
+<path d="M 1000 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 1000 340)"/>
+<text x="1190" y="322" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam</text>
+<rect x="760" y="645" width="390" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="955" y="666" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
+<text x="955" y="685" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
 <rect x="50" y="62" width="360" height="186" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
 <text x="60" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Stream</text>
 <text x="120" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Service</text>
@@ -689,35 +689,21 @@ Change an input to recompute.</p>
 <text x="380" y="236" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">43.6</text>
 </svg>
 </figure>
-<p>Fig. P2 | Falling-film evaporator and separator. Feed enters at the top and boils as a film inside the tubes; vapour disengages in the head, passes the demister, and leaves for the compressor; concentrate leaves at the bottom. At the frame edges, the feed enters from the left, the vapour (stream 3) leaves at the top right, the compressed vapour enters the calandria from the right, the condensate line crosses at the bottom on its way back to the preheater, and the concentrate (stream 6) leaves at the bottom.</p>
+<p>Fig. P2 | Falling-film evaporator and separator. Feed enters at the top and boils as a film inside the tubes; vapour disengages in the head, passes the demister, and leaves for the compressor; concentrate leaves at the bottom. At the frame edges, the feed enters the body from the left, the vapour (stream 3) leaves along the top to the right, and the concentrate (stream 6) leaves at the bottom. The calandria chest against the right face of the body is shown in Fig. P4.</p>
 <h2 id="mvr-compressor">MVR compressor</h2>
 <p>The compressor K-101 is the only machine in the loop and the heart of the process. At the design basis it takes 5,000 kg/h of vapour at 43.6 kPa and 80 °C and delivers it at 64.9 kPa, a pressure ratio of 1.49, discharging at 129 °C — the vapour leaves superheated, because compression heats it above the 88 °C saturation temperature at the discharge pressure, by 41 K at the design basis. The Theory panel derives each of those numbers. The shaft power is 126.4 kW and the electric power 133.1 kW at the design basis.</p>
 <p>For the large volumetric flows and small pressure ratios of evaporation duty the standard machine is a single-stage centrifugal turbo compressor — in effect a large fan built to compressor standards — with the impeller running at high tip speed, often on a high-speed motor through an integral gearbox or a variable-frequency drive. Smaller duties use Roots-type positive-displacement blowers, which tolerate wet vapour and give higher pressure ratios at low flow; multi-stage centrifugal fans cover intermediate cases [4][5]. Materials are chosen for the vapour: stainless steels for food and corrosive duty, with attention to erosion by any droplets that pass the demister.</p>
 <p>A centrifugal compressor has a surge limit: below a minimum flow at a given pressure ratio the flow through the impeller breaks down and reverses in pulses, which can damage the machine in seconds. Surge sets the turndown of the whole plant. An MVR evaporator cannot be turned down as freely as a steam-heated one; plants that must run at half rate use a recycle (anti-surge) line that returns compressed vapour to the suction, wasting the compression work on the recycled part, or a variable-speed drive that moves the surge line down with the duty. Compressor trip is also the plant&#x27;s fastest upset: when the compressor stops, the heating medium vanishes and boiling stops within seconds, while the feed continues to arrive unless it is interlocked to the compressor.</p>
-<figure><svg style="width:524px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="448 72 582 246" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
+<figure><svg style="width:590px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="445 60 655 270" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
 <rect x="50" y="300" width="110" height="110" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 50 330 Q 80 318 105 330 T 160 330" fill="none" stroke="#0072B2" stroke-width="1.5"/>
-<text x="105" y="445" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
+<text x="105" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
 <circle cx="105" cy="480" r="20" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 92 492 L 105 468 L 118 492 z" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
 <text x="105" y="525" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">P-101 feed pump</text>
-<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="500" x2="105" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="545" x2="300" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="300" y1="545" x2="300" y2="405" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 300 420 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 300 420)"/>
-<rect x="255" y="315" width="90" height="90" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 265 330 L 335 390 M 265 390 L 335 330" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
-<text x="300" y="290" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
-<line x1="345" y1="360" x2="420" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="360" x2="420" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
-<circle cx="200" cy="545" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="200" y="549" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
-<circle cx="420" cy="312" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="420" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
-<text x="200" y="570" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<rect x="250" y="330" width="100" height="60" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 262 342 L 338 378 M 262 378 L 338 342" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
+<text x="300" y="305" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
 <rect x="470" y="180" width="130" height="300" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 470 180 A 65 40 0 0 1 600 180" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <line x1="495" y1="240" x2="495" y2="430" stroke="#1b1b1b" stroke-width="1.2"/>
@@ -727,60 +713,74 @@ Change an input to recompute.</p>
 <rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#1b1b1b" stroke-width="1.2"/>
 <text x="535" y="208" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-102 falling-film</text>
 <text x="535" y="224" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">evaporator</text>
-<text x="612" y="505" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">calandria (heating chest) at the side;</text>
-<text x="612" y="522" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">separator in the head</text>
-<line x1="535" y1="480" x2="535" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="535" y1="560" x2="700" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 690 560 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 690 560)"/>
-<circle cx="620" cy="560" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="620" y="564" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
-<text x="770" y="545" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate</text>
-<text x="770" y="564" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">20,000 kg/h</text>
-<line x1="565" y1="155" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="565" y1="110" x2="800" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="800" y1="110" x2="800" y2="175" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 800 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 800 165)"/>
+<text x="535" y="170" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">separator</text>
+<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<text x="630" y="490" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">calandria</text>
+<text x="550" y="125" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">demister</text>
+<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="820" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
+<text x="820" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
+<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="125" y1="480" x2="200" y2="480" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="480" x2="200" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="360" x2="250" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 242 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 242 360)"/>
+<circle cx="162" cy="480" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="162" y="484" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
+<text x="165" y="548" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<line x1="350" y1="360" x2="390" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="360" x2="390" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
+<circle cx="390" cy="322" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="390" y="326" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
+<line x1="565" y1="144" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="565" y1="110" x2="820" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="820" y1="110" x2="820" y2="175" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 820 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(90 820 165)"/>
 <circle cx="680" cy="110" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
 <text x="680" y="114" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">3</text>
-<text x="680" y="92" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
-<rect x="520" y="128" width="90" height="16" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="565" y="140" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">demister</text>
-<circle cx="800" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 775 235 L 800 190 L 825 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="800" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
-<text x="800" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
-<line x1="840" y1="215" x2="900" y2="215" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="215" x2="900" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="360" x2="600" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 610 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 610 360)"/>
-<circle cx="900" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="900" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
-<text x="915" y="250" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
-<text x="915" y="266" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
-<line x1="600" y1="395" x2="880" y2="395" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="395" x2="880" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="470" x2="345" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 360 470 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 360 470)"/>
-<line x1="255" y1="470" x2="170" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="470" x2="170" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 72 600)"/>
-<circle cx="700" cy="395" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="700" y="399" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
-<text x="700" y="380" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
-<text x="115" y="585" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
-<line x1="985" y1="360" x2="905" y2="360" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
-<path d="M 912 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 912 360)"/>
-<text x="985" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam (dashed)</text>
-<line x1="640" y1="360" x2="640" y2="320" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 640 328 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 640 328)"/>
-<text x="648" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable vent</text>
-<rect x="430" y="580" width="360" height="34" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="442" y="601" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">Clean-in-place (CIP) connections at the evaporator</text>
-<text x="62" y="610" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start"></text>
-<rect x="820" y="580" width="330" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="985" y="601" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
-<text x="985" y="620" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
+<text x="750" y="88" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
+<line x1="860" y1="215" x2="930" y2="215" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="215" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="340" x2="660" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 670 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 670 340)"/>
+<circle cx="930" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="930" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
+<text x="950" y="300" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
+<text x="950" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
+<line x1="660" y1="450" x2="900" y2="450" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="450" x2="900" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="620" x2="330" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="330" y1="620" x2="330" y2="390" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 330 400 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 330 400)"/>
+<circle cx="750" cy="450" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="750" y="454" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
+<text x="750" y="435" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
+<text x="345" y="430" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">condensate in</text>
+<text x="258" y="520" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">condensate out</text>
+<line x1="270" y1="390" x2="270" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="270" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 72 600)"/>
+<text x="115" y="625" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
+<line x1="535" y1="480" x2="535" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="535" y1="580" x2="770" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 760 580 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 760 580)"/>
+<circle cx="650" cy="580" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="650" y="584" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
+<text x="650" y="606" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate 20,000 kg/h</text>
+<line x1="630" y1="306" x2="630" y2="240" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 630 248 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 630 248)"/>
+<text x="642" y="278" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable</text>
+<text x="642" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">vent</text>
+<line x1="1190" y1="340" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="930" cy="340" r="4" fill="#1b1b1b"/>
+<path d="M 1000 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 1000 340)"/>
+<text x="1190" y="322" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam</text>
+<rect x="760" y="645" width="390" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="955" y="666" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
+<text x="955" y="685" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
 <rect x="50" y="62" width="360" height="186" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
 <text x="60" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Stream</text>
 <text x="120" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Service</text>
@@ -819,34 +819,20 @@ Change an input to recompute.</p>
 <text x="380" y="236" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">43.6</text>
 </svg>
 </figure>
-<p>Fig. P3 | MVR compressor. The whole vapour stream raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head with the demister; the evaporator body continues below the frame (Fig. P2), and the discharge line also continues below the frame, to the calandria (Fig. P4).</p>
+<p>Fig. P3 | MVR compressor. The whole vapour stream raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head with the demister; the feed line enters the body at the left edge; the evaporator body and the calandria chest continue below the frame (Fig. P2 and Fig. P4), and the discharge line also continues below the frame, to the calandria (Fig. P4).</p>
 <h2 id="calandria-condensate-and-heat-recovery">Calandria, condensate and heat recovery</h2>
 <p>The compressed vapour enters the calandria and condenses on the tube outsides at 88 °C. Its latent heat, released at a temperature 8 K above the boiling liquid, passes through the tube walls into the boiling film. The condensing side actually delivers slightly more heat than the boiling side absorbs — 3,290 kW against 3,204 kW at the design basis — because the vapour also gives up its superheat (the 41 K between discharge and condensing temperature) before and while it condenses. The surplus leaves with the hot condensate and is recovered in the preheater; a plant in exact balance trims any remainder in a small cooler. The condensate, 5,000 kg/h, leaves through the preheater to the battery limit; in dairy and food duty it is clean enough to return as boiler feed water or process water, which is part of the economics of the process [5].</p>
 <p>Two small lines on the sheet carry duties that decide whether the plant runs well. The non-condensable vent draws air and dissolved gases out of the calandria: gases that arrive with the vapour do not condense, accumulate at the tube surface, and blanket it, and a calandria that is not vented loses duty steadily for no visible reason. The start-up steam line, dashed on the sheet, admits live steam to the calandria for start-up and for trimming: the loop cannot start itself, because at start-up there is no vapour to compress, so the evaporator is first boiled on live steam until the vapour flow is established, the compressor is started, and the steam is backed out. Many plants keep a small steam trim for control and for duties — such as the last kelvin of lift on a fouled surface — that the compressor alone cannot cover.</p>
-<figure><svg style="width:562px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="455 316 625 218" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
+<figure><svg style="width:670px;max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg" viewBox="455 262 745 378" role="img" aria-label="Process flow diagram of a mechanical vapour recompression evaporator">
 <rect x="50" y="300" width="110" height="110" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 50 330 Q 80 318 105 330 T 160 330" fill="none" stroke="#0072B2" stroke-width="1.5"/>
-<text x="105" y="445" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
+<text x="105" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">TK-101 feed tank</text>
 <circle cx="105" cy="480" r="20" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 92 492 L 105 468 L 118 492 z" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
 <text x="105" y="525" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">P-101 feed pump</text>
-<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="500" x2="105" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="105" y1="545" x2="300" y2="545" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="300" y1="545" x2="300" y2="405" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 300 420 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 300 420)"/>
-<rect x="255" y="315" width="90" height="90" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 265 330 L 335 390 M 265 390 L 335 330" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
-<text x="300" y="290" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
-<line x1="345" y1="360" x2="420" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="360" x2="420" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="420" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
-<circle cx="200" cy="545" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="200" y="549" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
-<circle cx="420" cy="312" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="420" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
-<text x="200" y="570" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<rect x="250" y="330" width="100" height="60" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 262 342 L 338 378 M 262 378 L 338 342" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>
+<text x="300" y="305" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-101 condensate preheater</text>
 <rect x="470" y="180" width="130" height="300" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 470 180 A 65 40 0 0 1 600 180" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <line x1="495" y1="240" x2="495" y2="430" stroke="#1b1b1b" stroke-width="1.2"/>
@@ -856,60 +842,74 @@ Change an input to recompute.</p>
 <rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#1b1b1b" stroke-width="1.2"/>
 <text x="535" y="208" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">E-102 falling-film</text>
 <text x="535" y="224" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">evaporator</text>
-<text x="612" y="505" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">calandria (heating chest) at the side;</text>
-<text x="612" y="522" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">separator in the head</text>
-<line x1="535" y1="480" x2="535" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="535" y1="560" x2="700" y2="560" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 690 560 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 690 560)"/>
-<circle cx="620" cy="560" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="620" y="564" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
-<text x="770" y="545" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate</text>
-<text x="770" y="564" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">20,000 kg/h</text>
-<line x1="565" y1="155" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="565" y1="110" x2="800" y2="110" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="800" y1="110" x2="800" y2="175" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 800 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 800 165)"/>
+<text x="535" y="170" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">separator</text>
+<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<text x="630" y="490" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">calandria</text>
+<text x="550" y="125" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">demister</text>
+<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="820" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
+<text x="820" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
+<line x1="105" y1="410" x2="105" y2="460" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="125" y1="480" x2="200" y2="480" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="480" x2="200" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="200" y1="360" x2="250" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 242 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 242 360)"/>
+<circle cx="162" cy="480" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="162" y="484" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">1</text>
+<text x="165" y="548" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Feed 25,000 kg/h</text>
+<line x1="350" y1="360" x2="390" y2="360" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="360" x2="390" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="390" y1="260" x2="470" y2="260" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 462 260 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 462 260)"/>
+<circle cx="390" cy="322" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="390" y="326" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">2</text>
+<line x1="565" y1="144" x2="565" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="565" y1="110" x2="820" y2="110" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="820" y1="110" x2="820" y2="175" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 820 165 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(90 820 165)"/>
 <circle cx="680" cy="110" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
 <text x="680" y="114" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">3</text>
-<text x="680" y="92" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
-<rect x="520" y="128" width="90" height="16" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="565" y="140" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">demister</text>
-<circle cx="800" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 775 235 L 800 190 L 825 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="800" y="285" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">K-101 MVR compressor</text>
-<text x="800" y="305" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">single-stage centrifugal</text>
-<line x1="840" y1="215" x2="900" y2="215" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="215" x2="900" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="900" y1="360" x2="600" y2="360" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 610 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 610 360)"/>
-<circle cx="900" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="900" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
-<text x="915" y="250" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
-<text x="915" y="266" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
-<line x1="600" y1="395" x2="880" y2="395" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="395" x2="880" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="880" y1="470" x2="345" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 360 470 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 360 470)"/>
-<line x1="255" y1="470" x2="170" y2="470" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="470" x2="170" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<line x1="170" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 72 600)"/>
-<circle cx="700" cy="395" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
-<text x="700" y="399" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
-<text x="700" y="380" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
-<text x="115" y="585" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
-<line x1="985" y1="360" x2="905" y2="360" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
-<path d="M 912 360 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 912 360)"/>
-<text x="985" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam (dashed)</text>
-<line x1="640" y1="360" x2="640" y2="320" stroke="#1b1b1b" stroke-width="2"/>
-<path d="M 640 328 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 640 328)"/>
-<text x="648" y="340" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable vent</text>
-<rect x="430" y="580" width="360" height="34" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
-<text x="442" y="601" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">Clean-in-place (CIP) connections at the evaporator</text>
-<text x="62" y="610" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start"></text>
-<rect x="820" y="580" width="330" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
-<text x="985" y="601" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
-<text x="985" y="620" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
+<text x="750" y="88" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Vapour 5,000 kg/h, 80 °C, 43.6 kPa</text>
+<line x1="860" y1="215" x2="930" y2="215" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="215" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="930" y1="340" x2="660" y2="340" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 670 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 670 340)"/>
+<circle cx="930" cy="290" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="930" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">4</text>
+<text x="950" y="300" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">5,000 kg/h,</text>
+<text x="950" y="316" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">129 °C, 64.9 kPa</text>
+<line x1="660" y1="450" x2="900" y2="450" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="450" x2="900" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="900" y1="620" x2="330" y2="620" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="330" y1="620" x2="330" y2="390" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 330 400 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 330 400)"/>
+<circle cx="750" cy="450" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="750" y="454" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">5</text>
+<text x="750" y="435" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate 5,000 kg/h</text>
+<text x="345" y="430" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">condensate in</text>
+<text x="258" y="520" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">condensate out</text>
+<line x1="270" y1="390" x2="270" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="270" y1="600" x2="60" y2="600" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 72 600 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 72 600)"/>
+<text x="115" y="625" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Condensate out</text>
+<line x1="535" y1="480" x2="535" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<line x1="535" y1="580" x2="770" y2="580" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 760 580 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(0 760 580)"/>
+<circle cx="650" cy="580" r="10" fill="#ffffff" stroke="#0072B2" stroke-width="1.5"/>
+<text x="650" y="584" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">6</text>
+<text x="650" y="606" font-size="12" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Concentrate 20,000 kg/h</text>
+<line x1="630" y1="306" x2="630" y2="240" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M 630 248 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(-90 630 248)"/>
+<text x="642" y="278" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">non-condensable</text>
+<text x="642" y="294" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="start">vent</text>
+<line x1="1190" y1="340" x2="930" y2="340" stroke="#1b1b1b" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="930" cy="340" r="4" fill="#1b1b1b"/>
+<path d="M 1000 340 l -9 -4.5 v 9 z" fill="#1b1b1b" transform="rotate(180 1000 340)"/>
+<text x="1190" y="322" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">start-up steam</text>
+<rect x="760" y="645" width="390" height="50" fill="#ffffff" stroke="#1b1b1b" stroke-width="1.5"/>
+<text x="955" y="666" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">Mechanical vapour recompression evaporator</text>
+<text x="955" y="685" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">Sample values at the design basis; balance closes</text>
 <rect x="50" y="62" width="360" height="186" fill="#ffffff" stroke="#1b1b1b" stroke-width="1"/>
 <text x="60" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Stream</text>
 <text x="120" y="84" font-size="11" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="start">Service</text>
@@ -948,7 +948,7 @@ Change an input to recompute.</p>
 <text x="380" y="236" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">43.6</text>
 </svg>
 </figure>
-<p>Fig. P4 | Calandria condensation and heat recovery. Compressed vapour condenses at 88 °C; condensate leaves through the feed preheat train; start-up steam (dashed) and the non-condensable vent serve the calandria. The evaporator body continues above the frame (Fig. P2) and the compressed vapour (stream 4) enters with it; the condensate line leaves at the left for the preheater (Fig. P1), and the concentrate line leaves at the bottom.</p>
+<p>Fig. P4 | Calandria condensation and heat recovery. Compressed vapour condenses at 88 °C; condensate leaves through the feed preheat train; start-up steam (dashed) and the non-condensable vent serve the calandria, and the vent leaves at the top of the frame. The evaporator body is at the left and continues above the frame (Fig. P2); the compressed vapour (stream 4) enters from the right, with the start-up steam joining it at the junction dot; the condensate line leaves along the bottom lane to the left, for the preheater (Fig. P1), and the concentrate (stream 6) crosses the lower part of the frame on its way out.</p>
 <h2 id="operating-issues">Operating issues</h2>
 <p><strong>Fouling and scaling.</strong> Every kelvin of extra temperature difference a fouled surface demands is paid for as compressor lift, so fouling in an MVR plant shows up first as a rising electricity bill, not as lost capacity. Scale from inverse-solubility salts (calcium sulphate, calcium carbonate, silica) forms on the hot tube wall; the falling film&#x27;s low residence time and the small temperature difference both work against deposition, and clean-in-place (CIP) with caustic and acid, shown as a note on the sheet, restores the surface in food duty.</p>
 <p><strong>Boiling-point elevation.</strong> The boiling temperature of a solution is above the saturation temperature of pure water at the same pressure, by the boiling-point elevation (BPE). The compressor must lift the vapour over the BPE before any temperature difference is available to transfer heat, so a liquor with a large BPE — concentrated caustic soda is the standard example, with a BPE of tens of kelvin — is a poor MVR candidate, while dilute aqueous and food liquors with a BPE of 1–3 K are the natural application. The design basis takes a BPE of 2 K, and the Theory panel keeps the BPE, the transfer difference and the losses as three separate terms of the lift, because conflating them understates the compressor duty.</p>
@@ -966,18 +966,21 @@ Change an input to recompute.</p>
 <div class="panelbody">
 <h1 id="economics">Economics</h1>
 <h2 id="scale-of-use">Scale of use</h2>
-<p>Evaporation is one of the largest energy duties in the process industries: milk, whey, juice, sugar, salt, caustic, black liquor, and desalination all move water by boiling it off. Mechanical vapour recompression (MVR) is the standard electric alternative to steam-driven evaporation wherever the temperature lift is small and the duty is continuous — dairy and food evaporation, salt and potash crystallisation, chemical concentration, and mechanical vapour compression desalination [3][5][6][7]. The economics below are computed by the page&#x27;s model for the plant on the Process sheet, at stated 2026 prices, and then set beside the largest documented commercial installations.</p>
+<p>Evaporation is one of the largest energy duties in the process industries: milk, whey, juice, sugar, salt, caustic, black liquor, and desalination all move water by boiling it off. Mechanical vapour recompression (MVR) is the standard electric alternative to steam-driven evaporation wherever the temperature lift is small and the duty is continuous — dairy and food evaporation, salt and potash crystallisation, chemical concentration, and mechanical vapour compression desalination [3][5][6][7]. The scale of the installed base is large: GEA, one vendor among several, reports experience of several thousand installed evaporation plants and states that almost all new evaporation plants are now equipped with MVR [5]. Dairy evaporation practice, the largest single application, is documented by both GEA and SPX Flow&#x27;s Anhydro evaporation line [5][8]. The economics below are computed by the page&#x27;s model for the plant on the Process sheet, at stated 2026 prices, and then set beside the largest documented commercial installations.</p>
 <h2 id="capital-cost">Capital cost</h2>
 <p>The installed capital of the modelled plant follows the stated estimating relation of the model: an installed cost, in USD, of 400,000 plus 220 per kg/h of evaporation capacity. The relation is an estimating assumption for a falling-film MVR evaporator with a single-stage centrifugal compressor, stated here so the reader can replace it; it is not a vendor quotation. At the design basis of 5,000 kg/h the installed capital is USD 1,500,000. The two cost centres are the compressor — a high-speed rotating machine with its motor and drive — and the evaporator area, and section 6 of the Theory panel states their trade: a larger area transfers the duty at a smaller lift, which buys a smaller compressor and a smaller electricity bill at the price of more steel.</p>
 <div class="tablewrap"><table class="econtable"><tr><th>Evaporation (kg/h)</th><th>Electric power (kW)</th><th>Specific energy (kWh/t)</th><th>Installed capital (USD)</th><th>Annual MVR cost (USD/yr)</th><th>Payback (yr)</th></tr><tr><td>1000</td><td>26.6</td><td>26.6</td><td>620000</td><td>21292</td><td>2.53</td></tr><tr><td>2500</td><td>66.5</td><td>26.6</td><td>950000</td><td>53230</td><td>1.55</td></tr><tr><td>5000</td><td>133.1</td><td>26.6</td><td>1500000</td><td>106459</td><td>1.22</td></tr><tr><td>10000</td><td>266.1</td><td>26.6</td><td>2600000</td><td>212918</td><td>1.06</td></tr><tr><td>20000</td><td>532.3</td><td>26.6</td><td>4800000</td><td>425837</td><td>0.98</td></tr></table></div><p>Capital and costs at the design-basis temperature, lift, efficiency and prices; capacity is the only quantity varied.</p>
 <h2 id="operating-cost-and-payback">Operating cost and payback</h2>
 <p>The operating comparison is between the MVR plant&#x27;s electricity bill and the live-steam bill of a single-effect steam-driven evaporator of the same duty (economy 0.9, Theory section 7). At the design basis, with electricity at USD 0.10 per kWh, steam at USD 30 per tonne, and 8,000 operating hours per year: the MVR plant draws 133.1 kW and costs USD 106,459 per year; the steam-driven plant consumes 5,555.6 kg/h of steam and costs USD 1,333,333 per year. The annual saving is USD 1,226,874 and the simple payback on the installed capital is 1.22 years. These are the model&#x27;s numbers at its stated prices, computed in the App panel at the current inputs; the reader who changes the electricity and steam prices changes the verdict, and the sensitivity table below shows where the verdict turns.</p>
 <div class="tablewrap"><table class="econtable"><tr><th>Temperature lift (K)</th><th>Electricity 0.05 USD/kWh</th><th>0.10 USD/kWh</th><th>0.20 USD/kWh</th></tr><tr><td>5</td><td>1.15</td><td>1.17</td><td>1.22</td></tr><tr><td>10</td><td>1.17</td><td>1.22</td><td>1.34</td></tr><tr><td>15</td><td>1.20</td><td>1.28</td><td>1.48</td></tr><tr><td>20</td><td>1.22</td><td>1.34</td><td>1.67</td></tr></table></div><p>Simple payback in years against the steam-driven single-effect alternative at a steam price of 30 USD/t.</p>
-<p>The governing variable is the price ratio, not either price alone. One tonne evaporated costs the MVR plant <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mrow><mi>s</mi><mi>p</mi></mrow></msub></mrow><annotation encoding="application/x-tex">e_{sp}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">s</span><span class="mord mathnormal mtight">p</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span> kWh of electricity — 26.6 kWh at the design basis — and costs the steam-driven plant <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi mathvariant="normal">/</mi><mn>0.9</mn><mo>=</mo><mn>1.11</mn></mrow><annotation encoding="application/x-tex">1/0.9 = 1.11</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1/0.9</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.11</span></span></span></span> tonnes of steam. MVR wins while <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mrow><mi>s</mi><mi>p</mi></mrow></msub></mrow><annotation encoding="application/x-tex">e_{sp}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">s</span><span class="mord mathnormal mtight">p</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span> times the electricity price stays below 1.11 times the steam price; at the design-basis specific energy the break-even electricity price at a steam price of USD 30 per tonne is about USD 1.25 per kWh, far above industrial tariffs, which is why the payback is short. The margin narrows as the lift grows: at a 20 K lift the specific energy is 54.1 kWh/t and the break-even electricity price halves. It also narrows where steam is a waste stream with no boiler cost, or where the evaporator runs few hours per year and the capital is spread over little product — MVR is a continuous-duty technology.</p>
+<p>The governing variable is the price ratio, not either price alone. One tonne evaporated costs the MVR plant <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mrow><mi>s</mi><mi>p</mi></mrow></msub></mrow><annotation encoding="application/x-tex">e_{sp}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">s</span><span class="mord mathnormal mtight">p</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span> kWh of electricity — 26.6 kWh at the design basis — and costs the steam-driven plant <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi mathvariant="normal">/</mi><mn>0.9</mn><mo>=</mo><mn>1.11</mn></mrow><annotation encoding="application/x-tex">1/0.9 = 1.11</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1/0.9</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.11</span></span></span></span> tonnes of steam. Writing <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mrow><mi>e</mi><mi>l</mi></mrow></msub></mrow><annotation encoding="application/x-tex">c_{el}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">e</span><span class="mord mathnormal mtight" style="margin-right:0.01968em;">l</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> for the electricity price, in USD per kWh, and <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mrow><mi>s</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex">c_{st}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">s</span><span class="mord mathnormal mtight">t</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> for the steam price, in USD per tonne, MVR is the cheaper option while</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>e</mi><mrow><mi>s</mi><mi>p</mi></mrow></msub><mtext> </mtext><msub><mi>c</mi><mrow><mi>e</mi><mi>l</mi></mrow></msub><mo>&lt;</mo><mfrac><msub><mi>c</mi><mrow><mi>s</mi><mi>t</mi></mrow></msub><mn>0.9</mn></mfrac></mrow><annotation encoding="application/x-tex">e_{sp}\,c_{el} &lt; \frac{c_{st}}{0.9}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8252em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">s</span><span class="mord mathnormal mtight">p</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">e</span><span class="mord mathnormal mtight" style="margin-right:0.01968em;">l</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&lt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.7936em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">0.9</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">s</span><span class="mord mathnormal mtight">t</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p>At the design-basis specific energy and a steam price of USD 30 per tonne, the break-even electricity price — the value of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mrow><mi>e</mi><mi>l</mi></mrow></msub></mrow><annotation encoding="application/x-tex">c_{el}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">e</span><span class="mord mathnormal mtight" style="margin-right:0.01968em;">l</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> at which the two sides are equal — is about USD 1.25 per kWh, far above industrial tariffs, which is why the payback is short. The margin narrows as the lift grows: at a 20 K lift the specific energy is 54.1 kWh/t and the break-even electricity price halves. It also narrows where steam is a waste stream with no boiler cost, or where the evaporator runs few hours per year and the capital is spread over little product — MVR is a continuous-duty technology.</p>
 <h2 id="the-largest-documented-installations">The largest documented installations</h2>
-<p>No definitive global ranking of MVR installations is published; capacities are reported by vendors in case literature, in inconsistent terms (evaporation rate, feed rate, or compressor power). The table lists the largest documented installations and installation classes from that vendor literature, attributed to the vendor in each case, with the background and economics as the vendor literature presents them. Capacities are stated in the class the literature reports, not as audited figures.</p>
-<div class="tablewrap"><table class="mdtable"><tr><th>Installation</th><th>Application</th><th>Scale as reported</th><th>Background and economics</th></tr><tr><td>Fonterra cooperative, New Zealand (Darfield and Edendale class plants)</td><td>Milk evaporation ahead of milk-powder dryers</td><td>Tens of tonnes per hour of evaporation per line</td><td>Among the largest milk-powder plants in the world; GEA evaporation with MVR and thermal vapour recompression stages concentrates milk before spray drying, where evaporation is the largest energy cost of the powder plant [5]</td></tr><tr><td>FrieslandCampina, Netherlands</td><td>Whey and milk concentration</td><td>Tens of tonnes per hour class, multi-effect falling-film trains</td><td>MVR on the first effects of whey evaporators; whey is a dilute, low-boiling-point-elevation liquor run continuously, the natural MVR duty; vendors GEA and SPX Flow [5][8]</td></tr><tr><td>Vacuum salt producers, Europe (esco and Nouryon class operations)</td><td>Salt crystallisation from brine</td><td>Large single turbo compressors on crystalliser and evaporation duties</td><td>Salt is produced by evaporating brine to crystallisation; the lift is small, the duty is continuous, and MVR displaced steam ejectors and live steam as energy prices rose; vendors include GEA and Andritz, with compressors from the large turbo-machinery makers [5][6]</td></tr><tr><td>Kraft pulp mills, South America and Scandinavia</td><td>Black liquor evaporation</td><td>Hundreds of tonnes per hour of evaporation across multi-effect trains</td><td>Andritz evaporation trains are the largest liquor evaporation duties in the industry; most duty is steam-driven multi-effect, with MVR and turbo-compressor boosting applied on individual effects and concentrators — recorded here with that qualification, because the MVR share of these trains is partial [6]</td></tr><tr><td>Mechanical vapour compression desalination trains (Veolia Sidem, IDE)</td><td>Seawater and brackish desalination</td><td>Up to the low thousands of cubic metres per day per unit</td><td>MVC units serve remote, island and industrial high-purity duties where no steam supply exists; the same cycle as the modelled plant, at far smaller evaporation duty than the dairy and salt plants [7]</td></tr><tr><td>Lithium, potash and carbonate crystalliser plants</td><td>Brine concentration and crystallisation</td><td>Individual crystalliser duties in the 5–30 tonnes per hour evaporation class</td><td>Forced-circulation crystallisers with MVR are the standard vapour source in current lithium carbonate and potash plants; vendors GEA, Veolia and Swenson [5][7]</td></tr></table></div>
-<p>The pattern across the table is the pattern of the Theory panel: the largest MVR duties are continuous, small-lift, low boiling-point-elevation evaporations run for many hours per year, where the electricity bill replaces a boiler steam bill. The installations are concentrated in dairy, salt and crystallisation because those industries evaporate water at close to its pure saturation behaviour, all year.</p>
+<p>No definitive global ranking of MVR installations is published, and vendors report capacities in inconsistent terms (evaporation rate, feed rate, or product rate). The table lists the largest installations for which the scale and the MVR application were read in a named source; each entry is attributed to its source, and the background and economics are as that source presents them. The verified list is dairy-heavy because dairy is where the largest documented MVR evaporation duties are reported.</p>
+<div class="tablewrap"><table class="mdtable"><tr><th>Installation</th><th>Application</th><th>Scale as reported</th><th>Background and economics</th></tr><tr><td>AmulFed Dairy, Gandhinagar, India (a unit of the Gujarat Co-operative Milk Marketing Federation)</td><td>Milk evaporation in a turnkey GEA milk-powder plant; the evaporation plant carries a GEA MVR system that continuously recycles energy by recompressing the vapour within the evaporator</td><td>About 90,000 litres of milk per hour processed; 150 tonnes per day of skim milk powder and 120 tonnes per day of dairy whitener and baby food; reported as the largest skim milk powder and dairy whitener plant in Asia, and, with the site&#x27;s two existing GEA powder plants, the largest plant in Asia at a single location [9][10]</td><td>The order, placed in 2017 for production from 2018, was reported at a lower double-digit million-euro amount; the MVR system is presented by the sources as reducing energy costs and the carbon footprint, and the evaporator condensate is polished by reverse osmosis for reuse, approaching zero liquid discharge [9][10]</td></tr><tr><td>Madeta a.s., Czech Republic</td><td>Sweet whey evaporation in a complete turn-key GEA evaporator using MVR; two effects in one body to minimise footprint</td><td>Evaporative capacity 12.5 tonnes per hour [11]</td><td>Madeta&#x27;s stated selection criteria were the lowest environmental impact and the lowest running costs; the MVR plant uses nearly 500 kg/h less live steam than a traditional design, an economy of nearly EUR 80,000 per year on running costs as reported in 2011 [11]</td></tr><tr><td>Synlait Milk, Canterbury, New Zealand</td><td>Milk concentration to more than 50% total solids in a multiple-effect falling-film evaporator ahead of spray drying; both MVR and thermal vapour recompression boost the evaporator&#x27;s efficiency</td><td>Greenfield milk-powder plant built by GEA in 14 months and first run on milk in August 2008; the article states no evaporation capacity [12]</td><td>The plant was a fast-track greenfield build whose capacity was raised by one third during design; evaporator water is recovered and reused for cleaning, and waste heat from the evaporator preheats the dryer air [12]</td></tr></table></div>
+<p>Two vendor figures frame the table. GEA&#x27;s comparison of heating options gives the specific electricity consumption of MVR as about 30–50 kWh per tonne of evaporation, with minor steam and cooling-water use, against 1 tonne of steam and 60 cubic metres of cooling water per tonne for a live-steam single effect [5]. The modelled plant of this page, which carries the compressor and motor only, sits just below that band at the design basis (26.6 kWh/t) and inside it at a 15 K lift (40.3 kWh/t). GEA also states that single-stage centrifugal fans — the machine class of the modelled plant — are used in evaporation plants at vapour compression ratios of 1.2 to 2.0 and rotational speeds of 3,000 to 12,000 rpm [5]; the design-basis ratio of 1.49 is in that band.</p>
+<p>The pattern across the verified table is the pattern of the Theory panel: the largest documented MVR duties are continuous, small-lift, low boiling-point-elevation evaporations run for many hours per year, where the electricity bill replaces a boiler steam bill.</p>
 <h2 id="cost-basis-and-limits">Cost basis and limits</h2>
 <p>All costs are 2026 USD. The capital relation is a stated estimating assumption, not a quotation; a purchased plant&#x27;s price depends on materials of construction, hygienic design in food duty, and the compressor frame selected. The operating comparison prices steam as boiler-raised steam at the stated price; a plant with surplus low-pressure steam values it lower and the MVR advantage shrinks accordingly. Maintenance of the compressor — bearings, seals, and periodic impeller inspection — is a real annual cost not carried in the model&#x27;s operating figures, and a full economic study adds it, together with the value of the clean condensate the process returns.</p>
 </div></div>
@@ -1325,10 +1328,14 @@ opening. The notebook file is
 <p>[2] International Association for the Properties of Water and Steam (IAPWS), <em>Revised Release on the IAPWS Industrial Formulation 1997 for the Thermodynamic Properties of Water and Steam</em>, 2007. Steam-table saturation pressures and latent heats used to check the model correlations.</p>
 <p>[3] Sinnott, R. K. and Towler, G., <em>Chemical Engineering Design</em>, 6th edition, Butterworth-Heinemann, 2020. Evaporation, falling-film coefficients, heat pumps and the coefficient of performance, pressure-equipment design.</p>
 <p>[4] Walas, S. M., <em>Chemical Process Equipment: Selection and Design</em>, Butterworth-Heinemann, 1990. Compressor classes and selection; evaporator types.</p>
-<p>[5] GEA Group, evaporation and mechanical vapour recompression technology literature. Dairy evaporation installations and MVR plant practice.</p>
+<p>[5] GEA Group, evaporation and mechanical vapour recompression technology literature, including &quot;Heating options for thermal separation plants&quot; (gea.com): MVR and thermal vapour recompression practice, specific utility consumption per tonne of evaporation, centrifugal fan compression ratios and speeds; and &quot;Evaporation plants&quot; (gea.com): installed-base scale and current MVR practice.</p>
 <p>[6] Andritz Group, evaporation plant literature. Kraft black liquor evaporation trains and concentrators.</p>
 <p>[7] El-Dessouky, H. T. and Ettouney, H. M., <em>Fundamentals of Salt Water Desalination</em>, Elsevier, 2002. Mechanical vapour compression desalination.</p>
 <p>[8] SPX Flow, Anhydro evaporation literature. Dairy and whey evaporation plants.</p>
+<p>[9] Refrigerated &amp; Frozen Foods, &quot;GEA to build Asia&#x27;s largest milk production facility in India&quot;, 19 July 2017. AmulFed Dairy, Gandhinagar: plant capacities, production rates, and the GEA mechanical vapour recompression system in the evaporation plant.</p>
+<p>[10] Packaging South Asia, &quot;GEA to build Asia&#x27;s largest milk production facility in India&quot;, 26 July 2017. AmulFed Dairy, Gandhinagar: order value, site scale, and the MVR system&#x27;s energy and carbon role.</p>
+<p>[11] Process Engineering, &quot;GEA evaporator for major Czech dairy&quot;, 28 January 2011. Madeta a.s. sweet whey evaporator: 12.5 tonnes per hour evaporative capacity, live-steam saving and running-cost economy of the MVR design.</p>
+<p>[12] Food &amp; Beverage Industry News, &quot;Timing is everything for powder plant&quot;, 10 November 2008. Synlait Milk milk-powder plant: multiple-effect falling-film evaporator with mechanical and thermal vapour recompression.</p>
 </section>
 </main>
 <footer id="pagenote">
