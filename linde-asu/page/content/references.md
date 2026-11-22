@@ -71,3 +71,11 @@
 [35] Wayne State University. Cryogenic Liquid Safety (liquid-to-gas expansion ratios: nitrogen 696, argon 847, oxygen 862). https://research.wayne.edu/oehs/lab-safety/cryogenic-liquid
 
 [36] European Industrial Gases Association (EIGA). Doc 147/22, Safe Practices Guide for Cryogenic Air Separation Plants (adsorbent particle size and dusting; water carryover). https://www.eiga.eu/uploads/documents/DOC147.pdf
+
+[37] Towler, G. and Sinnott, R. Chemical Engineering Design: Principles, Practice and Economics of Plant and Process Design, 2nd edition, Butterworth-Heinemann, 2013 (capacity exponent method and cost escalation by index, Chapter 7).
+
+[38] Turton, R., Shaeiwitz, J. A., Bhattacharyya, D. and Whiting, W. B. Analysis, Synthesis and Design of Chemical Processes, 5th edition, Prentice Hall, 2018 (capital cost scaling and annualisation).
+
+[39] European Central Bank. Euro foreign exchange reference rates, annual average 2018 (1.1810 US dollars per euro). https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html
+
+[40] National Institute of Standards and Technology. NIST Chemistry WebBook (vapour pressure, latent heat of vaporisation and boiling point data for nitrogen, oxygen and argon; saturation temperatures from the reference equations of state). https://webbook.nist.gov/chemistry/

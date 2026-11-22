@@ -60,6 +60,9 @@
     #component-table { overflow-x: auto; }
     .sidebar { flex: 1 1 auto; width: 100%; }
     .tocside { position: static; max-height: none; border-right: none; border-bottom: 1px solid #ccc; width: 100%; }
+    .tocside .toc ul { display: none; }
+    .tocside.open .toc ul { display: block; }
+    .tocside .toc > strong { cursor: pointer; }
     .chart { height: 300px; }
   }
 </style>
@@ -89,18 +92,23 @@
         <h2 class="sans" id="app-inputs">Inputs</h2>
         @@INPUT_FIELDS@@
         <button id="run-btn" disabled>Run calculation</button>
-        <p class="note" id="stale-note" style="display:none">Inputs have changed since the displayed run. Press Run calculation to recompute.</p>
+        <p class="note" id="stale-note" style="display:none">Inputs have changed since the displayed run; the calculation re-runs automatically when the Python runtime is ready.</p>
+        <p class="note">Input ranges: recoveries are fractions between 0 and 1; purities are between 50 and 100 mol percent; the discharge pressure must exceed the suction pressure of 101 kPa. Definitions of every input are in the Theory section.</p>
         <p class="err" id="app-error" style="display:none"></p>
       </div>
       <div class="main">
+        <h2 id="app-task">Task</h2>
+        <p>Size and cost a cryogenic air separation unit for a stated oxygen duty. Set the feed flow rate, the recoveries and purities of the three products, the compressor discharge pressure and efficiency, and the electricity price; the model returns the product rates, the power, the specific power against the reported commercial range of 200 to 260 kWh per tonne of oxygen, the minimum work and second-law efficiency for the product slate, and the unit cost in 2018 United States dollars with all cost allocated to the oxygen product. Two questions organise the exploration: how far the actual specific power stands above the minimum work of separation, and how the unit cost falls with capacity while the specific power does not.</p>
         <h2 id="app-results">Results of the displayed run</h2>
         <p class="note" id="run-label">Precomputed run, computed when this page was built (default inputs).</p>
         <div class="cards" id="metric-cards"></div>
         <h3 id="app-components">Component flow rates</h3>
         <div id="component-table"></div>
         <h3 id="app-balance-chart">Component flow rates by stream</h3>
+        <p class="note">Read the chart as the balance of the Theory section: each product bar is fixed by a recovery and a purity, and the waste bar is what remains. A negative waste component, flagged above the results, means the specified recoveries and purities are jointly infeasible.</p>
         <div class="chart" id="chart-balance"></div>
         <h3 id="app-sweep-chart">Unit cost against capacity</h3>
+        <p class="note">Read the chart as the capital scaling of the Theory section: the specific power is constant along the curve, and the decline of the unit cost is the dilution of the scaled capital cost. Below a contained oxygen capacity of approximately 500 t/d, pressure swing adsorption is the competing technology (Economics section).</p>
         <div class="chart" id="chart-sweep"></div>
       </div>
     </div>
@@ -112,7 +120,8 @@
       <div class="tocbody">
         <h2 id="process-pfd">Process flow diagram</h2>
         <p>Linde nitrogen–oxygen air separation unit with crude argon recovery, drawn under specification PFD-SPEC-001 with symbols from the traced symbol library. Stream values on the drawing are sample values on a basis of 1000 kmol/h of feed air, where kmol/h denotes kilomoles per hour; the balances of the displayed values close on every unit. The scalable vector graphics (SVG) file, the Portable Document Format (PDF) file at A3 size and a Portable Network Graphics (PNG) image are delivered with this page in the project record.</p>
-        <div class="pfdbox">@@PFD_SVG@@</div>
+        <figure style="margin:0"><div class="pfdbox">@@PFD_SVG@@</div>
+        <figcaption>Fig. P0 | The cold box separates because the pressure column raises the nitrogen condensation temperature above the oxygen boiling temperature; every other unit either prepares the air for that step or recovers the cold of the products. Full sheet: <a href="linde-asu-pfd-v1.pdf">PDF at A3 size</a> · <a href="linde-asu-pfd-v1.png">PNG image</a> · <a href="linde-asu-pfd-v1.svg">SVG file</a>.</figcaption></figure>
         @@PROCESS_HTML@@
       </div>
     </div>

@@ -89,10 +89,31 @@ CELLS = [
         ),
     ),
     dict(
+        title="Minimum work, second-law efficiency and saturation temperatures",
+        md=(
+            "The minimum work of separation follows from the ideal-gas entropy of mixing: the gas constant "
+            "multiplied by the suction temperature and by the increase of the mixing sum, the sum over "
+            "components of the component flow rate multiplied by the logarithm of its mole fraction, from "
+            "feed to products. The second-law efficiency is the minimum work divided by the total power. "
+            "The saturation temperatures are integrated Clausius-Clapeyron estimates anchored at the normal "
+            "boiling points (Theory section): nitrogen at the compressor discharge pressure and oxygen at "
+            "the low-pressure column pressure of 130 kPa. The difference between the two estimates is the "
+            "driving force available to the main condenser/reboiler before mixture effects narrow it."
+        ),
+        code=(
+            "wmin_kwh_t = res_power['wmin_kwh_per_t']; eta_ii = res_power['eta_ii']\n"
+            "tsat_n2 = res_power['tsat_n2_k']; tsat_o2 = res_power['tsat_o2_k']\n"
+            "print('Minimum work of separation (kWh per tonne of contained oxygen):', round(wmin_kwh_t, 1))\n"
+            "print('Second-law efficiency:', round(eta_ii, 3))\n"
+            "print('Saturation temperature estimates (K): nitrogen', round(tsat_n2, 1), '| oxygen', round(tsat_o2, 1))\n"
+            "assert 51.0 < wmin_kwh_t < 53.0"
+        ),
+    ),
+    dict(
         title="Capital and operating cost estimate",
         md=(
             "The capital cost estimate scales a reference plant (oxygen capacity 2470 t/d at a capital cost "
-            "of 108 million United States dollars (USD), the 2018 Lipetsk project of 72,000 Nm3/h, where Nm3 "
+            "of 118 million United States dollars (USD), the 2018 Lipetsk project of 72,000 Nm3/h, where Nm3 "
             "denotes normal cubic metre) with a capacity exponent of 0.70. The exponent is a modelling "
             "assumption: no air separation specific exponent was found in the verified sources. Annual costs "
             "combine the electricity cost (total power multiplied by operating hours and electricity price), "

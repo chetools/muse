@@ -31,6 +31,10 @@ function renderResult(r, label) {
     ["Crude argon product (t/d)", fmt(r.crude_tpd, 2)],
     ["Total power (kW)", fmt(r.p_total_kw, 0)],
     ["Specific power (kWh/t)", fmt(r.spec_kwh_per_t, 1)],
+    ["Minimum work (kWh/t)", fmt(r.wmin_kwh_per_t, 1)],
+    ["Second-law efficiency", fmt(r.eta_ii, 2)],
+    ["Nitrogen saturation estimate (K)", fmt(r.tsat_n2_k, 1)],
+    ["Oxygen saturation estimate (K)", fmt(r.tsat_o2_k, 1)],
     ["Capital cost (million USD)", fmt(r.capex_usd / 1e6, 1)],
     ["Unit oxygen cost (USD/t)", fmt(r.unit_cost_usd_t, 1)]
   ];
@@ -99,16 +103,17 @@ function bootWorker() {
     const m = ev.data;
     if (m.type === "stage") { prog.value = 55; status.textContent = "Python runtime: loading packages."; }
     if (m.type === "ready") {
-      workerReady = true; prog.value = 100;
+      workerReady = true;
+      prog.style.display = "none";
       status.textContent = "Python runtime: ready. Live runs compute in the browser (Pyodide).";
       document.getElementById("run-btn").disabled = false;
+      runNow();
     }
     if (m.type === "booterror") {
       prog.value = 0;
       status.textContent = "Python runtime failed to load (" + m.message + "). The precomputed run remains displayed; live runs are unavailable.";
     }
     if (m.type === "result") {
-      prog.value = 100;
       const btn = document.getElementById("run-btn");
       btn.disabled = false;
       let r = null;
@@ -142,15 +147,21 @@ document.addEventListener("DOMContentLoaded", () => {
   renderResult(prestart.result, "Precomputed run, computed when this page was built (default inputs).");
   Plotly.newPlot("chart-balance", prestart.figs.balance.data, prestart.figs.balance.layout, { responsive: true });
   Plotly.newPlot("chart-sweep", prestart.figs.sweep.data, prestart.figs.sweep.layout, { responsive: true });
-  document.querySelectorAll("[data-input]").forEach(inp => inp.addEventListener("input", checkStale));
-  document.getElementById("run-btn").addEventListener("click", () => {
+  let runTimer = null;
+  window.runNow = function () {
     if (!workerReady) return;
-    const prog = document.getElementById("boot-progress");
-    prog.value = 35;
     document.getElementById("run-btn").disabled = true;
     document.getElementById("app-error").style.display = "none";
     worker.postMessage({ inputs: collectInputs() });
-  });
+  };
+  document.querySelectorAll("[data-input]").forEach(inp => inp.addEventListener("input", () => {
+    checkStale();
+    if (runTimer) { clearTimeout(runTimer); }
+    runTimer = setTimeout(runNow, 700);
+  }));
+  document.getElementById("run-btn").addEventListener("click", runNow);
+  document.querySelectorAll(".tocside .toc > strong").forEach(el =>
+    el.addEventListener("click", () => el.closest(".tocside").classList.toggle("open")));
   // Scroll-spy for tables of contents within the active tab.
   const spy = new IntersectionObserver(entries => {
     entries.forEach(en => {

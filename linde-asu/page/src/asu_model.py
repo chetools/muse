@@ -41,7 +41,8 @@ DEFAULTS = dict(
     elec_price_usd_kwh=0.07,  # electricity price (USD/kWh); USD denotes United States dollars
     hours_per_year=8000.0,  # operating hours per year (h/yr)
     ref_capacity_tpd=2470.0,  # reference plant oxygen capacity (t/d); t denotes tonne
-    ref_cost_usd=108.0e6,    # reference plant capital cost (USD), 2018 basis
+    ref_cost_usd=118.0e6,    # reference plant capital cost (USD), 2018 basis: 100 million EUR at the 2018 average rate of 1.18 USD/EUR
+    lp_pressure_kpa=130.0,   # low-pressure column pressure (kPa), for the saturation-temperature estimate
     cost_exponent=0.70,      # capacity exponent of the cost scaling relation
     other_opex_fraction=0.04,  # non-electricity operating cost as a fraction of capital cost per year
     discount_rate=0.08,      # annual discount rate for capital annualisation
@@ -98,6 +99,34 @@ def run_model(u):
              / u["iso_efficiency"])
     p_total = p_mac * (1.0 + u["aux_fraction"] - u["expander_credit"])
     spec_kwh_t = p_total / (o2_in_gox_tpd / 24.0) if o2_in_gox_tpd > 0 else float("nan")
+    # Minimum work of separation (kW) from the ideal-gas entropy of
+    # mixing at the suction temperature: R_GAS times temperature times
+    # the decrease, feed minus products, of the mixing sum
+    # sum_i n_i ln(x_i) over all streams (n_i in kmol/h, x_i the mole
+    # fraction within its stream). The second-law efficiency is the
+    # minimum work divided by the total power.
+    def _mix_sum(v):
+        tot = float(np.sum(v))
+        return float(np.sum([x * np.log(x / tot) for x in v if x > 0.0])) if tot > 0 else 0.0
+    # The mixing sum of the products exceeds that of the feed (each
+    # product is less mixed), and the difference times R_GAS and the
+    # temperature is the minimum work input.
+    w_min_kw = (R_GAS * u["suction_temp_k"]
+                * (sum(_mix_sum(v) for v in (gox, gan, crude, waste)) - _mix_sum(feed))
+                / 3600.0)
+    wmin_kwh_t = w_min_kw / (o2_in_gox_tpd / 24.0) if o2_in_gox_tpd > 0 else float("nan")
+    eta_ii = w_min_kw / p_total if p_total > 0 else float("nan")
+    # Saturation-temperature estimates (K) from the integrated
+    # Clausius-Clapeyron equation anchored at the normal boiling
+    # point (N2: 77.4 K, latent heat 5.57 kJ/mol; O2: 90.2 K,
+    # 6.82 kJ/mol [39]), at the compressor discharge pressure for
+    # nitrogen and at the low-pressure column pressure for oxygen.
+    def _tsat_cc(t1, p1, p2, dh_kj_mol):
+        # 1/T2 = 1/T1 - (R/dH) ln(p2/p1), with R = 8.314e-3 kJ/(mol K)
+        # and dH the latent heat in kJ/mol, taken as constant.
+        return 1.0 / (1.0 / t1 - (8.314e-3 / dh_kj_mol) * np.log(p2 / p1))
+    tsat_n2_k = float(_tsat_cc(77.4, 101.325, u["mac_pressure_kpa"], 5.57))
+    tsat_o2_k = float(_tsat_cc(90.2, 101.325, u["lp_pressure_kpa"], 6.82))
     # Capital cost (USD) from the reference-plant scaling relation.
     capex = u["ref_cost_usd"] * (o2_in_gox_tpd / u["ref_capacity_tpd"]) ** u["cost_exponent"] if o2_in_gox_tpd > 0 else float("nan")
     # Annualised capital cost (USD/yr) with the capital recovery factor.
@@ -118,6 +147,8 @@ def run_model(u):
         crude_tpd=mass(crude) * 24.0 / 1000.0,
         p_mac_kw=float(p_mac), p_total_kw=float(p_total),
         spec_kwh_per_t=float(spec_kwh_t),
+        wmin_kw=float(w_min_kw), wmin_kwh_per_t=float(wmin_kwh_t), eta_ii=float(eta_ii),
+        tsat_n2_k=tsat_n2_k, tsat_o2_k=tsat_o2_k,
         capex_usd=float(capex), elec_annual_usd=float(elec_annual),
         other_annual_usd=float(other_annual), unit_cost_usd_t=float(unit_cost),
         elec_share=float(elec_share),

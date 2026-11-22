@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v9"
+VERSION = "v10"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -173,7 +173,7 @@ res0["sweep"] = {"caps": caps, "units": units, "specs": specs}
 INPUT_KEYS = ["feed_kmol_h", "o2_recovery", "n2_recovery", "ar_recovery", "gox_purity",
               "gan_purity", "crude_purity", "mac_pressure_kpa", "iso_efficiency", "elec_price_usd_kwh"]
 prestart = {"result": _plain(res0), "inputs": {k: M.DEFAULTS[k] for k in INPUT_KEYS},
-            "figs": {"balance": results[1]["figs"][0], "sweep": results[5]["figs"][0]}}
+            "figs": {"balance": results[1]["figs"][0], "sweep": results[6]["figs"][0]}}
 
 # ---------------- listings (byte-identity asserted) ----------------
 def listing(path):
@@ -213,21 +213,17 @@ def _crop_svg(vb):
     return s
 _SUBDIAGRAMS = [
     ("process-main-air-compression-c-101", "20 190 710 262",
-     "Sub-process flow diagram: air compression and purification — the "
-     "air filter, the main air compressor, the aftercooler and the "
-     "molecular sieve adsorber, from the air feed terminal to the "
-     "purified air outlet stream 5 at the right boundary; the waste "
-     "nitrogen and gaseous oxygen return lanes of the main heat "
-     "exchanger cross the window at its top and bottom boundaries."),
+     "Compression sets the pressure at which the whole separation becomes possible: three intercooled stages raise the air to the pressure-column pressure, and the aftercooler rejects the heat of compression to cooling water at ambient temperature."),
+    ("process-molecular-sieve-purification-v-101", "380 190 350 262",
+     "Purification is a process requirement, not a product specification: water and carbon dioxide are removed to parts-per-million levels because both would freeze in the cold section and block it."),
     ("process-main-heat-exchanger-e-102", "680 60 470 760",
-     "Sub-process flow diagram: main heat exchanger and expansion — the "
-     "main heat exchanger, the expansion turbine, the throttling valve, "
-     "the pressure column feed lane, the condenser/reboiler and the "
-     "rich liquid subcooler."),
+     "The main heat exchanger is where the cold of the products is recovered into the feed; its warm-end approach of a few kelvin sets a direct power penalty, and the expansion turbine beside it produces the refrigeration that balances the cold box."),
     ("process-pressure-column-t-101", "820 60 830 760",
-     "Sub-process flow diagram: distillation — the pressure column, the "
-     "main condenser/reboiler, the low-pressure column, the subcoolers "
-     "and the crude argon column with its condenser."),
+     "The pressure column performs the first split, into nitrogen overhead and oxygen-enriched rich liquid, and its overhead nitrogen condenses against boiling oxygen in the shared condenser/reboiler."),
+    ("process-low-pressure-column-t-102", "1020 60 400 480",
+     "The low-pressure column finishes the separation at near-atmospheric pressure, where the nitrogen-oxygen volatility ratio is highest; the argon content of its vapour peaks at the belly from which the crude argon draw is taken."),
+    ("process-crude-argon-column-t-103-and-condenser-e-105", "1250 60 400 560",
+     "The crude argon column separates the closest-boiling pair of the plant, argon from oxygen, with a volatility ratio near 1.3: the separation needs the tall packed section and the high reflux ratio the diagram shows."),
 ]
 for _n, (_hid, _vb, _cap) in enumerate(_SUBDIAGRAMS, 1):
     _fig = (f'<figure class="subdiagram">{_crop_svg(_vb)}'
