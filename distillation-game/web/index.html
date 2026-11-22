@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Distillation Column Game</title>
+<style>
+  :root {
+    --ink: #1a1a2e; --paper: #f7f5ef; --panel: #ffffff;
+    --line: #c9c4b4; --accent: #16697a; --warn: #b3541e;
+    --alarm: #b00020; --ok: #1e7a34;
+    --c1: #e69f00; --c2: #56b4e9; --c3: #009e73;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  header {
+    max-width: 1180px; margin: 0 auto; padding: 10px 14px 4px;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px;
+  }
+  header h1 { font-size: 20px; margin: 0; }
+  header .sub { font-size: 13px; color: #55503f; }
+  #status { font-size: 13px; font-weight: 600; }
+  #status.ready { color: var(--ok); }
+  main {
+    max-width: 1180px; margin: 0 auto; padding: 6px 14px 18px;
+    display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px;
+  }
+  #plantCard { padding: 6px; }
+  svg#plant { width: 100%; height: auto; display: block; }
+  #plotsWrap { max-width: 1180px; margin: 0 auto; padding: 0 14px 20px; }
+  #plotPanel { border: 1.5px dashed transparent; border-radius: 10px; }
+  #plotPanel.dragover { border-color: var(--accent); }
+  .plotGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin-top: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; position: relative; }
+  #readouts [data-pid] { border-bottom: 1px dotted #b9b29a; cursor: pointer; }
+  .tileTip { position: absolute; display: none; pointer-events: none; background: rgba(253,252,248,0.97); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 11.5px; line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 5; white-space: nowrap; }
+  #plotPreview { position: fixed; display: none; background: #fdfcf8; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; box-shadow: 0 3px 12px rgba(0,0,0,0.18); z-index: 50; pointer-events: none; }
+  #plotPreview .pvTitle { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+  .tile.dragover { outline: 2px solid var(--accent); }
+  .tileHead { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .tileTitle { font-size: 12.5px; font-weight: 700; }
+  .tileX { border: none; background: none; font-size: 14px; padding: 0 2px; color: #55503f; }
+  .tileLegend { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; }
+  .sChip { font-size: 11px; border: 1px solid var(--line); border-radius: 10px; padding: 1px 4px 1px 6px; display: inline-flex; align-items: center; gap: 4px; }
+  .sChip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .sChip button { border: none; background: none; padding: 0 1px; font-size: 11px; color: #55503f; }
+  .tile canvas { width: 100%; height: 108px; display: block; }
+  .feedForm { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: end; margin-top: 6px; }
+  .feedForm label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--muted); }
+  .feedForm input { width: 92px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+  .plotsLayout { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 12px; align-items: start; }
+  @media (max-width: 900px) { .plotsLayout { grid-template-columns: 1fr; } }
+  .tileHead { cursor: grab; }
+  .pChip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  #palette details { margin-top: 4px; }
+  #palette summary { font-size: 12.5px; font-weight: 700; color: var(--accent); cursor: pointer; }
+  .chipRow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+  .pChip { font-size: 11.5px; border: 1px solid var(--line); border-radius: 10px; padding: 2px 8px; background: #fdfcf8; cursor: grab; }
+  .pChip:hover { border-color: var(--accent); }
+  h2 { font-size: 15px; margin: 2px 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  button, select {
+    font: inherit; font-size: 13px; padding: 5px 10px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.active { background: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  .readouts { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 13px; }
+  .readouts .v { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+  .readouts .sect { grid-column: 1 / -1; font-weight: 700; margin-top: 7px; color: var(--accent); }
+  .spec-ok { color: var(--ok); } .spec-bad { color: var(--alarm); }
+  #alarmBar {
+    display: none; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;
+    font-weight: 700; font-size: 14px;
+  }
+  #alarmBar.hp { display: block; background: #fdecea; color: var(--alarm); border: 1px solid var(--alarm); }
+  #alarmBar.relief { display: block; background: #fff4e0; color: var(--warn); border: 1px solid var(--warn); }
+  #alarmBar.flash { display: block; background: #fff4e0; color: var(--warn); border: 1px solid var(--warn); }
+  #overBar {
+    display: none; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;
+    background: #2b2b2b; color: #fff; font-weight: 700;
+  }
+  #valvePanel .vname { font-size: 15px; font-weight: 700; }
+  #valvePanel .vdesc { font-size: 12.5px; color: #55503f; margin: 2px 0 6px; }
+  input[type="range"] { width: 100%; }
+  .segbar { display: flex; height: 14px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .segbar > div { height: 100%; }
+  .legend { font-size: 12px; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .valve { cursor: pointer; }
+  .valve.auto .vbody { stroke: #16697a; stroke-width: 2.8; }
+  .valve.claimed .vbody { stroke: #b3541e; stroke-width: 2.8; }
+  .valve .vbody { fill: #fff; stroke: var(--ink); stroke-width: 1.6; }
+  .valve.selected .vbody { stroke: var(--accent); stroke-width: 3; }
+  .valve text { font-size: 10.5px; fill: var(--ink); }
+  svg text { pointer-events: none; }
+  .lbl { font-size: 11px; fill: #3d3a2e; }
+  .lblb { font-size: 11px; font-weight: 700; fill: var(--ink); }
+  .num { font-size: 11px; font-variant-numeric: tabular-nums; fill: var(--ink); }
+  .small { font-size: 12px; color: #55503f; }
+  #log { font-size: 12px; max-height: 130px; overflow-y: auto; }
+  #log div { padding: 1px 0; border-bottom: 1px dotted #e2ddcc; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Distillation Column Game</h1>
+  <span class="sub">Pentane / hexane / heptane column &middot; flooded condenser below the reflux drum</span>
+  <span id="status">Loading the simulation engine&hellip;</span>
+</header>
+<main>
+  <div>
+    <div id="alarmBar"></div>
+    <div id="overBar">VESSEL RUPTURE &mdash; the column pressure passed the rupture pressure of 600 kPa with the relief path isolated. <button id="btnOverReset">Restart the round</button></div>
+    <div class="card" id="plantCard">
+      <svg id="plant" viewBox="0 0 760 620" role="img" aria-label="Drawn cross-section of the distillation plant"></svg>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Run controls</h2>
+      <div class="row">
+        <button id="btnPlay" disabled>Pause</button>
+        <label class="small">Speed
+          <select id="selSpeed">
+            <option value="0.5">0.5&times;</option>
+            <option value="1" selected>1&times;</option>
+            <option value="2">2&times;</option>
+            <option value="4">4&times;</option>
+            <option value="8">8&times;</option>
+            <option value="16">16&times;</option>
+            <option value="32">32&times;</option>
+          </select>
+        </label>
+        <label class="small">Autopilot
+          <select id="selAp" disabled>
+            <option value="0" selected>Off</option>
+            <option value="1">Level 1 &mdash; levels and pressure</option>
+            <option value="2">Level 2 &mdash; plus product quality</option>
+            <option value="3">Level 3 &mdash; full operation</option>
+          </select>
+        </label>
+        <button id="btnReset" disabled>Reset to the nominal point</button>
+        <span class="small">Clock: <span id="clock">0 s</span></span>
+      </div>
+      <h2 style="margin-top:12px">Disturbances (practice)</h2>
+      <div class="row">
+        <button class="dist" data-d="feedUp" disabled>Feed flow +20%</button>
+        <button class="dist" data-d="feedDown" disabled>Feed flow &minus;20%</button>
+        <button class="dist" data-d="feedLight" disabled>Feed richer in pentane</button>
+        <button class="dist" data-d="feedHeavy" disabled>Feed leaner in pentane</button>
+        <button class="dist" data-d="warmWater" disabled>Cooling supply warms to 35 &deg;C</button>
+        <button class="dist" data-d="restore" disabled>Restore the nominal feed</button>
+      </div>
+      <div style="margin-top:10px"><span class="sect">Set the feed supply directly</span></div>
+      <div class="feedForm">
+        <label>Pentane, % <input type="number" id="inFeedZ0" step="1" min="0" max="100"></label>
+        <label>Hexane, % <input type="number" id="inFeedZ1" step="1" min="0" max="100"></label>
+        <label>Heptane, % <input type="number" id="inFeedZ2" step="1" min="0" max="100"></label>
+        <label>Temperature, K <input type="number" id="inFeedT" step="0.5" min="250" max="420"></label>
+        <label>Pressure, kPa <input type="number" id="inFeedP" step="1" min="60" max="500"></label>
+        <button id="btnFeedApply" disabled>Apply feed</button>
+      </div>
+      <p class="small">The three percentages are normalised to sum to 100. The feed pressure must be at least the column pressure, or the feed cannot enter; a lower entry is raised to the column pressure. The supply is set as entered, liquid, two-phase, or vapour; what it becomes on entering the tray is shown under the feed inlet on the drawing and in the readings (vapour at entry). The flow itself is made by the feed valve on the drawing: its setpoint and automatic control are in the valve panel when the feed valve is selected.</p>
+      <p class="small">Distillate specification: pentane mole fraction at least 0.95. Bottoms specification: pentane mole fraction at most 0.05. Practice rounds are not scored.</p>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Event log</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+  <div>
+    <div class="card" id="valvePanel">
+      <div class="vname" id="vName">No valve selected</div>
+      <div class="vdesc" id="vDesc">Click any valve on the drawing to operate it.</div>
+      <div class="row"><span class="small">Opening</span>
+        <span id="vOpenVal" style="font-weight:700">—</span></div>
+      <input type="range" id="vSlider" min="0" max="100" step="0.5" value="0" disabled>
+      <div class="row">
+        <button id="vMinus" disabled>&minus;5%</button>
+        <button id="vPlus" disabled>+5%</button>
+        <button id="vFull" disabled>Full open</button>
+        <button id="vShut" disabled>Shut</button>
+      </div>
+      <div class="vdesc">Drag a valve on the drawing, or drag the slider, to adjust it. Hold Shift while dragging for fine adjustment.</div>
+      <div class="vdesc" id="vSeat"></div>
+      <div class="row"><button id="vHandBack" style="display:none">Hand back to the autopilot</button></div>
+      <div id="vExtra">
+        <div id="feedCtl" style="display:none">
+          <div class="row"><span class="small">Flow setpoint, mol/s</span>
+            <input type="number" id="inFeedSP" step="0.1" min="0" max="30" style="width:84px"></div>
+          <div class="row"><label class="small"><input type="checkbox" id="chkFeedAuto"> Automatic: the valve holds the setpoint</label></div>
+          <div class="vdesc" id="feedCtlNote"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Readings</h2>
+      <div class="readouts" id="readouts"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Product compositions</h2>
+      <div class="small">Distillate (drum liquid)</div>
+      <div class="segbar" id="segDist"></div>
+      <div class="small" style="margin-top:6px">Bottoms (reboiler liquid)</div>
+      <div class="segbar" id="segBot"></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--c1)"></span>pentane</span>
+        <span><span class="swatch" style="background:var(--c2)"></span>hexane</span>
+        <span><span class="swatch" style="background:var(--c3)"></span>heptane</span>
+      </div>
+    </div>
+  </div>
+</main>
+<section id="plotsWrap">
+  <div class="card">
+    <div class="row" style="justify-content: space-between">
+      <h2 style="margin:0">Plots</h2>
+      <label class="small">Time window
+        <select id="selPlotWin">
+          <option value="120">last 2 min</option>
+          <option value="600" selected>last 10 min</option>
+          <option value="inf">whole round</option>
+        </select>
+      </label>
+      <button id="btnPlotsReset">Restore the default set</button>
+    </div>
+    <div class="small" style="margin-top:4px">Click a parameter to add its plot; click it again to remove it. Drag a parameter onto the panel to start a new plot, or onto an existing plot to add the trace to it. Drag a plot by its title bar to reposition it. Drag a plot's legend item onto another plot to move that trace into it, or onto the panel to split it into its own plot. Hover over an item to preview its history; hover over a plot's lines to read the time and values. Every plot keeps the full history of the round, so a parameter added late still shows its whole trace.</div>
+    <div class="plotsLayout">
+      <div id="palette"></div>
+      <div id="plotPanel"><div class="plotGrid" id="plotGrid"></div></div>
+    </div>
+  </div>
+</section>
+<script>
+"use strict";
+// ---------- Engine (Rust compiled to WebAssembly) ----------
+const NOUT = 104;
+let W = null, sim = 0, outPtr = 0, zPtr = 0;
+const $ = (id) => document.getElementById(id);
+
+async function loadEngine() {
+  const resp = await fetch("engine.wasm");
+  const bytes = await resp.arrayBuffer();
+  const { instance } = await WebAssembly.instantiate(bytes, {});
+  W = instance.exports;
+  sim = W.dg_sim_new();
+  outPtr = W.dg_alloc(NOUT);
+  zPtr = W.dg_alloc(3);
+  $("status").textContent = "Engine ready.";
+  $("status").className = "ready";
+  for (const b of document.querySelectorAll("button")) b.disabled = false;
+  $("vSlider").disabled = true;
+  $("selAp").disabled = false;
+  buildPlant();
+  refreshOutputs();
+  requestAnimationFrame(tick);
+}
+function outputs() {
+  W.dg_outputs(sim, outPtr);
+  return new Float64Array(W.memory.buffer, outPtr, NOUT);
+}
+function getOpenings() {
+  const p = W.dg_alloc(11);
+  W.dg_get_openings(sim, p);
+  const a = Array.from(new Float64Array(W.memory.buffer, p, 11));
+  W.dg_free(p, 11);
+  return a;
+}
+function setOpening(idx, value) {
+  W.dg_set_opening(sim, idx, value);
+  if (!window.__dragQuiet) logEvent(idx, value);
+}
+
+// ---------- Valve metadata ----------
+// idx follows the engine openings layout. kind: pct (0-100),
+// frac (0-1 shown as %), kpa (steam regulator setpoint).
+const VALVES = {
+  inlet:      { idx: 0, kind: "pct",  name: "Condenser inlet valve",
+    desc: "Vapour from the column top into the condenser. Closing it raises the column pressure and pushes vapour toward the bypass." },
+  bypass:     { idx: 1, kind: "pct",  name: "Hot vapour bypass valve",
+    desc: "Vapour from the column top straight into the drum vapour space, bypassing the condenser. It sets the condenser-to-drum pressure difference that lifts the condensate up the riser." },
+  outlet:     { idx: 2, kind: "pct",  name: "Condenser outlet valve",
+    desc: "Condensate leaving the condenser up the riser to the drum. Together with the bypass it sets how flooded the condenser runs." },
+  reflux:     { idx: 3, kind: "pct",  name: "Reflux valve",
+    desc: "Drum liquid returned to the top tray. Together with the distillate valve it sets the drum level; their split sets the reflux ratio." },
+  distillate: { idx: 4, kind: "pct",  name: "Distillate valve",
+    desc: "Drum liquid leaving as distillate product. Together with the reflux valve it sets the drum level; their split sets the reflux ratio." },
+  bottoms:    { idx: 5, kind: "pct",  name: "Bottoms valve",
+    desc: "Reboiler liquid leaving as bottoms product. Sets the reboiler level with the boilup." },
+  feed:       { idx: 10, kind: "pct",  name: "Feed valve",
+    desc: "Feed entering the column. Its flow is made by this valve from the drop between the feed supply pressure and the column pressure. On automatic, the valve holds the flow setpoint below; moving the valve takes it to manual, where the flow follows the drop." },
+  regulator:  { idx: 6, kind: "kpa",  name: "Steam pressure regulator",
+    desc: "Sets the pressure upstream of the steam flow valve (supply header 900 kPa). One of two throttles in series to the steam chest." },
+  steam:      { idx: 7, kind: "pct",  name: "Steam flow valve",
+    desc: "Steam into the reboiler chest. One of two throttles in series; the chest pressure sits between the regulator and this valve." },
+  pump:       { idx: 8, kind: "frac", name: "Cooling-water pump speed",
+    desc: "Sets the cooling-water circulation rate and the condenser water-side coefficient. One of two ways to change the duty; the other is the makeup valve." },
+  makeup:     { idx: 9, kind: "frac", name: "Makeup cold-water valve",
+    desc: "Cold water into the surge tank, displacing warm water. Cools the whole loop slowly and costs water." },
+};
+let selected = null;
+
+// ---------- Plant drawing ----------
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function txt(parent, x, y, s, cls) {
+  const t = el("text", { x, y, class: cls || "lbl" }, parent);
+  t.textContent = s;
+  return t;
+}
+function pipe(parent, pts, color, width) {
+  return el("polyline", {
+    points: pts, fill: "none", stroke: color || "#6b675a",
+    "stroke-width": width || 3, "stroke-linejoin": "round",
+  }, parent);
+}
+const COMP_COLORS = ["#e69f00", "#56b4e9", "#009e73"];
+let dyn = {};   // dynamic SVG elements by key
+
+function valveGlyph(parent, key, x, y, labelPos, rot) {
+  const g = el("g", { class: "valve", "data-valve": key }, parent);
+  const s = 11;
+  const shapes = rot ? el("g", { transform: `rotate(${rot} ${x} ${y})` }, g) : g;
+  el("path", {
+    d: `M ${x - s} ${y - s * 0.7} L ${x + s} ${y + s * 0.7} L ${x + s} ${y - s * 0.7} L ${x - s} ${y + s * 0.7} Z`,
+    class: "vbody",
+  }, shapes);
+  el("line", { x1: x, y1: y - s * 0.7, x2: x, y2: y - s * 1.5, stroke: "#1a1a2e", "stroke-width": 1.6 }, shapes);
+  el("line", { x1: x - s * 0.8, y1: y - s * 1.5, x2: x + s * 0.8, y2: y - s * 1.5, stroke: "#1a1a2e", "stroke-width": 2.2 }, shapes);
+  let lx = x, ly = y + s * 1.9, anchor = "middle";
+  if (labelPos === "above") ly = y - s * 2.1;
+  if (labelPos === "diag") { lx = x + 8; ly = y - 12; anchor = "start"; }
+  if (labelPos === "leftbelow") { lx = x - 22; ly = y + 22; anchor = "end"; }
+  const label = txt(g, lx, ly, "", "num");
+  label.setAttribute("text-anchor", anchor);
+  // Invisible hit box: the bowtie's waist is unpainted, so clicks and
+  // drags at the symbol's centre would otherwise miss the valve.
+  el("rect", { x: x - 16, y: y - 18, width: 32, height: 44,
+               fill: "rgba(0,0,0,0)", "pointer-events": "all" }, g);
+  g.addEventListener("click", () => selectValve(key));
+  dyn["v_" + key] = label;
+  return g;
+}
+
+function buildPlant() {
+  const svg = $("plant");
+  const root = el("g", {}, svg);
+  // Column pressure bar with alarm / relief / design / rupture marks.
+  txt(root, 380, 18, "Column pressure", "lblb");
+  const pMin = 20, pMax = 640, px = (p) => 380 + (p - pMin) / (pMax - pMin) * 350;
+  el("rect", { x: 380, y: 24, width: 350, height: 12, fill: "#e8e2cf", stroke: "#c9c4b4" }, root);
+  dyn.pBar = el("rect", { x: 380, y: 24, width: 0, height: 12, fill: "#16697a" }, root);
+  for (const [p, lab, col, row] of [[360, "alarm 360", "#b3541e", 0], [400, "relief 400", "#b3541e", 1], [500, "design 500", "#b00020", 0], [600, "rupture 600", "#b00020", 1]]) {
+    el("line", { x1: px(p), y1: 21, x2: px(p), y2: 39, stroke: col, "stroke-width": 2 }, root);
+    const t = txt(root, px(p), row ? 66 : 52, lab, "lbl");
+    t.setAttribute("text-anchor", "middle");
+  }
+  dyn.pVal = txt(root, 380, 52, "", "num");
+
+  // Column body and trays. Stage 0 is the reboiler; stages 1..12
+  // are trays, tray 12 at the top.
+  const colX = 95, colW = 110, topY = 84, trayH = 32;
+  el("rect", { x: colX, y: topY, width: colW, height: trayH * 12, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
+  dyn.traySegs = [];
+  dyn.traySurf = [];
+  dyn.trayFoam = [];
+  dyn.trayTempTxt = [];
+  dyn.trayBubbles = [];
+  for (let j = 1; j <= 12; j++) {
+    const yTop = topY + (12 - j) * trayH;
+    el("line", { x1: colX, y1: yTop + trayH, x2: colX + colW, y2: yTop + trayH, stroke: "#c9c4b4", "stroke-width": 1 }, root);
+    const segs = [];
+    let sx = colX + 3;
+    for (let c = 0; c < 3; c++) {
+      const r = el("rect", { x: sx, y: yTop + trayH - 13, width: 0, height: 13, fill: COMP_COLORS[c] }, root);
+      segs.push(r);
+    }
+    dyn.traySegs[j] = segs;
+    dyn.traySurf[j] = el("line", { x1: colX + 3, y1: yTop + trayH - 13, x2: colX + colW - 3, y2: yTop + trayH - 13, stroke: "#ffffff", "stroke-width": 1, opacity: 0.45 }, root);
+    el("line", { x1: colX + 91, y1: yTop + trayH, x2: colX + 91, y2: yTop + trayH - 6, stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
+    dyn.trayFoam[j] = el("rect", { x: colX + 3, y: yTop + trayH - 13, width: colW - 6, height: 0, fill: "#ffffff", opacity: 0.38 }, root);
+    const bubs = [];
+    for (let k = 0; k < 7; k++) {
+      const bx = colX + 10 + k * 15 + (j % 3) * 3;
+      const bc = el("circle", { cx: bx, cy: yTop + trayH - 3, r: 1, fill: "#ffffff", opacity: 0 }, root);
+      bubs.push({ el: bc, phase: Math.random(), speed: 0.7 + Math.random() * 0.6, size: Math.random(), x0: bx, x: bx });
+    }
+    dyn.trayBubbles[j] = bubs;
+    const tt = txt(root, colX + colW - 5, yTop + 11, "", "lbl");
+    tt.setAttribute("text-anchor", "end");
+    tt.setAttribute("style", "font-size:8.5px");
+    dyn.trayTempTxt[j] = tt;
+    if (j === 6) txt(root, colX + colW / 2 - 4, yTop + 14, "feed tray 6", "lbl").setAttribute("text-anchor", "middle");
+  }
+  txt(root, colX + colW / 2, topY - 8, "Column, 12 trays", "lblb").setAttribute("text-anchor", "middle");
+  dyn.topT = txt(root, 254, 132, "", "num");
+  // Feed inlet at tray 6 (straight run, no bends).
+  const feedY = topY + 6.5 * trayH;
+  pipe(root, `10,${feedY} 60,${feedY}`, "#6b675a", 3);
+  el("path", { d: `M 60 ${feedY - 5} L 72 ${feedY} L 60 ${feedY + 5} Z`, fill: "#6b675a" }, root);
+  const feedInLbl = txt(root, 35, feedY - 38, "feed in", "lbl");
+  feedInLbl.setAttribute("text-anchor", "middle");
+  dyn.feedLbl = txt(root, 10, feedY + 22, "", "num");
+  dyn.feedZ = [];
+  for (let c = 0; c < 3; c++) {
+    el("rect", { x: 10, y: feedY + 32 + c * 15, width: 8, height: 8, fill: COMP_COLORS[c] }, root);
+    const t = txt(root, 22, feedY + 40 + c * 15, "", "num");
+    t.setAttribute("style", "font-size:10px");
+    dyn.feedZ.push(t);
+  }
+  valveGlyph(root, "feed", 35, feedY, "above");
+  dyn.feedTP = txt(root, 10, feedY + 92, "", "num");
+  dyn.feedQ = txt(root, 10, feedY + 108, "", "num");
+  dyn.feedTP.setAttribute("style", "font-size:10px");
+  // Reboiler (narrower).
+  const rebY = topY + trayH * 12 + 14;
+  el("rect", { x: 100, y: rebY, width: 110, height: 48, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
+  dyn.rebLiq = el("rect", { x: 102, y: rebY + 46, width: 106, height: 0, fill: "#56b4e9", opacity: 0.55 }, root);
+  txt(root, 155, rebY + 14, "Reboiler", "lblb").setAttribute("text-anchor", "middle");
+  dyn.rebT = txt(root, 132, rebY + 92, "", "num");
+  dyn.rebT.setAttribute("text-anchor", "end");
+  dyn.qRebArrow = txt(root, 155, rebY + 124, "", "num");
+  dyn.qRebArrow.setAttribute("text-anchor", "middle");
+  // Bottoms line: down from the reboiler, then straight right.
+  pipe(root, `140,${rebY + 48} 140,592 420,592`, "#6b675a", 3);
+  valveGlyph(root, "bottoms", 300, 592);
+  txt(root, 428, 588, "bottoms out", "lbl");
+  dyn.botLbl = txt(root, 428, 606, "", "num");
+  // Overhead line: straight right, one bend down into the
+  // condenser top.
+  pipe(root, `205,100 427,100 427,300`, "#6b675a", 3);
+  valveGlyph(root, "inlet", 300, 100);
+  // Relief branch (straight up).
+  pipe(root, `225,100 225,58`, "#6b675a", 2.5);
+  el("path", { d: "M 217 58 L 233 58 L 225 46 Z", fill: "#fff", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
+  txt(root, 217, 52, "relief to flare, set 400 kPa", "lbl").setAttribute("text-anchor", "end");
+  dyn.reliefLbl = txt(root, 270, 90, "", "num");
+  // Hot vapour bypass: up, straight across, down into the drum top.
+  pipe(root, `262,100 262,64 478,64 478,88`, "#6b675a", 3);
+  valveGlyph(root, "bypass", 370, 64, "above");
+  txt(root, 300, 54, "hot vapour bypass", "lbl").setAttribute("text-anchor", "middle");
+  // Reflux drum (narrower, right-aligned with the condenser).
+  const drumX = 452, drumY = 88, drumW = 120, drumH = 52;
+  el("rect", { x: drumX, y: drumY, width: drumW, height: drumH, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
+  dyn.drumLiq = el("rect", { x: drumX + 2, y: drumY + drumH - 2, width: drumW - 4, height: 0, fill: "#56b4e9", opacity: 0.55 }, root);
+  txt(root, drumX + drumW / 2, drumY - 8, "Reflux drum", "lblb").setAttribute("text-anchor", "middle");
+  dyn.drumLbl = txt(root, 578, drumY + drumH + 36, "", "num");
+  dyn.drumLbl2 = txt(root, 578, drumY + drumH + 52, "", "num");
+  dyn.drumLbl3 = txt(root, 578, drumY + drumH + 68, "", "num");
+  // Condenser below the drum (narrower).
+  const cX = 352, cY = 300, cW = 150, cH = 56;
+  el("rect", { x: cX, y: cY, width: cW, height: cH, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.6 }, root);
+  dyn.condFlood = el("rect", { x: cX + 2, y: cY + cH - 2, width: cW - 4, height: 0, fill: "#56b4e9", opacity: 0.5 }, root);
+  for (let i = 0; i < 4; i++) {
+    const y = cY + 11 + i * 12;
+    el("line", { x1: cX + 8, y1: y, x2: cX + cW - 8, y2: y, stroke: "#16697a", "stroke-width": 3 }, root);
+  }
+  txt(root, cX + cW / 2, cY - 8, "Condenser (flooded)", "lblb").setAttribute("text-anchor", "middle");
+  dyn.condLbl = txt(root, 528, cY + cH + 12, "", "num");
+  dyn.qCondArrow = txt(root, 528, cY + cH + 26, "", "num");
+  dyn.condLbl2 = txt(root, 528, cY + cH + 40, "", "num");
+  // Riser: straight up the shared right edge, one bend into the
+  // drum side.
+  dyn.riser = pipe(root, `484,300 484,140`, "#56b4e9", 4);
+  valveGlyph(root, "outlet", 484, 230, "leftbelow", -90);
+  dyn.riserLbl = txt(root, 528, 300, "", "num");
+  dyn.marginLbl = txt(root, 528, 316, "", "num");
+  // Distillate: straight out of the drum side.
+  pipe(root, `572,110 648,110`, "#56b4e9", 3);
+  el("path", { d: "M 648 105 L 660 110 L 648 115 Z", fill: "#56b4e9" }, root);
+  valveGlyph(root, "distillate", 610, 110);
+  txt(root, 660, 144, "distillate out", "lbl").setAttribute("text-anchor", "end");
+  dyn.distLbl = txt(root, 660, 160, "", "num");
+  dyn.distLbl.setAttribute("text-anchor", "end");
+  // Reflux: down the right side clear of the condenser, straight
+  // left along the bottom, up into the column top.
+  pipe(root, `515,140 515,500 246,500 246,108 205,108`, "#56b4e9", 3);
+  valveGlyph(root, "reflux", 380, 500);
+  txt(root, 254, 200, "reflux", "lbl");
+  // Steam: header along y=556, one bend up into the reboiler.
+  pipe(root, `742,556 155,556 155,${rebY + 48}`, "#b3541e", 3);
+  txt(root, 742, 534, "steam supply 900 kPa", "lbl").setAttribute("text-anchor", "end");
+  valveGlyph(root, "regulator", 660, 556);
+  valveGlyph(root, "steam", 545, 556);
+  el("rect", { x: 415, y: 536, width: 80, height: 42, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
+  dyn.chestCap = txt(root, 455, 549, "steam chest", "lbl");
+  dyn.chestCap.setAttribute("text-anchor", "middle");
+  dyn.chestLbl = txt(root, 455, 566, "", "num");
+  dyn.chestLbl.setAttribute("text-anchor", "middle");
+  // Cooling loop: surge tank at bottom left of the condenser,
+  // pump on the supply run. Supply enters the condenser bottom;
+  // return leaves the condenser bottom right.
+  pipe(root, `400,356 400,404 306,404 306,436`, "#16697a", 3);
+  pipe(root, `460,356 460,462 318,462`, "#16697a", 3);
+  const tX = 262, tY = 436;
+  el("rect", { x: tX, y: tY, width: 56, height: 52, fill: "#fdfcf8", stroke: "#1a1a2e", "stroke-width": 1.4 }, root);
+  el("rect", { x: tX + 2, y: tY + 22, width: 52, height: 28, fill: "#56b4e9", opacity: 0.45 }, root);
+  txt(root, tX + 28, tY + 32, "surge tank", "lbl").setAttribute("text-anchor", "middle");
+  dyn.tankLbl = txt(root, tX + 64, tY + 34, "", "num");
+  const pumpG = el("g", { class: "valve", "data-valve": "pump" }, root);
+  el("circle", { cx: 341, cy: 404, r: 13, class: "vbody" }, pumpG);
+  txt(pumpG, 341, 408, "P", "lblb").setAttribute("text-anchor", "middle");
+  dyn.v_pump = txt(pumpG, 341, 428, "", "num");
+  dyn.v_pump.setAttribute("text-anchor", "middle");
+  el("rect", { x: 325, y: 386, width: 32, height: 44,
+               fill: "rgba(0,0,0,0)", "pointer-events": "all" }, pumpG);
+  pumpG.addEventListener("click", () => selectValve("pump"));
+  pipe(root, `276,436 276,384`, "#16697a", 3);
+  valveGlyph(root, "makeup", 276, 412, "diag", 90);
+  txt(root, 284, 376, "cold makeup", "lbl");
+}
+</script>
+<script src="ui.js"></script>
+</body>
+</html>
