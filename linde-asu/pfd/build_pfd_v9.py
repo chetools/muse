@@ -521,3 +521,23 @@ for code, msg in defects:
     print("CONNECTIVITY DEFECT", code, msg)
 assert not defects, f"connectivity audit: {len(defects)} defect(s) - build fails (skill Section 9.9)"
 print("connectivity audit OK: 0 defects (skill Sections 9.9, 9.10 and 9.11)")
+
+# ---------- page hover data export (does not alter the sheet) ----------
+# Geometry (STREAMS polylines) and stream-table values for the page's
+# hover/tap stream tooltips. Extra hit segments: the drawn detour stubs
+# of streams 17 and 19, which the stream() calls above do not carry.
+import json as _json
+_hit_extra = {
+    17: [[(955, 300), (955, 222)], [(975, 300), (975, 222)]],
+    19: [[(990, 190), (990, 224)], [(880, 190), (880, 162)]],
+}
+_export = {}
+for _row in streams:
+    _n = _row[0]
+    _segs = [[[float(x), float(y)] for x, y in pts] for pts in STREAMS[_n]]
+    _segs += [[[float(x), float(y)] for x, y in pts] for pts in _hit_extra.get(_n, [])]
+    _export[_n] = dict(segments=_segs, flow=_row[1], temp=_row[2], pressure=_row[3],
+                       n2=_row[4], o2=_row[5], ar=_row[6], phase=_row[7])
+with open("/home/hatch/workspace/muse-repo-main/linde-asu/pfd/streams_hover.json", "w") as _f:
+    _json.dump(_export, _f)
+print("hover data written:", len(_export), "streams")

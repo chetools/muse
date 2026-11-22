@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v29"
+VERSION = "v30"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -249,6 +249,32 @@ pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v9.svg").read_text()
 inner = pfd_svg_text[pfd_svg_text.index(">") + 1: pfd_svg_text.rindex("</svg>")]
 pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">{inner}</svg>'
 
+# ---- stream hover/tap data (v30): transparent hit paths over every
+# stream line of the sheet, in sheet coordinates, so every copy of the
+# sheet on the page (Fig. T0, Fig. P0 and the Process crops, which are
+# viewBox windows on this same SVG) carries them. The data come from
+# the sheet builder's export, never retyped here.
+_hover = json.loads((ROOT.parent / "pfd" / "streams_hover.json").read_text())
+_PHASE_LABEL = {"Vapour": "All vapour", "Liquid": "All liquid",
+                "Two-phase": "Vapour and liquid (two-phase)"}
+_VAP_FRAC = {"14": "0.13", "17": "0.14"}
+_hits = []
+_stream_data = {}
+for _n in sorted(_hover, key=lambda k: int(k)):
+    _d = _hover[_n]
+    for _seg in _d["segments"]:
+        _pts = " L ".join(f"{x:g} {y:g}" for x, y in _seg)
+        _hits.append(f'<path class="streamhit" data-stream="{_n}" d="M {_pts}"/>')
+    _entry = dict(flow=_d["flow"], temp=_d["temp"], pressure=_d["pressure"],
+                  n2=_d["n2"], o2=_d["o2"], ar=_d["ar"], phase=_PHASE_LABEL[_d["phase"]])
+    if _n in _VAP_FRAC:
+        _entry["vapfrac"] = _VAP_FRAC[_n]
+    _stream_data[_n] = _entry
+assert len(_stream_data) == 29, len(_stream_data)
+_overlay = '<g class="streamhits">' + "".join(_hits) + "</g>"
+_i = pfd_svg.rindex("</svg>")
+pfd_svg = pfd_svg[:_i] + _overlay + pfd_svg[_i:]
+
 # ---- sub-process diagrams in the Process panel ----
 def _crop_svg(vb):
     # One consistent scale for the whole sub-diagram series (v14): every
@@ -423,6 +449,7 @@ subs = {
     "@@WALKTHROUGH_HTML@@": walkthrough_html,
     "@@MOLAB_URL@@": "https://molab.marimo.io/github/chetools/muse/blob/gh-pages/linde-asu/walkthrough_molab.py",
     "@@PRESTART_JSON@@": json.dumps(prestart),
+    "@@STREAM_JSON@@": json.dumps(_stream_data),
     "@@PLOTLY_JS@@": plotly_js,
     "@@APP_JS@@": app_js,
 }
