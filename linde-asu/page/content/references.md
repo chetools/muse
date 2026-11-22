@@ -81,3 +81,9 @@
 [40] National Institute of Standards and Technology. NIST Chemistry WebBook (vapour pressure, latent heat of vaporisation and boiling point data for nitrogen, oxygen and argon; saturation temperatures from the reference equations of state). https://webbook.nist.gov/chemistry/
 
 [41] Linde Engineering. Air Separation Plants: History and Technological Progress, 2019 (process description: rectification in plain terms, single-column and double-column principles, the combined condenser/reboiler, and the five process steps). https://assets.linde.com/-/media/global/engineering/engineering/home/products-and-services/process-plants/air-separation-plants/air-separation-plants-history-and-technological-progress-2019.pdf
+
+[42] Bernstein, J. T. (Cryogenic Consulting Service Inc.). Argon production in cryogenic plants. Technology review paper presented at the 1999 Modern Air Separation Plant Technology Conference, Chengdu, China, 1999 (Fig. 5: typical oxygen, nitrogen and argon vapour concentration profile in a low-pressure tower, argon building to 10 to 20 mol percent). https://www.scribd.com/document/333279695/argon-pdf
+
+[43] Popa, V., Șerban, A. and Popa, C. Some aspects concerning argon production by cryogenic air separation. Progress of Cryogenics and Isotopes Separation, 17(2), 2014 (Fig. 3: concentration profile in the low-pressure column; argon concentration reaching a maximum, the argon belly, at an intermediate height). https://www.energ-en.ro/assets/pdfsc/63e72f894c4a17b2b83c616ffc3fdab6.pdf
+
+[44] European Patent EP 0612554 B1. Gas purification method (BOC Group; layered adsorbent bed in which a first layer preferentially adsorbs water vapour and a second layer preferentially adsorbs carbon dioxide, with twin beds alternating between purification and regeneration), 1998. https://patents.google.com/patent/EP0612554B1/en

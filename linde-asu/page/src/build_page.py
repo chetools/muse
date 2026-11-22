@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v25"
+VERSION = "v26"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -262,29 +262,117 @@ def _crop_svg(vb):
     _w = int(float(vb.split()[2]))
     s = s.replace('width="100%"', f'width="{_w}"', 1)
     return s
+# Figure numbers run in panel reading order (v26): P0 sheet, P1 cold box
+# photograph, then per section the sheet crop followed by the section's
+# clarifying figure where one exists (P4, P6, P7, P9, P11 below).
 _SUBDIAGRAMS = [
-    ("process-main-air-compression-c-101", "22 164 673 296",
-     "Compression sets the pressure at which the whole separation becomes possible: three intercooled stages raise the air to the pressure-column pressure, and the aftercooler rejects the heat of compression to cooling water at ambient temperature. The crop ends at the cold-box boundary, where stream 5 enters the cold box (Fig. P3); purification in V-101 is Fig. P2."),
-    ("process-molecular-sieve-purification-v-101", "395 258 300 118",
-     "Purification is a process requirement, not a product specification: water and carbon dioxide are removed to parts-per-million levels because both would freeze in the cold section and block it. The crop begins on stream 3 from the C-101 compressor (Fig. P1) and ends at the cold-box boundary, where stream 5 enters the cold box (Fig. P3)."),
-    ("process-main-heat-exchanger-e-102", "695 88 445 368",
-     "The main heat exchanger is where the cold of the products is recovered into the feed; its warm-end approach of a few kelvin sets a direct power penalty, and the expansion turbine beside it produces the refrigeration that balances the cold box. T-102 and E-103 are shown whole at the right; their sections are Figs. P5 and P4."),
-    ("process-pressure-column-t-101", "860 488 265 300",
-     "The pressure column performs the first split, into nitrogen overhead and oxygen-enriched rich liquid, and its overhead nitrogen condenses against boiling oxygen in the shared condenser/reboiler. Stream 7 enters at the left after throttling in VLV-101; the shared condenser/reboiler E-103 sits above the crop (shown in Fig. P3)."),
-    ("process-low-pressure-column-t-102", "815 98 523 286",
-     "The low-pressure column finishes the separation at near-atmospheric pressure, where the nitrogen-oxygen volatility ratio is highest; the argon content of its vapour peaks at the belly from which the crude argon draw is taken. At the right edge the crop ends at VLV-102 (labelled), whose outlet passes to the E-105 condenser of Fig. P6."),
-    ("process-crude-argon-column-t-103-and-condenser-e-105", "1222 72 433 426",
-     "The crude argon column separates the closest-boiling pair of the plant, argon from oxygen, with a volatility ratio near 1.3: the separation needs the tall packed section and the high reflux ratio the diagram shows. The crop begins on stream 29, the crude argon feed from the T-102 belly (Fig. P5); E-104 is shown whole at the left."),
+    ("process-main-air-compression-c-101", "22 164 673 296", 2,
+     "Compression sets the pressure at which the whole separation becomes possible, and the aftercooler rejects the heat of compression to cooling water at ambient temperature. The crop shows the single C-101 glyph and E-101: the three intercooled stages of the section text are a stage calculation, not separate machines on the drawing. The crop ends on stream 4 at the purification inlet; purification is Fig. P3, and stream 5 enters the cold box in Fig. P5."),
+    ("process-molecular-sieve-purification-v-101", "395 258 300 118", 3,
+     "Purification is a process requirement, not a product specification: water and carbon dioxide are removed to parts-per-million levels because both would freeze in the cold section and block it. The crop begins on stream 3 from the C-101 compressor (Fig. P2) and ends at the cold-box boundary, where stream 5 enters the cold box (Fig. P5). The layered bed and the twin-vessel cycle are drawn in Fig. P4."),
+    ("process-main-heat-exchanger-e-102", "695 88 445 368", 5,
+     "The main heat exchanger is where the cold of the products is recovered into the feed; its warm-end approach of a few kelvin sets a direct power penalty, and the expansion turbine beside it produces the refrigeration that balances the cold box. T-102 and E-103 are shown whole at the right; their sections are Figs. P10 and P8. The temperature profiles along the exchanger are drawn in Fig. P6."),
+    ("process-pressure-column-t-101", "860 488 265 300", 8,
+     "The pressure column performs the first split, into nitrogen overhead and oxygen-enriched rich liquid, and its overhead nitrogen condenses against boiling oxygen in the shared condenser/reboiler. Stream 7 enters at the left after throttling in VLV-101; the shared condenser/reboiler E-103 sits above the crop (shown in Fig. P5). The equilibrium lens behind the enrichment is drawn in Fig. P9."),
+    ("process-low-pressure-column-t-102", "815 98 523 286", 10,
+     "The low-pressure column finishes the separation at near-atmospheric pressure, where the nitrogen-oxygen volatility ratio is highest; the argon content of its vapour peaks at the belly from which the crude argon draw is taken. At the right edge the crop ends at VLV-102 (labelled), whose outlet passes to the E-105 condenser of Fig. P12. The vapour composition profile along the column is drawn in Fig. P11."),
+    ("process-crude-argon-column-t-103-and-condenser-e-105", "1222 72 433 426", 12,
+     "The crop shows the side draw entering T-103, the condenser E-105 cooled by the rich-liquid pass of stream 17, and the condensate dividing into reflux (stream 26) and crude argon product (stream 27). At the left edge are stream 28, the argon draw from the T-102 belly (Fig. P10), and stream 29, the bottoms return to T-102; E-104 is shown whole at the left. The tall packed section and the reflux ratio of the order of 30 belong to the section text; the diagram does not draw them."),
 ]
-for _n, (_hid, _vb, _cap) in enumerate(_SUBDIAGRAMS, 1):
-    _fig = (f'<figure class="subdiagram">{_crop_svg(_vb)}'
-            f'<figcaption>Fig. P{_n} | {_cap}</figcaption></figure>')
+_inserted = {}
+for _hid, _vb, _num, _cap in _SUBDIAGRAMS:
+    _fig = (f'<figure class="subdiagram" id="process-fig-p{_num}">{_crop_svg(_vb)}'
+            f'<figcaption>Fig. P{_num} | {_cap}</figcaption></figure>')
     _m = re.search(rf'(<h2 id="{_hid}">.*?</h2>)', rendered["process"])
     assert _m, f"sub-diagram anchor heading not found: {_hid}"
     rendered["process"] = rendered["process"].replace(
         _m.group(1), _m.group(1) + _fig, 1)
+    _inserted[_hid] = _fig
+
+# ---- clarifying figures (v26): original drawings from make_figures.py ----
+_FIGS_DIR = ROOT / "figs"
+def _new_fig(fid, svg_name, cap):
+    label = "Fig. " + fid.rsplit("-", 1)[1].upper()
+    svg = (_FIGS_DIR / f"{svg_name}.svg").read_text()
+    return (f'<figure class="subdiagram" id="{fid}">{svg}'
+            f'<figcaption>{label} | {cap}</figcaption></figure>')
+def _after_crop(hid, snippet):
+    anchor = _inserted[hid]
+    assert anchor in rendered["process"], f"crop anchor missing: {hid}"
+    rendered["process"] = rendered["process"].replace(
+        anchor, anchor + snippet, 1)
+def _after_heading(tab, hid, snippet):
+    m = re.search(rf'(<h2 id="{hid}">.*?</h2>)', rendered[tab])
+    assert m, f"figure anchor heading not found: {hid}"
+    rendered[tab] = rendered[tab].replace(m.group(1), m.group(1) + snippet, 1)
+
+_after_crop("process-molecular-sieve-purification-v-101", _new_fig(
+    "process-fig-p4", "fig-p4-sieve",
+    "One vessel adsorbs while the other regenerates: air rises through the activated alumina layer, which takes the water vapour, and then through the zeolite 13X layer, which takes the carbon dioxide, while heated waste nitrogen flows downward through the twin vessel and carries the desorbed contaminants to vent. Schematic cross-section and cycle strip; the layer order and the alternating cycle are those of the section text."))
+_after_crop("process-main-heat-exchanger-e-102", _new_fig(
+    "process-fig-p6", "fig-p6-mhe-profiles",
+    "The warm end sets the loss: the products leave only about 3 K below the entering air, and every kelvin of that approach is refrigeration the turbine must produce again. Schematic profiles from the stream states of the diagram; the cold line is the flow-weighted composite of streams 18 to 20 entering and streams 21 to 23 leaving."))
+_after_heading("process", "process-expansion-turbine-x-101", _new_fig(
+    "process-fig-p7", "fig-p7-ts",
+    "The turbine cools because the gas does work: from the same inlet state, the isentropic path falls 11 K and the isenthalpic path about 1 K. Schematic temperature–entropy diagram for air; the dome is drawn for orientation and the entropy scale is not to scale."))
+_after_crop("process-pressure-column-t-101", _new_fig(
+    "process-fig-p9", "fig-p9-txy",
+    "The width of the lens is the ease of the separation: one contact across the nitrogen–oxygen lens takes the vapour from 0.40 to 0.71 in nitrogen mole fraction, while the argon–oxygen lens is so narrow that one contact changes the composition by only a few hundredths. Both lenses at 130 kPa, computed for an ideal solution from the anchor data of the Theory section."))
+_after_crop("process-low-pressure-column-t-102", _new_fig(
+    "process-fig-p11", "fig-p11-argon-belly",
+    "Argon accumulates where the two tendencies balance: carried upward against oxygen and returned downward against nitrogen, its content peaks at the belly, and the draw to the crude argon column is taken at the maximum. Schematic profile; the compositions at the top, at the draw and at the sump, and the four feed entries, are those of the diagram."))
+# Theory Fig. T1 closes the saturation section (before the cost section)
+_T1 = _new_fig(
+    "theory-fig-t1", "fig-t1-saturation",
+    "Pressure reverses the order of the two saturation temperatures: at atmospheric pressure nitrogen condenses 12.8 K below the boiling point of oxygen, and at the column pressures it condenses 3.7 K above it. Both curves are computed from Eq. (15); the marked points are the normal boiling points and the two column operating points of this section.")
+_m = re.search(r'(<h2 id="theory-capital-cost-scaling-and-unit-cost">)', rendered["theory"])
+assert _m, "Theory cost heading not found for Fig. T1 insertion"
+rendered["theory"] = rendered["theory"].replace(_m.group(1), _T1 + _m.group(1), 1)
+# Process Fig. P1: cold box photograph after the overview paragraph that
+# introduces the cold box (only when the verified download is present)
+_PHOTO = ROOT / "assets" / "coldbox.jpg"
+PHOTO_INCLUDED = _PHOTO.exists() and _PHOTO.read_bytes()[:2] == b"\xff\xd8"
+if PHOTO_INCLUDED:
+    _b64 = base64.b64encode(_PHOTO.read_bytes()).decode()
+    _photo_fig = (
+        f'<figure class="subdiagram" id="process-fig-p1">'
+        f'<img src="data:image/jpeg;base64,{_b64}" alt="Photograph of the cold box of a cryogenic air separation plant" style="width:100%;height:auto;display:block">'
+        f'<figcaption>Fig. P1 | The cold box of a cryogenic air separation plant (centre): the columns and exchangers of Fig. P0 stand inside the one tall insulated enclosure, and only pipe connections cross its wall; warm-end equipment stands outside at the left and a storage tank at the right. '
+        f'Photograph: &#8220;Coldbox.JPG&#8221;, Wikimedia Commons (author as credited on the file page; uploaded by Engineer09), licensed under the '
+        f'<a href="https://creativecommons.org/licenses/by-sa/3.0/">Creative Commons Attribution-Share Alike 3.0 Unported</a> licence, reproduced unmodified.</figcaption></figure>')
+    _anchor = "insulated enclosure, the cold box."
+    assert _anchor in rendered["process"], "cold box paragraph anchor not found"
+    _i = rendered["process"].index(_anchor)
+    _j = rendered["process"].index("</p>", _i) + len("</p>")
+    rendered["process"] = (rendered["process"][:_j] + _photo_fig
+                           + rendered["process"][_j:])
+print("clarifying figures inserted; cold box photograph included:", PHOTO_INCLUDED)
 # ---------------- TOCs ----------------
+def _toc_insert(toc, after_hid, entries):
+    out = []
+    for e in toc:
+        out.append(e)
+        if e[1] == after_hid:
+            out.extend(entries)
+    assert any(e[1] == after_hid for e in toc), f"TOC anchor missing: {after_hid}"
+    return out
 process_toc = [("2", "process-pfd", "Process flow diagram")] + tocs["process"]
+if PHOTO_INCLUDED:
+    process_toc = _toc_insert(process_toc, "process-process-overview",
+        [("3", "process-fig-p1", "Fig. P1 — Cold box photograph")])
+process_toc = _toc_insert(process_toc, "process-molecular-sieve-purification-v-101",
+    [("3", "process-fig-p4", "Fig. P4 — Molecular sieve unit: layered bed and cycle")])
+process_toc = _toc_insert(process_toc, "process-main-heat-exchanger-e-102",
+    [("3", "process-fig-p6", "Fig. P6 — Main heat exchanger temperature profiles")])
+process_toc = _toc_insert(process_toc, "process-expansion-turbine-x-101",
+    [("3", "process-fig-p7", "Fig. P7 — Turbine and valve expansion (T–s diagram)")])
+process_toc = _toc_insert(process_toc, "process-pressure-column-t-101",
+    [("3", "process-fig-p9", "Fig. P9 — Equilibrium lenses at 130 kPa")])
+process_toc = _toc_insert(process_toc, "process-low-pressure-column-t-102",
+    [("3", "process-fig-p11", "Fig. P11 — Argon belly: vapour composition in T-102")])
+tocs["theory"] = _toc_insert(tocs["theory"],
+    "theory-saturation-temperature-at-the-condenser-reboiler-pressures",
+    [("3", "theory-fig-t1", "Fig. T1 — Saturation curves of nitrogen and oxygen")])
 code_toc = [("2", "code-listings", "Listings"), ("3", "code-model", "Listing 1 — asu_model.py"),
             ("3", "code-walkthrough-source", "Listing 2 — walkthrough.py"),
             ("2", "code-walkthrough", "Walkthrough")] + \
