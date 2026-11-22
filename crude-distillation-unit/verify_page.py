@@ -6,7 +6,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PAGE = os.path.join(HERE, "dist", "crude-distillation-unit-v7.html")
+PAGE = os.path.join(HERE, "dist", "crude-distillation-unit-v8.html")
 page = open(PAGE, encoding="utf-8").read()
 fails = []
 
@@ -34,7 +34,7 @@ for needed in ["panel-app", "panel-process", "panel-theory",
     check(f"fragment target present: {needed}", needed in idset)
 tabs = re.findall(r'data-panel="([^"]+)"', page)
 check(f"seven tabs present in order ({tabs})",
-      tabs == ["app", "process", "theory", "economics", "safety",
+      tabs == ["process", "theory", "app", "economics", "safety",
                "code", "references"])
 process_heads = re.findall(r'<h2 id="process-[^"]+">', page)
 check(f"process sections carry fragment ids ({len(process_heads)} found)",

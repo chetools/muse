@@ -192,7 +192,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs
 
-    The inputs are plain values. The crude oil feed rate (feed_rate, in kilogram per hour, kg/h) takes the design value of 850,000 kg/h. The five product cut yields (each in mass per cent of the crude feed) are the design-basis slate yields: light naphtha 6.5, heavy naphtha 10.0, kerosene 14.1, light gas oil 17.6 and atmospheric residue 50.0. The furnace outlet temperature (t_out, in degree Celsius) is the design value of 365 degree Celsius, and the mean specific heat capacity of the desalted crude (cp, in kilojoule per kilogram per kelvin, kJ/(kg K)) takes the assumed value 2.2; the assumption is stated in the Theory panel.
+    The inputs are plain values. The crude oil feed rate (feed_rate, in kg/h) takes the design value of 850,000 kg/h. The five product cut yields (each in mass per cent of the crude feed) are the design-basis slate yields: light naphtha 6.5, heavy naphtha 10.0, kerosene 14.1, light gas oil 17.6 and atmospheric residue 50.0. The furnace outlet temperature (t_out, in °C) is the design value of 365 °C, and the mean specific heat capacity of the desalted crude (cp, in kJ/(kg K)) takes the assumed value 2.2; the assumption is stated in the Theory panel.
     """)
     return
 
@@ -253,7 +253,7 @@ def _(mo):
     mo.md(r"""
     ## Step 4: Furnace duty estimate
 
-    The desalted crude flow rate through the furnace (in kg/h) is the crude feed rate multiplied by the design ratio 845,000/850,000. The furnace duty estimate (in kilowatt, kW) is the desalted rate multiplied by the mean specific heat capacity and by the temperature rise from the furnace inlet temperature of 250 degree Celsius to the outlet temperature, divided by 3600 to convert kilojoule per hour to kilowatt. The estimate covers sensible heat only; the latent heat of the portion vaporised in the furnace is excluded, and the result is a lower bound on the fired duty at the stated outlet temperature.
+    The desalted crude flow rate through the furnace (in kg/h) is the crude feed rate multiplied by the design ratio 845,000/850,000. The furnace duty estimate (in kW) is the desalted rate multiplied by the mean specific heat capacity and by the temperature rise from the furnace inlet temperature of 250 °C to the outlet temperature, divided by 3600 to convert kilojoule per hour to kilowatt. The estimate covers sensible heat only; the latent heat of the portion vaporised in the furnace is excluded, and the result is a lower bound on the fired duty at the stated outlet temperature.
     """)
     return
 
