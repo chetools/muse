@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v24"
+VERSION = "v25"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -245,7 +245,7 @@ for _gid, _gtitle, _gkeys, _gtext in FIELD_GROUPS:
 input_fields = "\n".join(_group_html + _guide_html)
 
 # ---------------- PFD ----------------
-pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v7.svg").read_text()
+pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v8.svg").read_text()
 inner = pfd_svg_text[pfd_svg_text.index(">") + 1: pfd_svg_text.rindex("</svg>")]
 pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">{inner}</svg>'
 
