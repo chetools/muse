@@ -14,30 +14,30 @@
 <path d="M 895.0 350.0 L 895.0 640.0 L 1062.5 640.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 895.0 350.0 L 928.0 350.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 981.8 350.0 L 1062.5 350.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1085.0 480.0 L 1085.0 448.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1085.0 495.0 L 1085.0 448.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1130.0 420.0 L 1165.0 420.0 L 1165.0 150.0 L 1227.6 150.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1100.0 448.0 L 1100.0 480.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1100.0 448.0 L 1100.0 497.9" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1272.0 150.0 L 1350.0 150.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1350.0 150.0 L 1350.0 160.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1350.0 200.0 L 1350.0 205.0 L 1107.5 205.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1085.0 720.0 L 1085.0 750.0 L 982.4 750.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1085.0 708.8 L 1085.0 750.0 L 982.4 750.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 938.0 750.0 L 845.0 750.0 L 845.0 505.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 845.0 465.0 L 845.0 300.0 L 1062.5 300.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1040.0 420.0 L 810.0 420.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1062.5 190.0 L 810.0 190.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1085.0 145.0 L 1085.0 120.0 L 810.0 120.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1085.0 160.0 L 1085.0 120.0 L 810.0 120.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 700.0 420.0 L 88.5 420.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 700.0 190.0 L 88.5 190.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 700.0 120.0 L 88.5 120.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1380.0 205.0 L 1380.0 167.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1380.0 222.0 L 1380.0 167.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1402.0 145.0 L 1560.0 145.0 L 1560.0 200.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1560.0 200.0 L 1430.0 200.0 L 1430.0 215.0 L 1405.5 215.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1560.0 200.0 L 1430.0 200.0 L 1430.0 250.0 L 1405.5 250.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <path d="M 1560.0 200.0 L 1560.0 200.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1107.5 285.0 L 1300.0 285.0 L 1300.0 440.0 L 1354.5 440.0" fill="none" stroke="#111111" stroke-width="3.4"/>
-<path d="M 1354.5 470.0 L 1210.0 470.0 L 1210.0 380.0 L 1107.5 380.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1107.5 285.0 L 1300.0 285.0 L 1300.0 300.0 L 1354.5 300.0" fill="none" stroke="#111111" stroke-width="3.4"/>
+<path d="M 1354.5 440.0 L 1210.0 440.0 L 1210.0 340.0 L 1107.5 340.0" fill="none" stroke="#111111" stroke-width="3.4"/>
 <circle cx="895" cy="350" r="5" fill="#111111"/>
 <circle cx="1560" cy="200" r="5" fill="#111111"/>
-<line x1="1085.0" y1="385.0" x2="1085.0" y2="392.0" stroke="#111111" stroke-width="3.4"/>
+<line x1="1085.0" y1="373.8" x2="1085.0" y2="392.0" stroke="#111111" stroke-width="3.4"/>
 <line x1="430.4" y1="372.0" x2="430.4" y2="408.0" stroke="#111111" stroke-width="1.3"/>
 <polygon points="423.58,394 430.4,377.5 437.21999999999997,394" fill="#111111"/>
 <text x="442" y="404" font-family="Arial, Helvetica, sans-serif" font-size="11.5" text-anchor="start" fill="#111111">Cooling water</text>
@@ -80,9 +80,9 @@
 <polygon points="1480,138.18 1496.5,145 1480,151.82" fill="#111111"/>
 <polygon points="1495,193.18 1478.5,200 1495,206.82" fill="#111111"/>
 <polygon points="1200,278.18 1216.5,285 1200,291.82" fill="#111111"/>
-<polygon points="1293.18,360 1300,376.5 1306.82,360" fill="#111111"/>
-<polygon points="1280,463.18 1263.5,470 1280,476.82" fill="#111111"/>
-<polygon points="1203.18,425 1210,408.5 1216.82,425" fill="#111111"/>
+<polygon points="1325,293.18 1341.5,300 1325,306.82" fill="#111111"/>
+<polygon points="1280,433.18 1263.5,440 1280,446.82" fill="#111111"/>
+<polygon points="1203.18,390 1210,373.5 1216.82,390" fill="#111111"/>
 <rect x="150" y="323" width="65" height="54" fill="white" stroke="#111111" stroke-width="2.2"/>
 <line x1="163.0" y1="323.0" x2="163.0" y2="377.0" stroke="#111111" stroke-width="1.0"/>
 <line x1="176.0" y1="323.0" x2="176.0" y2="377.0" stroke="#111111" stroke-width="1.0"/>
@@ -158,8 +158,8 @@
 <text x="1589" y="205" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#111111">28</text>
 <polygon points="1181,285 1200,271 1219,285 1200,299" fill="white" stroke="#111111" stroke-width="1.8"/>
 <text x="1200" y="290" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#111111">29</text>
-<polygon points="1261,470 1280,456 1299,470 1280,484" fill="white" stroke="#111111" stroke-width="1.8"/>
-<text x="1280" y="475" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#111111">30</text>
+<polygon points="1261,440 1280,426 1299,440 1280,454" fill="white" stroke="#111111" stroke-width="1.8"/>
+<text x="1280" y="445" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#111111">30</text>
 <line x1="908.0" y1="350.0" x2="905.0" y2="315.0" stroke="#111111" stroke-width="1.0"/>
 <polygon points="886,315 905,301 924,315 905,329" fill="white" stroke="#111111" stroke-width="1.8"/>
 <text x="905" y="320" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#111111">8</text>
@@ -543,5 +543,5 @@
 <rect x="60" y="1132" width="1560" height="34" fill="none" stroke="#111111" stroke-width="1.6"/>
 <text x="74" y="1155" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" text-anchor="start" fill="#111111">Linde air separation unit — PFD-102</text>
 <text x="840" y="1155" font-family="Arial, Helvetica, sans-serif" font-size="12" text-anchor="middle" fill="#111111">Sample process flow diagram  |  Stream values are sample values, not a converged simulation</text>
-<text x="1606" y="1155" font-family="Arial, Helvetica, sans-serif" font-size="12" text-anchor="end" fill="#111111">Drawn: Muse  |  2026-11-22  |  Revision 1  |  Sheet 1 of 1</text>
+<text x="1606" y="1155" font-family="Arial, Helvetica, sans-serif" font-size="12" text-anchor="end" fill="#111111">Drawn: Muse  |  2026-11-22  |  Revision 2  |  Sheet 1 of 1</text>
 </svg>

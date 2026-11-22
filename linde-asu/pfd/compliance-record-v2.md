@@ -1,4 +1,4 @@
-# Compliance record — Linde ASU sheet, Revision 1 (linde-asu-pfd-v2)
+# Compliance record — Linde ASU sheet, Revision 2 (linde-asu-pfd-v2)
 
 Sheet: PFD-102, Linde nitrogen–oxygen air separation unit with crude argon
 recovery. Builder: build_pfd_v2.py. Files: linde-asu-pfd-v2.svg (source of
@@ -52,3 +52,45 @@ connectivity and labelling only:
   the label collisions found in the first v2 draft (stub label against
   E-104 and VLV-102 glyphs, diamond 15 against the E-104 tag) were
   corrected and re-inspected before issue.
+
+## Revision 2 (2026-11-22): glyph-outline connectivity
+
+Defect found on the issued Revision 1 sheet by the reader, on the rendered
+sheet: lines ending short of the column domes (streams 21, 10, 12, 16, 25),
+a bottoms bridge starting below the T-102 dome, and side entries ending in
+open space beside the T-103 and T-102 heads (streams 27, 30). Root cause:
+the builder took the column geometry from the `scds_1` symbol frame
+(y = 200 to 520 native), whose drawn outline is inset in the frame (head
+apexes at y = 220 and y = 505, straight walls between the chords at
+y = 235 and y = 490); the Section 9.9 audit took its ports from the same
+constants, so it verified the drawing against itself and reported
+0 defects. Recorded as skill Section 9.10.
+
+Changes (topology, stream values, equipment set unchanged):
+
+1. Column geometry in build_pfd_v2.py is derived from the glyph outline
+   (`col()` from the apex and chord offsets): T-102 top 160, bottom 373.8;
+   T-101 top 495, bottom 708.8; T-103 top 222, bottom 464.3. Streams 21,
+   10, 16, 25 and the T-102/E-103 bridge now end on the apexes; stream 12
+   ends on the T-101 head ellipse at x = 1100 (y = 497.9).
+2. Side entries moved onto the straight walls: stream 27 enters T-103 at
+   y = 250, stream 29 enters T-103 at y = 300, stream 30 runs from the
+   T-103 wall at y = 440 to the T-102 wall at y = 340.
+3. The library ports of `scds_1` were corrected to the apexes in the PFD
+   skill (pfd_symbols.py and symbols.json).
+
+Verification:
+
+- Connectivity audit (skill Sections 9.9 and 9.10, including the C6
+  outline class with ellipse primitives for the heads): 0 defects.
+  Checker self-tests pass 8 of 8, including the planted frame-extreme
+  port (C6).
+- Rendered-pixel check (checks/render_gap_check.py, run by
+  check_render_v2.py): 0 defects over 20 column and E-103 connections.
+  The same check run against the Revision 1 raster reports 9 defects
+  (gaps of 9 to 30 units), which is the defect set the reader found.
+- Balances, identity cross-count (30 streams), bends (15 total, maximum
+  2), crossings (6, unchanged pairs) and minimum parallel spacing
+  (50 units) are unchanged from Revision 1.
+- Rendered inspection: full sheet and the top-right crop at final size
+  inspected; every line in the crop reaches its unit.

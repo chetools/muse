@@ -86,9 +86,14 @@ assert abs(EXP["inlet"][1] - 350) < 1 and abs(E104["left"][1] - 150) < 1
 assert abs(E106["left"][1] - 750) < 1 and abs(E105["bottom"][0] - 1380) < 1
 
 # geometry constants
-LP = dict(left=1062.5, right=1107.5, top=145, bottom=385, cx=1085)
-HP = dict(left=1062.5, right=1107.5, top=480, bottom=720, cx=1085)
-AR = dict(left=1354.5, right=1405.5, top=205, bottom=477, cx=1380)
+def col(tx, ty, s):
+    """Column geometry from the scds_1 drawn outline (skill Section 9.10):
+    top/bottom are the head apexes, chord_top/chord_bot bound the straight walls."""
+    return dict(left=tx, right=tx + 60 * s, top=ty + 20 * s, bottom=ty + 305 * s,
+                chord_top=ty + 35 * s, chord_bot=ty + 290 * s, cx=tx + 30 * s)
+LP = col(1062.5, 145, 0.75)
+HP = col(1062.5, 480, 0.75)
+AR = col(1354.5, 205, 0.85)
 MHE = dict(left=700, right=810, top=100, bottom=450)
 E103B = dict(left=1040, right=1130, top=392, bottom=448)
 
@@ -121,7 +126,8 @@ stream(8, [(895, 350), EXP["inlet"]])
 stream(9, [EXP["outlet"], (LP["left"], 350)])
 stream(10, [(HP["cx"], HP["top"]), (HP["cx"], E103B["bottom"])])
 stream(11, [(E103B["right"], 420), (1165, 420), (1165, 150), E104["left"]])
-stream(12, [(1100, E103B["bottom"]), (1100, HP["top"])])
+S12_TOP = HP["chord_top"] - 15 * 0.75 * (1 - ((1100 - HP["cx"]) / (30 * 0.75)) ** 2) ** 0.5  # head ellipse at x = 1100
+stream(12, [(1100, E103B["bottom"]), (1100, S12_TOP)])
 stream(13, [E104["right"], (1350, 150)])
 stream(14, [(1350, 150), (1350, 160)])
 stream(15, [(1350, 200), (1350, 205), (LP["right"], 205)])
@@ -136,12 +142,12 @@ stream(23, [(MHE["left"], 190), WAS_T["inlet_edge"]])
 stream(24, [(MHE["left"], 120), GAN_T["inlet_edge"]])
 stream(25, [(AR["cx"], AR["top"]), E105["bottom"]])
 stream(26, [E105["right"], (1560, 145), (1560, 200)])
-stream(27, [(1560, 200), (1430, 200), (1430, 215), (AR["right"], 215)])
+stream(27, [(1560, 200), (1430, 200), (1430, 250), (AR["right"], 250)])
 stream(28, [(1560, 200), ARG_T["inlet_edge"]])
-stream(29, [(LP["right"], 285), (1300, 285), (1300, 440), (AR["left"], 440)])
-stream(30, [(AR["left"], 470), (1210, 470), (1210, 380), (LP["right"], 380)])
+stream(29, [(LP["right"], 285), (1300, 285), (1300, 300), (AR["left"], 300)])
+stream(30, [(AR["left"], 440), (1210, 440), (1210, 340), (LP["right"], 340)])
 dot(895, 350); dot(1560, 200)
-line(1085, 385, 1085, 392)  # nozzle stub: T-102 bottoms into E-103 top (assembly bridge)
+line(1085, LP["bottom"], 1085, 392)  # nozzle stub: T-102 bottoms into E-103 top (assembly bridge)
 
 # utility stubs (subsidiary weight, not numbered streams)
 line(430.4, 372, 430.4, 408, w=SUB_W); arrow(430.4, 394, "U")
@@ -164,7 +170,7 @@ for x, y, d in [(125, 350, "R"), (245, 350, "R"), (368, 350, "R"), (476, 350, "R
                 (936, 190, "L"), (947, 120, "L"), (400, 420, "L"),
                 (400, 190, "L"), (400, 120, "L"), (1380, 186, "U"),
                 (1480, 145, "R"), (1495, 200, "L"), (1200, 285, "R"),
-                (1300, 360, "D"), (1280, 470, "L"), (1210, 425, "U")]:
+                (1325, 300, "R"), (1280, 440, "L"), (1210, 390, "U")]:
     arrow(x, y, d)
 
 # ---------- custom symbols (ISO 10628-2 forms, requirement S5) ----------
@@ -206,7 +212,7 @@ for x, y, n in [(125, 350, 1), (245, 350, 2), (368, 350, 3), (476, 350, 4),
                 (925, 420, 19), (936, 190, 20), (947, 120, 21),
                 (400, 420, 22), (400, 190, 23), (400, 120, 24),
                 (1480, 145, 26), (1495, 200, 27), (1589, 200, 28),
-                (1200, 285, 29), (1280, 470, 30)]:
+                (1200, 285, 29), (1280, 440, 30)]:
     stream_no(x, y, n)
 stream_no_side(908, 350, 905, 315, 8)
 stream_no_side(1085, 464, 1030, 470, 10)
@@ -314,7 +320,7 @@ for blk, x0 in enumerate((60, 860)):
 add(f'<rect x="60" y="1132" width="1560" height="34" fill="none" stroke="{INK}" stroke-width="1.6"/>')
 text(74, 1155, "Linde air separation unit — PFD-102", size=13.5, bold=True, anchor="start")
 text(840, 1155, "Sample process flow diagram  |  Stream values are sample values, not a converged simulation", size=12)
-text(1606, 1155, "Drawn: Muse  |  2026-11-22  |  Revision 1  |  Sheet 1 of 1", size=12, anchor="end")
+text(1606, 1155, "Drawn: Muse  |  2026-11-22  |  Revision 2  |  Sheet 1 of 1", size=12, anchor="end")
 
 svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">\n'
        + "\n".join(el) + "\n</svg>\n")
@@ -386,7 +392,7 @@ from connectivity_check import run_audit
 
 AUD_SEGMENTS = [{"pts": pts, "kind": "process", "stream": n} for n, pts in ALL_SEG_LISTS]
 AUD_SEGMENTS += [
-    {"pts": [(1085, 385), (1085, 392)], "kind": "nozzle", "stream": None},
+    {"pts": [(1085, LP["bottom"]), (1085, 392)], "kind": "nozzle", "stream": None},
     {"pts": [(430.4, 372), (430.4, 408)], "kind": "stub", "stream": None},
     {"pts": [(1250, 127.6), (1250, 102)], "kind": "stub", "stream": None},
     {"pts": [(960.4, 772), (960.4, 786)], "kind": "stub", "stream": None},
@@ -404,9 +410,9 @@ AUD_PORTS = {
     "X-101": dict(EXP), "E-104": dict(E104), "E-105": dict(E105), "E-106": dict(E106),
     "E-102": {f"L{y}": (700, y) for y in (120, 190, 350, 420)} | {f"R{y}": (810, y) for y in (120, 190, 350, 420)},
     "E-103": {"left": (1040, 420), "right": (1130, 420), "bottom_c": (1085, 448), "bottom_r": (1100, 448), "top_c": (1085, 392)},
-    "T-102": {"overhead": (1085, 145), "bottoms": (1085, 385), "L190": (1062.5, 190), "L300": (1062.5, 300), "L350": (1062.5, 350), "R205": (1107.5, 205), "R285": (1107.5, 285), "R380": (1107.5, 380)},
-    "T-101": {"overhead": (1085, 480), "overhead_r": (1100, 480), "bottoms": (1085, 720), "L640": (1062.5, 640)},
-    "T-103": {"overhead": (1380, 205), "bottoms": (1380, 477), "L440": (1354.5, 440), "L470": (1354.5, 470), "R215": (1405.5, 215)},
+    "T-102": {"overhead": (LP["cx"], LP["top"]), "bottoms": (LP["cx"], LP["bottom"]), "L190": (LP["left"], 190), "L300": (LP["left"], 300), "L350": (LP["left"], 350), "R205": (LP["right"], 205), "R285": (LP["right"], 285), "R340": (LP["right"], 340)},
+    "T-101": {"overhead": (HP["cx"], HP["top"]), "overhead_r": (1100, S12_TOP), "bottoms": (HP["cx"], HP["bottom"]), "L640": (HP["left"], 640)},
+    "T-103": {"overhead": (AR["cx"], AR["top"]), "bottoms": (AR["cx"], AR["bottom"]), "L300": (AR["left"], 300), "L440": (AR["left"], 440), "R250": (AR["right"], 250)},
     "VLV-101": {"top": (845, 465), "bottom": (845, 505)},
     "VLV-102": {"top": (1350, 160), "bottom": (1350, 200)},
 }
@@ -434,15 +440,33 @@ AUD_DIAMONDS = [{"centre": c, "stream": n, "on_segment": True} for c, n in
      ((980,640),7),((1022,350),9),((1196,150),11),((1311,150),13),((1250,205),15),
      ((1033,750),16),((891,750),17),((950,300),18),((925,420),19),((936,190),20),
      ((947,120),21),((400,420),22),((400,190),23),((400,120),24),((1480,145),26),
-     ((1495,200),27),((1200,285),29),((1280,470),30)]]
+     ((1495,200),27),((1200,285),29),((1280,440),30)]]
 AUD_DIAMONDS += [{"centre": c, "stream": n, "on_segment": False} for c, n in
     [((905,315),8),((1030,470),10),((1155,464),12),((1295,184),14),((1436,178),25),((1589,200),28)]]
 AUD_TERMINALS = [GAN_T["inlet_edge"], WAS_T["inlet_edge"], GOX_T["inlet_edge"], ARG_T["inlet_edge"]]
-AUD_ASSEMBLY = [("T-102", "E-103", 7, True), ("T-101", "E-103", 32, True)]
+AUD_ASSEMBLY = [("T-102", "E-103", 392 - LP["bottom"], True), ("T-101", "E-103", HP["top"] - 448, True)]
+def col_outline(c):
+    rx = (c["right"] - c["left"]) / 2; ry = c["chord_top"] - c["top"]
+    return [("point", (c["cx"], c["top"])), ("point", (c["cx"], c["bottom"])),
+            ("ellipse", (c["cx"], c["chord_top"]), (rx, ry)),
+            ("ellipse", (c["cx"], c["chord_bot"]), (rx, ry)),
+            ("seg", (c["left"], c["chord_top"]), (c["left"], c["chord_bot"])),
+            ("seg", (c["right"], c["chord_top"]), (c["right"], c["chord_bot"]))]
+def hx_outline(ports, s):
+    cx = (ports["left"][0] + ports["right"][0]) / 2; cy = ports["left"][1]
+    return [("circle", (cx, cy), 56 * s)]
+AUD_OUTLINES = {
+    "T-102": col_outline(LP), "T-101": col_outline(HP), "T-103": col_outline(AR),
+    "E-103": [("seg", (1040, 392), (1130, 392)), ("seg", (1040, 448), (1130, 448)),
+              ("seg", (1040, 392), (1040, 448)), ("seg", (1130, 392), (1130, 448))],
+    "E-104": hx_outline(E104, S_HX), "E-105": hx_outline(E105, S_HX), "E-106": hx_outline(E106, S_HX),
+    "E-102": [("seg", (700, 100), (810, 100)), ("seg", (700, 450), (810, 450)),
+              ("seg", (700, 100), (700, 450)), ("seg", (810, 100), (810, 450))],
+}
 defects = run_audit(AUD_SEGMENTS, AUD_PORTS, AUD_USE, AUD_BOXES,
                     [(895, 350), (1560, 200)], AUD_TERMINALS, AUD_LABELS,
-                    AUD_DIAMONDS, AUD_ASSEMBLY)
+                    AUD_DIAMONDS, AUD_ASSEMBLY, outlines=AUD_OUTLINES)
 for code, msg in defects:
     print("CONNECTIVITY DEFECT", code, msg)
 assert not defects, f"connectivity audit: {len(defects)} defect(s) - build fails (skill Section 9.9)"
-print("connectivity audit OK: 0 defects (skill Section 9.9)")
+print("connectivity audit OK: 0 defects (skill Sections 9.9 and 9.10)")
