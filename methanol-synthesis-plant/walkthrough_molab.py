@@ -197,7 +197,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs
 
-    The inputs are plain values, taken from the design basis. Fresh synthesis gas feed rate (fresh, in kg/h) is 90,000 kg/h. Purge rate (purge, in kg/h), withdrawn from the separator vapour to limit inert accumulation in the loop, is 16,000 kg/h. Circulation rate (recycle, in kg/h), the separator vapour returned to the converter inlet by the recycle compressor, is 350,000 kg/h. For the purification part, the light ends rate (light_ends, in kg/h) removed overhead in the topping column T-401 is 2,000 kg/h and the aqueous bottoms rate (aqueous_bottoms, in kg/h) of the refining column T-402 is 7,000 kg/h; both are model-level splits of the crude methanol, as defined in the balance model section of the Theory panel.
+    The inputs are plain values, taken from the design basis. Fresh synthesis gas feed rate (fresh, in kg/h) is 90,000 kg/h. Purge rate (purge, in kg/h), withdrawn from the separator vapour to limit inert accumulation in the loop, is 16,000 kg/h. Circulation rate (recycle, in kg/h), the separator vapour returned to the converter inlet by the recycle compressor, is 350,000 kg/h. The value is the model's prescribed default, not the diagram's recycle stream of 260,000 kg/h. For the purification part, the light ends rate (light_ends, in kg/h) removed overhead in the topping column T-401 is 2,000 kg/h and the aqueous bottoms rate (aqueous_bottoms, in kg/h) of the refining column T-402 is 7,000 kg/h; both are model-level splits of the crude methanol, as defined in the balance model section of the Theory panel.
     """)
     return
 
@@ -241,7 +241,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Loop anchor and overall plant anchor
 
-    Two anchor assertions check the design basis itself. The loop anchor: the fresh feed of 90,000 kg/h equals the crude methanol of 74,000 kg/h plus the purge of 16,000 kg/h, and the separator vapour of 366,000 kg/h equals the purge plus the circulation of 350,000 kg/h. The overall plant anchor: the total plant inputs of natural gas (38,000 kg/h), steam (30,000 kg/h), oxygen (22,000 kg/h) and carbon dioxide (12,000 kg/h) give 102,000 kg/h, equal to the total plant outputs of process condensate (12,000 kg/h), purge gas (16,000 kg/h), light ends (4,000 kg/h), refined methanol (65,000 kg/h) and aqueous bottoms (5,000 kg/h) of the design basis. A failure of either assertion stops the breakdown loudly.
+    Two anchor assertions check the design basis itself. Loop anchor: the fresh feed of 90,000 kg/h equals the crude methanol of 74,000 kg/h plus the purge of 16,000 kg/h, and the separator vapour of 366,000 kg/h equals the purge plus the circulation of 350,000 kg/h. Overall plant anchor: the total plant inputs of natural gas (38,000 kg/h), steam (30,000 kg/h), oxygen (22,000 kg/h) and carbon dioxide (12,000 kg/h) give 102,000 kg/h, equal to the total plant outputs of process condensate (12,000 kg/h), purge gas (16,000 kg/h), light ends (4,000 kg/h), refined methanol (65,000 kg/h) and aqueous bottoms (5,000 kg/h) of the design basis. A failure of either assertion stops the breakdown loudly.
     """)
     return
 
@@ -283,7 +283,7 @@ def _(mo):
     mo.md(r"""
     ## Step 5: Purification slate chart
 
-    The chart displays the purification slate of the displayed inputs: refined methanol, light ends and aqueous bottoms, in kg/h. Colours follow the Okabe-Ito categorical palette and each bar is also labelled by its stream name in the legend; the chart remains readable in greyscale.
+    For the displayed inputs, the chart displays the purification slate: refined methanol, light ends and aqueous bottoms, in kg/h. Colours follow the Okabe-Ito categorical palette and each bar is also labelled by its stream name in the legend; the chart remains readable in greyscale.
     """)
     return
 
