@@ -1,0 +1,20 @@
+# Merge brief — MVR v7 (user: "proceed when able to", 2026-11-22)
+
+State: the parallel line has published v6 (gh-pages 5765efa; main d861d5d, f713dfb) and the standing main clone is clean for mechanical-vapor-recompression/. The merge is now able to proceed.
+
+## Sources of truth
+- BASE = current repo v6 sources: ~/workspace/muse-repo-main/mechanical-vapor-recompression/ (refresh scoped first per AGENTS.md scoped workflow; commit the refresh in the clone as a local alignment commit if the tool requires it). v6 already carries: Theory-first order, side TOC, header alignment, display equations, parameters-left, viewer-audit fixes (crops at 0.9 px per sheet unit with a build assertion, full sheet at native 1200 px in a panning container, 12 px labels, separator-row root fix, phone table/chart fixes). NONE of that is regressed.
+- DONOR = this session's verified work in ~/workspace/mechanical-vapor-recompression/: sheet.svg + gen_sheet.py + verify_sheet.py + sheet_geometry.json (zero crossings measured, bends recorded, balance unchanged), and the verified commercial sites in text/economics.md + text/references.md + research-sites.md + dossier.md §6 (AmulFed Gandhinagar, Madeta 12.5 t/h, Synlait — sources opened and read, references [9]–[12] in the donor).
+
+## Merge — only these two donor contributions move into the base
+1. **Sheet.** Replace the base sheet with the donor sheet (1200x720, zero crossings). Reconcile with v6's crop system: re-measure every sub-process crop window on the NEW sheet geometry (donor crop windows may be reused only after measuring them against the new sheet in the browser, getBBox on labels near edges); keep v6's crop scale rule (0.9 px per sheet unit, build assertion) and the native-width panning full sheet; keep label sizes consistent with v6. Run donor verify_sheet.py on the merged sheet: crossings must be 0, overlaps 0, balance exact on displayed values. Design basis and all stream values unchanged.
+2. **Sites.** Port the donor's verified-sites Economics content and its references into the base text, renumbering citations to the base's sequence; citation mechanical check must pass (every key cited exactly once in the list, no orphans). Drop nothing verified; add nothing unverified. If the base v6 Economics still carries any of the old unverified class-level rows (Fonterra/FrieslandCampina/salt/black-liquor/MVC/lithium as unverified claims), they are replaced by the verified list — check the base text explicitly for this.
+
+## Fresh independent sheet review (owed — the donor delta reviewer saw the sheet before its last label moves)
+One clean-context reviewer, brief: decode the merged sheet stream by stream from the rendered image/SVG only; list every crossing, label strike, sliced fragment, reversed arrow, or confusing junction; check connections (vapour top, liquid bottom, vent and start-up steam placement, calandria drawn and labelled). Adjudicate, fix upheld findings, re-verify with verify_sheet.py and fresh renders of the sheet and all crops.
+
+## Build / QA / publish as v7
+- Working dir: build in ~/workspace/mechanical-vapor-recompression/ AFTER syncing its sources to the merged base+donor state (the donor dir's own v4 template work is superseded by the base v6 template — do not rebuild from the donor template).
+- dist/mechanical-vapor-recompression-v7.html; pytest; build assertions (KaTeX count, citations, crop scale); Playwright QA desktop/2560/390 px: every panel, sheet, every crop inspected as a first-time viewer (absurd/confusing/unnecessary pass on the changed parts), live run + ?selftest PASS, precomputed replacement.
+- Scoped pushes: main mechanical-vapor-recompression/, gh-pages mechanical-vapor-recompression/ (+ root index only if needed); served bytes byte-identical to the v7 build; Pages run confirmed.
+- Checkpoint in BUILD_LOG.md (note the merge and its two donor contributions). Report: crossing count, sites final list with sources, review outcome, QA results, published URL and MoLab link each on its own labelled line, built file attached under its v7 name.

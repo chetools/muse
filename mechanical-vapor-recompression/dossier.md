@@ -89,48 +89,35 @@ MVR removes the boiler load for evaporation and the cooling load
 of condensing the raised vapour elsewhere; its emissions follow
 the electricity supply. Sources: [3], [5].
 
-## 6. Largest commercial installations (vendor-attributed)
+## 6. Largest commercial installations
 
-A definitive global ranking is not verifiable (see head note).
-The largest documented installations in vendor case literature,
-each attributed, are:
+Updated in the v4 revision: the entries below were verified by
+opening and reading the named sources; full records, exact
+facts and URLs are in research-sites.md. The v3 entries for
+Fonterra, FrieslandCampina, vacuum salt, black liquor, MVC
+desalination and lithium/potash classes were dropped as
+unverified (no source opened), and the page no longer lists
+them.
 
-- Dairy evaporation, New Zealand: GEA evaporation plants ahead of
-  the large Fonterra milk-powder dryers (Darfield and Edendale
-  class) — among the largest milk evaporation duties in the world,
-  in the tens of tonnes per hour of evaporation per line, using
-  MVR and thermal vapour recompression (TVR) stages. Vendor: GEA.
-- Dairy and whey evaporation, Netherlands: GEA and SPX Flow
-  (Anhydro) MVR evaporators for FrieslandCampina whey and milk
-  concentration — multi-effect falling-film plants with MVR on the
-  first effects, tens of tonnes per hour class. Vendors: GEA,
-  SPX Flow.
-- Salt crystallisation, Europe: MVR crystalliser and evaporation
-  plants for vacuum salt production (esco and Nouryon class
-  operations), with large single turbo compressors; salt duty is
-  a classic MVR application because the lift is small and the
-  duty continuous. Vendors: GEA, Andritz, compressor makers
-  (Howden, MAN).
-- Pulp black liquor, South America and Scandinavia: Andritz
-  evaporation plants for kraft mills are the largest liquor
-  evaporation duties in the industry (hundreds of tonnes per hour
-  of evaporation across multi-effect trains); MVR and
-  turbo-compressor boosting are applied on individual effects and
-  in concentrators within those trains, most of the duty remaining
-  steam-driven multi-effect. Vendor: Andritz. (Recorded with this
-  qualification so the page does not overstate the MVR share.)
-- Desalination: mechanical vapour compression (MVC, the same
-  cycle) desalination units by Veolia (Sidem) and IDE are supplied
-  in trains up to the low thousands of cubic metres per day per
-  unit — far smaller in evaporation duty than the dairy and salt
-  plants, and notable instead for remote and high-purity duty.
-  Vendors: Veolia, IDE.
-- Lithium brine and chemical concentration: MVR evaporators and
-  crystallisers (GEA, Veolia HPD, Swenson) are the standard
-  forced-circulation crystalliser vapour source in lithium
-  carbonate, potash and sodium carbonate plants; individual
-  crystalliser duties are in the 5–30 t/h evaporation class.
-  Vendors: GEA, Veolia, Swenson/Whiting.
+- AmulFed Dairy, Gandhinagar, India: GEA turnkey milk-powder
+  plant with a GEA MVR system in the evaporation plant; about
+  90,000 L/h of milk, 150 t/day skim milk powder and 120 t/day
+  dairy whitener/baby food; reported as Asia's largest skim milk
+  powder plant; order in the lower double-digit million-euro
+  range [9][10].
+- Madeta a.s., Czech Republic: GEA turn-key MVR evaporator for
+  sweet whey, evaporative capacity 12.5 t/h, nearly 500 kg/h
+  less live steam than a traditional design, nearly
+  EUR 80,000/year running-cost economy (2011) [11].
+- Synlait Milk, New Zealand: GEA greenfield milk-powder plant
+  (2008), multiple-effect falling-film evaporator concentrating
+  to more than 50% total solids, with MVR and TVR; no capacity
+  stated in the source [12].
+- Vendor frame (GEA, opened and read): several thousand
+  installed evaporation plants; almost all new evaporation
+  plants now equipped with MVR; MVR specific electricity about
+  30–50 kWh per tonne of evaporation; single-stage centrifugal
+  fans at compression ratios 1.2–2.0, 3,000–12,000 rpm [5].
 
 ## 7. References (bibliographic records)
 

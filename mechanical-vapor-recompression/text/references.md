@@ -8,10 +8,18 @@
 
 [4] Walas, S. M., *Chemical Process Equipment: Selection and Design*, Butterworth-Heinemann, 1990. Compressor classes and selection; evaporator types.
 
-[5] GEA Group, evaporation and mechanical vapour recompression technology literature. Dairy evaporation installations and MVR plant practice.
+[5] GEA Group, evaporation and mechanical vapour recompression technology literature, including "Heating options for thermal separation plants" (gea.com): MVR and thermal vapour recompression practice, specific utility consumption per tonne of evaporation, centrifugal fan compression ratios and speeds; and "Evaporation plants" (gea.com): installed-base scale and current MVR practice.
 
 [6] Andritz Group, evaporation plant literature. Kraft black liquor evaporation trains and concentrators.
 
 [7] El-Dessouky, H. T. and Ettouney, H. M., *Fundamentals of Salt Water Desalination*, Elsevier, 2002. Mechanical vapour compression desalination.
 
 [8] SPX Flow, Anhydro evaporation literature. Dairy and whey evaporation plants.
+
+[9] Refrigerated & Frozen Foods, "GEA to build Asia's largest milk production facility in India", 19 July 2017. AmulFed Dairy, Gandhinagar: plant capacities, production rates, and the GEA mechanical vapour recompression system in the evaporation plant.
+
+[10] Packaging South Asia, "GEA to build Asia's largest milk production facility in India", 26 July 2017. AmulFed Dairy, Gandhinagar: order value, site scale, and the MVR system's energy and carbon role.
+
+[11] Process Engineering, "GEA evaporator for major Czech dairy", 28 January 2011. Madeta a.s. sweet whey evaporator: 12.5 tonnes per hour evaporative capacity, live-steam saving and running-cost economy of the MVR design.
+
+[12] Food & Beverage Industry News, "Timing is everything for powder plant", 10 November 2008. Synlait Milk milk-powder plant: multiple-effect falling-film evaporator with mechanical and thermal vapour recompression.

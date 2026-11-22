@@ -9,7 +9,13 @@ vapour recompression (MVR) is the standard electric alternative to
 steam-driven evaporation wherever the temperature lift is small
 and the duty is continuous — dairy and food evaporation, salt and
 potash crystallisation, chemical concentration, and mechanical
-vapour compression desalination [3][5][6][7]. The economics below
+vapour compression desalination [3][5][6][7]. The scale of the
+installed base is large: GEA, one vendor among several, reports
+experience of several thousand installed evaporation plants and
+states that almost all new evaporation plants are now equipped
+with MVR [5]. Dairy evaporation practice, the largest single
+application, is documented by both GEA and SPX Flow's Anhydro
+evaporation line [5][8]. The economics below
 are computed by the page's model for the plant on the Process
 sheet, at stated 2026 prices, and then set beside the largest
 documented commercial installations.
@@ -52,12 +58,18 @@ sensitivity table below shows where the verdict turns.
 The governing variable is the price ratio, not either price
 alone. One tonne evaporated costs the MVR plant $e_{sp}$ kWh of
 electricity — 26.6 kWh at the design basis — and costs the
-steam-driven plant $1/0.9 = 1.11$ tonnes of steam. MVR wins while
-$e_{sp}$ times the electricity price stays below 1.11 times the
-steam price; at the design-basis specific energy the break-even
-electricity price at a steam price of USD 30 per tonne is about
-USD 1.25 per kWh, far above industrial tariffs, which is why the
-payback is short. The margin narrows as the lift grows: at a
+steam-driven plant $1/0.9 = 1.11$ tonnes of steam. Writing
+$c_{el}$ for the electricity price, in USD per kWh, and
+$c_{st}$ for the steam price, in USD per tonne, MVR is the
+cheaper option while
+
+$$e_{sp}\,c_{el} < \frac{c_{st}}{0.9}$$
+
+At the design-basis specific energy and a steam price of
+USD 30 per tonne, the break-even electricity price — the value
+of $c_{el}$ at which the two sides are equal — is about
+USD 1.25 per kWh, far above industrial tariffs, which is why
+the payback is short. The margin narrows as the lift grows: at a
 20 K lift the specific energy is 54.1 kWh/t and the break-even
 electricity price halves. It also narrows where steam is a waste
 stream with no boiler cost, or where the evaporator runs few
@@ -66,31 +78,40 @@ MVR is a continuous-duty technology.
 
 ## The largest documented installations
 
-No definitive global ranking of MVR installations is published;
-capacities are reported by vendors in case literature, in
-inconsistent terms (evaporation rate, feed rate, or compressor
-power). The table lists the largest documented installations and
-installation classes from that vendor literature, attributed to
-the vendor in each case, with the background and economics as the
-vendor literature presents them. Capacities are stated in the
-class the literature reports, not as audited figures.
+No definitive global ranking of MVR installations is published,
+and vendors report capacities in inconsistent terms (evaporation
+rate, feed rate, or product rate). The table lists the largest
+installations for which the scale and the MVR application were
+read in a named source; each entry is attributed to its source,
+and the background and economics are as that source presents
+them. The verified list is dairy-heavy because dairy is where
+the largest documented MVR evaporation duties are reported.
 
 | Installation | Application | Scale as reported | Background and economics |
 |---|---|---|---|
-| Fonterra cooperative, New Zealand (Darfield and Edendale class plants) | Milk evaporation ahead of milk-powder dryers | Tens of tonnes per hour of evaporation per line | Among the largest milk-powder plants in the world; GEA evaporation with MVR and thermal vapour recompression stages concentrates milk before spray drying, where evaporation is the largest energy cost of the powder plant [5] |
-| FrieslandCampina, Netherlands | Whey and milk concentration | Tens of tonnes per hour class, multi-effect falling-film trains | MVR on the first effects of whey evaporators; whey is a dilute, low-boiling-point-elevation liquor run continuously, the natural MVR duty; vendors GEA and SPX Flow [5][8] |
-| Vacuum salt producers, Europe (esco and Nouryon class operations) | Salt crystallisation from brine | Large single turbo compressors on crystalliser and evaporation duties | Salt is produced by evaporating brine to crystallisation; the lift is small, the duty is continuous, and MVR displaced steam ejectors and live steam as energy prices rose; vendors include GEA and Andritz, with compressors from the large turbo-machinery makers [5][6] |
-| Kraft pulp mills, South America and Scandinavia | Black liquor evaporation | Hundreds of tonnes per hour of evaporation across multi-effect trains | Andritz evaporation trains are the largest liquor evaporation duties in the industry; most duty is steam-driven multi-effect, with MVR and turbo-compressor boosting applied on individual effects and concentrators — recorded here with that qualification, because the MVR share of these trains is partial [6] |
-| Mechanical vapour compression desalination trains (Veolia Sidem, IDE) | Seawater and brackish desalination | Up to the low thousands of cubic metres per day per unit | MVC units serve remote, island and industrial high-purity duties where no steam supply exists; the same cycle as the modelled plant, at far smaller evaporation duty than the dairy and salt plants [7] |
-| Lithium, potash and carbonate crystalliser plants | Brine concentration and crystallisation | Individual crystalliser duties in the 5–30 tonnes per hour evaporation class | Forced-circulation crystallisers with MVR are the standard vapour source in current lithium carbonate and potash plants; vendors GEA, Veolia and Swenson [5][7] |
+| AmulFed Dairy, Gandhinagar, India (a unit of the Gujarat Co-operative Milk Marketing Federation) | Milk evaporation in a turnkey GEA milk-powder plant; the evaporation plant carries a GEA MVR system that continuously recycles energy by recompressing the vapour within the evaporator | About 90,000 litres of milk per hour processed; 150 tonnes per day of skim milk powder and 120 tonnes per day of dairy whitener and baby food; reported as the largest skim milk powder and dairy whitener plant in Asia, and, with the site's two existing GEA powder plants, the largest plant in Asia at a single location [9][10] | The order, placed in 2017 for production from 2018, was reported at a lower double-digit million-euro amount; the MVR system is presented by the sources as reducing energy costs and the carbon footprint, and the evaporator condensate is polished by reverse osmosis for reuse, approaching zero liquid discharge [9][10] |
+| Madeta a.s., Czech Republic | Sweet whey evaporation in a complete turn-key GEA evaporator using MVR; two effects in one body to minimise footprint | Evaporative capacity 12.5 tonnes per hour [11] | Madeta's stated selection criteria were the lowest environmental impact and the lowest running costs; the MVR plant uses nearly 500 kg/h less live steam than a traditional design, an economy of nearly EUR 80,000 per year on running costs as reported in 2011 [11] |
+| Synlait Milk, Canterbury, New Zealand | Milk concentration to more than 50% total solids in a multiple-effect falling-film evaporator ahead of spray drying; both MVR and thermal vapour recompression boost the evaporator's efficiency | Greenfield milk-powder plant built by GEA in 14 months and first run on milk in August 2008; the article states no evaporation capacity [12] | The plant was a fast-track greenfield build whose capacity was raised by one third during design; evaporator water is recovered and reused for cleaning, and waste heat from the evaporator preheats the dryer air [12] |
 
-The pattern across the table is the pattern of the Theory panel:
-the largest MVR duties are continuous, small-lift, low
-boiling-point-elevation evaporations run for many hours per year,
-where the electricity bill replaces a boiler steam bill. The
-installations are concentrated in dairy, salt and crystallisation
-because those industries evaporate water at close to its pure
-saturation behaviour, all year.
+Two vendor figures frame the table. GEA's comparison of heating
+options gives the specific electricity consumption of MVR as
+about 30–50 kWh per tonne of evaporation, with minor steam and
+cooling-water use, against 1 tonne of steam and 60 cubic metres
+of cooling water per tonne for a live-steam single effect [5].
+The modelled plant of this page, which carries the compressor
+and motor only, sits just below that band at the design basis
+(26.6 kWh/t) and inside it at a 15 K lift (40.3 kWh/t). GEA also
+states that single-stage centrifugal fans — the machine class of
+the modelled plant — are used in evaporation plants at vapour
+compression ratios of 1.2 to 2.0 and rotational speeds of
+3,000 to 12,000 rpm [5]; the design-basis ratio of 1.49 is in
+that band.
+
+The pattern across the verified table is the pattern of the
+Theory panel: the largest documented MVR duties are continuous,
+small-lift, low boiling-point-elevation evaporations run for
+many hours per year, where the electricity bill replaces a
+boiler steam bill.
 
 ## Cost basis and limits
 

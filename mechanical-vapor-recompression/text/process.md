@@ -56,9 +56,10 @@ Fig. P1 | Feed tank, pump and condensate preheater. The feed is
 heated to its boiling point by the hot condensate before
 it reaches the evaporator, so the calandria duty is spent on
 evaporation, not on warming the feed. At the frame edges, the
-feed line leaves at the right for the evaporator (stream 2),
-the condensate return from the calandria enters at the right,
-and the condensate leaves at the bottom.
+feed line (stream 2) leaves at the top for the evaporator, the
+condensate return from the calandria enters at the right along
+the bottom lane and rises into the preheater, and the
+condensate leaves at the left.
 
 ## Condensate preheater
 
@@ -114,11 +115,10 @@ Fig. P2 | Falling-film evaporator and separator. Feed enters at
 the top and boils as a film inside the tubes; vapour disengages
 in the head, passes the demister, and leaves for the compressor;
 concentrate leaves at the bottom. At the frame edges, the feed
-enters from the left, the vapour (stream 3) leaves at the top
-right, the compressed vapour enters the calandria from the
-right, the condensate line crosses at the bottom on its way
-back to the preheater, and the concentrate (stream 6) leaves
-at the bottom.
+enters the body from the left, the vapour (stream 3) leaves
+along the top to the right, and the concentrate (stream 6)
+leaves at the bottom. The calandria chest against the right
+face of the body is shown in Fig. P4.
 
 ## MVR compressor
 
@@ -163,9 +163,11 @@ compressor.
 Fig. P3 | MVR compressor. The whole vapour stream raised in the
 separator is compressed from 43.6 kPa to 64.9 kPa; the discharge
 is superheated at 129 °C. At the left is the evaporator head
-with the demister; the evaporator body continues below the
-frame (Fig. P2), and the discharge line also continues below
-the frame, to the calandria (Fig. P4).
+with the demister; the feed line enters the body at the left
+edge; the evaporator body and the calandria chest
+continue below the frame (Fig. P2 and Fig. P4), and the
+discharge line also continues below the frame, to the
+calandria (Fig. P4).
 
 ## Calandria, condensate and heat recovery
 
@@ -203,11 +205,14 @@ fouled surface — that the compressor alone cannot cover.
 Fig. P4 | Calandria condensation and heat recovery. Compressed
 vapour condenses at 88 °C; condensate leaves through the feed
 preheat train; start-up steam (dashed) and the non-condensable
-vent serve the calandria. The evaporator body continues above
-the frame (Fig. P2) and the compressed vapour (stream 4) enters
-with it; the condensate line leaves at the left for the
-preheater (Fig. P1), and the concentrate line leaves at the
-bottom.
+vent serve the calandria, and the vent leaves at the top of
+the frame. The evaporator body is at the left
+and continues above the frame (Fig. P2); the compressed vapour
+(stream 4) enters from the right, with the start-up steam
+joining it at the junction dot; the condensate line leaves
+along the bottom lane to the left, for the preheater
+(Fig. P1), and the concentrate (stream 6) crosses the lower
+part of the frame on its way out.
 
 ## Operating issues
 

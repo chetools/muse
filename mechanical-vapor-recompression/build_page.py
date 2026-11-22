@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model, sweep_lift  # noqa: E402
 
-VERSION = "v6"
+VERSION = "v7"
 OUT = HERE / "dist" / f"mechanical-vapor-recompression-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -301,7 +301,7 @@ def crop_svg(sheet_svg, viewbox, caption):
     """
     inner = sheet_svg
     inner = inner.replace(
-        'viewBox="0 0 1200 660"', f'viewBox="{viewbox}"', 1)
+        'viewBox="0 0 1200 720"', f'viewBox="{viewbox}"', 1)
     vb_w = float(viewbox.split()[2])
     px = round(vb_w * CROP_SCALE)
     inner = inner.replace(
@@ -508,18 +508,20 @@ def main():
         "[[SHEET]]", '<div class="sheetwrap">' + sheet_svg + "</div>")
     panels["process"] = panels["process"].replace(
         "[[STREAM_TABLE]]", design_table_html(result))
-    # v6 crop windows, measured against sheet.svg geometry: every
-    # label inside a window is whole, no neighbouring item intrudes
-    # as a fragment, and only stream lines cross an edge (named in
-    # the Fig. P1-P4 captions). One scale for the series: CROP_SCALE.
+    # v7 crop windows, re-measured against the merged (donor,
+    # zero-crossing) sheet.svg geometry, viewBox 0 0 1200 720:
+    # every label inside a window is whole, no neighbouring item
+    # intrudes as a fragment, and only stream lines cross an edge
+    # (named in the Fig. P1-P4 captions). One scale for the
+    # series: CROP_SCALE.
     crops = {
-        "[[CROP_FEED]]": ("30 262 376 344",
+        "[[CROP_FEED]]": ("30 262 390 400",
                           "Fig. P1 detail in the text below."),
-        "[[CROP_EVAP]]": ("448 100 170 388",
+        "[[CROP_EVAP]]": ("445 100 155 460",
                           "Fig. P2 detail in the text below."),
-        "[[CROP_COMP]]": ("448 72 582 246",
+        "[[CROP_COMP]]": ("445 60 655 270",
                           "Fig. P3 detail in the text below."),
-        "[[CROP_COND]]": ("455 316 625 218",
+        "[[CROP_COND]]": ("455 262 745 378",
                           "Fig. P4 detail in the text below."),
     }
     for token, (vb, _cap) in crops.items():
