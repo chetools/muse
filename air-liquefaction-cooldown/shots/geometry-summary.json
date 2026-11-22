@@ -1,0 +1,12 @@
+{
+ "clean": [],
+ "planted_label": [
+  "label \"Separator\" clearance 0.0 < 7.5"
+ ],
+ "planted_arrow": [
+  "arrow missing on s_sep_in"
+ ],
+ "planted_endpoint": [
+  "endpoint s_sep_in end at (815,262) unclassified"
+ ]
+}

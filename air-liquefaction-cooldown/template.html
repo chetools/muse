@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Air liquefaction: the cool-down</title>
+@@KATEX_CSS@@
+<style>
+:root{--ink:#1b1b1b;--ink2:#5a5a5a;--rule:#d6d6d6;--paper:#ffffff;--tint:#f4f6f8;--accent:#0072B2;--accent2:#D55E00;--measure:68ch}
+*{box-sizing:border-box}
+html{scrollbar-gutter:stable}
+body{background:var(--paper);color:var(--ink);font:17px/1.55 Georgia,"Source Serif 4",serif;margin:0}
+header,main{max-width:var(--measure);margin:0 auto;padding:0 16px}
+header{padding-top:24px}
+h1{font:600 30px/1.2 system-ui,sans-serif;margin:0 0 8px}
+.subtitle{font:16px/1.5 system-ui,sans-serif;color:var(--ink2);margin:0 0 16px}
+h2{font:600 22px/1.25 system-ui,sans-serif;margin:28px 0 8px;scroll-margin-top:72px}
+h3{font:600 18px/1.3 system-ui,sans-serif;margin:22px 0 6px;scroll-margin-top:72px}
+p{margin:0 0 12px;overflow-wrap:anywhere}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+nav.tabs{position:sticky;top:0;z-index:60;background:var(--paper);border-bottom:1px solid var(--rule);margin:0 auto;max-width:var(--measure);padding:0 16px;display:flex;flex-wrap:wrap;gap:2px}
+nav.tabs button{font:600 15px/1.2 system-ui,sans-serif;background:none;border:none;border-bottom:3px solid transparent;padding:12px 10px;cursor:pointer;color:var(--ink)}
+nav.tabs button[aria-selected="true"]{border-bottom-color:var(--accent);color:var(--accent)}
+main{min-width:0}
+section.panel{min-width:0}
+section.panel[hidden]{display:none}
+.toc{border:1px solid var(--rule);background:var(--tint);padding:12px 16px;margin:16px 0;font:15px/1.5 system-ui,sans-serif}
+.toc strong{display:block;margin-bottom:6px}
+.toc ul{margin:0;padding-left:20px}
+.toc a[aria-current="true"]{font-weight:700}
+.panellayout{min-width:0}
+.panelbody{min-width:0}
+@media(min-width:1100px){
+header,nav.tabs{max-width:calc(var(--measure) + 240px)}
+section.panel.haslayout{width:min(calc(var(--measure) + 240px),calc(100vw - 32px));position:relative;left:50%;transform:translateX(-50%)}
+.panellayout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;align-items:start}
+.panellayout .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;margin-top:28px}
+}
+figure{margin:20px 0;min-width:0}
+figcaption{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin-top:8px}
+figure svg{max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font:15px/1.45 system-ui,sans-serif;margin:12px 0;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--rule);padding:6px 8px;text-align:right;min-width:0}
+th:first-child,td:first-child{text-align:left}
+th{background:var(--tint);text-align:right}
+th:first-child{text-align:left}
+details{border:1px solid var(--rule);background:var(--tint);padding:10px 14px;margin:12px 0}
+details summary{font:600 15px/1.4 system-ui,sans-serif;cursor:pointer}
+details p,details table{margin:8px 0}
+aside.sidenote{border-left:3px solid var(--accent);background:var(--tint);padding:10px 14px;margin:12px 0;font-size:15px}
+aside.sidenote strong{font-family:system-ui,sans-serif}
+code{font:14px/1.4 ui-monospace,monospace;background:var(--tint);padding:1px 4px}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow:auto;font:13px/1.5 ui-monospace,monospace}
+pre code{background:none;padding:0}
+.inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.inputs label{font:600 14px/1.4 system-ui,sans-serif;display:block}
+.inputs input{width:100%;font:16px/1.4 system-ui,sans-serif;padding:8px;margin-top:4px;border:1px solid var(--rule);border-radius:4px}
+.inputs .hint{font:400 13px/1.4 system-ui,sans-serif;color:var(--ink2)}
+.appgrid{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:8px 24px;align-items:start}
+.appgrid .inputs{display:block;margin:0}
+.appgrid .inputs label{margin-bottom:12px}
+.appgroup{border:1px solid var(--rule);padding:10px 12px;margin:0 0 12px;min-width:0}
+.appgroup h3{font:600 15px/1.3 system-ui,sans-serif;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+button.help{font:600 13px/1 system-ui,sans-serif;background:var(--tint);border:1px solid var(--rule);border-radius:50%;width:24px;height:24px;cursor:pointer;color:var(--accent);flex:none}
+.guide{font:15px/1.5 system-ui,sans-serif;max-width:46ch;border:1px solid var(--rule);background:var(--paper);padding:12px 16px;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+.guide p{margin:0}
+.appresults{min-width:0}
+.appinputs{min-width:0}
+section#panel-app{width:min(1120px,calc(100vw - 32px));position:relative;left:50%;transform:translateX(-50%)}
+@media(max-width:800px){.appgrid{grid-template-columns:minmax(0,1fr)}}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}
+.metric{border:1px solid var(--rule);padding:12px;min-width:0}
+.metric .v{font:600 22px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.metric .k{font:14px/1.4 system-ui,sans-serif;color:var(--ink2)}
+.chart{width:100%;min-width:0;margin:16px 0}
+.chartcap{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin:-8px 0 16px}
+.tablewrap{overflow-x:auto;margin:12px 0;min-width:0}
+.tablewrap table{margin:0}
+button.run{font:600 16px/1.2 system-ui,sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:10px 18px;cursor:pointer}
+button.run:disabled{background:#9a9a9a;cursor:default}
+.stale{font:14px/1.4 system-ui,sans-serif;color:var(--accent2);margin:8px 0}
+.error{font:15px/1.4 system-ui,sans-serif;color:#8b0000;margin:8px 0}
+.warn{font:15px/1.4 system-ui,sans-serif;margin:8px 0}
+progress{width:100%;height:10px;appearance:none}
+progress::-webkit-progress-value{background:var(--accent)}
+progress::-moz-progress-bar{background:var(--accent)}
+.bootline{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin:8px 0}
+.katex-display{overflow-x:auto;overflow-y:hidden}
+section.long h2,section.long h3{content-visibility:auto;contain-intrinsic-size:auto 600px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:static;left:0}
+footer{max-width:var(--measure);margin:40px auto 0;padding:16px;border-top:1px solid var(--rule);font:14px/1.5 system-ui,sans-serif;color:var(--ink2)}
+@media(max-width:480px){body{font-size:16px}h1{font-size:24px}nav.tabs button{padding:10px 7px;font-size:14px}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header>
+<h1>Air liquefaction: the cool-down</h1>
+<p class="subtitle">How a liquefaction unit gets cold from a warm start:
+one expansion makes the first cold, a regenerative heat exchanger
+banks it, and the cold end ratchets down over hours until the
+first liquid forms.</p>
+<p class="bootline" id="bootline">Runtime loading. The App panel shows the design basis
+until the first live run replaces it.</p>
+<progress id="bootprogress" max="100" value="20" aria-label="Runtime loading progress"></progress>
+<p class="bootline" id="bootdone" hidden>Runtime ready.</p>
+</header>
+<nav class="tabs" role="tablist" aria-label="Panels">
+<button role="tab" aria-selected="true" data-panel="process" id="tab-process">Process</button>
+<button role="tab" aria-selected="false" data-panel="theory" id="tab-theory">Theory</button>
+<button role="tab" aria-selected="false" data-panel="app" id="tab-app">App</button>
+<button role="tab" aria-selected="false" data-panel="economics" id="tab-economics">Economics</button>
+<button role="tab" aria-selected="false" data-panel="safety" id="tab-safety">Safety</button>
+<button role="tab" aria-selected="false" data-panel="code" id="tab-code">Code</button>
+<button role="tab" aria-selected="false" data-panel="references" id="tab-references">References</button>
+</nav>
+<main id="main">
+<section class="panel long haslayout" id="panel-process" role="tabpanel" aria-labelledby="tab-process">
+@@PROCESS_HTML@@
+</section>
+<section class="panel long haslayout" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory" hidden>
+@@THEORY_HTML@@
+</section>
+<section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app" hidden>
+<h2 id="app">App</h2>
+<div class="appgrid">
+<div class="appinputs">
+<p>The loop of the Process panel, run from an all-warm state.
+Feed is 1.0 kg/s of air at 293 K; the separator pressure is
+138 kPa; the turbine isentropic efficiency is 0.80. Change an
+input to recompute the transient.</p>
+<form class="inputs" id="inputs">
+<div class="appgroup">
+<h3>Expansion split <button type="button" class="help" popovertarget="guide-split" aria-label="Guidance: expansion split">?</button></h3>
+<label>Turbine fraction, x (–)<input type="number" id="in-x" value="0.75" min="0" max="1" step="0.05"><span class="hint">Range 0–1. At 0 the whole flow passes through the valve.</span></label>
+</div>
+<div class="appgroup">
+<h3>Feed pressure <button type="button" class="help" popovertarget="guide-pressure" aria-label="Guidance: feed pressure">?</button></h3>
+<label>Feed pressure, P (kPa abs)<input type="number" id="in-p" value="568" min="400" max="20000" step="10"><span class="hint">Range 400–20 000 kPa abs. The historical liquefiers ran near 20 000 kPa.</span></label>
+</div>
+<div class="appgroup">
+<h3>Heat leak <button type="button" class="help" popovertarget="guide-leak" aria-label="Guidance: heat leak">?</button></h3>
+<label>Heat leak at full cold (kW)<input type="number" id="in-leak" value="2" min="0" max="10" step="0.5"><span class="hint">Range 0–10 kW, split between the exchanger cold half and the separator.</span></label>
+</div>
+<div class="appgroup">
+<h3>Exchanger size <button type="button" class="help" popovertarget="guide-size" aria-label="Guidance: exchanger size">?</button></h3>
+<label>Size factor (–)<input type="number" id="in-size" value="1" min="0.4" max="2.5" step="0.1"><span class="hint">Range 0.4–2.5, multiplying the exchanger conductance of 60 kW/K.</span></label>
+</div>
+<div class="appgroup">
+<h3>Run length <button type="button" class="help" popovertarget="guide-hours" aria-label="Guidance: run length">?</button></h3>
+<label>Simulated duration (h)<input type="number" id="in-hours" value="10" min="1" max="24" step="1"><span class="hint">Range 1–24 h of simulated time.</span></label>
+</div>
+</form>
+<button class="run" id="runbtn" disabled>Run</button>
+<progress id="runprogress" aria-label="Run progress" hidden></progress>
+<p class="stale" id="stalenote" hidden>Inputs changed since the displayed run.</p>
+<p class="error" id="aperror" role="alert" hidden></p>
+<div aria-live="polite" id="liveregion" class="bootline"></div>
+</div>
+<div class="appresults">
+<div class="metrics" id="metrics"></div>
+<div class="chart" id="chart-temp" style="height:340px"></div>
+<p class="chartcap">Cold-end temperature and expander outlet temperature against simulated time, at the current inputs.</p>
+<div class="chart" id="chart-liquid" style="height:340px"></div>
+<p class="chartcap">Liquid inventory in the separator (left axis) and liquid formation rate (right axis) against simulated time, at the current inputs.</p>
+<div id="runstatus"></div>
+</div>
+</div>
+<div class="guide" id="guide-split" popover><p><strong>Expansion split.</strong> The turbine fraction is the share of the cold-end flow that expands through the turbine; the rest throttles through the valve. Experiment 1 of the Theory panel: set the fraction to 0 at 568 kPa and look for the cold end stalling near 282 K with no liquid. Experiment 3: run 0.25, 0.5, 0.75 and 1.0 and look for the threshold between stall and liquefaction.</p></div>
+<div class="guide" id="guide-pressure" popover><p><strong>Feed pressure.</strong> The feed pressure sets the pressure ratio of both expansion devices and the size of the throttling effect. Experiment 2: with the turbine fraction at 0, set 20 000 kPa and look for first liquid at about 0.55 h and a cold end settling near 171 K — the historical operating point of the valve-only process.</p></div>
+<div class="guide" id="guide-leak" popover><p><strong>Heat leak.</strong> Heat leaking into the cold box is a direct charge on the refrigeration surplus. Experiment 4: at the design basis, raise the leak in steps and look for the liquid rate falling, and liquefaction failing at 10 kW.</p></div>
+<div class="guide" id="guide-size" popover><p><strong>Exchanger size.</strong> The size factor scales the exchanger conductance. A smaller exchanger leaves a larger warm-end approach, and the cold carried out by the return stream is lost. Experiment 5: set 0.4 and look for the warm-end approach growing to about 18 K; then raise the heat leak to 6 kW and look for the stall.</p></div>
+<div class="guide" id="guide-hours" popover><p><strong>Run length.</strong> The duration sets how much of the transient is shown. The design basis needs about 4 h to settle and 3.1 h to first liquid; a stalled run is visible within the first hours. Longer runs show the inventory reaching its 400 kg working level, after which liquid is drawn as product at the formation rate.</p></div>
+</section>
+<section class="panel long haslayout" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
+@@ECONOMICS_HTML@@
+</section>
+<section class="panel long haslayout" id="panel-safety" role="tabpanel" aria-labelledby="tab-safety" hidden>
+@@SAFETY_HTML@@
+</section>
+<section class="panel haslayout" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
+<h2 id="code">Code</h2>
+<div class="panellayout">
+@@CODE_TOC@@
+<div class="panelbody">
+<h3 id="code-model">Model listing</h3>
+<p><code>python/balance.py</code> is the model the App panel runs.
+Its property table, computed with CoolProp at build time, is
+embedded in this page and passed to the model when the runtime
+boots.</p>
+<pre id="codelisting">@@CODE_LISTING@@</pre>
+<h3 id="code-walkthrough">Walkthrough</h3>
+<p>The walkthrough repeats the transient arithmetic step by step,
+with each step tied to the Theory section it implements. Its
+results were computed when this page was built.</p>
+@@WALKTHROUGH_HTML@@
+<h3 id="code-notebook">Editable notebook</h3>
+<p>The MoLab notebook is editable; run all cells once after
+opening. The notebook file is
+<code>walkthrough_molab.py</code>, served with this page.</p>
+<p><a href="https://molab.marimo.io/github/chetools/muse/blob/gh-pages/air-liquefaction-cooldown/walkthrough_molab.py">Editable notebook on the MoLab link</a></p>
+</div>
+</div>
+</section>
+<section class="panel long" id="panel-references" role="tabpanel" aria-labelledby="tab-references" hidden>
+@@REFERENCES_HTML@@
+</section>
+</main>
+<footer>
+<p>Quantities are in SI units and pressures are absolute unless
+stated. Property values are computed with CoolProp (pseudo-pure
+air) and interpolated from the table embedded in this page.</p>
+</footer>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="table-data" type="application/json">@@TABLE_JSON@@</script>
+<script id="balance-src" type="text/plain">@@BALANCE_PY@@</script>
+@@PLOTLY_JS@@
+@@KATEX_JS@@
+<script>
+"use strict";
+var PANELS=["process","theory","app","economics","safety","code","references"];
+var displayedParams=null, liveReady=false, firstLiveDone=false, runTimer=null;
+function showPanel(name){
+  PANELS.forEach(function(p){
+    document.getElementById("panel-"+p).hidden=(p!==name);
+    document.getElementById("tab-"+p).setAttribute("aria-selected", p===name?"true":"false");
+  });
+  if(history.replaceState){history.replaceState(null,"","#"+name);}
+  refitCharts();
+}
+document.querySelectorAll("nav.tabs button").forEach(function(b){
+  b.addEventListener("click",function(){showPanel(b.getAttribute("data-panel"));});
+});
+function refitCharts(){
+  if(window.Plotly){
+    ["chart-temp","chart-liquid"].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&el.data){try{Plotly.Plots.resize(el);}catch(e){}}
+    });
+  }
+}
+window.addEventListener("resize",refitCharts);
+new MutationObserver(refitCharts).observe(document.getElementById("panel-app"),{attributes:true,attributeFilter:["hidden"]});
+function readInputs(){
+  return {
+    turbine_fraction:parseFloat(document.getElementById("in-x").value),
+    P_feed_kPa:parseFloat(document.getElementById("in-p").value),
+    heat_leak_kW:parseFloat(document.getElementById("in-leak").value),
+    size_factor:parseFloat(document.getElementById("in-size").value),
+    hours:parseFloat(document.getElementById("in-hours").value)
+  };
+}
+function renderPayload(d,precomputed){
+  var suffix=precomputed?" (precomputed)":"";
+  var f=d.final;
+  var m=document.getElementById("metrics");
+  m.innerHTML=""
+    +"<div class='metric'><div class='v'>"+f.T_cold_end_K.toFixed(1)+"</div><div class='k'>Cold-end temperature at end of run (K)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+f.T_exp_out_K.toFixed(1)+"</div><div class='k'>Expander outlet temperature (K)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+f.M_liq_kg.toFixed(0)+"</div><div class='k'>Liquid inventory (kg)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+f.liq_rate_kg_s.toFixed(3)+"</div><div class='k'>Liquid formation rate (kg/s)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+f.approach_warm_K.toFixed(1)+"</div><div class='k'>Warm-end approach (K)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+f.approach_cold_K.toFixed(1)+"</div><div class='k'>Cold-end approach (K)"+suffix+"</div></div>";
+  var s=d.series;
+  Plotly.react("chart-temp",[
+    {x:s.t_h,y:s.T_cold_end,mode:"lines+markers",name:"Cold end"+suffix,line:{color:"#0072B2"},marker:{symbol:"circle"}},
+    {x:s.t_h,y:s.T_exp_out,mode:"lines+markers",name:"Expander outlet"+suffix,line:{color:"#D55E00"},marker:{symbol:"square"}}
+  ],{margin:{l:70,r:120,t:10,b:50},xaxis:{title:"Simulated time (h)"},yaxis:{title:"T (K)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
+  Plotly.react("chart-liquid",[
+    {x:s.t_h,y:s.M_liq,mode:"lines+markers",name:"Inventory"+suffix,line:{color:"#0072B2"},marker:{symbol:"circle"}},
+    {x:s.t_h,y:s.liq_rate,mode:"lines+markers",name:"Formation rate"+suffix,line:{color:"#D55E00"},marker:{symbol:"square"},yaxis:"y2"}
+  ],{margin:{l:70,r:120,t:10,b:50},xaxis:{title:"Simulated time (h)"},yaxis:{title:"Inventory (kg)"},yaxis2:{title:"Rate (kg/s)",overlaying:"y",side:"right"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
+  var st=document.getElementById("runstatus");
+  if(f.liquefied){
+    st.innerHTML="<p class='warn'>The loop liquefies at these inputs: liquid is forming at "+f.liq_rate_kg_s.toFixed(3)+" kg/s at the end of the run"+suffix+".</p>";
+  }else{
+    st.innerHTML="<p class='warn'>No liquid forms at these inputs: the cold end stalls at "+f.T_cold_end_K.toFixed(1)+" K"+suffix+".</p>";
+  }
+  document.getElementById("stalenote").hidden=true;
+  refitCharts();
+}
+var prestart=JSON.parse(document.getElementById("prestart-data").textContent);
+renderPayload(prestart,true);
+displayedParams=prestart.inputs;
+document.getElementById("liveregion").textContent="Design basis shown. Runtime loading.";
+var pyodide=null;
+function setError(msg){
+  var e=document.getElementById("aperror");
+  e.textContent=msg;e.hidden=false;
+  document.getElementById("liveregion").textContent=msg;
+}
+function clearError(){var e=document.getElementById("aperror");e.hidden=true;e.textContent="";}
+function checkSelftest(d){
+  var ok=Math.abs(d.final.T_cold_end_K-prestart.final.T_cold_end_K)<1.5
+    &&Math.abs(d.final.M_liq_kg-prestart.final.M_liq_kg)<8.0
+    &&d.final.liquefied===prestart.final.liquefied;
+  return {pass:ok,T_cold_end_K:d.final.T_cold_end_K,M_liq_kg:d.final.M_liq_kg,liquefied:d.final.liquefied};
+}
+function runLive(){
+  if(!liveReady||!pyodide){return;}
+  clearError();
+  var inputs=readInputs();
+  var prog=document.getElementById("runprogress");
+  prog.hidden=false;
+  document.getElementById("runbtn").disabled=true;
+  document.getElementById("liveregion").textContent="Run in progress. The transient integrates in the browser and takes some seconds.";
+  setTimeout(function(){
+    try{
+      var code="import json\n"
+        +"r=simulate({'turbine_fraction': "+inputs.turbine_fraction+", 'P_feed_kPa': "+inputs.P_feed_kPa+", 'heat_leak_kW': "+inputs.heat_leak_kW+", 'size_factor': "+inputs.size_factor+", 'hours': "+inputs.hours+"}, dt=5.0)\n"
+        +"s=r['series']\n"
+        +"idx=list(range(0,len(s['t_h']),8))\n"
+        +"out={'inputs': {'turbine_fraction': "+inputs.turbine_fraction+", 'P_feed_kPa': "+inputs.P_feed_kPa+", 'heat_leak_kW': "+inputs.heat_leak_kW+", 'size_factor': "+inputs.size_factor+", 'hours': "+inputs.hours+"}, 'final': r['final'], 'closure_error_kW': float(r['closure_error_kW']), 'series': {k: [round(float(v[i]),3) for i in idx] for k, v in s.items()}}\n"
+        +"json.dumps(out)";
+      var out=pyodide.runPython(code);
+      var d=JSON.parse(out);
+      renderPayload(d,false);
+      displayedParams=inputs;
+      firstLiveDone=true;
+      document.getElementById("liveregion").textContent="Run complete. Cold end "+d.final.T_cold_end_K.toFixed(1)+" K; liquid inventory "+d.final.M_liq_kg.toFixed(0)+" kg.";
+      if(window.SELFTEST_PENDING){window.SELFTEST=checkSelftest(d);window.SELFTEST_PENDING=false;}
+    }catch(err){
+      var msg=String(err&&err.message?err.message:err);
+      var clean=msg.split("\n").filter(function(l){return /^\s*ValueError:/.test(l);}).join(" ").trim()
+        ||msg.split("\n").filter(function(l){return l.indexOf("ValueError")>=0;}).join(" ");
+      setError(clean||"The inputs could not be run. Check the ranges and try again.");
+    }
+    prog.hidden=true;
+    document.getElementById("runbtn").disabled=false;
+  },40);
+}
+function scheduleRun(){
+  if(!liveReady){document.getElementById("stalenote").hidden=false;return;}
+  if(runTimer){clearTimeout(runTimer);}
+  runTimer=setTimeout(function(){runLive();},600);
+}
+["in-x","in-p","in-leak","in-size","in-hours"].forEach(function(id){
+  document.getElementById(id).addEventListener("input",function(){
+    if(firstLiveDone){document.getElementById("stalenote").hidden=false;}
+    scheduleRun();
+  });
+});
+document.getElementById("runbtn").addEventListener("click",function(){runLive();});
+function boot(){
+  var s=document.createElement("script");
+  s.src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+  s.onload=function(){
+    document.getElementById("bootprogress").value=60;
+    loadPyodide().then(function(py){
+      pyodide=py;
+      return py.loadPackage("numpy").then(function(){
+        var src=document.getElementById("balance-src").textContent;
+        py.FS.writeFile("/balance.py",src);
+        py.FS.writeFile("/air_table.json",document.getElementById("table-data").textContent);
+        py.runPython("import sys, json; sys.path.insert(0,'/'); import balance; balance.load_table(json.load(open('/air_table.json'))); from balance import simulate");
+        liveReady=true;
+        document.getElementById("bootprogress").value=100;
+        document.getElementById("bootdone").hidden=false;
+        document.getElementById("bootline").hidden=true;
+        document.getElementById("bootprogress").hidden=true;
+        document.getElementById("runbtn").disabled=false;
+        document.getElementById("liveregion").textContent="Runtime ready. Running the design basis.";
+        if(new URLSearchParams(location.search).get("selftest")==="1"){window.SELFTEST_PENDING=true;}
+        runLive();
+      });
+    }).catch(function(err){
+      document.getElementById("bootline").textContent="The Python runtime failed to load, so no live run is available. The design basis display in the App panel remains, labelled as precomputed.";
+      setError("The Python runtime failed to load. Check the network connection and reload the page.");
+    });
+  };
+  s.onerror=function(){
+    document.getElementById("bootline").textContent="The Python runtime failed to load, so no live run is available. The design basis display in the App panel remains, labelled as precomputed.";
+    setError("The Python runtime failed to load. Check the network connection and reload the page.");
+  };
+  document.head.appendChild(s);
+}
+if(!("popover" in HTMLElement.prototype)){
+  document.querySelectorAll(".guide[popover]").forEach(function(g){g.removeAttribute("popover");});
+  document.querySelectorAll("button.help").forEach(function(b){b.hidden=true;});
+}
+if("IntersectionObserver" in window){
+  var tocSpy=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting){return;}
+      var sec=en.target.closest("section.panel");
+      var nav=sec?sec.querySelector(".toc"):null;
+      if(!nav){return;}
+      nav.querySelectorAll("a").forEach(function(a){
+        if(a.getAttribute("href")==="#"+en.target.id){a.setAttribute("aria-current","true");}
+        else{a.removeAttribute("aria-current");}
+      });
+    });
+  },{rootMargin:"-72px 0px -70% 0px"});
+  document.querySelectorAll("section.panel .panelbody h2[id],section.panel .panelbody h3[id]").forEach(function(h){tocSpy.observe(h);});
+}
+var hash=(location.hash||"#process").slice(1);
+if(PANELS.indexOf(hash)>=0){showPanel(hash);}
+else{
+  var target=document.getElementById(hash);
+  var owner=target?target.closest("section.panel"):null;
+  if(owner){showPanel(owner.id.replace("panel-",""));target.scrollIntoView();if(history.replaceState){history.replaceState(null,"","#"+hash);}}
+  else{showPanel("process");}
+}
+boot();
+</script>
+</body>
+</html>
