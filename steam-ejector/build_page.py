@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v4"
+VERSION = "v8"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -278,6 +278,117 @@ def stage_table_html(result):
             f"{result['vent_kg_h']:.1f} kg/h.</p>")
 
 
+CROP_WINDOWS = {
+    # name: (viewBox, caption boundary note) — edges placed in the
+    # measured gaps between equipment boxes on sheet.svg (vessel
+    # 30-140, E-101 210-290, C-101 330-410, E-102 470-550, C-102
+    # 590-670, E-103 730-810, C-103 850-930, hot well 300-660),
+    # checked against every start-anchored label near the edge.
+    "motive": ("0 0 960 150", "the motive steam header and the branches to the three ejectors"),
+    "stage1": ("145 180 207 133", "the suction line from the vessel at the left edge and the first intercondenser (Fig. P4) entering at the right edge"),
+    "cond1": ("288 180 132 185", "the stage 1 discharge entering at the left edge, the gas line to stage 2 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
+    "stage2": ("415 180 192 133", "the gas line from the first intercondenser at the left edge and the second intercondenser (Fig. P6) entering at the right edge"),
+    "cond2": ("545 180 135 185", "the stage 2 discharge entering at the left edge, the gas line to stage 3 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
+    "stage3": ("675 180 185 133", "the gas line from the second intercondenser at the left edge and the aftercondenser (Fig. P8) entering at the right edge"),
+    "aftercond": ("818 150 142 225", "the stage 3 discharge entering at the left edge and the vent line leaving at the top"),
+    "hotwell": ("280 405 680 140", "the two barometric legs and the aftercondenser condensate entering at the top"),
+}
+
+
+def crop_figure(sheet_svg, name, fignum, title):
+    """Sub-process figure: the full sheet re-embedded with a cropped
+    viewBox window on one subunit region (skill section 5)."""
+    viewbox, boundary = CROP_WINDOWS[name]
+    inner = sheet_svg
+    inner = re.sub(r'viewBox="[^"]*"', f'viewBox="{viewbox}"', inner, count=1)
+    inner = re.sub(r'\swidth="960"', ' width="100%"', inner, count=1)
+    inner = re.sub(r'\sheight="560"', '', inner, count=1)
+    return (f"<figure>{inner}<figcaption>Fig. P{fignum} | {title}. "
+            f"The window shows {boundary}.</figcaption></figure>")
+
+
+PVT_CURVES = {
+    # Digitised in shape from the normalized design-basis profile:
+    # (axial position %, normalized value %) for each quantity.
+    "P": [(0, 100), (8, 82), (13, 62), (15, 55), (17, 52), (22, 30),
+          (27, 10), (31, 2), (40, 1), (56, 1.5), (58, 5), (70, 5.5),
+          (85, 6), (100, 6.5)],
+    "V": [(0, 3.1), (5, 12.2), (10, 32.7), (13, 45.9), (15, 49), (17, 51), (22, 73.5), (27, 93.9), (31, 100), (35, 99), (42, 81.6), (48, 65.3), (53, 60.2), (56, 57.1), (58, 22.4), (62, 21.4), (75, 17.3), (88, 10.2), (100, 4.1)],
+    "T": [(0, 100), (8, 89.6), (13, 81.2), (15, 80.2), (20, 57.3), (25, 22.9), (29, 8.3), (31, 6.2), (35, 9.4), (42, 25), (48, 35.4), (53, 38.5), (56, 39.6), (58, 61.5), (70, 63.5), (85, 68.8), (100, 71.9)],
+}
+PVT_COLORS = {"P": "#56B4E9", "V": "#009E73", "T": "#E69F00"}
+PVT_LABELS = {"P": "Pressure (P)", "V": "Velocity (V)", "T": "Temperature (T)"}
+SHOCK_X = 57.0
+
+
+def pvt_figure():
+    """Schematic normalized P/V/T profile of one ejector stage in
+    double-choking (critical) mode, with the shock at 57% of the
+    axial length. Curves are schematic: each quantity is divided
+    by its own maximum along the stage and multiplied by 100."""
+    x0, x1, y0, y1 = 70.0, 900.0, 150.0, 390.0
+
+    def px(x):
+        return x0 + (x1 - x0) * x / 100.0
+
+    def py(v):
+        return y1 - (y1 - y0) * v / 100.0
+
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" '
+             'role="img" aria-label="Normalized pressure, velocity and '
+             'temperature along one ejector stage">']
+    # Geometry strip: nozzle (0-22), mixing (22-51), throat (51-65),
+    # diffuser (65-100); wall half-height narrows then widens.
+    def half(x):
+        if x < 8:
+            return 26 - 1.5 * x
+        if x < 22:
+            return 14 + 0.9 * (x - 8)
+        if x < 51:
+            return 26.6 - 0.25 * (x - 22)
+        if x < 65:
+            return 19.4
+        return 19.4 + 0.35 * (x - 65)
+
+    top = " ".join(f"{px(x):.0f},{60 - half(x):.0f}" for x in range(0, 101, 2))
+    bot = " ".join(f"{px(x):.0f},{60 + half(x):.0f}" for x in range(100, -1, -2))
+    parts.append(f'<polygon points="{top} {bot}" fill="#eef2f5" stroke="#1b1b1b" stroke-width="1.5"/>')
+    parts.append(f'<rect x="{px(51):.0f}" y="18" width="{px(65) - px(51):.0f}" height="84" fill="#dbe7f3" opacity="0.7"/>')
+    parts.append(f'<line x1="{px(SHOCK_X):.0f}" y1="18" x2="{px(SHOCK_X):.0f}" y2="102" stroke="#D55E00" stroke-width="2" stroke-dasharray="5 4"/>')
+    for x, lab in ((11, "Motive nozzle"), (36, "Mixing"), (58, "Throat"),
+                   (82, "Diffuser")):
+        parts.append(f'<text x="{px(x):.0f}" y="122" font-size="13" text-anchor="middle" fill="#1b1b1b">{lab}</text>')
+    parts.append(f'<text x="{px(SHOCK_X):.0f}" y="12" font-size="13" text-anchor="middle" fill="#D55E00">Shock wave</text>')
+    # Chart grid and axes.
+    for v in (0, 20, 40, 60, 80, 100):
+        parts.append(f'<line x1="{x0}" y1="{py(v):.0f}" x2="{x1}" y2="{py(v):.0f}" stroke="#cccccc" stroke-width="0.7"/>')
+        parts.append(f'<text x="{x0 - 8}" y="{py(v) + 4:.0f}" font-size="12" text-anchor="end" fill="#1b1b1b">{v}</text>')
+    for x in (0, 20, 40, 60, 80, 100):
+        parts.append(f'<text x="{px(x):.0f}" y="{y1 + 20:.0f}" font-size="12" text-anchor="middle" fill="#1b1b1b">{x}</text>')
+    parts.append(f'<line x1="{px(SHOCK_X):.0f}" y1="{y0}" x2="{px(SHOCK_X):.0f}" y2="{y1}" stroke="#D55E00" stroke-width="2" stroke-dasharray="5 4"/>')
+    for key in ("P", "V", "T"):
+        pts = " ".join(f"{px(x):.0f},{py(v):.0f}" for x, v in PVT_CURVES[key])
+        parts.append(f'<polyline points="{pts}" fill="none" stroke="{PVT_COLORS[key]}" stroke-width="2.5"/>')
+    lx = x0
+    for key in ("P", "V", "T"):
+        parts.append(f'<line x1="{lx}" y1="{y0 - 14}" x2="{lx + 26}" y2="{y0 - 14}" stroke="{PVT_COLORS[key]}" stroke-width="2.5"/>')
+        parts.append(f'<text x="{lx + 32}" y="{y0 - 10}" font-size="13" fill="#1b1b1b">{PVT_LABELS[key]}</text>')
+        lx += 190
+    parts.append(f'<text x="{(x0 + x1) / 2:.0f}" y="436" font-size="13" text-anchor="middle" fill="#1b1b1b">Axial position along ejector (%)</text>')
+    parts.append(f'<text x="18" y="{(y0 + y1) / 2:.0f}" font-size="13" text-anchor="middle" fill="#1b1b1b" transform="rotate(-90 18 {(y0 + y1) / 2:.0f})">Normalized scale (%)</text>')
+    parts.append("</svg>")
+    return ("<figure>" + "".join(parts) +
+            "<figcaption>Fig. P10 | In double-choking (critical) mode the "
+            "pressure and temperature fall and the velocity rises through "
+            "the motive nozzle, the mixture stays supersonic through the "
+            "mixing section and throat, a shock wave at about 57% of the "
+            "length collapses the velocity and jumps the pressure and "
+            "temperature up, and the diffuser trades the remaining "
+            "velocity for pressure. Each curve is normalized: divided by "
+            "its own maximum value along the stage and multiplied by 100. "
+            "The curves are schematic in shape.</figcaption></figure>")
+
+
 def econ_tables():
     """Capital table (N = 1-5) and sensitivity table, from the model."""
     cap_rows = []
@@ -490,7 +601,26 @@ def main():
     sheet_svg = (HERE / "sheet.svg").read_text(encoding="utf-8")
     if "</svg>" not in sheet_svg:
         raise RuntimeError("sheet.svg is not a complete SVG document")
-    panels["process"] = panels["process"].replace("[[SHEET]]", sheet_svg)
+    panels["process"] = panels["process"].replace(
+        "[[SHEET]]", "<figure>" + sheet_svg + "</figure>")
+    crop_figs = {
+        "motive": (2, "Motive steam header and its three branches"),
+        "stage1": (3, "First stage ejector, E-101"),
+        "cond1": (4, "First barometric intercondenser, C-101, and its barometric leg"),
+        "stage2": (5, "Second stage ejector, E-102"),
+        "cond2": (6, "Second barometric intercondenser, C-102, and its barometric leg"),
+        "stage3": (7, "Third stage ejector, E-103"),
+        "aftercond": (8, "Surface aftercondenser, C-103"),
+        "hotwell": (9, "Hot well, V-101, and the streams that meet there"),
+    }
+    for cname, (fnum, ftitle) in crop_figs.items():
+        token = f"[[CROP:{cname}]]"
+        assert token in panels["process"], f"missing crop token {token}"
+        panels["process"] = panels["process"].replace(
+            token, crop_figure(sheet_svg, cname, fnum, ftitle))
+    assert "[[PVT_FIGURE]]" in panels["process"], "missing PVT figure token"
+    panels["process"] = panels["process"].replace(
+        "[[PVT_FIGURE]]", pvt_figure())
     panels["process"] = panels["process"].replace(
         "[[STAGE_TABLE]]", stage_table_html(result))
     cap_table, sens_table = econ_tables()
