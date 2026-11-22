@@ -543,3 +543,30 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   e0ac0b6 -> cb8dac0 (only steam-ejector/index.html).
   Served bytes byte-identical to the v13 build (SHA-256
   4dc75fca…).
+
+## v14 — Viewer-reasonableness audit and crop fix (2026-11-22)
+
+- Every figure audited as a first-time viewer (absurd /
+  confusing / unnecessary) at desktop and 390 px, against
+  getBBox-measured sheet geometry. Crop windows rebuilt:
+  stage windows now run past the next condenser's interior
+  texts and condenser windows start past their ejector's
+  labels, eliminating every sliced-text fragment found in
+  v13 (Figs. P3-P8 all carried at least one). Fig. P8's
+  window is cut at the condenser's left face (x 856): the
+  incoming label ink ends at 856.05 and the interior ink
+  starts at 856.00, a zero measured gap, so no rectangle
+  shows label, unit name, and interior texts all whole;
+  the caption states the cut and Fig. P7 shows the label.
+- Scale: crop diagrams capped at 2.0x the full sheet's
+  magnification (was 4.64-7.27x for the single-unit
+  crops), centred, captions at full column width.
+  Measured post-fix: P3-P8 all 2.00x vs Fig. P1.
+- Captions now name every stream crossing a window edge.
+- No sheet, text, number, or model change. Full record:
+  progress-v14.md.
+- Verification: test_balance.py 14 passed; build checks
+  pass (622 KaTeX = 622); every figure re-inspected at
+  desktop and 390 px, zero clipped fragments; phone
+  scroll width 375 px; SELFTEST pass on the local build
+  (635.18 kg/h, 523.56 kW).

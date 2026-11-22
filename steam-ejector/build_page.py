@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v13"
+VERSION = "v14"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -288,31 +288,66 @@ def stage_table_html(result):
 
 
 CROP_WINDOWS = {
-    # name: (viewBox, caption boundary note) — edges placed in the
-    # measured gaps between equipment boxes on sheet.svg (vessel
-    # 30-140, E-101 210-290, C-101 330-410, E-102 470-550, C-102
-    # 590-670, E-103 730-810, C-103 850-930, hot well 300-660),
-    # checked against every start-anchored label near the edge.
-    "motive": ("0 0 960 150", "the motive steam header and the branches to the three ejectors"),
-    "stage1": ("145 180 207 133", "the suction line from the vessel at the left edge and the first intercondenser (Fig. P4) entering at the right edge"),
-    "cond1": ("288 180 132 185", "the stage 1 discharge entering at the left edge, the gas line to stage 2 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
-    "stage2": ("415 180 192 133", "the gas line from the first intercondenser at the left edge and the second intercondenser (Fig. P6) entering at the right edge"),
-    "cond2": ("545 180 135 185", "the stage 2 discharge entering at the left edge, the gas line to stage 3 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
-    "stage3": ("675 180 185 133", "the gas line from the second intercondenser at the left edge and the aftercondenser (Fig. P8) entering at the right edge"),
-    "aftercond": ("818 150 142 225", "the stage 3 discharge entering at the left edge and the vent line leaving at the top"),
-    "hotwell": ("280 405 680 140", "the two barometric legs and the aftercondenser condensate entering at the top"),
+    # name: (viewBox, caption boundary note) — v14: every edge placed
+    # from measured getBBox ink extents of all sheet text and equipment
+    # (viewer-reasonableness audit, 2026-11-22). Equipment: vessel
+    # 30-140, ejectors 210-290 / 470-550 / 730-810 (y 215-265),
+    # condensers 330-410 / 590-670 / 850-930 (y 190-290), hot well
+    # 300-660 (y 470-530). The binding constraint is the label chains:
+    # each ejector's name + steam label (ink ends 304 / 564 / 824),
+    # the discharge label above each inter-unit line (ink 292-348 /
+    # 548-604 / 800-856), and the next condenser's interior texts
+    # (ink from 338 / 598 / 856) overlap in x, so a stage window must
+    # run to the far side of the next condenser's texts (397 / 660 /
+    # 918) and a condenser window must start on the far side of its
+    # ejector's labels (204 / 419.4; the second window's left edge
+    # sits in the 1.2-unit gap between the first intercondenser's
+    # name ink, ending 418.84, and the 91.4 kg/h label ink, from
+    # 420.0). Stage windows keep their v13 bottom edge (313): the
+    # next condenser's name first line shows whole there and its
+    # second line is excluded; a 296 bottom would slice the
+    # ejector's own steam label (ink y 291-305).
+    # Fig. P8: the discharge label ink ends at 856.05 and the C-103
+    # interior ink starts at 856.00 (zero measured gap), and the
+    # unit's own name ink starts at x 832 — no left edge shows the
+    # label, the name, and the interior texts all whole; the window
+    # is cut at the condenser's left face (x 856) with the name left
+    # to the caption, as its boundary note states.
+    "motive": ("0 0 960 150", "the motive steam header, its branches down toward the three ejectors, and the cooling-water header below it, whose drops leave at the bottom edge"),
+    "stage1": ("145 180 252 133", "the suction line from the vessel at the left edge, cooling water entering the first intercondenser at the top, its barometric leg leaving at the bottom, and the first intercondenser (Fig. P4) entering at the right edge"),
+    "cond1": ("204 180 215.4 185", "the stage 1 ejector and its discharge entering from the left, cooling water entering at the top, the gas line to stage 2 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
+    "stage2": ("415 180 245 133", "the gas line from the first intercondenser at the left edge, cooling water entering the second intercondenser at the top, its barometric leg leaving at the bottom, and the second intercondenser (Fig. P6) entering at the right edge"),
+    "cond2": ("419.4 180 260 185", "the gas line from the first intercondenser entering at the left edge, the stage 2 ejector and its discharge, cooling water entering at the top, the gas line to stage 3 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
+    "stage3": ("675 180 243 133", "the gas line from the second intercondenser at the left edge, cooling water entering the aftercondenser at the top, its condensate line leaving at the bottom, and the aftercondenser (Fig. P8) entering at the right edge"),
+    "aftercond": ("856 150 104 146", "the vent line leaving at the top and the condensate and cooling-water return lines leaving at the bottom; the window is cut at the aftercondenser's left face — the stage 3 discharge enters that face and is shown in Fig. P7"),
+    "hotwell": ("280 405 680 140", "the two barometric legs, the aftercondenser condensate, and the aftercondenser cooling-water return entering at the top"),
 }
+
+# Target rendered scale for sub-process crops, as a magnification
+# relative to the full sheet (Fig. P1) at the same column width:
+# every crop whose window is narrow enough renders at this
+# magnification, so sheet text (15 units) appears at about body-text
+# height instead of a single-unit crop filling the whole column.
+# Wider windows (the header strip, the hot well) are limited by the
+# column itself and render below the target.
+CROP_TARGET_MAGNIFICATION = 2.0
 
 
 def crop_figure(sheet_svg, name, fignum, title):
     """Sub-process figure: the full sheet re-embedded with a cropped
-    viewBox window on one subunit region (skill section 5)."""
+    viewBox window on one subunit region (skill section 5). The
+    figure width is capped so the crop renders at
+    CROP_TARGET_MAGNIFICATION relative to the full sheet (the sheet
+    is 960 units wide), and centred when narrower than the column."""
     viewbox, boundary = CROP_WINDOWS[name]
+    win_w = float(viewbox.split()[2])
+    pct = min(100.0, CROP_TARGET_MAGNIFICATION * win_w / 960.0 * 100.0)
     inner = sheet_svg
     inner = re.sub(r'viewBox="[^"]*"', f'viewBox="{viewbox}"', inner, count=1)
     inner = re.sub(r'\swidth="960"', ' width="100%"', inner, count=1)
     inner = re.sub(r'\sheight="560"', '', inner, count=1)
-    return (f"<figure>{inner}<figcaption>Fig. P{fignum} | {title}. "
+    return (f'<figure><div style="max-width:{pct:.1f}%;margin-inline:auto">'
+            f"{inner}</div><figcaption>Fig. P{fignum} | {title}. "
             f"The window shows {boundary}.</figcaption></figure>")
 
 
