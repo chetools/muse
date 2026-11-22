@@ -66,6 +66,11 @@
   (electric power 133.07 kW, duty 3,203.6 kW, COP 24.07); zero
   console and page errors at both widths. Screenshots of the sheet,
   all four crops at both widths, and every panel inspected.
-- Publication: main and gh-pages scoped pushes (recorded in
-  BUILD_LOG.md); served page byte-identical to
-  dist/mechanical-vapor-recompression-v7.html.
+- Publication: main e078012 -> 836899f (47 in-scope blobs);
+  gh-pages 194c590 -> 0b18759 (index.html only; the walkthrough
+  notebook is unchanged and byte-identical). Pages build for
+  0b18759 confirmed started and completed. Served page fetched
+  and compared: byte-identical to
+  dist/mechanical-vapor-recompression-v7.html (3,783,373 bytes,
+  SHA-256 1a2e9d484728b514aaa2369c74a1096706c8e4750b5fc97a804f
+  605f388ba1aa).
