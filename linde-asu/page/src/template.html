@@ -46,11 +46,14 @@
   .withtoc { display: flex; gap: 22px; align-items: flex-start; }
   .tocside { flex: 0 0 230px; position: sticky; top: 56px; max-height: calc(100vh - 66px); overflow-y: auto; border-right: 1px solid #ccc; padding-right: 10px; }
   .tocbody { flex: 1 1 auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-  pre { background: #f6f6f6; border: 1px solid #ccc; padding: 10px; overflow-x: auto; font-size: 12.5px; line-height: 1.42; }
+  pre { background: #f6f6f6; border: 1px solid #ccc; padding: 10px; overflow-x: auto; font-size: 12.5px; line-height: 1.42; scrollbar-width: thin; scrollbar-color: #999 #e4e4e4; box-shadow: inset -18px 0 18px -18px rgba(0,0,0,.45), inset 18px 0 18px -18px rgba(0,0,0,.18); }
+  pre::-webkit-scrollbar { height: 10px; }
+  pre::-webkit-scrollbar-track { background: #e4e4e4; }
+  pre::-webkit-scrollbar-thumb { background: #999; border-radius: 5px; }
   .cellout { background: #fbfbf6; border-left: 3px solid #888; padding: 6px 10px; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
   .pfdbox { border: 1px solid #999; padding: 8px; overflow-x: auto; background: #fff; }
   .subdiagram { border: 1px solid #999; padding: 8px; margin: 14px 0; background: #fff; }
-  .subdiagram svg { width: 100%; height: auto; display: block; }
+  .subdiagram svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
   figcaption { font-family: Arial, Helvetica, sans-serif; font-size: 13.5px; color: #333; margin-top: 6px; }
   .note { font-size: 14px; color: #333; }
   .err { color: #8b0000; font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
@@ -64,13 +67,14 @@
   @media (max-width: 760px) {
     .tocbody table { display: block; overflow-x: auto; max-width: 100%; }
     .katex-display { overflow-x: auto; overflow-y: hidden; }
+    .katex-display .katex { font-size: 0.8em; }
   }
   @media (max-width: 760px) {
     .appgrid, .withtoc { flex-direction: column; }
     .main { width: 100%; }
     #component-table { overflow-x: auto; }
     .sidebar { flex: 1 1 auto; width: 100%; }
-    .tocside { position: static; max-height: none; border-right: none; border-bottom: 1px solid #ccc; width: 100%; }
+    .tocside { position: static; max-height: none; border-right: none; border-bottom: 1px solid #ccc; width: 100%; flex: 0 1 auto; padding-bottom: 6px; margin-bottom: 4px; }
     .tocside .toc ul { display: none; }
     .tocside.open .toc ul { display: block; }
     .tocside .toc > strong { cursor: pointer; }

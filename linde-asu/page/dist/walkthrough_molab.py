@@ -17,7 +17,7 @@ def _():
     # Linde air separation unit — calculation walkthrough
 
     The breakdown of the balance, power and cost model of the Linde
-    cryogenic air separation unit (drawing PFD-102). This notebook is
+    cryogenic air separation unit shown on the process flow diagram. This notebook is
     editable: edit a value in the inputs cell and re-run; every
     downstream cell recomputes.
     """)
@@ -44,7 +44,7 @@ def _():
     _SRC = r'''"""Linde air separation unit (ASU): steady-state balance, power and cost model.
 
 The model is a component-balance model of the cryogenic double-column
-process of drawing PFD-102. It computes no column internals: product
+process shown on the diagram. It computes no column internals: product
 flows follow from specified recoveries and purities, the waste stream
 closes every component balance, the main air compressor power follows
 from the isothermal compression equation, and costs follow from a
@@ -84,7 +84,8 @@ DEFAULTS = dict(
     elec_price_usd_kwh=0.07,  # electricity price (USD/kWh); USD denotes United States dollars
     hours_per_year=8000.0,  # operating hours per year (h/yr)
     ref_capacity_tpd=2470.0,  # reference plant oxygen capacity (t/d); t denotes tonne
-    ref_cost_usd=108.0e6,    # reference plant capital cost (USD), 2018 basis
+    ref_cost_usd=118.0e6,    # reference plant capital cost (USD), 2018 basis: 100 million EUR at the 2018 average rate of 1.18 USD/EUR
+    lp_pressure_kpa=130.0,   # low-pressure column pressure (kPa), for the saturation-temperature estimate
     cost_exponent=0.70,      # capacity exponent of the cost scaling relation
     other_opex_fraction=0.04,  # non-electricity operating cost as a fraction of capital cost per year
     discount_rate=0.08,      # annual discount rate for capital annualisation
@@ -98,7 +99,7 @@ def product_flows(u):
     Returns a dictionary of arrays indexed by component (N2, O2, Ar):
     feed, gox (gaseous oxygen product), gan (gaseous nitrogen product),
     crude (crude argon product) and waste (waste nitrogen). Impurity
-    assignments follow drawing PFD-102: the oxygen product impurity is
+    assignments follow the diagram: the oxygen product impurity is
     nitrogen, the nitrogen product impurity is oxygen, and the crude
     argon impurity is split equally between nitrogen and oxygen.
     """
@@ -141,6 +142,34 @@ def run_model(u):
              / u["iso_efficiency"])
     p_total = p_mac * (1.0 + u["aux_fraction"] - u["expander_credit"])
     spec_kwh_t = p_total / (o2_in_gox_tpd / 24.0) if o2_in_gox_tpd > 0 else float("nan")
+    # Minimum work of separation (kW) from the ideal-gas entropy of
+    # mixing at the suction temperature: R_GAS times temperature times
+    # the decrease, feed minus products, of the mixing sum
+    # sum_i n_i ln(x_i) over all streams (n_i in kmol/h, x_i the mole
+    # fraction within its stream). The second-law efficiency is the
+    # minimum work divided by the total power.
+    def _mix_sum(v):
+        tot = float(np.sum(v))
+        return float(np.sum([x * np.log(x / tot) for x in v if x > 0.0])) if tot > 0 else 0.0
+    # The mixing sum of the products exceeds that of the feed (each
+    # product is less mixed), and the difference times R_GAS and the
+    # temperature is the minimum work input.
+    w_min_kw = (R_GAS * u["suction_temp_k"]
+                * (sum(_mix_sum(v) for v in (gox, gan, crude, waste)) - _mix_sum(feed))
+                / 3600.0)
+    wmin_kwh_t = w_min_kw / (o2_in_gox_tpd / 24.0) if o2_in_gox_tpd > 0 else float("nan")
+    eta_ii = w_min_kw / p_total if p_total > 0 else float("nan")
+    # Saturation-temperature estimates (K) from the integrated
+    # Clausius-Clapeyron equation anchored at the normal boiling
+    # point (N2: 77.4 K, latent heat 5.57 kJ/mol; O2: 90.2 K,
+    # 6.82 kJ/mol [39]), at the compressor discharge pressure for
+    # nitrogen and at the low-pressure column pressure for oxygen.
+    def _tsat_cc(t1, p1, p2, dh_kj_mol):
+        # 1/T2 = 1/T1 - (R/dH) ln(p2/p1), with R = 8.314e-3 kJ/(mol K)
+        # and dH the latent heat in kJ/mol, taken as constant.
+        return 1.0 / (1.0 / t1 - (8.314e-3 / dh_kj_mol) * np.log(p2 / p1))
+    tsat_n2_k = float(_tsat_cc(77.4, 101.325, u["mac_pressure_kpa"], 5.57))
+    tsat_o2_k = float(_tsat_cc(90.2, 101.325, u["lp_pressure_kpa"], 6.82))
     # Capital cost (USD) from the reference-plant scaling relation.
     capex = u["ref_cost_usd"] * (o2_in_gox_tpd / u["ref_capacity_tpd"]) ** u["cost_exponent"] if o2_in_gox_tpd > 0 else float("nan")
     # Annualised capital cost (USD/yr) with the capital recovery factor.
@@ -161,6 +190,8 @@ def run_model(u):
         crude_tpd=mass(crude) * 24.0 / 1000.0,
         p_mac_kw=float(p_mac), p_total_kw=float(p_total),
         spec_kwh_per_t=float(spec_kwh_t),
+        wmin_kw=float(w_min_kw), wmin_kwh_per_t=float(wmin_kwh_t), eta_ii=float(eta_ii),
+        tsat_n2_k=tsat_n2_k, tsat_o2_k=tsat_o2_k,
         capex_usd=float(capex), elec_annual_usd=float(elec_annual),
         other_annual_usd=float(other_annual), unit_cost_usd_t=float(unit_cost),
         elec_share=float(elec_share),
@@ -212,7 +243,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs and feed composition
 
-    The feed flow rate $F$ (kmol/h), where kmol denotes kilomole and h denotes hour, is split into component molar flow rates with the mole fractions of dry air: nitrogen (N2) 0.7809, oxygen (O2) 0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three product recoveries (the fraction of each feed component leaving in its named product), the three product purities (mol %), the compressor pressures and efficiency, and the economic parameters. Default values reproduce the sample basis of drawing PFD-102 (a feed flow rate of 1000 kmol/h).
+    The feed flow rate $F$ (kmol/h), where kmol denotes kilomole and h denotes hour, is split into component molar flow rates with the mole fractions of dry air: nitrogen (N2) 0.7809, oxygen (O2) 0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three product recoveries (the fraction of each feed component leaving in its named product), the three product purities (mol %), the compressor pressures and efficiency, and the economic parameters. Default values reproduce the sample basis of the diagram (a feed flow rate of 1000 kmol/h).
     """)
     return
 
@@ -233,7 +264,7 @@ def _(mo):
     mo.md(r"""
     ## Step 2: Product flow rates from recoveries and purities
 
-    Each product flow rate follows from its recovery and purity. The oxygen product carries the recovered fraction of the feed oxygen as its oxygen component; its remaining component is nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow the same construction, with the crude argon impurity split equally between nitrogen and oxygen, as in the stream table of drawing PFD-102. The waste stream is not specified: it is whatever the component balances leave over, which is computed in the next step.
+    Each product flow rate follows from its recovery and purity. The oxygen product carries the recovered fraction of the feed oxygen as its oxygen component; its remaining component is nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow the same construction, with the crude argon impurity split equally between nitrogen and oxygen, as in the stream table of the diagram. The waste stream is not specified: it is whatever the component balances leave over, which is computed in the next step.
     """)
     return
 
@@ -247,7 +278,7 @@ def _(make_fig, np, product_flows, u_inputs):
     _fig1 = make_fig([dict(type='bar', name='Nitrogen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][0]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),
             dict(type='bar', name='Oxygen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][1]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),
             dict(type='bar', name='Argon', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][2]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')])],
-           title='Component flow rates by stream', barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))
+           barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))
     _fig1
     return (crude_comp, flows, gan_comp, gox_comp, totals,)
 
@@ -258,7 +289,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Component balance verification
 
-    The waste component flow rates are the feed rates minus the three product rates, component by component. Two checks follow. The closure check asserts that the products plus the waste reproduce the feed exactly. The feasibility check asserts that no waste component is negative: a negative value would mean that the specified recoveries and purities demand more of a component than the feed contains. The anchor check compares the oxygen product rate with the hand calculation from the PFD-102 basis (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %).
+    The waste component flow rates are the feed rates minus the three product rates, component by component. Two checks follow. The closure check asserts that the products plus the waste reproduce the feed exactly. The feasibility check asserts that no waste component is negative: a negative value would mean that the specified recoveries and purities demand more of a component than the feed contains. The anchor check compares the oxygen product rate with the hand calculation from the sample basis of the diagram (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %).
     """)
     return
 
@@ -301,9 +332,31 @@ def _(run_model, u_inputs):
 @app.cell
 def _(mo):
     mo.md(r"""
-    ## Step 5: Capital and operating cost estimate
+    ## Step 5: Minimum work, second-law efficiency and saturation temperatures
 
-    The capital cost estimate scales a reference plant (oxygen capacity 2470 t/d at a capital cost of 108 million United States dollars (USD), the 2018 Lipetsk project of 72,000 Nm3/h, where Nm3 denotes normal cubic metre) with a capacity exponent of 0.70. The exponent is a modelling assumption: no air separation specific exponent was found in the verified sources. Annual costs combine the electricity cost (total power multiplied by operating hours and electricity price), a non-electricity operating cost taken as a fraction of capital cost, and the capital cost annualised with the capital recovery factor at the stated discount rate and plant life. The unit cost is the total annual cost divided by the annual contained oxygen production.
+    The minimum work of separation follows from the ideal-gas entropy of mixing: the gas constant multiplied by the suction temperature and by the increase of the mixing sum, the sum over components of the component flow rate multiplied by the logarithm of its mole fraction, from feed to products. The second-law efficiency is the minimum work divided by the total power. The saturation temperatures are integrated Clausius-Clapeyron estimates anchored at the normal boiling points (Theory section): nitrogen at the compressor discharge pressure and oxygen at the low-pressure column pressure of 130 kPa. The difference between the two estimates is the driving force available to the main condenser/reboiler before mixture effects narrow it.
+    """)
+    return
+
+
+@app.cell
+def _(res_power):
+    wmin_kwh_t = res_power['wmin_kwh_per_t']; eta_ii = res_power['eta_ii']
+    tsat_n2 = res_power['tsat_n2_k']; tsat_o2 = res_power['tsat_o2_k']
+    print('Minimum work of separation (kWh per tonne of contained oxygen):', round(wmin_kwh_t, 1))
+    print('Second-law efficiency:', round(eta_ii, 3))
+    print('Saturation temperature estimates (K): nitrogen', round(tsat_n2, 1), '| oxygen', round(tsat_o2, 1))
+    assert 51.0 < wmin_kwh_t < 53.0
+    return (eta_ii, tsat_n2, tsat_o2, wmin_kwh_t,)
+
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    ## Step 6: Capital and operating cost estimate
+
+    The capital cost estimate scales a reference plant (oxygen capacity 2470 t/d at a capital cost of 118 million United States dollars (USD), the 2018 Lipetsk project of 72,000 Nm3/h, where Nm3 denotes normal cubic metre) with a capacity exponent of 0.70. The exponent is a modelling assumption: no air separation specific exponent was found in the verified sources. Annual costs combine the electricity cost (total power multiplied by operating hours and electricity price), a non-electricity operating cost taken as a fraction of capital cost, and the capital cost annualised with the capital recovery factor at the stated discount rate and plant life. The unit cost is the total annual cost divided by the annual contained oxygen production.
     """)
     return
 
@@ -322,9 +375,9 @@ def _(res_power):
 @app.cell
 def _(mo):
     mo.md(r"""
-    ## Step 6: Capacity sweep and scale economy
+    ## Step 7: Capacity sweep and scale economy
 
-    The capacity sweep rescales the feed flow rate so that the contained oxygen capacity takes each value in a stated range, holding recoveries, purities and pressures fixed. The specific power is unchanged by scale in this model, because the compressor equation is linear in flow rate; the unit cost falls with capacity through the capital scaling relation alone. The curve is therefore a statement about capital cost dilution, not about the additional efficiency gains of large machines, which the model does not represent.
+    The capacity sweep rescales the feed flow rate so that the contained oxygen capacity takes each value in a stated range, holding recoveries, purities and pressures fixed. Specific power is unchanged by scale in this model, because the compressor equation is linear in flow rate; the unit cost decreases with capacity through the capital scaling relation alone. The curve is a statement about capital cost dilution, not about the additional efficiency gains of large machines, which the model does not represent.
     """)
     return
 
@@ -334,7 +387,7 @@ def _(capacity_sweep, make_fig, u_inputs):
     sweep_caps, sweep_units, sweep_specs = capacity_sweep(u_inputs, [200.0, 500.0, 1000.0, 2000.0, 4000.0])
     print('Unit costs (USD/t):', [round(x, 1) for x in sweep_units])
     _fig1 = make_fig([dict(type='scatter', mode='lines+markers', name='Unit cost', x=sweep_caps, y=sweep_units)],
-           title='Unit oxygen cost against capacity', xaxis_title='Contained oxygen capacity (t/d)', yaxis_title='Unit cost (USD/t)', showlegend=False)
+           xaxis_title='Contained oxygen capacity (t/d)', yaxis_title='Unit cost (USD/t)', showlegend=False)
     _fig1
     return (sweep_caps, sweep_specs, sweep_units,)
 
@@ -343,7 +396,7 @@ def _(capacity_sweep, make_fig, u_inputs):
 @app.cell
 def _(mo):
     mo.md(r"""
-    ## Step 7: Limiting cases and recovery sensitivity
+    ## Step 8: Limiting cases and recovery sensitivity
 
     Two limiting cases check the construction. At an oxygen recovery of zero the oxygen product flow rate is zero and the specific power is undefined, which the model reports as not a number (NaN). At recoveries of one for both oxygen and nitrogen, the waste stream takes a negative nitrogen component and the feasibility flag is false, because the purities then demand more nitrogen for the nitrogen product and the oxygen product impurity than the feed supplies after the crude argon draw. The sensitivity figure varies the oxygen recovery and shows the contained oxygen rate and the oxygen loss in the waste stream.
     """)

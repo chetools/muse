@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v13"
+VERSION = "v14"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -119,6 +119,12 @@ def toc_html(toc):
         f'<li style="margin-left:{(int(lv) - 2) * 14}px"><a href="#{hid}">{html.escape(txt)}</a></li>'
         for lv, hid, txt in toc)
     return f"<ul>{items}</ul>"
+
+def toc_or_none(toc):
+    # A contents list with a single entry that is the panel's own heading
+    # carries no navigation value (v14, viewer audit U1): suppress it;
+    # the empty contents block is removed after assembly.
+    return "" if len(toc) <= 1 else toc_html(toc)
 
 def link_citations(html_text):
     return re.sub(r"\[(\d{1,2})\]", r'<a href="#references-r\1">[\1]</a>', html_text)
@@ -245,22 +251,30 @@ pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" widt
 
 # ---- sub-process diagrams in the Process panel ----
 def _crop_svg(vb):
+    # One consistent scale for the whole sub-diagram series (v14): every
+    # crop renders at 1 CSS px per sheet unit, so a stream diamond is the
+    # same size in every figure. Crop windows are tight to their content
+    # with clean edges: an item is either whole inside the window or
+    # excluded cleanly, and captions name boundary items where a crop
+    # ends at equipment.
     s = pfd_svg.replace('viewBox="0 0 1680 1190"', f'viewBox="{vb}"', 1)
     assert f'viewBox="{vb}"' in s, f"sub-diagram crop failed: {vb}"
+    _w = int(float(vb.split()[2]))
+    s = s.replace('width="100%"', f'width="{_w}"', 1)
     return s
 _SUBDIAGRAMS = [
-    ("process-main-air-compression-c-101", "20 190 710 262",
-     "Compression sets the pressure at which the whole separation becomes possible: three intercooled stages raise the air to the pressure-column pressure, and the aftercooler rejects the heat of compression to cooling water at ambient temperature."),
-    ("process-molecular-sieve-purification-v-101", "380 190 350 262",
-     "Purification is a process requirement, not a product specification: water and carbon dioxide are removed to parts-per-million levels because both would freeze in the cold section and block it."),
-    ("process-main-heat-exchanger-e-102", "680 60 470 760",
-     "The main heat exchanger is where the cold of the products is recovered into the feed; its warm-end approach of a few kelvin sets a direct power penalty, and the expansion turbine beside it produces the refrigeration that balances the cold box."),
-    ("process-pressure-column-t-101", "820 60 830 760",
-     "The pressure column performs the first split, into nitrogen overhead and oxygen-enriched rich liquid, and its overhead nitrogen condenses against boiling oxygen in the shared condenser/reboiler."),
-    ("process-low-pressure-column-t-102", "1020 60 400 480",
-     "The low-pressure column finishes the separation at near-atmospheric pressure, where the nitrogen-oxygen volatility ratio is highest; the argon content of its vapour peaks at the belly from which the crude argon draw is taken."),
-    ("process-crude-argon-column-t-103-and-condenser-e-105", "1250 60 400 560",
-     "The crude argon column separates the closest-boiling pair of the plant, argon from oxygen, with a volatility ratio near 1.3: the separation needs the tall packed section and the high reflux ratio the diagram shows."),
+    ("process-main-air-compression-c-101", "22 164 673 296",
+     "Compression sets the pressure at which the whole separation becomes possible: three intercooled stages raise the air to the pressure-column pressure, and the aftercooler rejects the heat of compression to cooling water at ambient temperature. The crop ends at the cold-box boundary, where stream 5 enters the cold box (Fig. P3); purification in V-101 is Fig. P2."),
+    ("process-molecular-sieve-purification-v-101", "395 258 300 118",
+     "Purification is a process requirement, not a product specification: water and carbon dioxide are removed to parts-per-million levels because both would freeze in the cold section and block it. The crop begins on stream 3 from the C-101 compressor (Fig. P1) and ends at the cold-box boundary, where stream 5 enters the cold box (Fig. P3)."),
+    ("process-main-heat-exchanger-e-102", "695 88 445 368",
+     "The main heat exchanger is where the cold of the products is recovered into the feed; its warm-end approach of a few kelvin sets a direct power penalty, and the expansion turbine beside it produces the refrigeration that balances the cold box. T-102 and E-103 are shown whole at the right; their sections are Figs. P5 and P4."),
+    ("process-pressure-column-t-101", "860 488 265 300",
+     "The pressure column performs the first split, into nitrogen overhead and oxygen-enriched rich liquid, and its overhead nitrogen condenses against boiling oxygen in the shared condenser/reboiler. Stream 7 enters at the left after throttling in VLV-101; the shared condenser/reboiler E-103 sits above the crop (shown in Fig. P3)."),
+    ("process-low-pressure-column-t-102", "815 98 523 286",
+     "The low-pressure column finishes the separation at near-atmospheric pressure, where the nitrogen-oxygen volatility ratio is highest; the argon content of its vapour peaks at the belly from which the crude argon draw is taken. At the right edge the crop ends at VLV-102 (labelled), whose outlet passes to the E-105 condenser of Fig. P6."),
+    ("process-crude-argon-column-t-103-and-condenser-e-105", "1222 72 433 426",
+     "The crude argon column separates the closest-boiling pair of the plant, argon from oxygen, with a volatility ratio near 1.3: the separation needs the tall packed section and the high reflux ratio the diagram shows. The crop begins on stream 30, the crude argon feed from the T-102 belly (Fig. P5); E-104 is shown whole at the left."),
 ]
 for _n, (_hid, _vb, _cap) in enumerate(_SUBDIAGRAMS, 1):
     _fig = (f'<figure class="subdiagram">{_crop_svg(_vb)}'
@@ -290,12 +304,12 @@ katex_css = "<style>" + (KATEX_DIR / "katex.min.css").read_text() + "</style>" +
 subs = {
     "@@KATEX_CSS@@": katex_css,
     "@@INPUT_FIELDS@@": input_fields,
-    "@@TOC_PROCESS@@": toc_html(process_toc),
-    "@@TOC_THEORY@@": toc_html(tocs["theory"]),
-    "@@TOC_ECONOMICS@@": toc_html(tocs["economics"]),
-    "@@TOC_SAFETY@@": toc_html(tocs["safety"]),
-    "@@TOC_CODE@@": toc_html(code_toc),
-    "@@TOC_REFERENCES@@": toc_html(tocs["references"]),
+    "@@TOC_PROCESS@@": toc_or_none(process_toc),
+    "@@TOC_THEORY@@": toc_or_none(tocs["theory"]),
+    "@@TOC_ECONOMICS@@": toc_or_none(tocs["economics"]),
+    "@@TOC_SAFETY@@": toc_or_none(tocs["safety"]),
+    "@@TOC_CODE@@": toc_or_none(code_toc),
+    "@@TOC_REFERENCES@@": toc_or_none(tocs["references"]),
     "@@PFD_SVG@@": pfd_svg,
     "@@PROCESS_HTML@@": rendered["process"],
     "@@THEORY_HTML@@": rendered["theory"],
@@ -316,6 +330,9 @@ for k, v in subs.items():
     page = page.replace(k, v)
 leftover = re.findall(r"@@[A-Z0-9_]+@@", page)
 assert not leftover, f"unfilled placeholders: {leftover}"
+# drop contents sidebars left empty by the single-entry suppression above
+page = page.replace(
+    '<div class="tocside"><div class="toc"><strong>Contents</strong></div></div>', "")
 
 # KaTeX substitution (after assembly, over the whole page)
 math_map = _render_math()

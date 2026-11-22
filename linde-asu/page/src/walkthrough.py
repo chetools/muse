@@ -44,7 +44,7 @@ CELLS = [
             "figure([dict(type='bar', name='Nitrogen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][0]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),\n"
             "        dict(type='bar', name='Oxygen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][1]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),\n"
             "        dict(type='bar', name='Argon', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][2]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')])],\n"
-            "       title='Component flow rates by stream', barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))"
+            "       barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))"
         ),
     ),
     dict(
@@ -143,7 +143,7 @@ CELLS = [
             "sweep_caps, sweep_units, sweep_specs = capacity_sweep(u_inputs, [200.0, 500.0, 1000.0, 2000.0, 4000.0])\n"
             "print('Unit costs (USD/t):', [round(x, 1) for x in sweep_units])\n"
             "figure([dict(type='scatter', mode='lines+markers', name='Unit cost', x=sweep_caps, y=sweep_units)],\n"
-            "       title='Unit oxygen cost against capacity', xaxis_title='Contained oxygen capacity (t/d)', yaxis_title='Unit cost (USD/t)', showlegend=False)"
+            "       xaxis_title='Contained oxygen capacity (t/d)', yaxis_title='Unit cost (USD/t)', showlegend=False)"
         ),
     ),
     dict(
