@@ -52,3 +52,9 @@
   the brief "Runtime ready." line remaining; auto-run on change
   verified live: stages 3->2 gives 946.1 kg/h, the key point 1
   figure
+- [x] Published: main a3610ab (remote blob SHAs verified equal
+  to local for template.html, build_page.py, text/theory.md,
+  progress-v9.md, BUILD_LOG.md); gh-pages 65fa736; served bytes
+  at https://chetools.github.io/muse/steam-ejector/ SHA-256
+  efe795b9... equal to the build output (4,517,925 bytes),
+  observed changing from the v8 hash after the push
