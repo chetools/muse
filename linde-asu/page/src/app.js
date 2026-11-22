@@ -2,18 +2,27 @@
 // Python (Pyodide worker); this script only presents results.
 const BOOT_LINES = @@BOOT_LINES@@;
 const MODEL_B64 = @@MODEL_B64@@;
-const TABS = ["app", "process", "theory", "economics", "safety", "code", "references"];
+const TABS = ["theory", "app", "process", "economics", "safety", "code", "references"];
 
 function activateFromHash() {
-  let h = (location.hash || "#app").slice(1);
-  let tab = TABS.includes(h) ? h : (TABS.find(t => h.startsWith(t + "-")) || "app");
+  let h = (location.hash || "#theory").slice(1);
+  let tab = TABS.includes(h) ? h : (TABS.find(t => h.startsWith(t + "-")) || "theory");
   document.querySelectorAll("section.tab").forEach(s => s.classList.toggle("active", s.id === "tab-" + tab));
   document.querySelectorAll("#tabnav a").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));
   const el = document.getElementById(h);
   if (el && !TABS.includes(h)) { setTimeout(() => el.scrollIntoView(), 30); }
+  if (tab === "app") { setTimeout(refitCharts, 50); }
   if (tab === "code") { renderWalkthroughFigures(); }
 }
 window.addEventListener("hashchange", activateFromHash);
+
+// Guidance pop-ups: where the native popover attribute is unsupported,
+// the guidance elements become plain inline sections and the buttons
+// that would open them are hidden.
+if (!("popover" in HTMLElement.prototype)) {
+  document.querySelectorAll(".guide[popover]").forEach(g => g.removeAttribute("popover"));
+  document.querySelectorAll("button.help").forEach(b => { b.hidden = true; });
+}
 
 const prestart = JSON.parse(document.getElementById("prestart-data").textContent);
 let displayedInputs = JSON.stringify(prestart.inputs);
@@ -132,6 +141,19 @@ function bootWorker() {
     status.textContent = "Python runtime failed to load. The precomputed run remains displayed; live runs are unavailable.";
   };
 }
+
+// Charts first rendered while the App panel is hidden fall back to a
+// default width; refit them whenever the panel is shown, on load and
+// on window resize.
+function refitCharts() {
+  if (!window.Plotly) return;
+  ["chart-balance", "chart-sweep"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.offsetParent !== null) { Plotly.Plots.resize(el); }
+  });
+}
+window.addEventListener("load", refitCharts);
+window.addEventListener("resize", refitCharts);
 
 let walkthroughRendered = false;
 function renderWalkthroughFigures() {

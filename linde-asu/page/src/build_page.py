@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v10"
+VERSION = "v11"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -196,10 +196,47 @@ FIELD_LABELS = {
 FIELD_STEPS = {"feed_kmol_h": "50", "o2_recovery": "0.005", "n2_recovery": "0.005", "ar_recovery": "0.01",
                "gox_purity": "0.1", "gan_purity": "0.1", "crude_purity": "0.5",
                "mac_pressure_kpa": "5", "iso_efficiency": "0.01", "elec_price_usd_kwh": "0.005"}
-input_fields = "\n".join(
-    f'<label for="in-{k}">{FIELD_LABELS[k]}</label>'
-    f'<input id="in-{k}" data-input="{k}" type="number" step="{FIELD_STEPS[k]}" value="{M.DEFAULTS[k]}">'
-    for k in INPUT_KEYS)
+FIELD_GROUPS = [
+    ("slate", "Feed and product slate",
+     ["feed_kmol_h", "o2_recovery", "n2_recovery", "ar_recovery",
+      "gox_purity", "gan_purity", "crude_purity"],
+     "The feed flow rate sets the scale of the whole plant. Each recovery "
+     "fixes the fraction of one feed component that leaves in its product, "
+     "and each purity fixes that product's total flow rate; the waste stream "
+     "takes what remains. Look at the component flow rate table and the "
+     "product cards: if a waste component goes negative, the recoveries and "
+     "purities are jointly infeasible and the notice above the results says so."),
+    ("compressor", "Compressor",
+     ["mac_pressure_kpa", "iso_efficiency"],
+     "The discharge pressure and the isothermal efficiency set the compressor "
+     "power: the power grows with the logarithm of the pressure ratio and "
+     "falls as the efficiency rises. The discharge pressure is also the "
+     "pressure at which the nitrogen saturation temperature is estimated. "
+     "Look at the total power and specific power cards, and at the nitrogen "
+     "saturation estimate beside the oxygen one."),
+    ("electricity", "Electricity",
+     ["elec_price_usd_kwh"],
+     "The electricity price changes no flow rate and no power. It converts "
+     "the total power into the electricity term of the annual cost, and so "
+     "moves the unit oxygen cost. Look at the unit oxygen cost card and the "
+     "unit-cost-against-capacity chart."),
+]
+_grouped_keys = [k for _, _, ks, _ in FIELD_GROUPS for k in ks]
+assert _grouped_keys == INPUT_KEYS, "field groups must partition the input keys in order"
+_group_html = []
+_guide_html = []
+for _gid, _gtitle, _gkeys, _gtext in FIELD_GROUPS:
+    _fields = "\n".join(
+        f'<label for="in-{k}">{FIELD_LABELS[k]}</label>'
+        f'<input id="in-{k}" data-input="{k}" type="number" step="{FIELD_STEPS[k]}" value="{M.DEFAULTS[k]}">'
+        for k in _gkeys)
+    _group_html.append(
+        f'<div class="appgroup"><h3>{_gtitle} '
+        f'<button type="button" class="help" popovertarget="guide-{_gid}" '
+        f'aria-label="Guidance: {_gtitle}">?</button></h3>\n{_fields}</div>')
+    _guide_html.append(
+        f'<div class="guide" id="guide-{_gid}" popover><p><strong>{_gtitle}.</strong> {_gtext}</p></div>')
+input_fields = "\n".join(_group_html + _guide_html)
 
 # ---------------- PFD ----------------
 pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v1.svg").read_text()
