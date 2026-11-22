@@ -64,17 +64,23 @@ MOLAR_MASS = np.array([28.013, 31.999, 39.948])
 # the model assigns to the nitrogen fraction by renormalisation.
 AIR_X = np.array([0.7809, 0.2095, 0.0093])
 AIR_X = AIR_X / AIR_X.sum()
+# Mole fractions of the liquid nitrogen product (order N2, O2, Ar):
+# the composition of the condensed nitrogen on the diagram, from
+# which the liquid product is drawn.
+LIN_X = np.array([0.97, 0.02, 0.01])
 # Universal gas constant (kJ/(kmol K)); K denotes kelvin.
 R_GAS = 8.314
 
 DEFAULTS = dict(
     feed_kmol_h=1000.0,      # feed air molar flow rate (kmol/h)
     o2_recovery=0.943,       # fraction of feed O2 leaving in the oxygen product
-    n2_recovery=0.638,       # fraction of feed N2 leaving in the nitrogen product
+    n2_recovery=0.573,       # fraction of feed N2 leaving in the gaseous nitrogen product
     ar_recovery=0.90,        # fraction of feed Ar leaving in the crude argon product
     gox_purity=99.0,         # O2 content of the oxygen product (mol %)
     gan_purity=99.5,         # N2 content of the nitrogen product (mol %)
     crude_purity=90.0,       # Ar content of the crude argon product (mol %)
+    o2_liquid_fraction=0.25,  # fraction of the oxygen product taken as liquid oxygen
+    lin_fraction_feed=0.05,  # liquid nitrogen product flow rate as a fraction of the feed flow rate
     mac_pressure_kpa=600.0,  # main air compressor discharge pressure (kPa)
     suction_pressure_kpa=101.0,  # compressor suction pressure (kPa)
     suction_temp_k=293.0,    # compressor suction temperature (K)
@@ -97,23 +103,31 @@ def product_flows(u):
     """Product molar flow rates (kmol/h) and component flow rates.
 
     Returns a dictionary of arrays indexed by component (N2, O2, Ar):
-    feed, gox (gaseous oxygen product), gan (gaseous nitrogen product),
+    feed, gox (gaseous oxygen product), lox (liquid oxygen product),
+    gan (gaseous nitrogen product), lin (liquid nitrogen product),
     crude (crude argon product) and waste (waste nitrogen). Impurity
     assignments follow the diagram: the oxygen product impurity is
     nitrogen, the nitrogen product impurity is oxygen, and the crude
-    argon impurity is split equally between nitrogen and oxygen.
+    argon impurity is split equally between nitrogen and oxygen. The
+    oxygen product is split between its gaseous and liquid parts in
+    the proportion set by o2_liquid_fraction; the liquid nitrogen
+    product flow rate is set by lin_fraction_feed at the fixed
+    condensate composition LIN_X.
     """
     feed = u["feed_kmol_h"] * AIR_X
-    gox = np.zeros(3); gan = np.zeros(3); crude = np.zeros(3)
-    gox[1] = feed[1] * u["o2_recovery"]
-    gox[0] = gox[1] * (100.0 - u["gox_purity"]) / u["gox_purity"]
+    o2prod = np.zeros(3); gan = np.zeros(3); crude = np.zeros(3)
+    o2prod[1] = feed[1] * u["o2_recovery"]
+    o2prod[0] = o2prod[1] * (100.0 - u["gox_purity"]) / u["gox_purity"]
+    gox = o2prod * (1.0 - u["o2_liquid_fraction"])
+    lox = o2prod * u["o2_liquid_fraction"]
     gan[0] = feed[0] * u["n2_recovery"]
     gan[1] = gan[0] * (100.0 - u["gan_purity"]) / u["gan_purity"]
+    lin = u["feed_kmol_h"] * u["lin_fraction_feed"] * LIN_X
     crude[2] = feed[2] * u["ar_recovery"]
     rest = crude[2] * (100.0 - u["crude_purity"]) / u["crude_purity"]
     crude[0] = 0.5 * rest; crude[1] = 0.5 * rest
-    waste = feed - gox - gan - crude
-    return dict(feed=feed, gox=gox, gan=gan, crude=crude, waste=waste)
+    waste = feed - gox - lox - gan - lin - crude
+    return dict(feed=feed, gox=gox, lox=lox, gan=gan, lin=lin, crude=crude, waste=waste)
 
 
 def run_model(u):
@@ -125,13 +139,15 @@ def run_model(u):
     feasible = False and the waste values are reported unclamped.
     """
     f = product_flows(u)
-    feed, gox, gan, crude, waste = f["feed"], f["gox"], f["gan"], f["crude"], f["waste"]
+    feed, gox, lox, gan, lin, crude, waste = (f["feed"], f["gox"], f["lox"], f["gan"],
+                                              f["lin"], f["crude"], f["waste"])
     feasible = bool(np.all(waste >= -1e-9))
     # Mass flow rate of each stream (kg/h): component molar flow rates
     # multiplied element by element by the molar masses, then summed.
     def mass(v): return float(np.sum(v * MOLAR_MASS))
-    gox_tpd = mass(gox) * 24.0 / 1000.0            # oxygen product rate (t/d)
-    o2_in_gox_tpd = gox[1] * MOLAR_MASS[1] * 24.0 / 1000.0  # contained O2 rate (t/d)
+    gox_tpd = mass(gox) * 24.0 / 1000.0            # gaseous oxygen product rate (t/d)
+    # Contained O2 rate (t/d): the oxygen in both oxygen products.
+    o2_in_products_tpd = (gox[1] + lox[1]) * MOLAR_MASS[1] * 24.0 / 1000.0
     # Main air compressor power (kW) from the isothermal compression
     # equation: molar flow rate (kmol/s) times R_GAS times suction
     # temperature times the logarithm of the pressure ratio, divided
@@ -141,7 +157,7 @@ def run_model(u):
              * np.log(u["mac_pressure_kpa"] / u["suction_pressure_kpa"])
              / u["iso_efficiency"])
     p_total = p_mac * (1.0 + u["aux_fraction"] - u["expander_credit"])
-    spec_kwh_t = p_total / (o2_in_gox_tpd / 24.0) if o2_in_gox_tpd > 0 else float("nan")
+    spec_kwh_t = p_total / (o2_in_products_tpd / 24.0) if o2_in_products_tpd > 0 else float("nan")
     # Minimum work of separation (kW) from the ideal-gas entropy of
     # mixing at the suction temperature: R_GAS times temperature times
     # the decrease, feed minus products, of the mixing sum
@@ -155,9 +171,9 @@ def run_model(u):
     # product is less mixed), and the difference times R_GAS and the
     # temperature is the minimum work input.
     w_min_kw = (R_GAS * u["suction_temp_k"]
-                * (sum(_mix_sum(v) for v in (gox, gan, crude, waste)) - _mix_sum(feed))
+                * (sum(_mix_sum(v) for v in (gox, lox, gan, lin, crude, waste)) - _mix_sum(feed))
                 / 3600.0)
-    wmin_kwh_t = w_min_kw / (o2_in_gox_tpd / 24.0) if o2_in_gox_tpd > 0 else float("nan")
+    wmin_kwh_t = w_min_kw / (o2_in_products_tpd / 24.0) if o2_in_products_tpd > 0 else float("nan")
     eta_ii = w_min_kw / p_total if p_total > 0 else float("nan")
     # Saturation-temperature estimates (K) from the integrated
     # Clausius-Clapeyron equation anchored at the normal boiling
@@ -171,13 +187,13 @@ def run_model(u):
     tsat_n2_k = float(_tsat_cc(77.4, 101.325, u["mac_pressure_kpa"], 5.57))
     tsat_o2_k = float(_tsat_cc(90.2, 101.325, u["lp_pressure_kpa"], 6.82))
     # Capital cost (USD) from the reference-plant scaling relation.
-    capex = u["ref_cost_usd"] * (o2_in_gox_tpd / u["ref_capacity_tpd"]) ** u["cost_exponent"] if o2_in_gox_tpd > 0 else float("nan")
+    capex = u["ref_cost_usd"] * (o2_in_products_tpd / u["ref_capacity_tpd"]) ** u["cost_exponent"] if o2_in_products_tpd > 0 else float("nan")
     # Annualised capital cost (USD/yr) with the capital recovery factor.
     i = u["discount_rate"]; n = u["plant_life_years"]
     crf = i * (1 + i) ** n / ((1 + i) ** n - 1)
     elec_annual = p_total * u["hours_per_year"] * u["elec_price_usd_kwh"]
     other_annual = u["other_opex_fraction"] * capex
-    o2_annual_t = o2_in_gox_tpd * u["hours_per_year"] / 24.0
+    o2_annual_t = o2_in_products_tpd * u["hours_per_year"] / 24.0
     unit_cost = (crf * capex + elec_annual + other_annual) / o2_annual_t if o2_annual_t > 0 else float("nan")
     elec_share = elec_annual / (elec_annual + other_annual) if (elec_annual + other_annual) > 0 else float("nan")
     return dict(
@@ -185,7 +201,9 @@ def run_model(u):
         totals={k: float(np.sum(v)) for k, v in f.items()},
         components={k: [float(x) for x in v] for k, v in f.items()},
         mass_kg_h={k: mass(v) for k, v in f.items()},
-        gox_tpd=gox_tpd, o2_in_gox_tpd=o2_in_gox_tpd,
+        gox_tpd=gox_tpd, o2_in_products_tpd=o2_in_products_tpd,
+        lox_tpd=mass(lox) * 24.0 / 1000.0,
+        lin_tpd=mass(lin) * 24.0 / 1000.0,
         gan_tpd=mass(gan) * 24.0 / 1000.0,
         crude_tpd=mass(crude) * 24.0 / 1000.0,
         p_mac_kw=float(p_mac), p_total_kw=float(p_total),
@@ -208,7 +226,7 @@ def capacity_sweep(u, capacities_tpd):
     base = run_model(u)
     units, specs = [], []
     for cap in capacities_tpd:
-        uu = dict(u); uu["feed_kmol_h"] = u["feed_kmol_h"] * cap / base["o2_in_gox_tpd"]
+        uu = dict(u); uu["feed_kmol_h"] = u["feed_kmol_h"] * cap / base["o2_in_products_tpd"]
         r = run_model(uu)
         units.append(r["unit_cost_usd_t"]); specs.append(r["spec_kwh_per_t"])
     return list(capacities_tpd), units, specs
@@ -243,7 +261,7 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Inputs and feed composition
 
-    The feed flow rate $F$ (kmol/h), where kmol denotes kilomole and h denotes hour, is split into component molar flow rates with the mole fractions of dry air: nitrogen (N2) 0.7809, oxygen (O2) 0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three product recoveries (the fraction of each feed component leaving in its named product), the three product purities (mol %), the compressor pressures and efficiency, and the economic parameters. Default values reproduce the sample basis of the diagram (a feed flow rate of 1000 kmol/h).
+    The feed flow rate $F$ (kmol/h), where kmol denotes kilomole and h denotes hour, is split into component molar flow rates with the mole fractions of dry air: nitrogen (N2) 0.7809, oxygen (O2) 0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three product recoveries (the fraction of each feed component leaving in its named product), the three product purities (mol %), the liquid product settings (the fraction of the oxygen product taken as liquid and the liquid nitrogen rate as a fraction of the feed), the compressor pressures and efficiency, and the economic parameters. Default values reproduce the sample basis of the diagram (a feed flow rate of 1000 kmol/h).
     """)
     return
 
@@ -264,7 +282,7 @@ def _(mo):
     mo.md(r"""
     ## Step 2: Product flow rates from recoveries and purities
 
-    Each product flow rate follows from its recovery and purity. The oxygen product carries the recovered fraction of the feed oxygen as its oxygen component; its remaining component is nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow the same construction, with the crude argon impurity split equally between nitrogen and oxygen, as in the stream table of the diagram. The waste stream is not specified: it is whatever the component balances leave over, which is computed in the next step.
+    Each product flow rate follows from its recovery and purity. The oxygen product carries the recovered fraction of the feed oxygen as its oxygen component; its remaining component is nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow the same construction, with the crude argon impurity split equally between nitrogen and oxygen, as in the stream table of the diagram. The oxygen product is split between its gaseous and liquid parts in the proportion set by the liquid fraction, and the liquid nitrogen product is drawn at the composition of the condensed nitrogen. The waste stream is not specified: it is whatever the component balances leave over, which is computed in the next step.
     """)
     return
 
@@ -272,15 +290,15 @@ def _(mo):
 @app.cell
 def _(make_fig, np, product_flows, u_inputs):
     flows = product_flows(u_inputs)
-    gox_comp = flows['gox']; gan_comp = flows['gan']; crude_comp = flows['crude']
+    gox_comp = flows['gox']; lox_comp = flows['lox']; gan_comp = flows['gan']; lin_comp = flows['lin']; crude_comp = flows['crude']
     totals = {k: float(np.sum(v)) for k, v in flows.items()}
     print('Total flow rates (kmol/h):', {k: round(v, 1) for k, v in totals.items()})
-    _fig1 = make_fig([dict(type='bar', name='Nitrogen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][0]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),
-            dict(type='bar', name='Oxygen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][1]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),
-            dict(type='bar', name='Argon', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][2]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')])],
+    _fig1 = make_fig([dict(type='bar', name='Nitrogen', x=['Feed', 'Gaseous oxygen', 'Liquid oxygen', 'Gaseous nitrogen', 'Liquid nitrogen', 'Crude argon', 'Waste'], y=[float(flows[s][0]) for s in ('feed', 'gox', 'lox', 'gan', 'lin', 'crude', 'waste')]),
+            dict(type='bar', name='Oxygen', x=['Feed', 'Gaseous oxygen', 'Liquid oxygen', 'Gaseous nitrogen', 'Liquid nitrogen', 'Crude argon', 'Waste'], y=[float(flows[s][1]) for s in ('feed', 'gox', 'lox', 'gan', 'lin', 'crude', 'waste')]),
+            dict(type='bar', name='Argon', x=['Feed', 'Gaseous oxygen', 'Liquid oxygen', 'Gaseous nitrogen', 'Liquid nitrogen', 'Crude argon', 'Waste'], y=[float(flows[s][2]) for s in ('feed', 'gox', 'lox', 'gan', 'lin', 'crude', 'waste')])],
            barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))
     _fig1
-    return (crude_comp, flows, gan_comp, gox_comp, totals,)
+    return (crude_comp, flows, gan_comp, gox_comp, lin_comp, lox_comp, totals,)
 
 
 
@@ -289,19 +307,19 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Component balance verification
 
-    The waste component flow rates are the feed rates minus the three product rates, component by component. Two checks follow. The closure check asserts that the products plus the waste reproduce the feed exactly. The feasibility check asserts that no waste component is negative: a negative value would mean that the specified recoveries and purities demand more of a component than the feed contains. The anchor check compares the oxygen product rate with the hand calculation from the sample basis of the diagram (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %).
+    The waste component flow rates are the feed rates minus the five product rates, component by component. Two checks follow. The closure check asserts that the products plus the waste reproduce the feed exactly. The feasibility check asserts that no waste component is negative: a negative value would mean that the specified recoveries and purities demand more of a component than the feed contains. The anchor check compares the oxygen product rate with the hand calculation from the sample basis of the diagram (200 kmol/h in total, gaseous plus liquid, at a recovery of 0.943 and a purity of 99.0 mol %).
     """)
     return
 
 
 @app.cell
-def _(crude_comp, feed_comp, flows, gan_comp, gox_comp, np, totals):
+def _(crude_comp, feed_comp, flows, gan_comp, gox_comp, lin_comp, lox_comp, np, totals):
     waste_comp = flows['waste']
-    closure = np.max(np.abs(feed_comp - (gox_comp + gan_comp + crude_comp + waste_comp)))
+    closure = np.max(np.abs(feed_comp - (gox_comp + lox_comp + gan_comp + lin_comp + crude_comp + waste_comp)))
     feasible = bool(np.all(waste_comp >= -1e-9))
-    anchor_ok = abs(totals['gox'] - 199.6) < 1.0
+    anchor_ok = abs(totals['gox'] + totals['lox'] - 199.6) < 1.0
     print('Maximum closure error (kmol/h):', float(closure))
-    print('Feasible:', feasible, '| Anchor check (oxygen product 199.6 kmol/h):', anchor_ok)
+    print('Feasible:', feasible, '| Anchor check (total oxygen product 199.6 kmol/h):', anchor_ok)
     assert closure < 1e-6 and anchor_ok
     return (anchor_ok, closure, feasible, waste_comp,)
 
@@ -410,7 +428,7 @@ def _(MOLAR_MASS, make_fig, product_flows, u_inputs):
     for _r in rec_range:
         _u = dict(u_inputs); _u['o2_recovery'] = _r
         _f = product_flows(_u)
-        o2_rates.append(float(_f['gox'][1] * MOLAR_MASS[1] * 24.0 / 1000.0))
+        o2_rates.append(float((_f['gox'][1] + _f['lox'][1]) * MOLAR_MASS[1] * 24.0 / 1000.0))
         waste_o2.append(float(_f['waste'][1]))
     print('Contained oxygen rates (t/d):', [round(x, 1) for x in o2_rates])
     print('Oxygen in waste (kmol/h):', [round(x, 1) for x in waste_o2])

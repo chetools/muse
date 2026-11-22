@@ -13,7 +13,9 @@ CELLS = [
             "component molar flow rates with the mole fractions of dry air: nitrogen (N2) 0.7809, oxygen (O2) "
             "0.2095 and argon (Ar) 0.0093, renormalised to a sum of one. The remaining inputs are the three "
             "product recoveries (the fraction of each feed component leaving in its named product), the three "
-            "product purities (mol %), the compressor pressures and efficiency, and the economic parameters. "
+            "product purities (mol %), the liquid product settings (the fraction of the oxygen product taken "
+            "as liquid and the liquid nitrogen rate as a fraction of the feed), the compressor pressures "
+            "and efficiency, and the economic parameters. "
             "Default values reproduce the sample basis of the diagram (a feed flow rate of 1000 kmol/h)."
         ),
         code=(
@@ -33,37 +35,41 @@ CELLS = [
             "recovered fraction of the feed oxygen as its oxygen component; its remaining component is "
             "nitrogen, in the ratio set by the specified purity. The nitrogen and crude argon products follow "
             "the same construction, with the crude argon impurity split equally between nitrogen and oxygen, "
-            "as in the stream table of the diagram. The waste stream is not specified: it is whatever the "
+            "as in the stream table of the diagram. The oxygen product is split between its gaseous and "
+            "liquid parts in the proportion set by the liquid fraction, and the liquid nitrogen product "
+            "is drawn at the composition of the condensed nitrogen. The waste stream is not specified: "
+            "it is whatever the "
             "component balances leave over, which is computed in the next step."
         ),
         code=(
             "flows = product_flows(u_inputs)\n"
-            "gox_comp = flows['gox']; gan_comp = flows['gan']; crude_comp = flows['crude']\n"
+            "gox_comp = flows['gox']; lox_comp = flows['lox']; gan_comp = flows['gan']; lin_comp = flows['lin']; crude_comp = flows['crude']\n"
             "totals = {k: float(np.sum(v)) for k, v in flows.items()}\n"
             "print('Total flow rates (kmol/h):', {k: round(v, 1) for k, v in totals.items()})\n"
-            "figure([dict(type='bar', name='Nitrogen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][0]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),\n"
-            "        dict(type='bar', name='Oxygen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][1]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),\n"
-            "        dict(type='bar', name='Argon', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][2]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')])],\n"
+            "figure([dict(type='bar', name='Nitrogen', x=['Feed', 'Gaseous oxygen', 'Liquid oxygen', 'Gaseous nitrogen', 'Liquid nitrogen', 'Crude argon', 'Waste'], y=[float(flows[s][0]) for s in ('feed', 'gox', 'lox', 'gan', 'lin', 'crude', 'waste')]),\n"
+            "        dict(type='bar', name='Oxygen', x=['Feed', 'Gaseous oxygen', 'Liquid oxygen', 'Gaseous nitrogen', 'Liquid nitrogen', 'Crude argon', 'Waste'], y=[float(flows[s][1]) for s in ('feed', 'gox', 'lox', 'gan', 'lin', 'crude', 'waste')]),\n"
+            "        dict(type='bar', name='Argon', x=['Feed', 'Gaseous oxygen', 'Liquid oxygen', 'Gaseous nitrogen', 'Liquid nitrogen', 'Crude argon', 'Waste'], y=[float(flows[s][2]) for s in ('feed', 'gox', 'lox', 'gan', 'lin', 'crude', 'waste')])],\n"
             "       barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))"
         ),
     ),
     dict(
         title="Component balance verification",
         md=(
-            "The waste component flow rates are the feed rates minus the three product rates, component by "
+            "The waste component flow rates are the feed rates minus the five product rates, component by "
             "component. Two checks follow. The closure check asserts that the products plus the waste reproduce "
             "the feed exactly. The feasibility check asserts that no waste component is negative: a negative "
             "value would mean that the specified recoveries and purities demand more of a component than the "
             "feed contains. The anchor check compares the oxygen product rate with the hand calculation from "
-            "the sample basis of the diagram (200 kmol/h at a recovery of 0.943 and a purity of 99.0 mol %)."
+            "the sample basis of the diagram (200 kmol/h in total, gaseous plus liquid, at a recovery of "
+            "0.943 and a purity of 99.0 mol %)."
         ),
         code=(
             "waste_comp = flows['waste']\n"
-            "closure = np.max(np.abs(feed_comp - (gox_comp + gan_comp + crude_comp + waste_comp)))\n"
+            "closure = np.max(np.abs(feed_comp - (gox_comp + lox_comp + gan_comp + lin_comp + crude_comp + waste_comp)))\n"
             "feasible = bool(np.all(waste_comp >= -1e-9))\n"
-            "anchor_ok = abs(totals['gox'] - 199.6) < 1.0\n"
+            "anchor_ok = abs(totals['gox'] + totals['lox'] - 199.6) < 1.0\n"
             "print('Maximum closure error (kmol/h):', float(closure))\n"
-            "print('Feasible:', feasible, '| Anchor check (oxygen product 199.6 kmol/h):', anchor_ok)\n"
+            "print('Feasible:', feasible, '| Anchor check (total oxygen product 199.6 kmol/h):', anchor_ok)\n"
             "assert closure < 1e-6 and anchor_ok"
         ),
     ),
@@ -163,7 +169,7 @@ CELLS = [
             "for _r in rec_range:\n"
             "    _u = dict(u_inputs); _u['o2_recovery'] = _r\n"
             "    _f = product_flows(_u)\n"
-            "    o2_rates.append(float(_f['gox'][1] * MOLAR_MASS[1] * 24.0 / 1000.0))\n"
+            "    o2_rates.append(float((_f['gox'][1] + _f['lox'][1]) * MOLAR_MASS[1] * 24.0 / 1000.0))\n"
             "    waste_o2.append(float(_f['waste'][1]))\n"
             "print('Contained oxygen rates (t/d):', [round(x, 1) for x in o2_rates])\n"
             "print('Oxygen in waste (kmol/h):', [round(x, 1) for x in waste_o2])\n"

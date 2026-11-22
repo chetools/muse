@@ -34,9 +34,11 @@ function fmt(x, d) { return (x === null || x === undefined || Number.isNaN(x)) ?
 function renderResult(r, label) {
   document.getElementById("run-label").textContent = label;
   const cards = [
-    ["Oxygen product (t/d)", fmt(r.gox_tpd, 1)],
-    ["Contained oxygen (t/d)", fmt(r.o2_in_gox_tpd, 1)],
-    ["Nitrogen product (t/d)", fmt(r.gan_tpd, 1)],
+    ["Gaseous oxygen (t/d)", fmt(r.gox_tpd, 1)],
+    ["Liquid oxygen (t/d)", fmt(r.lox_tpd, 1)],
+    ["Contained oxygen (t/d)", fmt(r.o2_in_products_tpd, 1)],
+    ["Gaseous nitrogen (t/d)", fmt(r.gan_tpd, 1)],
+    ["Liquid nitrogen (t/d)", fmt(r.lin_tpd, 1)],
     ["Crude argon product (t/d)", fmt(r.crude_tpd, 2)],
     ["Total power (kW)", fmt(r.p_total_kw, 0)],
     ["Specific power (kWh/t)", fmt(r.spec_kwh_per_t, 1)],
@@ -49,15 +51,15 @@ function renderResult(r, label) {
   ];
   document.getElementById("metric-cards").innerHTML = cards.map(c =>
     '<div class="card"><div class="k">' + c[0] + '</div><div class="v">' + c[1] + "</div></div>").join("");
-  const names = [["feed", "Feed air"], ["gox", "Oxygen product"], ["gan", "Nitrogen product"], ["crude", "Crude argon"], ["waste", "Waste nitrogen"]];
+  const names = [["feed", "Feed air"], ["gox", "Gaseous oxygen"], ["lox", "Liquid oxygen"], ["gan", "Gaseous nitrogen"], ["lin", "Liquid nitrogen"], ["crude", "Crude argon"], ["waste", "Waste nitrogen"]];
   let html = '<table class="data"><tr><th>Stream</th><th>Nitrogen (kmol/h)</th><th>Oxygen (kmol/h)</th><th>Argon (kmol/h)</th><th>Total (kmol/h)</th></tr>';
   for (const [k, nm] of names) {
     const c = r.components[k];
     html += "<tr><td>" + nm + "</td><td>" + fmt(c[0], 1) + "</td><td>" + fmt(c[1], 1) + "</td><td>" + fmt(c[2], 1) + "</td><td>" + fmt(r.totals[k], 1) + "</td></tr>";
   }
   document.getElementById("component-table").innerHTML = html + "</table>";
-  const xs = ["Feed", "Oxygen product", "Nitrogen product", "Crude argon", "Waste"];
-  const keys = ["feed", "gox", "gan", "crude", "waste"];
+  const xs = ["Feed", "Gaseous oxygen", "Liquid oxygen", "Gaseous nitrogen", "Liquid nitrogen", "Crude argon", "Waste"];
+  const keys = ["feed", "gox", "lox", "gan", "lin", "crude", "waste"];
   const traces = ["Nitrogen", "Oxygen", "Argon"].map((nm, i) => ({
     type: "bar", name: nm, x: xs, y: keys.map(k => r.components[k][i])
   }));

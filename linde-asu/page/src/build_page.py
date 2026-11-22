@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v30"
+VERSION = "v31"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -49,9 +49,9 @@ BOOT_PY_LINES = [
     "                u[k] = float(v)",
     "            except Exception:",
     "                return json.dumps({'error': 'An input value is not a number.'})",
-    "        for k in ('o2_recovery', 'n2_recovery', 'ar_recovery'):",
+    "        for k in ('o2_recovery', 'n2_recovery', 'ar_recovery', 'o2_liquid_fraction', 'lin_fraction_feed'):",
     "            if not (0.0 <= u[k] <= 1.0):",
-    "                return json.dumps({'error': 'Recoveries must lie between 0 and 1.'})",
+    "                return json.dumps({'error': 'Recoveries and liquid fractions must lie between 0 and 1.'})",
     "        for k in ('gox_purity', 'gan_purity', 'crude_purity'):",
     "            if not (50.0 < u[k] < 100.0):",
     "                return json.dumps({'error': 'Purities must lie between 50 and 100 mol percent.'})",
@@ -176,7 +176,7 @@ walkthrough_html = "\n".join(cells_html) + \
 res0 = M.run_model(dict(M.DEFAULTS))
 caps, units, specs = M.capacity_sweep(dict(M.DEFAULTS), [200.0, 500.0, 1000.0, 2000.0, 4000.0])
 res0["sweep"] = {"caps": caps, "units": units, "specs": specs}
-INPUT_KEYS = ["feed_kmol_h", "o2_recovery", "n2_recovery", "ar_recovery", "gox_purity",
+INPUT_KEYS = ["feed_kmol_h", "o2_recovery", "n2_recovery", "ar_recovery", "o2_liquid_fraction", "lin_fraction_feed", "gox_purity",
               "gan_purity", "crude_purity", "mac_pressure_kpa", "iso_efficiency", "elec_price_usd_kwh"]
 prestart = {"result": _plain(res0), "inputs": {k: M.DEFAULTS[k] for k in INPUT_KEYS},
             "figs": {"balance": results[1]["figs"][0], "sweep": results[6]["figs"][0]}}
@@ -195,20 +195,26 @@ walk_listing = listing(SRC / "walkthrough.py")
 FIELD_LABELS = {
     "feed_kmol_h": "Feed air flow rate (kmol/h)", "o2_recovery": "Oxygen recovery (fraction)",
     "n2_recovery": "Nitrogen recovery (fraction)", "ar_recovery": "Argon recovery (fraction)",
+    "o2_liquid_fraction": "Oxygen product taken as liquid (fraction)",
+    "lin_fraction_feed": "Liquid nitrogen rate (fraction of feed)",
     "gox_purity": "Oxygen product purity (mol %)", "gan_purity": "Nitrogen product purity (mol %)",
     "crude_purity": "Crude argon purity (mol %)", "mac_pressure_kpa": "Compressor discharge pressure (kPa)",
     "iso_efficiency": "Compressor isothermal efficiency", "elec_price_usd_kwh": "Electricity price (USD/kWh)",
 }
 FIELD_STEPS = {"feed_kmol_h": "50", "o2_recovery": "0.005", "n2_recovery": "0.005", "ar_recovery": "0.01",
+               "o2_liquid_fraction": "0.05", "lin_fraction_feed": "0.01",
                "gox_purity": "0.1", "gan_purity": "0.1", "crude_purity": "0.5",
                "mac_pressure_kpa": "5", "iso_efficiency": "0.01", "elec_price_usd_kwh": "0.005"}
 FIELD_GROUPS = [
     ("slate", "Feed and product slate",
      ["feed_kmol_h", "o2_recovery", "n2_recovery", "ar_recovery",
+      "o2_liquid_fraction", "lin_fraction_feed",
       "gox_purity", "gan_purity", "crude_purity"],
      "The feed flow rate sets the scale of the whole plant. Each recovery "
      "fixes the fraction of one feed component that leaves in its product, "
-     "and each purity fixes that product's total flow rate; the waste stream "
+     "and each purity fixes that product's total flow rate. The two liquid "
+     "settings split the oxygen product between gas and liquid and set the "
+     "liquid nitrogen rate; the waste stream "
      "takes what remains. Look at the component flow rate table and the "
      "product cards: if a waste component goes negative, the recoveries and "
      "purities are jointly infeasible and the notice above the results says so."),
@@ -245,7 +251,7 @@ for _gid, _gtitle, _gkeys, _gtext in FIELD_GROUPS:
 input_fields = "\n".join(_group_html + _guide_html)
 
 # ---------------- PFD ----------------
-pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v9.svg").read_text()
+pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v10.svg").read_text()
 inner = pfd_svg_text[pfd_svg_text.index(">") + 1: pfd_svg_text.rindex("</svg>")]
 pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">{inner}</svg>'
 
@@ -270,7 +276,7 @@ for _n in sorted(_hover, key=lambda k: int(k)):
     if _n in _VAP_FRAC:
         _entry["vapfrac"] = _VAP_FRAC[_n]
     _stream_data[_n] = _entry
-assert len(_stream_data) == 29, len(_stream_data)
+assert len(_stream_data) == 31, len(_stream_data)
 _overlay = '<g class="streamhits">' + "".join(_hits) + "</g>"
 _i = pfd_svg.rindex("</svg>")
 pfd_svg = pfd_svg[:_i] + _overlay + pfd_svg[_i:]
