@@ -12,9 +12,7 @@ pressure equipment: a relief path sized for the blocked-outlet
 case (compressor running against a closed heating element vent), vacuum
 relief where a vessel full of steam can be condensed by cold feed
 and collapse inward, and isolation that lets the compressor and
-the heating element be opened separately. The vacuum case is the one
-specific to this process: a vessel at 43.6 kPa absolute carries an
-external-pressure load, and vessels in vacuum service are designed
+the heating element be opened separately. Vacuum operation is the case specific to this process: a vessel at 43.6 kPa absolute carries an external-pressure load, and vessels in vacuum service are designed
 against buckling, not only against bursting [3].
 
 ## Rotating machinery
@@ -25,8 +23,7 @@ machine runs at high tip speed, and a burst impeller is not
 containable by a light casing), surge (the flow breakdown of the
 Process panel, which shakes the machine and can wreck bearings
 and seals in seconds), bearing failure, and loss of lubrication.
-The defences are an overspeed trip independent of the control
-system, a surge-detection and anti-surge recycle system, vibration
+Defences are an overspeed trip independent of the control system, a surge-detection and anti-surge recycle system, vibration
 monitoring with trip levels, guarding of couplings, and a
 lubrication system with a rundown supply. Maintenance on the
 machine follows lockout of both the electrical drive and the
@@ -54,10 +51,7 @@ caustic soda solution, typically 1–2% sodium hydroxide at
 These are corrosive liquids circulated through the same vessels as
 the product: the hazards are chemical burns during chemical
 handling and make-up, and product contamination if a cleaning
-cycle and a production run are confused. The defences are
-interlocked cycle selection, conductivity-based separation of
-cleaning solution from product at the interfaces, and rinsing
-verified before production resumes. Hygienic design — drainable
+cycle and a production run are confused. Defences are interlocked cycle selection, conductivity-based separation of cleaning solution from product at the interfaces, and rinsing verified before production resumes. Hygienic design — drainable
 surfaces, no dead legs, food-grade seals — is a product-safety
 requirement in dairy service, because the concentrate is a food
 ingredient and the condensate may return to the process [5].
@@ -68,12 +62,4 @@ A high-speed compressor and its drive are a dominant noise source,
 typically housed or lagged to meet workplace limits, and the
 non-condensable vent discharges a small continuous gas stream that
 in effluent duty can carry odorous or volatile compounds and may
-need treatment rather than a free vent. The environmental case
-for the process is on the credit side: in steady operation there
-is no boiler firing for evaporation and no cooling tower load for
-condensing the raised vapour, so the emissions of evaporation
-follow the electricity supply; the condensate is returned clean
-and hot. The corresponding duty is to keep the cycle tight —
-air leaking into a vacuum evaporator loads the vent, raises the
-lift the compressor must provide, and erodes the energy saving
-that justifies the plant [3][5].
+need treatment rather than a free vent. In steady operation there is no boiler firing for evaporation and no cooling tower load for condensing the raised vapour, so the emissions of evaporation follow the electricity supply; the condensate is returned clean and hot. Air leaking into a vacuum evaporator loads the vent, raises the lift the compressor must provide, and reduces the energy saving that justifies the plant [3][5].

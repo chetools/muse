@@ -199,10 +199,10 @@ Change an input to recompute.</p>
 <div id="econ"></div>
 </div>
 </div>
-<div class="guide" id="guide-duty" popover><p><strong>Duty and temperature.</strong> The evaporation rate is the water the plant must boil off; every flow, duty, power and area is proportional to it, while the COP and the specific energy do not move with it. The evaporator temperature sets the suction pressure: at a fixed lift, a hotter evaporator needs a smaller pressure ratio and less work per kilogram. Look at the feed, concentrate and duty rows of the derived-quantities table, and at the suction pressure when the temperature changes.</p></div>
-<div class="guide" id="guide-lift" popover><p><strong>Temperature lift.</strong> The lift is the difference between the condensing temperature on the heating side and the saturation temperature at the separator pressure — the rise in saturation temperature the compressor must impart to the vapour. Of the lift, 2 K is boiling-point elevation and 1 K is losses; the rest drives heat transfer in the heating element. A larger lift costs power and saves area; a smaller lift saves power and costs area. Look at the specific-energy chart, the pressure ratio and COP cards, and the heat-transfer area row.</p></div>
-<div class="guide" id="guide-eta" popover><p><strong>Compressor efficiency.</strong> The isentropic efficiency divides the ideal compression work to give the actual work. It changes the power, the COP and the specific energy, and nothing else: pressures, duty and area are set before it enters. Look at the isentropic and actual work rows of the derived-quantities table.</p></div>
-<div class="guide" id="guide-prices" popover><p><strong>Prices and hours.</strong> The electricity price, steam price and operating hours convert the computed power and the alternative's steam flow into annual costs and a simple payback. They change no pressure, flow, duty or area on this panel. Look at the annual cost chart and the payback card.</p></div>
+<div class="guide" id="guide-duty" popover><p><strong>Duty and temperature.</strong> Every flow, duty, power and area is proportional to the evaporation rate, the water the plant must boil off, while the COP and the specific energy do not move with it. Evaporator temperature sets the suction pressure: at a fixed lift, a hotter evaporator needs a smaller pressure ratio and less work per kilogram. Look at the feed, concentrate and duty rows of the derived-quantities table, and at the suction pressure when the temperature changes.</p></div>
+<div class="guide" id="guide-lift" popover><p><strong>Temperature lift.</strong> Condensing temperature on the heating side minus the saturation temperature at the separator pressure gives the lift — the rise in saturation temperature the compressor must impart to the vapour. Of the lift, 2 K is boiling-point elevation and 1 K is losses; the rest drives heat transfer in the heating element. A larger lift costs power and saves area; a smaller lift saves power and costs area. Look at the specific-energy chart, the pressure ratio and COP cards, and the heat-transfer area row.</p></div>
+<div class="guide" id="guide-eta" popover><p><strong>Compressor efficiency.</strong> Isentropic efficiency divides the ideal compression work to give the actual work. It changes the power, the COP and the specific energy, and nothing else: pressures, duty and area are set before it enters. Look at the isentropic and actual work rows of the derived-quantities table.</p></div>
+<div class="guide" id="guide-prices" popover><p><strong>Prices and hours.</strong> Electricity price, steam price and operating hours convert the computed power and the alternative's steam flow into annual costs and a simple payback. They change no pressure, flow, duty or area on this panel. Look at the annual cost chart and the payback card.</p></div>
 </section>
 
 
@@ -218,13 +218,10 @@ Change an input to recompute.</p>
 @@CODE_TOC@@
 <div class="panelbody">
 <h3 id="code-model">Model listing</h3>
-<p>The listing below is the file <code>python/balance.py</code> as
-built, and the model the App panel runs is this file.</p>
+<p><code>python/balance.py</code> is the model the App panel runs.</p>
 <pre id="codelisting">@@CODE_LISTING@@</pre>
 <h3 id="code-walkthrough">Walkthrough</h3>
-<p>The walkthrough below was computed when this page was built. It
-repeats the design-basis arithmetic cell by cell, with each step
-tied to the Theory section it implements.</p>
+<p>Walkthrough cells repeat the design-basis arithmetic, with each step tied to the Theory section it implements.</p>
 @@WALKTHROUGH_HTML@@
 <h3 id="code-notebook">Editable notebook</h3>
 <p>The MoLab notebook is editable; run all cells once after
@@ -301,7 +298,7 @@ function renderPayload(d,precomputed){
   var costCats=narrow?["MVR<br>(electricity)","Steam<br>single-effect"]:["MVR (electricity)","Steam single-effect"];
   var costLayout=narrow?{margin:{l:70,r:16,t:10,b:70},yaxis:{title:"Annual cost (USD/yr)"},xaxis:{tickfont:{size:12}},legend:{orientation:"h",x:0,y:-0.18,yanchor:"top"}}:{margin:{l:80,r:120,t:10,b:50},yaxis:{title:"Annual cost (USD/yr)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}};
   Plotly.react("chart-cost",[{x:costCats,y:[d.annual_mvr_usd,d.annual_steam_usd],type:"bar",name:"Annual operating cost"+suffix,marker:{color:["#0072B2","#D55E00"]}}],costLayout);
-  var rows=[["Suction pressure (kPa)",fmt(d.p1_kpa,1)],["Discharge pressure (kPa)",fmt(d.p2_kpa,1)],["Condensing temperature (°C)",fmt(d.t_cond_c,1)],["Transfer temperature difference (K)",fmt(d.dt_tr_k,1)],["Isentropic work (kJ/kg)",fmt(d.w_s_kj_kg,1)],["Actual work (kJ/kg)",fmt(d.w_kj_kg,1)],["Discharge temperature (°C)",fmt(d.t_discharge_c,1)],["Shaft power (kW)",fmt(d.shaft_kw,1)],["Heat-transfer area (m2)",fmt(d.area_m2,1)],["Condensing-side duty (kW)",fmt(d.q_cond_kw,0)],["Feed (kg/h)",fmt(d.feed_kg_h,0)],["Concentrate (kg/h)",fmt(d.concentrate_kg_h,0)],["Condensate (kg/h)",fmt(d.condensate_kg_h,0)],["Live steam, single-effect (kg/h)",fmt(d.steam_single_kg_h,0)]];
+  var rows=[["Suction pressure (kPa)",fmt(d.p1_kpa,1)],["Discharge pressure (kPa)",fmt(d.p2_kpa,1)],["Condensing temperature (°C)",fmt(d.t_cond_c,1)],["Transfer temperature difference (K)",fmt(d.dt_tr_k,1)],["Isentropic work (kJ/kg)",fmt(d.w_s_kj_kg,1)],["Actual work (kJ/kg)",fmt(d.w_kj_kg,1)],["Discharge temperature (°C)",fmt(d.t_discharge_c,1)],["Shaft power (kW)",fmt(d.shaft_kw,1)],["Heat-transfer area (m²)",fmt(d.area_m2,1)],["Condensing-side duty (kW)",fmt(d.q_cond_kw,0)],["Feed (kg/h)",fmt(d.feed_kg_h,0)],["Concentrate (kg/h)",fmt(d.concentrate_kg_h,0)],["Condensate (kg/h)",fmt(d.condensate_kg_h,0)],["Live steam, single-effect (kg/h)",fmt(d.steam_single_kg_h,0)]];
   document.getElementById("resulttable").innerHTML="<h3>Derived quantities"+suffix+"</h3><div class=\"tablewrap\"><table><tr><th>Quantity</th><th>Value</th></tr>"+rows.map(function(r){return "<tr><td>"+r[0]+"</td><td>"+r[1]+"</td></tr>";}).join("")+"</table></div>";
   document.getElementById("warnings").innerHTML="";
   document.getElementById("econ").innerHTML="<h3>Economics"+suffix+"</h3><p>Installed capital "+fmt(d.capital_usd,0)+" USD; annual MVR electricity cost "+fmt(d.annual_mvr_usd,0)+" USD/yr; annual steam cost of the single-effect alternative "+fmt(d.annual_steam_usd,0)+" USD/yr; annual saving "+fmt(d.annual_saving_usd,0)+" USD/yr.</p>";

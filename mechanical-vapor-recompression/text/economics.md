@@ -9,8 +9,7 @@ vapour recompression (MVR) is the standard electric alternative to
 steam-driven evaporation wherever the temperature lift is small
 and the duty is continuous — dairy and food evaporation, salt and
 potash crystallisation, chemical concentration, and mechanical
-vapour compression desalination [3][5][6][7]. The scale of the
-installed base is large: GEA, one vendor among several, reports
+vapour compression desalination [3][5][6][7]. The scale of the installed base is large: GEA, one vendor among several, reports
 experience of several thousand installed evaporation plants and
 states that almost all new evaporation plants are now equipped
 with MVR [5]. Dairy evaporation practice, the largest single
@@ -22,26 +21,15 @@ documented commercial installations.
 
 ## Capital cost
 
-The installed capital of the modelled plant follows the stated
-estimating relation of the model: an installed cost, in USD, of
-400,000 plus 220 per kg/h of evaporation capacity. The relation is
-an estimating assumption for a falling-film MVR evaporator with a
-single-stage centrifugal compressor, stated here so the reader can
-replace it; it is not a vendor quotation. At the design basis of
-5,000 kg/h the installed capital is USD 1,500,000. The two cost
-centres are the compressor — a high-speed rotating machine with
-its motor and drive — and the evaporator area, and section 6 of
-the Theory panel states their trade: a larger area transfers the
-duty at a smaller lift, which buys a smaller compressor and a
-smaller electricity bill at the price of more steel.
+Installed capital of the modelled plant follows the stated estimating relation of the model: an installed cost, in USD, of
+400,000 plus 220 per kg/h of evaporation capacity. As an estimating assumption for a falling-film MVR evaporator with a single-stage centrifugal compressor, the relation is stated here so the reader can replace it; it is not a vendor quotation. At the design basis of
+5,000 kg/h the installed capital is USD 1,500,000. Two cost centres dominate the installed capital: the compressor — a high-speed rotating machine with its motor and drive — and the evaporator area.
 
 [[ECON_CAPITAL_TABLE]]
 
 ## Operating cost and payback
 
-The operating comparison is between the MVR plant's electricity
-bill and the live-steam bill of a single-effect steam-driven
-evaporator of the same duty (economy 0.9, Theory section 7). At
+The operating comparison is between the MVR plant's electricity bill and the live-steam bill of a single-effect steam-driven evaporator of the same duty (economy 0.9, Theory section 7). At
 the design basis, with electricity at USD 0.10 per kWh, steam at
 USD 30 per tonne, and 8,000 operating hours per year: the MVR
 plant draws 133.1 kW and costs USD 106,459 per year; the
@@ -49,29 +37,24 @@ steam-driven plant consumes 5,555.6 kg/h of steam and costs
 USD 1,333,333 per year. The annual saving is USD 1,226,874 and
 the simple payback on the installed capital is 1.22 years. These
 are the model's numbers at its stated prices, computed in the App
-panel at the current inputs; the reader who changes the
-electricity and steam prices changes the verdict, and the
-sensitivity table below shows where the verdict turns.
+panel at the current inputs; a reader who changes the electricity and steam prices changes the outcome of the comparison, and the sensitivity table below shows where the cheaper option changes.
 
 [[ECON_SENSITIVITY]]
 
-The governing variable is the price ratio, not either price
-alone. One tonne evaporated costs the MVR plant $e_{sp}$ kWh of
+The governing variable is the price ratio, not either price alone. One tonne evaporated costs the MVR plant $e_{sp}$ kWh of
 electricity — 26.6 kWh at the design basis — and costs the
 steam-driven plant $1/0.9 = 1.11$ tonnes of steam. Writing
 $c_{el}$ for the electricity price, in USD per kWh, and
 $c_{st}$ for the steam price, in USD per tonne, MVR is the
 cheaper option while
 
-$$e_{sp}\,c_{el} < \frac{c_{st}}{0.9}$$
+$$e_{sp}\,c_{el} < \frac{c_{st}}{0.9} \tag{1}$$
 
 At the design-basis specific energy and a steam price of
 USD 30 per tonne, the break-even electricity price — the value
 of $c_{el}$ at which the two sides are equal — is about
 USD 1.25 per kWh, far above industrial tariffs, which is why
-the payback is short. The margin narrows as the lift grows: at a
-20 K lift the specific energy is 54.1 kWh/t and the break-even
-electricity price halves. It also narrows where steam is a waste
+the payback is short. As the lift grows, the margin narrows: at a 20 K lift the specific energy is 54.1 kWh/t and the break-even electricity price halves. It also narrows where steam is a waste
 stream with no boiler cost, or where the evaporator runs few
 hours per year and the capital is spread over little product —
 MVR is a continuous-duty technology.
@@ -80,9 +63,7 @@ MVR is a continuous-duty technology.
 
 No definitive global ranking of MVR installations is published,
 and vendors report capacities in inconsistent terms (evaporation
-rate, feed rate, or product rate). The table lists the largest
-installations for which the scale and the MVR application were
-read in a named source; each entry is attributed to its source,
+rate, feed rate, or product rate). Largest installations for which the scale and the MVR application were read in a named source are listed in the table; each entry is attributed to its source,
 and the background and economics are as that source presents
 them. The verified list is dairy-heavy because dairy is where
 the largest documented MVR evaporation duties are reported.
@@ -107,22 +88,20 @@ compression ratios of 1.2 to 2.0 and rotational speeds of
 3,000 to 12,000 rpm [5]; the design-basis ratio of 1.49 is in
 that band.
 
-The pattern across the verified table is the pattern of the
-Theory panel: the largest documented MVR duties are continuous,
+Across the verified table, the pattern is the pattern of the Theory panel: the largest documented MVR duties are continuous,
 small-lift, low boiling-point-elevation evaporations run for
 many hours per year, where the electricity bill replaces a
 boiler steam bill.
 
 ## Cost basis and limits
 
-All costs are 2026 USD. The capital relation is a stated
-estimating assumption, not a quotation; a purchased plant's price
+All costs are 2026 USD. The capital relation is a stated estimating assumption, not a quotation; a purchased plant's price
 depends on materials of construction, hygienic design in food
 duty, and the compressor frame selected. The operating comparison
 prices steam as boiler-raised steam at the stated price; a plant
 with surplus low-pressure steam values it lower and the MVR
 advantage shrinks accordingly. Maintenance of the compressor —
 bearings, seals, and periodic impeller inspection — is a real
-annual cost not carried in the model's operating figures, and a
+annual cost not included in the model's operating figures, and a
 full economic study adds it, together with the value of the clean
 condensate the process returns.

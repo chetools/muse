@@ -17,18 +17,14 @@ drive the evaporation that produced it. The heating element is
 the tube bundle in the evaporator body: the vapour condenses on
 the shell side of the tubes, in the steam chest, and the liquor
 flows down inside the tubes as a film. The bundle is called the
-calandria in the older evaporator literature. The loop then
-needs no live steam in steady operation: the only steady energy
+calandria in the older evaporator literature. No live steam is then needed in steady operation: the only steady energy
 input is the electricity that drives the compressor, and that
 input is small next to the heat circulated, because the compressor
-moves heat rather than making it. The ratio of heat delivered to
-electricity consumed is the coefficient of performance, derived in
-the Theory panel; at the design basis of this page it is 24.1,
+moves heat rather than making it. Heat delivered divided by electricity consumed gives the coefficient of performance, derived in the Theory panel; at the design basis of this page it is 24.1,
 against a Carnot limit of 36.1 for the same temperatures [3].
 
 The plant on the sheet is a single-effect falling-film evaporator
-with MVR, concentrating a dilute aqueous feed. The stream values
-on the sheet are sample values at the design basis: a feed of
+with MVR, concentrating a dilute aqueous feed. Stream values on the sheet are sample values at the design basis: a feed of
 25,000 kg/h, of which 5,000 kg/h is evaporated, leaving
 20,000 kg/h of concentrate and 5,000 kg/h of condensate. The
 balance closes exactly on the values shown: feed in equals
@@ -42,17 +38,9 @@ operation, and the plant's energy input is a single electric
 drive. Second, the whole cycle lives on a temperature difference
 of a few kelvin, so everything that consumes temperature
 difference — boiling-point elevation, fouling, pressure drop —
-is paid for directly in compressor work; the process rewards a
-clean, well-wetted heating surface and punishes a scaled one
-faster than any steam-heated design. Third, the compressor and
-the evaporator are one coupled machine: the compressor's surge
-limit sets the plant's turndown, its trip stops the boiling
-within seconds, and it cannot start the plant, which must first
-be boiled on live steam. Start-up, fouling, foaming and turndown
-are treated in the sections below.
+is paid for directly in compressor work; a clean, well-wetted heating surface holds the lift down, and a scaled surface raises the lift, and with it the compressor power, faster than in any steam-heated design. Third, the compressor and the evaporator are one coupled machine: the compressor's surge limit — the minimum flow at a given pressure ratio below which the flow through the impeller breaks down and reverses in pulses — sets the plant's turndown, its trip stops the boiling within seconds, and it cannot start the plant, which must first be boiled on live steam.
 
-The qualitative economics follow from the same picture. The
-energy enters as electricity at the compressor shaft, and
+Qualitative economics follow from the same picture. Energy enters as electricity at the compressor shaft, and
 because the compressor only has to lift the vapour through a
 few kelvin, the electricity bought is a small fraction of the
 heat circulated — the trade is a large, continuous steam bill
@@ -60,10 +48,7 @@ for a much smaller electricity bill. Capital behaves the other
 way: the compressor is a high-speed machine, and the heating
 element area grows quickly as the design lift is reduced,
 because a smaller temperature difference needs more surface to
-pass the same duty. The design point is therefore an economic
-balance between steel and electricity, struck where the
-annualised cost of the area equals the saving in power; the
-Economics panel puts numbers on that balance at stated prices.
+pass the same duty. An economic balance between steel and electricity sets the design point, struck where the annualised cost of the area equals the saving in power.
 
 [[SHEET]]
 
@@ -71,25 +56,18 @@ Economics panel puts numbers on that balance at stated prices.
 
 ## Feed tank and pump
 
-The feed enters the battery limits into the feed tank TK-101,
+Feed enters the battery limits into the feed tank TK-101,
 which decouples the evaporator from upstream supply swings, and
-is drawn by the feed pump P-101. The design-basis feed is
-25,000 kg/h of a dilute aqueous liquid at 75 °C, arriving warm
-from the upstream process. The evaporation
+is drawn by the feed pump P-101. At the design basis, feed is 25,000 kg/h of a dilute aqueous liquid at 75 °C, arriving warm from the upstream process. The evaporation
 fraction at the design basis — the evaporated mass flow divided by
 the feed mass flow — is 0.20, so four fifths of the feed leaves as
-concentrate. The pump sets the feed rate and provides the head to
-pass the preheater and the distributor at the top of the
-evaporator tubes; in the model the feed rate is not an independent
+concentrate. Pump P-101 sets the feed rate and provides the head to pass the preheater and the distributor at the top of the evaporator tubes; in the model the feed rate is not an independent
 input but follows from the evaporation rate through that fraction,
 which the Theory panel states as a design-basis assumption.
 
 [[CROP_FEED]]
 
-Fig. P1 | Feed tank, pump and condensate preheater. The feed is
-heated to its boiling point by the hot condensate before
-it reaches the evaporator, so the heating element duty is spent on
-evaporation, not on warming the feed. At the frame edges, the
+Fig. P1 | Feed tank, pump and condensate preheater. Hot condensate heats the feed to its boiling point before the feed reaches the evaporator, so the heating element duty is spent on evaporation, not on warming the feed. At the frame edges, the
 feed line (stream 2) leaves at the top for the evaporator, the
 condensate return from the heating element enters at the right along
 the bottom lane and rises into the preheater, and the
@@ -118,25 +96,19 @@ basis.
 
 In the evaporator E-102 the preheated feed is distributed over
 the top of a bundle of vertical tubes and flows down their inner
-walls as a thin film, boiling as it falls. The heating medium —
-the compressed vapour — condenses on the outside of the tubes in
-the heating element. A falling film gives a high heat-transfer
+walls as a thin film, boiling as it falls. Compressed vapour, the heating medium, condenses on the outside of the tubes in the heating element. A falling film gives a high heat-transfer
 coefficient at a small temperature difference, which is precisely
 what MVR needs: every kelvin of temperature difference between
 the condensing vapour and the boiling liquid must be bought from
 the compressor as lift, so an evaporator type that boils well at
 a 7 K transfer difference, as at the design basis, directly cuts
-the electricity bill. The overall coefficient $U$, in
-W/(m$^{2}$ K), is assumed as 2500 W/(m$^{2}$ K) in the model, a
+the electricity bill. Overall coefficient $U$, in W/(m$^{2}$ K), is assumed as 2500 W/(m$^{2}$ K) in the model, a
 value in the textbook range for water-like liquors in falling
 film [3].
 
 The mixture leaving the tube bottoms enters the separator space
 in the head of the vessel, where the vapour disengages from the
-concentrated liquid. The concentrate, 20,000 kg/h at the design
-basis, leaves from the bottom. The vapour passes a demister — a
-mesh or vane pack at the vapour outlet — before it reaches the
-compressor. The demister is not a detail: entrained droplets carry
+concentrated liquid. Concentrate, 20,000 kg/h at the design basis, leaves from the bottom. Before the compressor, the vapour passes a demister — a mesh or vane pack at the vapour outlet. The demister is not a detail: entrained droplets carry
 dissolved solids into the compressor and the heating element, where they
 deposit on the heating surface, and in food duty they carry
 product into the condensate. Entrainment rises sharply when the
@@ -151,20 +123,16 @@ in the head, passes the demister, and leaves for the compressor;
 concentrate leaves at the bottom. At the frame edges, the feed
 enters the body from the left, the vapour (stream 3) leaves
 along the top to the right, and the concentrate (stream 6)
-leaves at the bottom. The heating element, drawn as the steam
-chest against the right face of the body, is shown in Fig. P4.
+leaves at the bottom. Fig. P4 shows the heating element, drawn as the steam chest against the right face of the body.
 
 ## MVR compressor
 
-The compressor K-101 is the only machine in the loop and the
-heart of the process. At the design basis it takes 5,000 kg/h of
+Compressor K-101 is the only machine in the loop. At the design basis it takes 5,000 kg/h of
 vapour at 43.6 kPa and 80 °C and delivers it at
 64.9 kPa, a pressure ratio of 1.49, discharging at 129 °C — the
 vapour leaves superheated, because compression heats it above the
 88 °C saturation temperature at the discharge pressure, by
-41 K at the design basis. The Theory panel derives each of those
-numbers. The shaft power is 126.4 kW and the electric power
-133.1 kW at the design basis.
+41 K at the design basis. At the design basis, shaft power is 126.4 kW and electric power 133.1 kW.
 
 For the large volumetric flows and small pressure ratios of
 evaporation duty the standard machine is a single-stage
@@ -194,9 +162,7 @@ compressor.
 
 [[CROP_COMP]]
 
-Fig. P3 | MVR compressor. The whole vapour stream raised in the
-separator is compressed from 43.6 kPa to 64.9 kPa; the discharge
-is superheated at 129 °C. At the left is the evaporator head
+Fig. P3 | MVR compressor. All vapour raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head
 with the demister; the feed line enters the body at the left
 edge; the evaporator body and the steam chest of the
 heating element continue below the frame (Fig. P2 and Fig. P4), and the
@@ -205,15 +171,13 @@ heating element (Fig. P4).
 
 ## Heating element, condensate and heat recovery
 
-The compressed vapour enters the heating element and condenses on the
-tube outsides at 88 °C. Its latent heat, released at a temperature
+Compressed vapour enters the heating element and condenses on the tube outsides at 88 °C. Its latent heat, released at a temperature
 8 K above the boiling liquid, passes through the tube walls into
 the boiling film. The condensing side actually delivers slightly
 more heat than the boiling side absorbs — 3,290 kW against
 3,204 kW at the design basis — because the vapour also gives up
 its superheat (the 41 K between discharge and condensing
-temperature) before and while it condenses. The surplus leaves
-with the hot condensate and is recovered in the preheater; a
+temperature) before and while it condenses. Surplus heat leaves with the hot condensate and is recovered in the preheater; a
 plant in exact balance trims any remainder in a small cooler.
 The condensate, 5,000 kg/h, leaves through the preheater to the
 battery limit; in dairy and food duty it is clean enough to
@@ -221,13 +185,10 @@ return as boiler feed water or process water, which is part of
 the economics of the process [5].
 
 Two small lines on the sheet carry duties that decide whether the
-plant runs well. The non-condensable vent draws air and dissolved
-gases out of the heating element: gases that arrive with the vapour do
+plant runs well. A non-condensable vent draws air and dissolved gases out of the heating element: gases that arrive with the vapour do
 not condense, accumulate at the tube surface, and blanket it, and
 a heating element that is not vented loses duty steadily for no visible
-reason. The start-up steam line, dashed on the sheet, admits live
-steam to the heating element for start-up and for trimming: the loop
-cannot start itself, because at start-up there is no vapour to
+reason. Live steam for start-up and for trimming enters the heating element through the start-up steam line, dashed on the sheet: the loop cannot start itself, because at start-up there is no vapour to
 compress, so the evaporator is first boiled on live steam until
 the vapour flow is established, the compressor is started, and
 the steam is backed out. Many plants keep a small steam trim for
@@ -262,10 +223,7 @@ sheet, restores the surface in food duty.
 
 **Boiling-point elevation.** The boiling temperature of a solution
 is above the saturation temperature of pure water at the same
-pressure, by the boiling-point elevation (BPE). The compressor
-must lift the vapour over the BPE before any temperature
-difference is available to transfer heat, so a liquor with a
-large BPE — concentrated caustic soda is the standard example,
+pressure, by the boiling-point elevation (BPE). Before any temperature difference is available to transfer heat, the compressor must lift the vapour over the BPE, so a liquor with a large BPE — concentrated caustic soda is the standard example,
 with a BPE of tens of kelvin — is a poor MVR candidate, while
 dilute aqueous and food liquors with a BPE of 1–3 K are the
 natural application. The design basis takes a BPE of 2 K, and the
@@ -282,13 +240,11 @@ and level control are the defences.
 **Turndown and control.** The controlled variables are the boiling
 temperature (through the compressor speed or suction throttling,
 which sets the pressure), the separator level, and the concentrate
-density. The compressor's surge line bounds the operating window
-from below, as described above.
+density. Surge line of the compressor bounds the operating window from below, as described above.
 
 ## Applications beyond the modelled plant
 
-The same cycle appears wherever a vapour is raised and a heating
-duty exists at a slightly higher temperature. In **multi-effect
+Wherever a vapour is raised and a heating duty exists at a slightly higher temperature, the same cycle appears. In **multi-effect
 evaporators**, MVR or its steam-driven counterpart is fitted to
 the first effect of a train, or a compressor boosts the vapour
 between effects. In **crystallisers**, a forced-circulation
@@ -300,13 +256,11 @@ temperatures are close — propane–propylene splitting is the
 classic case — compresses it, and condenses it in the reboiler.
 In **desalination**, the same cycle with a compressor is called
 mechanical vapour compression (MVC) and drives single-effect
-distillation units for remote and high-purity water [7]. The
-Economics panel sets the modelled plant beside the largest
-documented installations in these fields.
+distillation units for remote and high-purity water [7]. Largest documented installations in these fields are set beside the modelled plant in the Economics panel.
 
 ## Products and battery limits
 
-The battery limits are the feed inlet at TK-101, the concentrate
+Battery limits are the feed inlet at TK-101, the concentrate
 outlet, the condensate outlet, the start-up steam inlet, the
 non-condensable vent, and the electric power supply to the
 compressor motor. The products are the concentrate (20,000 kg/h
