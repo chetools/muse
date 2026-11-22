@@ -110,3 +110,12 @@
 - QA harness fixes (test, not page): waits changed to
   state="attached" and Theory tab selected before detail clicks,
   since Theory is no longer the default panel.
+- Published v8: main scoped push 5a3bebf -> 0eb79af (41 blobs, scope
+  mechanical-vapor-recompression only); gh-pages scoped push
+  cf6fc22 -> 710715b (page index.html + regenerated
+  walkthrough_molab.py). Served page fetched after the Pages build:
+  SHA-256 ba9a33bd6787eb4b063368e31c40570544841925ed2a4e5f178279b9b869f994,
+  byte-identical to dist/mechanical-vapor-recompression-v8.html
+  (3,786,112 bytes). Served notebook SHA-256
+  f4b4567e57011a5a762a3f1090729866cd1b2d3dfbf5f634a9997223ea4f2550,
+  byte-identical to notebook/walkthrough_molab.py.
