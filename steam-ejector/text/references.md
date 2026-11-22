@@ -35,3 +35,10 @@ M. T. Introduction to Chemical Engineering Thermodynamics,
 [9] El-Dessouky, H. T., and Ettouney, H. M. Fundamentals of Salt
 Water Desalination. Elsevier, Amsterdam, 2002.
 ISBN: 978-0-444-50810-2.
+
+[10] Spirax Sarco. SJT Steam Jet Thermocompressor. Technical
+Information TI-P493-02, Issue 3, 2025.
+
+[11] Schutte & Koerting. Steam Jet Ejectors: Single and
+Multi-Stage Steam Jet Vacuum Pumps. Bulletin 5E-H. Schutte &
+Koerting, Trevose, PA.

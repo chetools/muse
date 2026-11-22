@@ -521,6 +521,14 @@ is why the motive nozzle diverges after its throat.
 
 The nozzle converts the stage's pressure energy into kinetic energy. Steam enters slow and at high pressure; it leaves at the order of 1,000 m/s and at the suction pressure. A shape — narrow, then wide — is forced by the physics of the last section: below the speed of sound a narrowing duct accelerates a stream, above the speed of sound only a widening duct does, so a nozzle that must cross the speed of sound needs both halves, joined at the throat where the flow is exactly sonic.
 
+Fig. P11 shows this nozzle in place in the stage, mounted in the
+steam chest at the left of the section, with the suction chamber,
+mixing chamber, throat, and diffuser that the sections after this
+one treat. On the axial scale of Fig. P10 the nozzle occupies the
+first 22% of the stage length.
+
+[[XSECTION_T]]
+
 A motive nozzle has a converging section, a throat of minimum area $A^*$ in m2, and a diverging section. In the converging
 section the flow is subsonic and accelerates as the area falls. At
 the throat the flow reaches $M = 1$ if the pressure ratio across

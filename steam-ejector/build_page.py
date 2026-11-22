@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v18"
+VERSION = "v19"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -469,6 +469,145 @@ def pvt_figure():
             "The curves are schematic in shape.</figcaption></figure>")
 
 
+def xsection_figure(id_suffix=""):
+    # id_suffix keeps the arrowhead marker IDs unique per placement:
+    # the figure appears in two panels, and a marker resolved from a
+    # hidden panel copy does not paint in every browser.
+    """Longitudinal section of one ejector stage (Fig. P11),
+    drawn for this page. Axial zones and the shock position
+    match Fig. P10: nozzle 0-22%, mixing 22-51%, throat
+    51-65%, diffuser 65-100%, shock at 57%. Label boxes were
+    checked pairwise (>= 8 units apart) and against the body
+    outline at build development (progress-v19.md)."""
+    CL = 205.0
+    def X(p): return 250.0 + 5.9 * p
+
+    # Bore top profile (x, half-height), left to right.
+    BORE = [(250, 20), (300, 44), (445, 48), (552, 20), (635, 20), (840, 54)]
+    # Outer body top profile.
+    OUTER = [(160, 27), (250, 27), (250, 62), (470, 62), (560, 34),
+             (645, 34), (840, 34), (840, 68)]
+    def mirror(pts):
+        top = [(x, CL - h) for x, h in pts]
+        bot = [(x, CL + h) for x, h in reversed(pts)]
+        return top + bot
+    def pts_str(pts):
+        return " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+
+    INK = "#1b1b1b"
+    MOTIVE = "#D55E00"   # vermillion (also shock, as Fig. P10)
+    SUCTION = "#0072B2"  # blue (darker than P10 sky for arrow legibility)
+    MIX = "#009E73"      # bluish green (as Fig. P10 velocity)
+
+    parts = []
+    parts.append('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 478" '
+                 'role="img" aria-label="Longitudinal section of one steam '
+                 'ejector stage">')
+    parts.append('<defs><marker id="ahM" markerWidth="9" markerHeight="9" '
+                 'refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" '
+                 f'fill="{MOTIVE}"/></marker>'
+                 '<marker id="ahS" markerWidth="9" markerHeight="9" refX="7" '
+                 'refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" '
+                 f'fill="{SUCTION}"/></marker>'
+                 '<marker id="ahX" markerWidth="9" markerHeight="9" refX="7" '
+                 'refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" '
+                 f'fill="{MIX}"/></marker></defs>')
+    # Bore (internal passage) fill.
+    parts.append(f'<polygon points="{pts_str(mirror(BORE))}" fill="#eef2f5"/>')
+    # Jet cone from nozzle exit (380, half 14) expanding into mixing chamber.
+    parts.append(f'<polygon points="380,{CL-14} 505,{CL-19} 505,{CL+19} '
+                 f'380,{CL+14}" fill="{MOTIVE}" opacity="0.28"/>')
+    # Body outline.
+    parts.append(f'<polygon points="{pts_str(mirror(OUTER))}" fill="none" '
+                 f'stroke="{INK}" stroke-width="2"/>')
+    parts.append(f'<polygon points="{pts_str(mirror(BORE))}" fill="none" '
+                 f'stroke="{INK}" stroke-width="1.5"/>')
+    # Discharge flange.
+    parts.append(f'<rect x="840" y="{CL-68}" width="16" height="136" fill="none" '
+                 f'stroke="{INK}" stroke-width="2"/>')
+    # Motive inlet flange.
+    parts.append(f'<rect x="146" y="{CL-34}" width="14" height="68" fill="none" '
+                 f'stroke="{INK}" stroke-width="2"/>')
+    # Nozzle metal: bore profile inlet half 17 at x=300, throat half 6.5 at
+    # x=345, exit half 14 at x=380; outer edge follows the chamber wall.
+    NOZ_BORE = [(300, 17), (345, 6.5), (380, 14)]
+    noz = ([(295, CL - 44)] + [(x, CL - h) for x, h in NOZ_BORE] +
+           [(380, CL + 14)] + [(x, CL + h) for x, h in reversed(NOZ_BORE)] +
+           [(295, CL + 44)])
+    parts.append(f'<polygon points="{pts_str(noz)}" fill="#c9d4dd" '
+                 f'stroke="{INK}" stroke-width="1.5"/>')
+    # Suction inlet pipe (bottom, centred x=398 under the suction chamber).
+    parts.append(f'<path d="M372,{CL+62} L372,345 L424,345 L424,{CL+62}" '
+                 f'fill="none" stroke="{INK}" stroke-width="2"/>')
+    parts.append(f'<rect x="360" y="345" width="76" height="13" fill="none" '
+                 f'stroke="{INK}" stroke-width="2"/>')
+    # Shock: dashed line across the throat bore at 57%.
+    sx = X(57)
+    parts.append(f'<line x1="{sx:.1f}" y1="{CL-20}" x2="{sx:.1f}" y2="{CL+20}" '
+                 f'stroke="{MOTIVE}" stroke-width="2.5" stroke-dasharray="5 4"/>')
+    # Flow arrows.
+    parts.append(f'<line x1="168" y1="{CL}" x2="238" y2="{CL}" stroke="{MOTIVE}" '
+                 'stroke-width="3.5" marker-end="url(#ahM)"/>')
+    parts.append(f'<line x1="398" y1="330" x2="398" y2="282" stroke="{SUCTION}" '
+                 'stroke-width="3.5" marker-end="url(#ahS)"/>')
+    parts.append(f'<line x1="455" y1="{CL}" x2="530" y2="{CL}" stroke="{MIX}" '
+                 'stroke-width="3.5" marker-end="url(#ahX)"/>')
+    parts.append(f'<line x1="690" y1="{CL}" x2="790" y2="{CL}" stroke="{MIX}" '
+                 'stroke-width="3.5" marker-end="url(#ahX)"/>')
+    # Centreline (dash-dot, thin) from inlet to discharge.
+    parts.append(f'<line x1="152" y1="{CL}" x2="850" y2="{CL}" stroke="{INK}" '
+                 'stroke-width="0.6" stroke-dasharray="14 4 3 4" opacity="0.55"/>')
+
+    FS = 16.5
+    def label(text, x, y, anchor="middle"):
+        parts.append(f'<text x="{x}" y="{y}" font-size="{FS}" '
+                     f'text-anchor="{anchor}" fill="{INK}">{text}</text>')
+        w = 0.56 * FS * len(text)
+        x0 = x - w / 2 if anchor == "middle" else x
+        return (x0, y - FS, x0 + w, y + 4)
+    def leader(x1, y1, x2, y2):
+        parts.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
+                     f'stroke="{INK}" stroke-width="1"/>')
+
+    boxes = {}
+    boxes["motive_inlet"] = label("Motive steam inlet", 205, 118)
+    leader(205, 126, 205, 172)
+    parts.append(f'<text x="430" y="42" font-size="{FS}" text-anchor="middle" '
+                 f'fill="{INK}">Motive nozzle</text>')
+    boxes["nozzle"] = label("(converging–diverging)", 430, 64)
+    leader(415, 72, 382, 186)
+    boxes["shock"] = label("Normal shock", 612, 50)
+    leader(604, 58, 588, 178)
+    boxes["diffuser"] = label("Diffuser", 748, 50)
+    leader(748, 58, 748, 158)
+    boxes["suction_chamber"] = label("Suction chamber", 288, 382)
+    leader(302, 374, 322, 274)
+    boxes["mixing"] = label("Mixing chamber", 478, 382)
+    leader(486, 374, 492, 240)
+    boxes["throat"] = label("Throat (constant area)", 660, 382)
+    leader(628, 374, 612, 232)
+    boxes["suction_inlet"] = label("Suction inlet (from the vessel)", 398, 416)
+    leader(398, 404, 398, 362)
+    boxes["discharge"] = label("Discharge outlet", 792, 416)
+    leader(806, 404, 846, 280)
+    # Axial strip: same scale as Fig. P10.
+    parts.append(f'<line x1="250" y1="446" x2="840" y2="446" stroke="{INK}" '
+                 'stroke-width="0.8"/>')
+    for p in (0, 22, 51, 65, 100):
+        parts.append(f'<line x1="{X(p):.0f}" y1="446" x2="{X(p):.0f}" y2="452" '
+                     f'stroke="{INK}" stroke-width="0.8"/>')
+        parts.append(f'<text x="{X(p):.0f}" y="468" font-size="12.5" '
+                     f'text-anchor="middle" fill="{INK}">{p}</text>')
+    parts.append(f'<text x="250" y="436" font-size="12.5" fill="{INK}">'
+                 'Axial position along the ejector (%)</text>')
+    parts.append("</svg>")
+    SVG = "".join(parts)
+    if id_suffix:
+        for mid in ("ahM", "ahS", "ahX"):
+            SVG = SVG.replace(mid, mid + id_suffix)
+    return SVG
+
+
 def econ_tables():
     """Capital table (N = 1-5) and sensitivity table, from the model."""
     cap_rows = []
@@ -703,6 +842,33 @@ def main():
     assert "[[PVT_FIGURE]]" in panels["process"], "missing PVT figure token"
     panels["process"] = panels["process"].replace(
         "[[PVT_FIGURE]]", pvt_figure())
+    xsec_caption = (
+        "Fig. P11 | One ejector stage cut open along its axis: the "
+        "parts the flow passes through, in order. Motive steam "
+        "(vermillion arrow) enters at the left and expands through "
+        "the converging\u2013diverging motive nozzle into the suction "
+        "chamber, where its jet draws in the suction flow from the "
+        "vessel (blue arrow). The two streams mix in the mixing "
+        "chamber and the constant-area throat \u2014 the mixing throat "
+        "of \u00a7T7 \u2014 where the normal shock stands when the stage "
+        "runs in double-choking mode; the mixture (green arrows) then "
+        "slows in the diverging diffuser and leaves through the "
+        "discharge outlet at the stage discharge pressure. The axial "
+        "scale below the section is the scale of Fig. P10: nozzle "
+        "0\u201322%, mixing 22\u201351%, throat 51\u201365%, diffuser "
+        "65\u2013100%, shock at 57%, so the curves of Fig. P10 can be "
+        "read against the parts here. The section is schematic: its "
+        "proportions follow the zone lengths of Fig. P10, not a "
+        "manufacturer\u2019s drawing.")
+    def xsec_fig(sfx):
+        return ("<figure>" + xsection_figure(sfx) +
+                f"<figcaption>{xsec_caption}</figcaption></figure>")
+    assert "[[XSECTION]]" in panels["process"], "missing XSECTION token"
+    panels["process"] = panels["process"].replace(
+        "[[XSECTION]]", xsec_fig("p"))
+    assert "[[XSECTION_T]]" in panels["theory"], "missing XSECTION_T token"
+    panels["theory"] = panels["theory"].replace(
+        "[[XSECTION_T]]", xsec_fig("t"))
     panels["process"] = panels["process"].replace(
         "[[STAGE_TABLE]]", stage_table_html(result))
     cap_table, sens_table = econ_tables()

@@ -880,3 +880,67 @@ pass (624 KaTeX = 624); SELFTEST pass on the local build
   Published-page SELFTEST not run in a browser: sandbox
   Chromium cannot reach the public internet; the verdict
   stands on the byte-identical local build.
+
+## v19 — Fig. P11: ejector cross-section (2026-11-22)
+
+The page showed no figure of what a steam ejector itself
+looks like: the sheet and its crops show ejectors as
+flowsheet symbols and Fig. P10 shows profiles along a
+stage, but the apparatus was never drawn. Fig. P11
+remedies this under the clarifying-figures rule
+(2026-11-22, as amended: real photographs and 3D cutaways
+preferred where their licence permits use).
+
+Research first (full record in progress-v19.md): the
+section layout follows Spirax Sarco TI-P493-02 [10] and
+Schutte & Koerting Bulletin 5E-H [11] (nozzle in the steam
+chest, side suction entry, three-part construction —
+nozzle / body / venturi tail), both added to References
+and cited where the figure is introduced. Photograph and
+cutaway candidates (Croll Reynolds, Spirax Sarco, Schutte
+& Koerting, social-media renderings, Wikimedia Commons,
+Kerr 1918) were each assessed for clarity and licence:
+none satisfied both — manufacturer material carries no
+reuse licence, Commons holds no industrial steam-jet
+ejector image, and the public-domain 1918 halftones fail
+the clarity standard. Fig. P11 is therefore the page's
+own drawing, informed by those sources.
+
+The figure (xsection_figure() in build_page.py):
+longitudinal section on Fig. P10's axial scale — nozzle
+0-22%, mixing 22-51%, throat 51-65%, diffuser 65-100%,
+normal shock dashed at 57% — with an axial strip under
+the section carrying the zone ticks, so the mapping to
+Fig. P10 is read off the figure itself. Label boxes were
+placed programmatically and checked pairwise (at least
+8 units apart) and against the body outline before first
+render; no leader crosses another leader and no line
+passes through any text. Element trace (progress-v19.md):
+every element is a part the text names — motive inlet,
+converging-diverging nozzle, jet cone, suction chamber,
+suction inlet, mixing chamber, throat, normal shock,
+diffuser, discharge — and removing any one removes a
+named part.
+
+Placement: Fig. P11 in both panels (Theory has no figure
+series of its own; renumbering P1-P10 was rejected, as
+those numbers are cited throughout the text). Process,
+at the first-stage ejector walk, introduced by two
+sentences citing [10][11], before the Fig. P3 crop;
+Theory section T5, after its first paragraph. One build
+defect found and fixed during verification: the two
+placements initially shared arrowhead marker IDs and the
+Process copy's motive arrow did not paint; each placement
+now carries unique marker IDs (ahMp/ahSp/ahXp and
+ahMt/ahSt/ahXt, all present in the built file).
+
+Verification: test_balance.py 14 passed; build checks
+pass (624 KaTeX = 624); citations [10] and [11] resolve
+and are listed; three-class audit of Fig. P11
+(shots/v19-audit/, both placements, desktop and 390 px):
+ABSURD — none, the section is the same width and
+lettering size as Fig. P10's strip; CONFUSING — none
+after the marker-ID fix, every label whole and every
+leader traceable to one part; UNNECESSARY — none.
+Phone scroll width 375 px at 390 px; SELFTEST pass on
+the local build (635.18 kg/h, 523.56 kW), no page errors.

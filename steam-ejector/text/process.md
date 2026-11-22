@@ -141,6 +141,15 @@ paid to do it. Inside this stage, pressure, velocity, and temperature
 changes are drawn and explained in the figure section at the end of
 this panel.
 
+Fig. P11 shows the same stage cut open along its axis, so the four
+parts named above can be seen in place. The construction is the
+standard single-stage form — a converging–diverging nozzle mounted
+in a steam chest, a suction chamber with a side inlet, a mixing
+chamber and constant-area throat, and a diverging diffuser
+[10][11].
+
+[[XSECTION]]
+
 [[CROP:stage1]]
 
 ## First barometric intercondenser
