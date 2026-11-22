@@ -209,6 +209,7 @@
 <a href="#theory-antoine">Antoine relation and bubble point</a>
 <a href="#theory-alpha">Relative volatility and pressure</a>
 <a href="#theory-stages">Stages and constant molal overflow</a>
+<a href="#theory-dynamics">Dynamic balances: how the compositions move</a>
 <a href="#theory-reflux">Reflux ratio, level, and split</a>
 <a href="#theory-boilup">Boilup and the steam chest</a>
 <a href="#theory-energy">Energy balance and condenser duty</a>
@@ -265,6 +266,12 @@ in the <a href="#units-pressure">Pressure control unit</a>).</li>
 separation is controlled by their split (see
 <a href="#theory-reflux">Reflux ratio, level, and split</a>; try it in
 the <a href="#units-split">Reflux, distillate, and bottoms unit</a>).</li>
+<li>Compositions, levels, and pressures are states whose time
+derivatives come from tray and vessel balances, so a valve move
+reaches the products over minutes, not seconds (see
+<a href="#theory-dynamics">Dynamic balances</a>; step the reflux in
+the Game panel and watch the distillate composition travel on the
+Plots panel).</li>
 <li>The condenser in this plant is also the pressure-control device:
 how flooded it runs sets how much condensing area is exposed (see
 <a href="#theory-flooded">Flooded-condenser pressure control</a>; try
@@ -439,11 +446,191 @@ flows would drift somewhat from tray to tray. Every stage is also taken to be an
 reboiler to 323.67 K at the top tray at the nominal point, decreasing monotonically as the liquid becomes richer in pentane.</p>
 </section>
 
+<section id="theory-dynamics">
+<h3>Dynamic balances: how the compositions move</h3>
+<p>The relations so far in this panel are steady relations: they state
+what the flows and compositions are when nothing changes with time.
+The game is never in that state for long. Almost every quantity the
+player watches — a tray composition, a vessel level, a pressure — is
+a state, a quantity stored in the plant, and the model computes the
+time derivative of each state from a balance on the vessel or tray
+that holds it, then integrates the derivatives forward. The few
+quantities that are not states (the drum pressure, the tray
+temperatures) are computed from states at each instant. The balances are
+written tray by tray, in the form used in Skogestad's tutorial on
+distillation dynamics [7]. One tray, taken as a control volume (a
+fixed region whose stored contents are tracked), makes the structure
+plain.</p>
+<div class="figwrap"><svg class="fschem" viewBox="0 0 680 300" role="img" aria-label="One tray as a control volume with the four balance streams and the feed"><defs><marker id="fah3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
+<rect x="248" y="64" width="196" height="164" fill="none" stroke="#8a8578" stroke-width="1.2" stroke-dasharray="6 4"/>
+<rect x="250" y="176" width="192" height="50" class="fliq"/>
+<circle cx="300" cy="150" r="5" class="fvap"/><circle cx="346" cy="132" r="6" class="fvap"/><circle cx="390" cy="152" r="5" class="fvap"/>
+<text x="346" y="204" text-anchor="middle">tray j liquid: holdup M<tspan dy="3" font-size="10">j</tspan><tspan dy="-3">,</tspan></text>
+<text x="346" y="222" text-anchor="middle">composition x<tspan dy="3" font-size="10">i,j</tspan></text>
+<text x="16" y="36">liquid in, from tray j+1:</text>
+<text x="16" y="54">L<tspan dy="3" font-size="10">j+1</tspan><tspan dy="-3"> x</tspan><tspan dy="3" font-size="10">i,j+1</tspan></text>
+<line x1="176" y1="60" x2="252" y2="88" class="fpipe" marker-end="url(#fah3)"/>
+<text x="466" y="36">vapour out, to tray j+1:</text>
+<text x="466" y="54">V<tspan dy="3" font-size="10">j</tspan><tspan dy="-3"> y</tspan><tspan dy="3" font-size="10">i,j</tspan></text>
+<line x1="404" y1="84" x2="458" y2="42" class="fpipe" marker-end="url(#fah3)"/>
+<text x="16" y="252">vapour in, from tray j−1:</text>
+<text x="16" y="270">V<tspan dy="3" font-size="10">j−1</tspan><tspan dy="-3"> y</tspan><tspan dy="3" font-size="10">i,j−1</tspan></text>
+<line x1="196" y1="238" x2="252" y2="216" class="fpipe" marker-end="url(#fah3)"/>
+<text x="486" y="240">liquid out, down</text>
+<text x="486" y="258">to tray j−1: L<tspan dy="3" font-size="10">j</tspan><tspan dy="-3"> x</tspan><tspan dy="3" font-size="10">i,j</tspan></text>
+<path d="M446 202 H472 V244" class="fpipe" fill="none" marker-end="url(#fah3)"/>
+<text x="16" y="140">feed (feed tray only):</text>
+<text x="16" y="158">F z<tspan dy="3" font-size="10">i</tspan></text>
+<line x1="150" y1="146" x2="246" y2="146" class="fpipe" marker-end="url(#fah3)"/>
+<text x="452" y="120">the boundary is the</text>
+<text x="452" y="138">control volume</text>
+</svg></div>
+<p class="figcap"><b>Fig. T3 | One tray as a control volume: the balance counts what crosses the boundary.</b> Liquid enters from the tray above and vapour from the tray below; liquid leaves downward and vapour upward; the feed enters on the feed tray only. The stored liquid inside the boundary is the tray holdup at the tray composition. Symbols in the figure: <i>M<sub>j</sub></i>, tray holdup (in mol); <i>x</i> and <i>y</i>, liquid and vapour mole fractions (dimensionless); <i>L</i> and <i>V</i>, liquid and vapour molar flows (in mol/s); <i>F</i>, feed molar flow (in mol/s); <i>z<sub>i</sub></i>, feed mole fraction of component <i>i</i> (dimensionless); subscripts <i>j</i>−1 and <i>j</i>+1 mark the trays below and above.</p>
+<p>Trays are counted from the bottom: tray <i>j</i> (dimensionless
+index) runs from 1 at the bottom to 12 at the top, and the reboiler
+below tray 1 is stage 0 in the model. The liquid holdup of tray
+<i>j</i> is <i>M<sub>j</sub></i> (in mol), the liquid molar flow
+leaving tray <i>j</i> downward is <i>L<sub>j</sub></i> (in mol/s), and
+the vapour molar flow leaving tray <i>j</i> upward is
+<i>V<sub>j</sub></i> (in mol/s); a flow with subscript <i>j</i>+1 or
+<i>j</i>−1 is the corresponding flow of the tray above or below. A
+total molar balance on tray <i>j</i> — accumulation equals flow in
+minus flow out — gives</p>
+<div class="eq">d<i>M<sub>j</sub></i>/d<i>t</i> = <i>L</i><sub><i>j</i>+1</sub> + <i>V</i><sub><i>j</i>−1</sub> − <i>L<sub>j</sub></i> − <i>V<sub>j</sub></i> + <i>F</i> (feed tray only) (11)</div>
+<p>where <i>t</i> is time (in s). The balance for one component
+<i>i</i> (<i>i</i> indexes the three components) tracks the stored amount of that component,
+<i>M<sub>j</sub></i> <i>x<sub>i,j</sub></i> (in mol), with
+<i>x<sub>i,j</sub></i> the liquid mole fraction of component <i>i</i>
+on tray <i>j</i> and <i>y<sub>i,j</sub></i> its vapour mole fraction
+(both dimensionless, defined in the Vapour–liquid equilibrium
+section); each stream transports the component at its own
+composition, and the feed term stands only on the feed tray:</p>
+<div class="eq">d(<i>M<sub>j</sub></i> <i>x<sub>i,j</sub></i>)/d<i>t</i> = <i>L</i><sub><i>j</i>+1</sub> <i>x</i><sub><i>i,j</i>+1</sub> + <i>V</i><sub><i>j</i>−1</sub> <i>y</i><sub><i>i,j</i>−1</sub> − <i>L<sub>j</sub></i> <i>x<sub>i,j</sub></i> − <i>V<sub>j</sub></i> <i>y<sub>i,j</sub></i> + <i>F</i> <i>z<sub>i</sub></i> (feed tray only) (12)</div>
+<p>where <i>F</i> is the feed molar flow (in mol/s) and
+<i>z<sub>i</sub></i> is the feed mole fraction of component <i>i</i>
+(dimensionless). In the model the feed term enters as the flashed
+feed of the Feed tray entry section: the liquid part of the flash at
+its liquid composition plus the vapour part at its vapour
+composition, which sum to <i>F</i> <i>z<sub>i</sub></i> by the flash
+balance. The left side of Eq. (12) is a product of two quantities
+that can both change with time, and the product rule expands it as</p>
+<div class="eq">d(<i>M<sub>j</sub></i> <i>x<sub>i,j</sub></i>)/d<i>t</i> = <i>M<sub>j</sub></i> d<i>x<sub>i,j</sub></i>/d<i>t</i> + <i>x<sub>i,j</sub></i> d<i>M<sub>j</sub></i>/d<i>t</i> (13)</div>
+<p>Eq. (13) separates the composition change (the first term) from
+the effect of a changing holdup at fixed composition (the second
+term). Which of the two terms the game keeps depends on the vessel,
+and the trays and the vessels differ.</p>
+<p>On the trays the model holds the holdup constant:
+<i>M<sub>j</sub></i> = 200 mol on every tray (1000 mol in the
+reboiler, in the standalone column model). With
+d<i>M<sub>j</sub></i>/d<i>t</i> = 0 the second term of Eq. (13)
+vanishes, and constant molal overflow makes the first balance,
+Eq. (11), close identically: within a section the entering and
+leaving molar flows are equal, and at the feed tray the feed term
+of Eq. (11) is exactly the change in the section flows between
+Eqs. (7) to (10), so no tray accumulates. The component balance thus reduces to the form
+the code integrates:</p>
+<div class="eq"><i>M<sub>j</sub></i> d<i>x<sub>i,j</sub></i>/d<i>t</i> = <i>L</i><sub><i>j</i>+1</sub> <i>x</i><sub><i>i,j</i>+1</sub> + <i>V</i><sub><i>j</i>−1</sub> <i>y</i><sub><i>i,j</i>−1</sub> − <i>L<sub>j</sub></i> <i>x<sub>i,j</sub></i> − <i>V<sub>j</sub></i> <i>y<sub>i,j</sub></i> + <i>F</i> <i>z<sub>i</sub></i> (feed tray only) (14)</div>
+<p>On the top tray there is no tray above: the liquid-in term of
+Eqs. (12) and (14) is the reflux <i>L<sub>R</sub></i> at the drum
+composition <i>x</i><sub><i>i</i>,drum</sub>, the drum liquid
+returned to tray 12. Eq. (14) states that a tray's composition changes at its net
+component inflow divided by its holdup. The simplification discards
+three things, stated plainly. Tray liquid level dynamics are not
+included: no weir relation sets <i>M<sub>j</sub></i>, and the tray
+depth on the drawing is computed from the liquid rate, not a state.
+Vapour holdup on the trays is neglected, so the vapour leaving a
+tray responds to the tray liquid at the same instant. Pressure is
+uniform across the trays in this column model, so no per-tray
+pressure drop enters the equilibrium ratios.</p>
+<p>Equilibrium closes Eq. (14) at every evaluation. The tray
+temperature is the bubble point of the current tray liquid
+(Eq. (5)), the equilibrium ratios follow from the Antoine vapour
+pressures at that temperature (Eqs. (3) and (4)), and
+<i>y<sub>i,j</sub></i> = <i>K<sub>i,j</sub></i>
+<i>x<sub>i,j</sub></i>, with <i>K<sub>i,j</sub></i> the equilibrium
+ratio of component <i>i</i> on tray <i>j</i> (dimensionless). The
+right side of Eq. (14) is therefore a function of the tray
+compositions alone, at fixed section flows and pressure, and
+integrating it forward is the column's motion.</p>
+<p>The vessels of the integrated plant keep both terms of
+Eq. (13), because their holdups are the levels the player controls.
+Each vessel obeys the total balance</p>
+<div class="eq">d<i>M</i>/d<i>t</i> = <i>W</i><sub>in</sub> − <i>W</i><sub>out</sub> (15)</div>
+<p>where <i>M</i> is the vessel holdup (in mol) and
+<i>W</i><sub>in</sub> and <i>W</i><sub>out</sub> are the total molar
+flows into and out of the vessel (in mol/s): for the reboiler and
+its stripping-section reserve, liquid in from tray 1 against bottoms
+and boilup out (the two holdups are one pool, filled and drained
+sump first); for the condenser, the condensation rate against
+drainage up the riser and riser flash vapour out (the liquid
+inventory is credited with no more than the vapour that actually
+arrives; the full rate enters the pressure derivative below); for the drum,
+Eq. (19) of the reflux section. The drum composition keeps the
+product form of Eq. (13):</p>
+<div class="eq">d<i>x</i><sub><i>i</i>,drum</sub>/d<i>t</i> = [ <i>N</i><sub><i>i</i>,in</sub> − (<i>L<sub>R</sub></i> + <i>D</i>) <i>x</i><sub><i>i</i>,drum</sub> − <i>x</i><sub><i>i</i>,drum</sub> d<i>M</i><sub>drum</sub>/d<i>t</i> ] / <i>M</i><sub>drum</sub> (16)</div>
+<p>where <i>N</i><sub><i>i</i>,in</sub> is the molar flow of
+component <i>i</i> into the drum, net of the vapour that leaves
+through the bypass when the bypass flow reverses (in mol/s),
+<i>M</i><sub>drum</sub> is the drum holdup (in mol), and
+<i>x</i><sub><i>i</i>,drum</sub> is its mole fraction in the
+drum liquid (dimensionless). The last term in the bracket is the
+second term of Eq. (13): a filling drum dilutes the composition
+change, and a draining drum concentrates it. The condenser pool and
+the reboiler stage obey the same product form in the plant model;
+the drum of the standalone column model, at constant 500 mol, drops
+the term, as the trays do. Two further state families complete the
+plant. The column pressure is a state through its vapour inventory:
+with <i>R</i> the gas constant (8.314 J/(mol K)), <i>T</i><sub>top</sub>
+the top-tray temperature (in K), <i>V</i><sub>col</sub> the column
+vapour volume (in m<sup>3</sup>), <i>W</i><sub>inlet</sub> the vapour
+flow through the condenser inlet valve, <i>W</i><sub>bp</sub> the
+hot vapour bypass flow, and <i>W</i><sub>relief</sub> the relief
+flow (all in mol/s), the ideal-gas law on the inventory gives</p>
+<div class="eq">d<i>P</i>/d<i>t</i> = ( <i>R</i> <i>T</i><sub>top</sub> / (1000 <i>V</i><sub>col</sub>) ) ( <i>V<sub>R</sub></i> − <i>W</i><sub>inlet</sub> − <i>W</i><sub>bp</sub> − <i>W</i><sub>relief</sub> ) (17)</div>
+<p>where <i>P</i> is the column pressure (in kPa); the factor 1000
+in Eq. (17) converts joules to kilojoules, so the derivative is in
+kPa/s. The condenser
+pressure follows the same form, with vapour in through the inlet
+valve minus the condensation rate, and its vapour volume shrinks as
+the pool floods it — the coupling behind the flooded-condenser
+control of its own section. The steam-chest pressure is an
+inventory state of the same form, with steam in through the flow
+valve and steam out by condensing in the reboiler at the rate
+<i>Q</i><sub>reb</sub>/<i>λ</i>, where <i>λ</i> is the molar latent
+heat of steam (40.7 kJ/mol, stated in the Boilup section). The drum pressure is not an inventory
+state: it is the bubble pressure of the drum liquid at the drum
+temperature, and the drum temperature is itself a state, from an
+energy balance over the drum holdup; the cooling-tank temperature
+is a state of the same kind.</p>
+<p>The balances set the game's time scales. A tray's composition
+responds on a time of the order of its holdup divided by the liquid
+flow through it, a liquid-throughput scale: 200 mol / 5 mol/s ≈ 40 s
+in the rectifying section and 200 mol / 15 mol/s ≈ 13 s in the
+stripping section, at the nominal section flows. The vapour traffic
+through a tray adds to its outflow and shortens the tray's own
+response relative to these scales; the column's response is the
+compounded result, measured below. The drum composition responds on its holdup
+divided by its total outflow: 500 mol / 9 mol/s ≈ 56 s in the
+standalone column model, and 1500 mol / 9 mol/s ≈ 167 s (2.8 min)
+for the drum of the integrated plant. A measured run of the
+standalone column model shows the compounding over 12 trays: from
+the nominal steady state (distillate pentane mole fraction
+0.9678), a reflux step from 5 mol/s to 6 mol/s moves the distillate
+pentane mole fraction to 0.9700 after 60 s, 0.9753 after 300 s, and
+0.9775 after 600 s; half of the total change is reached at 176 s,
+and the value at 1200 s is 0.9782, against a new steady value of
+0.9784. The same integration at the larger step
+of the model's test set (reflux 5 mol/s to 9 mol/s) gives 0.989
+after 600 s, matching the recorded test result. A valve move is
+therefore felt at the products over minutes, not seconds, and the
+Plots panel shows the front travelling.</p>
+</section>
+
 <section id="theory-reflux">
 <h3>Reflux ratio, level, and split</h3>
 <p>The reflux ratio <i>R</i> (dimensionless) is the split of drum
 liquid between return to the column and product:</p>
-<div class="eq"><i>R</i> = <i>L<sub>R</sub></i> / <i>D</i> (11)</div>
+<div class="eq"><i>R</i> = <i>L<sub>R</sub></i> / <i>D</i> (18)</div>
 <p>At the nominal point <i>R</i> = 5 / 4 = 1.25. Raising the reflux at
 fixed boilup enriches the top stages further (more liquid washing
 down against the rising vapour) and lowers the distillate rate.</p>
@@ -451,7 +638,7 @@ down against the rising vapour) and lowers the distillate rate.</p>
 the drum holdup (in mol), <i>t</i> time (in s), and
 <i>C</i><sub>drain</sub> the condensate flow arriving from the riser
 (in mol/s):</p>
-<div class="eq">d<i>M</i><sub>drum</sub>/d<i>t</i> = <i>C</i><sub>drain</sub> − <i>L<sub>R</sub></i> − <i>D</i> (12)</div>
+<div class="eq">d<i>M</i><sub>drum</sub>/d<i>t</i> = <i>C</i><sub>drain</sub> − <i>L<sub>R</sub></i> − <i>D</i> (19)</div>
 <p>Only the sum <i>L<sub>R</sub></i> + <i>D</i> appears: the level
 cannot tell the two outflows apart. One operator action (say, the reflux valve) can be assigned to the level and the other
 (the distillate valve) sets the split — or the reverse — but a single
@@ -467,7 +654,7 @@ anchored at 373.15 K and 101.325 kPa with a molar latent heat of
 steam of 40.7 kJ/mol; it gives 416.77 K at 400 kPa and 424.84 K at
 500 kPa, within about 1 K of the steam tables over the game's range.
 The reboiler duty <i>Q</i><sub>reb</sub> (heat flow, in W) is</p>
-<div class="eq"><i>Q</i><sub>reb</sub> = <i>U</i><sub>reb</sub> <i>A</i><sub>reb</sub> (<i>T</i><sub>steam</sub> − <i>T</i><sub>reb</sub>) (13)</div>
+<div class="eq"><i>Q</i><sub>reb</sub> = <i>U</i><sub>reb</sub> <i>A</i><sub>reb</sub> (<i>T</i><sub>steam</sub> − <i>T</i><sub>reb</sub>) (20)</div>
 <p>where <i>U</i><sub>reb</sub> is the overall heat transfer
 coefficient (in W/(m<sup>2</sup> K)), <i>A</i><sub>reb</sub> is the
 reboiler area (in m<sup>2</sup>), and <i>T</i><sub>reb</sub> is the
@@ -488,7 +675,7 @@ what caps the pressure escalation in
 <section id="theory-energy">
 <h3>Energy balance and condenser duty</h3>
 <p>The condenser duty capacity <i>Q</i><sub>cond,max</sub> (in W) is computed from the exposed area:</p>
-<div class="eq"><i>Q</i><sub>cond,max</sub> = <i>U</i> <i>A</i><sub>exp</sub> Δ<i>T</i><sub>lm</sub> (14)</div>
+<div class="eq"><i>Q</i><sub>cond,max</sub> = <i>U</i> <i>A</i><sub>exp</sub> Δ<i>T</i><sub>lm</sub> (21)</div>
 <p>where <i>U</i> is the overall coefficient (in W/(m<sup>2</sup>
 K)), <i>A</i><sub>exp</sub> is the tube area not submerged by pooled
 condensate (in m<sup>2</sup>), and Δ<i>T</i><sub>lm</sub> is the
@@ -515,7 +702,7 @@ the model uses the square-root law of the standard sizing equations
 [6], with a sizing constant <i>K<sub>v</sub></i> (in mol/s per
 (kPa)<sup>1/2</sup> at 100 percent opening, a stated design value per
 valve):</p>
-<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √Δ<i>P</i> (15)</div>
+<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √Δ<i>P</i> (22)</div>
 <p>where <i>W</i> is the molar flow (in mol/s) and only the positive
 part of Δ<i>P</i> drives flow. Doubling the opening doubles the flow
 at fixed Δ<i>P</i>; doubling the flow at fixed opening needs four
@@ -525,7 +712,7 @@ none.</p>
 <p>For a vapour stream the model uses the compressible form, with the
 downstream pressure floored at a fraction <i>r<sub>c</sub></i>
 (dimensionless) of the upstream pressure:</p>
-<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √(<i>P</i><sub>up</sub><sup>2</sup> − <i>P</i><sub>dn</sub><sup>2</sup>) / (100 kPa) (16)</div>
+<div class="eq"><i>W</i> = <i>K<sub>v</sub></i> (<i>u</i> / 100) √(<i>P</i><sub>up</sub><sup>2</sup> − <i>P</i><sub>dn</sub><sup>2</sup>) / (100 kPa) (23)</div>
 <p>with <i>P</i><sub>dn</sub> replaced by max(<i>P</i><sub>dn</sub>,
 <i>r<sub>c</sub></i> <i>P</i><sub>up</sub>) inside the root. When the
 downstream pressure decreases below <i>r<sub>c</sub></i> times the
@@ -550,7 +737,7 @@ vapour bypass sits at 1 percent, as a pressure trim.</p>
 <section id="theory-flooded">
 <h3>Flooded-condenser pressure control</h3>
 <p>Below the reflux drum, the condenser is deliberately run partly flooded. Condenser liquid holdup <i>M<sub>c</sub></i> (in mol) over its capacity of 2000 mol gives the flooded fraction <i>f</i> (dimensionless):</p>
-<div class="eq"><i>f</i> = <i>M<sub>c</sub></i> / 2000 mol (17)</div>
+<div class="eq"><i>f</i> = <i>M<sub>c</sub></i> / 2000 mol (24)</div>
 <p>Tubes below the pooled liquid condense almost no vapour — they
 subcool the pool instead — so the exposed area is
 <i>A</i><sub>exp</sub> = <i>A</i> (1 − <i>f</i>) with
@@ -580,20 +767,20 @@ liquid of density <i>ρ</i> (in kg/m<sup>3</sup>; the model uses
 580 kg/m<sup>3</sup>) through a height <i>h</i> (in m) against
 gravitational acceleration <i>g</i> = 9.80665 m/s<sup>2</sup> costs a
 pressure head:</p>
-<div class="eq">Δ<i>P</i><sub>head</sub> = <i>ρ g h</i> = 8.53 kPa (18)</div>
+<div class="eq">Δ<i>P</i><sub>head</sub> = <i>ρ g h</i> = 8.53 kPa (25)</div>
 <p>What remains after paying it is the riser driving pressure Δ<i>P</i><sub>drive</sub> (in kPa), with <i>P</i><sub>cond</sub> the
 condenser pressure (in kPa), <i>P</i><sub>drum</sub> the drum
 pressure (in kPa), and Δ<i>P</i><sub>pool</sub> the head of liquid
 pooled in the condenser itself (in kPa; 2.28 kPa at the nominal
 flooded fraction):</p>
-<div class="eq">Δ<i>P</i><sub>drive</sub> = (<i>P</i><sub>cond</sub> − <i>P</i><sub>drum</sub>) + Δ<i>P</i><sub>pool</sub> − Δ<i>P</i><sub>head</sub> (19)</div>
+<div class="eq">Δ<i>P</i><sub>drive</sub> = (<i>P</i><sub>cond</sub> − <i>P</i><sub>drum</sub>) + Δ<i>P</i><sub>pool</sub> − Δ<i>P</i><sub>head</sub> (26)</div>
 <p>Riser flow then follows the liquid valve law through the outlet valve. At the nominal point: (148 − 140) + 2.28 − 8.53 = 1.74 kPa of
 drive, which is why the outlet valve is large and why small pressure
 changes move the drainage a lot.</p>
 <p>A second condition is thermal. The subcooling margin
 <i>ΔT</i><sub>sub</sub> (in K) is the bubble point of the pooled
 liquid at the drum pressure minus the pool temperature:</p>
-<div class="eq"><i>ΔT</i><sub>sub</sub> = <i>T</i><sub>bubble</sub>(<i>P</i><sub>drum</sub>) − <i>T</i><sub>pool</sub> (20)</div>
+<div class="eq"><i>ΔT</i><sub>sub</sub> = <i>T</i><sub>bubble</sub>(<i>P</i><sub>drum</sub>) − <i>T</i><sub>pool</sub> (27)</div>
 <p>At the nominal point the margin is +1.84 K. If the margin goes
 negative, the liquid is above its bubble point at the lower drum
 pressure and part of it flashes to vapour in the riser; the model
@@ -670,7 +857,9 @@ are built from exactly these pairings.</p>
 <p>A small set of relations produces the game's behaviour:
 Raoult's law and the Antoine relation set what each tray can do;
 relative volatility, decreasing with pressure, sets how much the 12 trays achieve; the section balances and the reflux split set the
-products; the valve law turns openings into flows; the flooded
+products; the dynamic balances integrate the tray compositions and
+the vessel inventories forward in time; the valve law turns
+openings into flows; the flooded
 condenser and the riser couple the overhead pressure, level, and
 drainage into one system; and the steam chest turns a pressure into
 boilup and duty. A player who holds the plant well is, in effect,
@@ -688,8 +877,9 @@ here is necessary but not sufficient on a real unit.</p>
 <li>Koretsky, M. D., <em>Engineering and Chemical Thermodynamics</em>, 2nd edition, John Wiley &amp; Sons, 2013 — appendix table of Antoine coefficients (primary constant set).</li>
 <li>Seader, J. D., Henley, E. J., and Roper, D. K., <em>Separation Process Principles: Chemical and Biochemical Operations</em>, 3rd edition, John Wiley &amp; Sons, 2011 — equilibrium stages, constant molal overflow, reflux, tray hydraulics.</li>
 <li>Kister, H. Z., <em>Distillation Design</em>, McGraw-Hill, 1992 — column and condenser operation, flooded-condenser control.</li>
-<li>Kister, H. Z., "Flooded condenser controls: principles and troubleshooting", <em>Chemical Engineering</em>, January 2016.</li>
-<li>ANSI/ISA-75.01.01 (IEC 60534-2-1 Mod), <em>Flow Equations for Sizing Control Valves</em>, International Society of Automation, 2012.</li>
+<li>Kister, H. Z., "Flooded condenser controls: principles and troubleshooting", <em>Chemical Engineering</em>, January 2016, pp. 37–49.</li>
+<li>ANSI/ISA-75.01.01-2012 (IEC 60534-2-1 Mod), <em>Industrial-Process Control Valves — Part 2-1: Flow capacity — Sizing equations for fluid flow under installed conditions</em>, International Society of Automation, 2012.</li>
+<li>Skogestad, S., "Dynamics and control of distillation columns: a tutorial introduction", <em>Transactions of the Institution of Chemical Engineers, Part A</em>, 75, 1997, pp. 539–562 — tray-by-tray dynamic balances and composition time scales.</li>
 </ol>
 </section>
 </div>
@@ -806,7 +996,10 @@ of 10 mol/s, and the effective opening is 50 percent.
 
 <section id="process-trays">
 <h3>Trays: rectifying and stripping</h3>
-<p>Every tray receives vapour from below and liquid from above; the top tray also receives reflux (5.00 mol/s), and tray 1 receives boilup vapour (9.00 mol/s) from the reboiler below it. Vapour and liquid leave each tray in equilibrium at the tray's bubble point. Going up, each tray's liquid is richer in pentane than the one below: 0.052 on tray 1, 0.383 on the feed tray, 0.911 on tray 12, while the temperature decreases from 360.64 K on tray 1 to 323.67 K on tray 12. The six trays above the feed tray (rectifying) wash heptane out of the rising vapour with reflux; the feed tray and the five below it (stripping) strip pentane out of the falling liquid with boilup. Overhead vapour leaves the top tray at 9.00 mol/s, and liquid leaves tray 1 at 15.00 mol/s into the reboiler pool.</p>
+<p>Every tray receives vapour from below and liquid from above; the top tray also receives reflux (5.00 mol/s), and tray 1 receives boilup vapour (9.00 mol/s) from the reboiler below it. Vapour and liquid leave each tray in equilibrium at the tray's bubble point. Going up, each tray's liquid is richer in pentane than the one below: 0.052 on tray 1, 0.383 on the feed tray, 0.911 on tray 12, while the temperature decreases from 360.64 K on tray 1 to 323.67 K on tray 12. The six trays above the feed tray (rectifying) wash heptane out of the rising vapour with reflux; the feed tray and the five below it (stripping) strip pentane out of the falling liquid with boilup. Overhead vapour leaves the top tray at 9.00 mol/s, and liquid leaves tray 1 at 15.00 mol/s into the reboiler pool. The compositions move by the tray
+balances of the Theory panel (see <a href="#theory-dynamics">Dynamic
+balances</a>): a tray's composition changes at its net component
+inflow divided by its 200 mol holdup.</p>
 </section>
 
 <section id="process-overhead">
@@ -1013,7 +1206,9 @@ an operator would. There is no separate score for the exercises.</p>
 <p>Steam from the 900 kPa header passes the regulator (set 400 kPa)
 and the steam flow valve in series into the chest. Holding the pressure upstream of the steam valve at its setpoint is the regulator's part; the chest pressure is set by the balance between the steam the valve admits and the steam the reboiler condenses, and the duty follows the chest saturation temperature. Condensate leaves the chest as it forms; the model includes no chest liquid inventory, so the chest state is its pressure alone (Theory: <a href="#theory-boilup">Boilup and
 the steam chest</a>; Process: <a href="#process-reboiler">Reboiler
-and steam chest</a>).</p>
+and steam chest</a>). The reboiler pool's inventory follows the
+vessel balance of the Theory panel (<a href="#theory-dynamics">Dynamic
+balances</a>).</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 356" role="img" aria-label="Steam chest and reboiler schematic"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <text x="16" y="52">steam header</text>
 <text x="16" y="84" class="flab">900 kPa</text>
@@ -1189,7 +1384,8 @@ each tray's liquid holdup is held constant in the model, and the tray depth is d
 than the liquid it rose from, by the equilibrium ratio of the tray
 temperature (Theory: <a href="#theory-vle">Vapour–liquid
 equilibrium</a>, <a href="#theory-alpha">Relative volatility</a>).
-Live values below are the column ends; the full stage-by-stage picture is on the drawing in the Game panel.</p>
+The balance each tray obeys is derived in the Theory panel
+(<a href="#theory-dynamics">Dynamic balances</a>). Live values below are the column ends; the full stage-by-stage picture is on the drawing in the Game panel.</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 336" role="img" aria-label="One tray in cross-section with weir and downcomer"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <path d="M170 30 L170 306 M520 30 L520 306" class="fwall"/>
 <line x1="170" y1="120" x2="470" y2="120" class="fwall"/>
@@ -1262,7 +1458,10 @@ Live values below are the column ends; the full stage-by-stage picture is on the
 <p>Condensate climbs 1.5 m from the condenser to the drum. The condenser-to-drum pressure difference, set between them by the bypass and outlet valves, pays for the lift, and the liquid must be subcooled or it flashes on the way up (Theory:
 <a href="#theory-riser">Riser lift, subcooling, and flashing</a>;
 Process: <a href="#process-riser">Riser</a>,
-<a href="#process-drum">Reflux drum</a>).</p>
+<a href="#process-drum">Reflux drum</a>). The drum composition
+follows the product-form balance of the Theory panel
+(<a href="#theory-dynamics">Dynamic balances</a>), with the holdup
+term that the tray form drops.</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 336" role="img" aria-label="Riser lift from condenser to reflux drum"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <rect x="60" y="238" width="180" height="56" class="fbox"/>
 <text x="150" y="262" text-anchor="middle">condenser</text>
