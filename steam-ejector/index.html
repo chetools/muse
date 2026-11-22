@@ -33,7 +33,13 @@ section.panel[hidden]{display:none}
 .toc strong{display:block;margin-bottom:6px}
 .toc ul{margin:0;padding-left:20px}
 .toc a[aria-current="true"]{font-weight:700}
-@media(min-width:1100px){.toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}}
+.panellayout{min-width:0}
+.panelbody{min-width:0}
+@media(min-width:1100px){
+section.panel.haslayout{width:min(calc(var(--measure) + 240px),calc(100vw - 32px));position:relative;left:50%;transform:translateX(-50%)}
+.panellayout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;align-items:start}
+.panellayout .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;margin-top:28px}
+}
 figure{margin:20px 0;min-width:0}
 figcaption{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin-top:8px}
 figure svg{max-width:100%;height:auto}
@@ -113,8 +119,8 @@ until the first live run replaces it.</p>
 <button role="tab" aria-selected="false" data-panel="references" id="tab-references">References</button>
 </nav>
 <main id="main">
-<section class="panel long" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory">
-<nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#theory">Theory</a></li><li><a href="#key-points">Key points</a></li><li><a href="#how-the-demonstration-is-done">How the demonstration is done</a></li><li><a href="#symbols">Symbols</a></li><li><a href="#t1-what-an-ejector-does">T1 What an ejector does</a></li><li><a href="#t2-the-bernoulli-equation-and-where-it-stops-working">T2 The Bernoulli equation and where it stops working</a></li><li><a href="#t3-stagnation-pressure-stagnation-enthalpy-and-total-energy">T3 Stagnation pressure, stagnation enthalpy, and total energy</a></li><li><a href="#t4-speed-of-sound-mach-number-and-the-isentropic-relations">T4 Speed of sound, Mach number, and the isentropic relations</a></li><li><a href="#t5-the-converging-diverging-nozzle">T5 The converging-diverging nozzle</a></li><li><a href="#t6-suction-entrainment">T6 Suction entrainment</a></li><li><a href="#t7-momentum-balance-in-the-mixing-throat">T7 Momentum balance in the mixing throat</a></li><li><a href="#t8-the-diffuser-and-pressure-recovery">T8 The diffuser and pressure recovery</a></li><li><a href="#t9-stage-compression-ratio-and-why-one-stage-cannot-reach-low-pressure">T9 Stage compression ratio and why one stage cannot reach low pressure</a></li><li><a href="#t10-the-entrainment-correlation-used-by-the-model">T10 The entrainment correlation used by the model</a></li><li><a href="#t11-interstage-condensation">T11 Interstage condensation</a></li><li><a href="#t12-off-design-behaviour">T12 Off-design behaviour</a></li><li><a href="#t13-what-the-model-computes">T13 What the model computes</a></li><li><a href="#t14-worked-design-basis">T14 Worked design basis</a></li><li><a href="#conclusion-and-discussion">Conclusion and discussion</a></li></ul></nav>
+<section class="panel long haslayout" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory">
+<div class="panellayout"><nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#theory">Theory</a></li><li><a href="#key-points">Key points</a></li><li><a href="#how-the-demonstration-is-done">How the demonstration is done</a></li><li><a href="#symbols">Symbols</a></li><li><a href="#t1-what-an-ejector-does">T1 What an ejector does</a></li><li><a href="#t2-the-bernoulli-equation-and-where-it-stops-working">T2 The Bernoulli equation and where it stops working</a></li><li><a href="#t3-stagnation-pressure-stagnation-enthalpy-and-total-energy">T3 Stagnation pressure, stagnation enthalpy, and total energy</a></li><li><a href="#t4-speed-of-sound-mach-number-and-the-isentropic-relations">T4 Speed of sound, Mach number, and the isentropic relations</a></li><li><a href="#t5-the-converging-diverging-nozzle">T5 The converging-diverging nozzle</a></li><li><a href="#t6-suction-entrainment">T6 Suction entrainment</a></li><li><a href="#t7-momentum-balance-in-the-mixing-throat">T7 Momentum balance in the mixing throat</a></li><li><a href="#t8-the-diffuser-and-pressure-recovery">T8 The diffuser and pressure recovery</a></li><li><a href="#t9-stage-compression-ratio-and-why-one-stage-cannot-reach-low-pressure">T9 Stage compression ratio and why one stage cannot reach low pressure</a></li><li><a href="#t10-the-entrainment-correlation-used-by-the-model">T10 The entrainment correlation used by the model</a></li><li><a href="#t11-interstage-condensation">T11 Interstage condensation</a></li><li><a href="#t12-off-design-behaviour">T12 Off-design behaviour</a></li><li><a href="#t13-what-the-model-computes">T13 What the model computes</a></li><li><a href="#t14-worked-design-basis">T14 Worked design basis</a></li><li><a href="#conclusion-and-discussion">Conclusion and discussion</a></li></ul></nav><div class="panelbody">
 <h1 id="theory">Theory</h1>
 <p>A steam ejector produces vacuum with no moving parts. High-pressure motive steam expands through a nozzle to a high velocity and a low static pressure, entrains the gas to be removed, mixes with it, and is then slowed in a diffuser that converts velocity back into pressure. The discharge leaves at a pressure above the suction pressure. Staging repeats that step, with a condenser between stages that removes most of the vapour before the next stage. This panel derives every relation the App panel computes, in the order the fluid meets them: the energy balance, the compressible-flow relations, the nozzle, the mixing throat, the diffuser, the stage ratio, and the interstage condenser. Each derivation is shown in full in an expandable block under the step that uses it, with its assumptions and its alternative route named. A symbol is defined where it first appears.</p>
 <p>Steam ejectors hold vacuum on condensers, evaporators, and distillation columns across the process industries, and they are the standard choice where a rotating machine would face a wet, corrosive, or very large volumetric flow: there are no moving parts to wear or to seal against the vacuum, and the motive fluid is steam, which the plant already makes. The cost of that robustness is steam consumption, and the design questions are therefore quantitative ones — how many stages a given suction pressure needs, how much motive steam each stage draws, and how much of the load the interstage condensers can remove before the next stage sees it. Those are the questions this page answers with a live model.</p>
@@ -396,6 +402,7 @@ T_{cw,in})</annotation></semantics></math></span><span class="katex-html" aria-h
 <h2 id="conclusion-and-discussion">Conclusion and discussion</h2>
 <p>The five key points reduce to one accounting. Key point 1 sets the number of stages: the overall ratio from suction to atmosphere, divided into equal stage ratios, must keep each stage at a compression ratio the entrainment correlation covers. Key point 2 then prices each stage: its motive steam is its entrainment ratio times the load it sees. Key points 3 and 4 set that load: the interstage condensers remove the condensable part of it, down to the vapour pressure the cooling water allows, so the cooling-water temperature — a utility condition, not an ejector dimension — moves the steam bill as strongly as the suction pressure does in key point 5. A design that looks cheap at 25 °C cooling water and dear at 35 °C is the same hardware; the model separates the two because the condenser limit of §T11 is inside the stage calculation, not an afterthought.</p>
 <p>Two limits bound the whole account. The entrainment ratio comes from a semi-empirical correlation (§T10), so the page reports a band of 0.8 to 1.25 times the central motive steam, and warns when an input takes a stage outside the correlation&#x27;s range — key point 1&#x27;s two-stage experiment is the direct way to see that warning appear. And the model is a stage calculation, not a geometry: it computes pressures, flows, duties, and costs for a train of stages, and it does not size the nozzles, throats, or diffusers whose behaviour §T5 to §T8 derive. Within those limits, every number in the App panel traces to a section of this panel, and §T14 checks the chain once, in full, at the design basis.</p>
+</div></div>
 </section>
 <section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app" hidden>
 <h2 id="app">App</h2>
@@ -451,8 +458,8 @@ needs and the condenser duties. Change an input to recompute.</p>
 <div class="guide" id="guide-stages" popover><p><strong>Stages.</strong> The number of stages divides the overall compression from suction pressure to atmospheric pressure into equal stage ratios. Fewer stages raise the ratio each stage must bridge, and past a ratio of about 6 a stage leaves the range of the entrainment correlation. Look at the compression ratio per stage card and at any warnings below the stage table.</p></div>
 <div class="guide" id="guide-econ" popover><p><strong>Economics.</strong> The steam price and operating hours convert the computed flows into an annual operating cost. They change no flow, pressure, or duty on this panel. Look at the annual operating cost card and the Economics section below the stage table.</p></div>
 </section>
-<section class="panel long" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
-<nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#process">Process</a></li><li><a href="#follow-the-gas-through-the-system">Follow the gas through the system</a></li><li><a href="#stream-table">Stream table</a></li><li><a href="#motive-steam-supply">Motive steam supply</a></li><li><a href="#first-stage-ejector">First stage ejector</a></li><li><a href="#first-barometric-intercondenser">First barometric intercondenser</a></li><li><a href="#second-stage-ejector">Second stage ejector</a></li><li><a href="#second-barometric-intercondenser">Second barometric intercondenser</a></li><li><a href="#third-stage-ejector">Third stage ejector</a></li><li><a href="#surface-aftercondenser">Surface aftercondenser</a></li><li><a href="#hot-well">Hot well</a></li><li><a href="#inside-one-stage-pressure-velocity-and-temperature-along-the-ejector">Inside one stage: pressure, velocity, and temperature along the ejector</a></li><li><a href="#products-and-battery-limits">Products and battery limits</a></li></ul></nav>
+<section class="panel long haslayout" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
+<div class="panellayout"><nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#process">Process</a></li><li><a href="#follow-the-gas-through-the-system">Follow the gas through the system</a></li><li><a href="#stream-table">Stream table</a></li><li><a href="#motive-steam-supply">Motive steam supply</a></li><li><a href="#first-stage-ejector">First stage ejector</a></li><li><a href="#first-barometric-intercondenser">First barometric intercondenser</a></li><li><a href="#second-stage-ejector">Second stage ejector</a></li><li><a href="#second-barometric-intercondenser">Second barometric intercondenser</a></li><li><a href="#third-stage-ejector">Third stage ejector</a></li><li><a href="#surface-aftercondenser">Surface aftercondenser</a></li><li><a href="#hot-well">Hot well</a></li><li><a href="#inside-one-stage-pressure-velocity-and-temperature-along-the-ejector">Inside one stage: pressure, velocity, and temperature along the ejector</a></li><li><a href="#products-and-battery-limits">Products and battery limits</a></li></ul></nav><div class="panelbody">
 <h1 id="process">Process</h1>
 <h2 id="follow-the-gas-through-the-system">Follow the gas through the system</h2>
 <p>Start with the job. A vessel in the plant — an evaporator, a crystalliser, a distillation column overhead — has to be held at a pressure far below atmospheric pressure: a vacuum. Gas keeps leaking in through flanges and arriving with the process, and vapour keeps boiling off the liquid in the vessel. If nothing removed that gas and vapour, the pressure would rise and the vacuum would be lost. The steam ejector system on this page is the machine that removes it, continuously, and delivers it to the atmosphere. It has no moving parts. Its only energy input is a supply of high-pressure steam.</p>
@@ -1466,9 +1473,10 @@ needs and the condenser duties. Change an input to recompute.</p>
 <p>The operating mode drawn here is double-choking, also called the critical mode. Choking was defined in the opening section: a duct section is choked when the gas there moves at the local speed of sound, so no pressure signal from downstream can travel upstream through it, and the mass flow through it is fixed by the upstream conditions alone. Double-choking means two sections are choked at once: the motive nozzle throat, and the mixing throat, where the suction gas reaches sonic velocity in the space around the jet. With both choked, the entrained suction flow is fixed by the suction pressure and the motive pressure; raising or lowering the discharge pressure, within limits, changes nothing upstream — which is why an ejector in critical mode holds a steady vacuum even when the downstream pressure wanders. The other two modes are named in §T12 of the Theory panel and stated here in words. In single-choking, the discharge pressure has risen enough that the mixing throat un-chokes while the nozzle stays choked: the suction flow then falls as the discharge pressure rises, and the vacuum deteriorates. In break mode, the discharge pressure has risen past the highest pressure the stage can deliver; the shock is pushed back into the suction chamber, entrainment collapses, and suction gas can flow backwards — the vacuum breaks. The design rule follows directly: an ejector must be selected so that, at its worst expected discharge pressure, it still runs in double-choking.</p>
 <h2 id="products-and-battery-limits">Products and battery limits</h2>
 <p>The system delivers three streams across its battery limits: vent gas to atmosphere at 51.4 kg/h; hot-well overflow at 35,595.2 kg/h, which carries the 733.8 kg/h of condensate mixed with 34,861.4 kg/h of barometric cooling water; and the aftercondenser cooling-water return at 10.23 m3/h, which never mixed with the process streams. No stream of pure condensate leaves the system: the barometric condensers mix their condensate into their cooling water, and only the aftercondenser&#x27;s 155.9 kg/h is collected unmixed, inside the hot well. The inputs across the battery limits are the suction load at 150 kg/h, motive steam at 635.2 kg/h, and cooling water at 45.1 m3/h. The battery limits are the vessel nozzle, the motive steam header isolation valve, the cooling-water supply and return nozzles, the vent stack, and the condensate outlet nozzle.</p>
+</div></div>
 </section>
-<section class="panel long" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
-<nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#economics">Economics</a></li><li><a href="#capital-cost">Capital cost</a></li><li><a href="#operating-cost">Operating cost</a></li><li><a href="#sensitivity">Sensitivity</a></li><li><a href="#stage-count-and-cost">Stage count and cost</a></li></ul></nav>
+<section class="panel long haslayout" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
+<div class="panellayout"><nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#economics">Economics</a></li><li><a href="#capital-cost">Capital cost</a></li><li><a href="#operating-cost">Operating cost</a></li><li><a href="#sensitivity">Sensitivity</a></li><li><a href="#stage-count-and-cost">Stage count and cost</a></li></ul></nav><div class="panelbody">
 <h1 id="economics">Economics</h1>
 <p>Capital cost rises with the number of stages, while operating cost is set almost entirely by motive steam. Every figure in this panel is computed from the model of the Theory panel and the cost relations below, in 2026 USD. No vendor quotation is used. The cost relations are teaching-model assumptions, stated with their arithmetic, so a reader can recompute every number on the page.</p>
 <h2 id="capital-cost">Capital cost</h2>
@@ -1494,9 +1502,10 @@ N + 11000 (N-1) + 19000 + 9000</annotation></semantics></math></span><span class
 <p>Table E2 | Annual operating cost against suction pressure and steam price at the design basis load with 3 stages. Halving the suction pressure from 2 kPa to 1 kPa more than doubles the operating cost at a steam price of 30 USD/t, from 170479 USD/yr to 402499 USD/yr.</p>
 <h2 id="stage-count-and-cost">Stage count and cost</h2>
 <p>Adding a stage raises capital cost by 40000 USD installed and usually lowers motive steam, so the choice of stage count is a trade between capital and steam. At the design basis the total motive steam is 635.2 kg/h with 3 stages. With 5 stages the total is 741.4 kg/h — higher, not lower — because the first intercondenser sits at 4.38 kPa, too close to the saturation pressure at 30 °C for its outlet gas to saturate, so it condenses nothing and the second stage must entrain the full vapour load (see §T11 of the Theory panel). A single stage needs 6265 kg/h and is outside the correlation range. The three-stage train is the cheapest of the workable options at the design basis: the two-stage train needs 946.1 kg/h of motive steam, or about 74000 USD/yr more steam at 30 USD/t, against a 40000 USD capital saving, so the third stage pays for itself in under a year at the stated prices. The App panel recomputes this comparison live for any suction pressure and load.</p>
+</div></div>
 </section>
-<section class="panel long" id="panel-safety" role="tabpanel" aria-labelledby="tab-safety" hidden>
-<nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#safety">Safety</a></li><li><a href="#unstable-operation-and-surging">Unstable operation and surging</a></li><li><a href="#back-pressure-sensitivity">Back-pressure sensitivity</a></li><li><a href="#wet-steam-and-erosion">Wet steam and erosion</a></li><li><a href="#air-in-leakage">Air in-leakage</a></li><li><a href="#condenser-flooding-and-hot-well-level">Condenser flooding and hot-well level</a></li><li><a href="#freezing">Freezing</a></li><li><a href="#start-up-and-shut-down">Start-up and shut-down</a></li><li><a href="#noise">Noise</a></li><li><a href="#condensate-contamination">Condensate contamination</a></li></ul></nav>
+<section class="panel long haslayout" id="panel-safety" role="tabpanel" aria-labelledby="tab-safety" hidden>
+<div class="panellayout"><nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#safety">Safety</a></li><li><a href="#unstable-operation-and-surging">Unstable operation and surging</a></li><li><a href="#back-pressure-sensitivity">Back-pressure sensitivity</a></li><li><a href="#wet-steam-and-erosion">Wet steam and erosion</a></li><li><a href="#air-in-leakage">Air in-leakage</a></li><li><a href="#condenser-flooding-and-hot-well-level">Condenser flooding and hot-well level</a></li><li><a href="#freezing">Freezing</a></li><li><a href="#start-up-and-shut-down">Start-up and shut-down</a></li><li><a href="#noise">Noise</a></li><li><a href="#condensate-contamination">Condensate contamination</a></li></ul></nav><div class="panelbody">
 <h1 id="safety">Safety</h1>
 <p>A steam ejector vacuum system has no moving parts in the ejector itself, but its failures are sudden: a stage that breaks down loses vacuum in seconds, and a condenser that floods backs liquid into the vessel. The issues below are the ones that recur in operation [2][4]. Each is stated with its mechanism, its symptom, and the check that catches it.</p>
 <h2 id="unstable-operation-and-surging">Unstable operation and surging</h2>
@@ -1517,10 +1526,13 @@ N + 11000 (N-1) + 19000 + 9000</annotation></semantics></math></span><span class
 <p>The supersonic jet and the shock in the diffuser produce a high-frequency noise, typically above 85 dB(A) at 1 m from an unlagged ejector. The check is a sound survey at start-up. Lagging and an acoustic enclosure on the ejector and its discharge line are the remedy; ear protection is required in the area while the survey is open.</p>
 <h2 id="condensate-contamination">Condensate contamination</h2>
 <p>Condensate from the hot well contains the condensed process vapour as well as condensed motive steam, so it carries whatever the suction load carried. It is not boiler feed water without treatment and testing. The check is a sample of hot-well condensate analysed for the process species before any reuse is approved.</p>
+</div></div>
 </section>
-<section class="panel" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
+<section class="panel haslayout" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
 <h2 id="code">Code</h2>
+<div class="panellayout">
 <nav class="toc" aria-label="Contents"><strong>Contents</strong><ul><li><a href="#code-model">Model listing</a></li><li><a href="#code-walkthrough">Walkthrough</a></li><li><a href="#code-notebook">Editable notebook</a></li></ul></nav>
+<div class="panelbody">
 <h3 id="code-model">Model listing</h3>
 <p>The listing below is the file <code>python/balance.py</code> as
 built, and the model the App panel runs is this file.</p>
@@ -2146,6 +2158,8 @@ print(&#x27;Anchor checks passed: design basis reproduced.&#x27;)
 opening. The notebook file is
 <code>walkthrough_molab.py</code>, served with this page.</p>
 <p><a href="https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py">Editable notebook on the MoLab link</a></p>
+</div>
+</div>
 </section>
 <section class="panel long" id="panel-references" role="tabpanel" aria-labelledby="tab-references" hidden>
 <h1 id="references">References</h1>
@@ -82343,6 +82357,20 @@ function boot(){
 if(!("popover" in HTMLElement.prototype)){
   document.querySelectorAll(".guide[popover]").forEach(function(g){g.removeAttribute("popover");});
   document.querySelectorAll("button.help").forEach(function(b){b.hidden=true;});
+}
+if("IntersectionObserver" in window){
+  var tocSpy=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting){return;}
+      var nav=en.target.closest("section.panel")?en.target.closest("section.panel").querySelector(".toc"):null;
+      if(!nav){return;}
+      nav.querySelectorAll("a").forEach(function(a){
+        if(a.getAttribute("href")==="#"+en.target.id){a.setAttribute("aria-current","true");}
+        else{a.removeAttribute("aria-current");}
+      });
+    });
+  },{rootMargin:"-72px 0px -70% 0px"});
+  document.querySelectorAll("section.panel .panelbody h2[id],section.panel .panelbody h3[id]").forEach(function(h){tocSpy.observe(h);});
 }
 var hash=(location.hash||"#theory").slice(1);
 if(PANELS.indexOf(hash)>=0){showPanel(hash);}
