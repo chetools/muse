@@ -644,3 +644,10 @@ sits 4.00 units above its return line.
 Verification: test_balance.py 14 passed; build checks pass
 (622 KaTeX = 622); phone scroll width 375 px at 390 px;
 SELFTEST pass on the local build (635.18 kg/h, 523.56 kW).
+
+- Published: main ce3322f pushed 9328204 -> be32335
+  (steam-ejector scope only, 28 files, blob-verified);
+  gh-pages 994e2b3 -> 194c590 (only steam-ejector/index.html).
+  Pages run for 194c590 completed/success; served bytes
+  byte-identical to the v15 build (4,527,858 bytes,
+  SHA-256 7d398ddf...).

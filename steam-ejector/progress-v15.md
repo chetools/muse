@@ -38,5 +38,9 @@ chemical-process page skill (measured crop windows).
   14 passed; build checks pass (622 KaTeX = 622); phone
   scroll width 375 px; SELFTEST pass (635.18 kg/h,
   523.56 kW) on the byte-identical local build.
-- [ ] Publication: scoped push on main; gh-pages
-  steam-ejector/index.html replaced; served bytes verified.
+- [x] Publication: main ce3322f pushed 9328204 -> be32335
+  (28 files, steam-ejector scope only, blob-verified);
+  gh-pages 994e2b3 -> 194c590 (only steam-ejector/index.html);
+  Pages run completed/success; served bytes byte-identical
+  to dist/steam-ejector-v15.html (SHA-256 7d398ddf...).
+  MoLab link: https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py
