@@ -75,18 +75,18 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 </header></div>
 <div class="wrap">
 <nav class="tabs" role="tablist">
-<button role="tab" id="tabbtn-app" aria-selected="true" data-panel="app">App</button>
-<button role="tab" id="tabbtn-process" aria-selected="false" data-panel="process">Process</button>
+<button role="tab" id="tabbtn-process" aria-selected="true" data-panel="process">Process</button>
 <button role="tab" id="tabbtn-theory" aria-selected="false" data-panel="theory">Theory</button>
+<button role="tab" id="tabbtn-app" aria-selected="false" data-panel="app">App</button>
 <button role="tab" id="tabbtn-economics" aria-selected="false" data-panel="economics">Economics</button>
 <button role="tab" id="tabbtn-safety" aria-selected="false" data-panel="safety">Safety</button>
 <button role="tab" id="tabbtn-code" aria-selected="false" data-panel="code">Code</button>
 <button role="tab" id="tabbtn-references" aria-selected="false" data-panel="references">References</button>
 </nav>
 
-<div class="panel active" id="panel-app">
+<div class="panel" id="panel-app">
 <h2 id="app-model">Synthesis loop and purification balance model</h2>
-<p>All rates are mass flow rates in kilogram per hour (kg/h). Part 1, synthesis loop balance: the inputs are the fresh synthesis gas feed rate, the purge rate withdrawn from the separator vapour, and the circulation rate (the separator vapour returned to the converter inlet); the crude methanol rate is the closing product of the loop balance, and the outputs are the converter feed rate, the separator vapour rate, the recycle ratio (circulation divided by fresh feed, dimensionless) and the methanol formation per pass (crude methanol divided by converter feed, in mass per cent). Part 2, purification balance: the inputs are the light ends rate removed in the topping column T-401 and the aqueous bottoms rate of the refining column T-402, both model-level splits of the crude methanol; the refined methanol rate is the closing product; the purification balance closes to the crude methanol feed exactly. The model definitions are stated in full in the Balance model section of the Theory panel. On load, the precomputed default run is displayed; a live run replaces the displayed values.</p>
+<p>All rates are mass flow rates (kg/h). Part 1, synthesis loop balance: the inputs are the fresh synthesis gas feed rate, the purge rate withdrawn from the separator vapour, and the circulation rate (the separator vapour returned to the converter inlet); the crude methanol rate is the closing product of the loop balance, and the outputs are the converter feed rate, the separator vapour rate, the recycle ratio (circulation divided by fresh feed, dimensionless) and the methanol formation per pass (crude methanol divided by converter feed, in mass per cent). Part 2, purification balance: the inputs are the light ends rate removed in the topping column T-401 and the aqueous bottoms rate of the refining column T-402, both model-level splits of the crude methanol; the refined methanol rate is the closing product; the purification balance closes to the crude methanol feed exactly. The model definitions are stated in full in the Balance model section of the Theory panel. The default circulation rate of 350,000 kg/h is a prescribed model input; the diagram's recycle stream is 260,000 kg/h, and the difference between the two bases is stated in that section. On load, the precomputed default run is displayed; a live run replaces the displayed values.</p>
 <div class="grid">
 <div>
 <label for="in-fresh">Fresh synthesis gas feed rate (kg/h)</label><input id="in-fresh" type="number" step="any" value="90000">
@@ -103,19 +103,19 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <p class="metric" id="out-loop">@@PRESTART_LOOP@@</p>
 <p class="metric" id="out-purif">@@PRESTART_PURIF@@</p>
 <div id="out-table">@@PRESTART_TABLE@@</div>
-<p id="out-note">Displayed results: precomputed default run, computed when this page was built.</p>
+<p id="out-note">Displayed results: precomputed default run.</p>
 <div id="chart" style="width:100%;height:430px"></div>
-<p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 2 | Purification slate of the displayed run. Flow denotes the stream flow rate (in kg/h); the three streams sum to the crude methanol feed of the purification balance.</p>
+<p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 2 | Purification slate of the displayed run. Stream flow rates in kg/h; the three streams sum to the crude methanol feed of the purification balance.</p>
 </div>
 </div>
 </div>
 
-<div class="panel" id="panel-process">
+<div class="panel active" id="panel-process">
 <h2 id="process-pfd">Process flow diagram</h2>
-<p>The diagram covers feed compression and combined reforming, heat recovery and condensate separation, carbon dioxide addition, synthesis gas compression and synthesis loop, and two-column purification, on the design basis of 38,000 kg/h of natural gas, 30,000 kg/h of steam, 22,000 kg/h of oxygen and 12,000 kg/h of carbon dioxide, where kg/h denotes kilogram per hour. Stream values on the drawing are sample design values; the overall balance of the displayed values closes at 102,000 kg/h on each side.</p>
+<p>The diagram covers feed compression and combined reforming, heat recovery and condensate separation, carbon dioxide addition, synthesis gas compression and synthesis loop, and two-column purification, on the design basis of 38,000 kg/h of natural gas, 30,000 kg/h of steam, 22,000 kg/h of oxygen and 12,000 kg/h of carbon dioxide. Stream values on the drawing are sample design values; the overall balance of the displayed values closes at 102,000 kg/h on each side.</p>
 <figure>
 <div class="diagram">@@PFD_SVG@@</div>
-<figcaption>Fig. 1 | Process flow diagram.</figcaption>
+<figcaption>Fig. 1 | Process flow diagram of the combined-reforming plant on the design basis of 38,000 kg/h of natural gas, 30,000 kg/h of steam, 22,000 kg/h of oxygen and 12,000 kg/h of carbon dioxide; refined methanol product 65,000 kg/h, and the balance of the displayed values closes at 102,000 kg/h on each side.</figcaption>
 </figure>
 <h2 id="process-equipment-index">Equipment index</h2>
 @@EQUIPMENT_INDEX@@
@@ -166,7 +166,6 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 </div>
 <div id="code-walkthrough" style="display:none">
 <h2 id="code-walkthrough-sec">Walkthrough</h2>
-<p>The walkthrough results were computed when this page was built.</p>
 @@WALKTHROUGH_HTML@@
 </div>
 </div>
@@ -210,12 +209,13 @@ function checkStale(){
   document.getElementById("stale-note").style.display = (currentInputs() !== displayedParams) ? "block" : "none";
 }
 ["in-fresh","in-purge","in-recycle","in-le","in-aq"].forEach(function(id){ document.getElementById(id).addEventListener("input", checkStale); });
-var PANELS = ["app","process","theory","economics","safety","code","references"];
+var PANELS = ["process","theory","app","economics","safety","code","references"];
 function showPanel(name, push){
   PANELS.forEach(function(p){
     document.getElementById("panel-" + p).classList.toggle("active", p === name);
     document.getElementById("tabbtn-" + p).setAttribute("aria-selected", p === name ? "true" : "false");
   });
+  if(name === "app" && window.Plotly){ Plotly.Plots.resize("chart"); }
   if(push){ history.replaceState(null, "", "#" + name); }
 }
 PANELS.forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
@@ -263,8 +263,9 @@ function route(){
 }
 window.addEventListener("hashchange", route);
 var prestart = JSON.parse(document.getElementById("prestart-data").textContent);
-renderResult(prestart.result, "Displayed results: precomputed default run, computed when this page was built.");
+renderResult(prestart.result, "Displayed results: precomputed default run.");
 route();
+window.addEventListener("load", function(){ if(window.Plotly){ Plotly.Plots.resize("chart"); } });
 </script>
 <script type="text/worker" id="worker-src">
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js");
@@ -326,7 +327,7 @@ try{
   worker.addEventListener("message", function(e){
     if(e.data && e.data.ready){
       clearTimeout(readyTimer);
-      bootBar.style.width = "100%";
+      document.getElementById("bootbar").style.display = "none";
       bootStatus.textContent = "Python runtime: ready.";
       document.getElementById("btn-run").disabled = false;
       return;
