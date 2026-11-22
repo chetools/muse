@@ -313,6 +313,7 @@ function refreshOutputs() {
     <span data-pid="xb0">Bottoms pentane</span><span class="v ${specB ? "spec-ok" : "spec-bad"}">${pct(xb[0])}</span>`;
   segSet(segDist, xd);
   segSet(segBot, xb);
+  updUnitLive(o, fiR);
   const fiNow = fiR;
   for (let c = 0; c < 3; c++) dyn.feedZ[c].textContent = `${COMP_NAMES[c]} ${Math.round(fiNow.z[c] * 100)}%`;
   dyn.feedTP.textContent = `${fiNow.T.toFixed(0)} K · ${fiNow.P.toFixed(0)} kPa`;
@@ -1022,3 +1023,191 @@ function drawAllTiles() {
   $("btnPlotsReset").addEventListener("click", buildDefaultTiles);
   $("selPlotWin").addEventListener("change", drawAllTiles);
 })();
+
+
+// ---------- Panels: Theory / Process / Game / Units ----------
+const PANEL_NAMES = ["theory", "process", "game", "units"];
+function showPanel(name, pushHash) {
+  for (const n of PANEL_NAMES) {
+    const p = $("panel-" + n);
+    if (p) p.hidden = n !== name;
+  }
+  document.querySelectorAll(".tabbtn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.panel === name));
+  if (pushHash) history.replaceState(null, "", "#" + name);
+}
+function panelOf(el) {
+  let e = el;
+  while (e) {
+    if (e.id && e.id.startsWith("panel-")) return e.id.slice(6);
+    e = e.parentElement;
+  }
+  return null;
+}
+function routeToId(id) {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  const p = panelOf(el);
+  if (p) showPanel(p, false);
+  if (PANEL_NAMES.includes(id)) {
+    window.scrollTo({ top: 0 });
+  } else {
+    el.scrollIntoView();
+  }
+  history.replaceState(null, "", "#" + id);
+  return true;
+}
+document.querySelectorAll(".tabbtn").forEach((b) =>
+  b.addEventListener("click", () => {
+    showPanel(b.dataset.panel, true);
+    window.scrollTo({ top: 0 });
+  }));
+document.querySelectorAll('.docbody a[href^="#"], .toc a[href^="#"]')
+  .forEach((a) => a.addEventListener("click", (e) => {
+    const id = a.getAttribute("href").slice(1);
+    if (routeToId(id)) e.preventDefault();
+  }));
+if (location.hash && location.hash.length > 1) {
+  routeToId(location.hash.slice(1));
+} else {
+  showPanel("theory", false);
+}
+
+// ---------- Unit panels: live values from the engine outputs ----------
+function setU(id, txt) {
+  const e = $(id);
+  if (e) e.textContent = txt;
+}
+function updUnitLive(o, fiR) {
+  const up = $("panel-units");
+  if (!up || up.hidden) return;
+  setU("u-steam-pchest", `${f1(o[3])} kPa`);
+  setU("u-steam-wsteam", `${f2(o[26])} mol/s`);
+  setU("u-steam-qreb", kW(o[24]));
+  setU("u-steam-vs", `${f2(o[11])} mol/s`);
+  setU("u-steam-treb", `${f1(o[10])} K`);
+  setU("u-steam-lvl", pct(o[33]));
+  const ops = getOpenings();
+  const vt = $("u-valve-table");
+  if (vt) {
+    vt.innerHTML = Object.entries(VALVES).map(([key, v]) => {
+      const raw = ops[v.idx];
+      const shown = v.kind === "kpa" ? `${raw.toFixed(0)} kPa`
+        : v.kind === "frac" ? pct(raw) : `${raw.toFixed(1)}%`;
+      return `<span>${v.name}</span><b>${shown}</b>`;
+    }).join("");
+  }
+  setU("u-feed-f", `${f2(o[37])} mol/s`);
+  setU("u-feed-sp", `${f1(o[38])} mol/s`);
+  setU("u-feed-mode", o[39] > 0.5 ? "automatic" : "manual");
+  setU("u-feed-psi", pct(o[31]));
+  setU("u-feed-t", `${f1(fiR.T)} K`);
+  setU("u-feed-p", `${f1(fiR.P)} kPa`);
+  setU("u-trays-ttop", `${f1(o[9])} K`);
+  setU("u-trays-treb", `${f1(o[10])} K`);
+  setU("u-trays-vr", `${f2(o[12])} mol/s`);
+  setU("u-trays-lr", `${f2(o[13])} mol/s`);
+  setU("u-trays-ls", `${f2(o[14])} mol/s`);
+  setU("u-trays-xd", pct(o[40]));
+  setU("u-trays-xb", pct(o[49]));
+  setU("u-cond-p", `${f1(o[1])} kPa`);
+  setU("u-cond-flood", pct(o[23]));
+  setU("u-cond-rate", `${f2(o[19])} mol/s`);
+  setU("u-cond-q", kW(o[25]));
+  setU("u-cond-t", `${f1(o[7])} K`);
+  setU("u-cond-vin", `${f2(o[17])} mol/s`);
+  setU("u-riser-dp", `${f1(o[1] - o[2])} kPa`);
+  setU("u-riser-drain", `${f2(o[20])} mol/s`);
+  setU("u-riser-margin", `${f2(o[21])} K`);
+  setU("u-riser-flash", pct(o[22]));
+  setU("u-riser-lvl", pct(o[32]));
+  setU("u-riser-pdrum", `${f1(o[2])} kPa`);
+  setU("u-cool-ttank", `${f1(o[5])} K`);
+  setU("u-cool-twout", `${f1(o[6])} K`);
+  setU("u-cool-pump", pct(ops[8]));
+  setU("u-cool-makeup", pct(ops[9]));
+  setU("u-cool-q", kW(o[25]));
+  setU("u-pres-pcol", `${f1(o[0])} kPa`);
+  setU("u-pres-pcond", `${f1(o[1])} kPa`);
+  setU("u-pres-relief", `${f2(o[27])} mol/s`);
+  setU("u-pres-alarm", o[36] > 0 ? "ON (above 360 kPa)" : "off");
+  setU("u-pres-xd", pct(o[40]));
+  setU("u-split-lr", `${f2(o[13])} mol/s`);
+  setU("u-split-d", `${f2(o[15])} mol/s`);
+  setU("u-split-b", `${f2(o[16])} mol/s`);
+  setU("u-split-lvl", pct(o[32]));
+  setU("u-split-lvlreb", pct(o[33]));
+  setU("u-split-xd", pct(o[40]));
+  setU("u-split-xb", pct(o[49]));
+}
+
+// ---------- Unit exercises: presets through the existing mechanisms ----------
+const EXERCISES = {
+  steam() {
+    doReset();
+    setOpening(VALVES.steam.idx, 25);
+    selectValve("steam");
+    logMsg("Exercise loaded: steam flow valve at 25 percent. Restore the boilup.");
+  },
+  valves() {
+    doReset();
+    setOpening(VALVES.steam.idx, 100);
+    setOpening(VALVES.regulator.idx, 250);
+    selectValve("regulator");
+    logMsg("Exercise loaded: steam valve parked open, regulator at 250 kPa.");
+  },
+  feed() {
+    doReset();
+    const fi = feedInfo();
+    const Tb = feedBubbleT(fi.z, outputs()[0]);
+    setFeed(fi.z, Tb + 10, fi.P);
+    logMsg(`Exercise loaded: feed heated to ${(Tb + 10).toFixed(1)} K, 10 K above its bubble point at the column pressure. It partly flashes on entry.`);
+  },
+  trays() {
+    doReset();
+    const fi = feedInfo();
+    const z = [0.55, 0.25, 0.20];
+    setFeed(z, feedBubbleT(z, outputs()[0]), fi.P);
+    logMsg("Exercise loaded: feed richer in pentane (55/25/20), saturated liquid.");
+  },
+  condenser() {
+    doReset();
+    setOpening(VALVES.pump.idx, 0.25);
+    selectValve("pump");
+    logMsg("Exercise loaded: cooling-water pump at quarter speed. Hold the pressure without restoring the pump.");
+  },
+  riser() {
+    doReset();
+    setOpening(VALVES.bypass.idx, 12);
+    setOpening(VALVES.outlet.idx, 30);
+    selectValve("outlet");
+    logMsg("Exercise loaded: bypass at 12 percent, condenser outlet at 30 percent. Restore the drainage.");
+  },
+  cooling() {
+    doReset();
+    W.dg_set_supply(sim, 308.15);
+    logMsg("Exercise loaded: cooling supply warmed to 35 °C (308.15 K).");
+  },
+  pressure() {
+    doReset();
+    setOpening(VALVES.inlet.idx, 30);
+    selectValve("inlet");
+    logMsg("Exercise loaded: condenser inlet valve at 30 percent. Watch the pressure and the distillate pentane.");
+  },
+  split() {
+    doReset();
+    setOpening(VALVES.reflux.idx, 75);
+    selectValve("distillate");
+    logMsg("Exercise loaded: reflux valve at 75 percent. Hold the drum level with the distillate valve only.");
+  },
+};
+document.querySelectorAll(".exBtn").forEach((b) =>
+  b.addEventListener("click", () => {
+    const fn = EXERCISES[b.dataset.ex];
+    if (!fn || !W || !sim) return;
+    fn();
+    refreshOutputs();
+    syncFeedInputs(true);
+    showPanel("game", true);
+    window.scrollTo({ top: 0 });
+  }));
