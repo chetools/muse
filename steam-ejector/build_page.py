@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v9"
+VERSION = "v10"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -604,7 +604,9 @@ def main():
         panels[name] = html_text
         if name != "references":
             tocs[name] = build_toc(headings)
-            panels[name] = tocs[name] + "\n" + panels[name]
+            panels[name] = ("<div class=\"panellayout\">" + tocs[name]
+                            + "<div class=\"panelbody\">\n" + panels[name]
+                            + "\n</div></div>")
     # Computed content, from the model, never hand-typed.
     result = run_model(**DESIGN)
     sheet_svg = (HERE / "sheet.svg").read_text(encoding="utf-8")

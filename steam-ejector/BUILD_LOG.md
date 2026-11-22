@@ -458,3 +458,19 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   local CDN mirror — SELFTEST pass, precomputed display replaced,
   auto-run on change reproduces the key point 1 figure
   (946.1 kg/h at two stages).
+
+## v10 — side table of contents (2026-11-22)
+
+- Layout only; no text, model, number, or panel-order changes.
+- Every contents-bearing panel (Theory, Process, Economics,
+  Safety, Code) now lays its contents out as a sticky,
+  scrollable side column (240px, 32px gap) beside the reading
+  column on wide screens (min-width 1100px); the reading
+  column keeps its v9 width of 546px. On phones the Contents
+  block sits above the text as before. A scrollspy script
+  (IntersectionObserver) now sets aria-current on the current
+  contents link. Full record: progress-v10.md.
+- Verification: test_balance.py 14 passed; build checks pass
+  (622 KaTeX expressions); browser QA at 1440px, 2560px and
+  390px (shots/v10-*.png); live-run SELFTEST pass through the
+  local CDN cache.

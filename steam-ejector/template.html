@@ -30,7 +30,13 @@ section.panel[hidden]{display:none}
 .toc strong{display:block;margin-bottom:6px}
 .toc ul{margin:0;padding-left:20px}
 .toc a[aria-current="true"]{font-weight:700}
-@media(min-width:1100px){.toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}}
+.panellayout{min-width:0}
+.panelbody{min-width:0}
+@media(min-width:1100px){
+section.panel.haslayout{width:min(calc(var(--measure) + 240px),calc(100vw - 32px));position:relative;left:50%;transform:translateX(-50%)}
+.panellayout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;align-items:start}
+.panellayout .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;margin-top:28px}
+}
 figure{margin:20px 0;min-width:0}
 figcaption{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin-top:8px}
 figure svg{max-width:100%;height:auto}
@@ -110,7 +116,7 @@ until the first live run replaces it.</p>
 <button role="tab" aria-selected="false" data-panel="references" id="tab-references">References</button>
 </nav>
 <main id="main">
-<section class="panel long" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory">
+<section class="panel long haslayout" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory">
 @@THEORY_HTML@@
 </section>
 <section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app" hidden>
@@ -167,18 +173,20 @@ needs and the condenser duties. Change an input to recompute.</p>
 <div class="guide" id="guide-stages" popover><p><strong>Stages.</strong> The number of stages divides the overall compression from suction pressure to atmospheric pressure into equal stage ratios. Fewer stages raise the ratio each stage must bridge, and past a ratio of about 6 a stage leaves the range of the entrainment correlation. Look at the compression ratio per stage card and at any warnings below the stage table.</p></div>
 <div class="guide" id="guide-econ" popover><p><strong>Economics.</strong> The steam price and operating hours convert the computed flows into an annual operating cost. They change no flow, pressure, or duty on this panel. Look at the annual operating cost card and the Economics section below the stage table.</p></div>
 </section>
-<section class="panel long" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
+<section class="panel long haslayout" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
 @@PROCESS_HTML@@
 </section>
-<section class="panel long" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
+<section class="panel long haslayout" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
 @@ECONOMICS_HTML@@
 </section>
-<section class="panel long" id="panel-safety" role="tabpanel" aria-labelledby="tab-safety" hidden>
+<section class="panel long haslayout" id="panel-safety" role="tabpanel" aria-labelledby="tab-safety" hidden>
 @@SAFETY_HTML@@
 </section>
-<section class="panel" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
+<section class="panel haslayout" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
 <h2 id="code">Code</h2>
+<div class="panellayout">
 @@CODE_TOC@@
+<div class="panelbody">
 <h3 id="code-model">Model listing</h3>
 <p>The listing below is the file <code>python/balance.py</code> as
 built, and the model the App panel runs is this file.</p>
@@ -193,6 +201,8 @@ tied to the Theory section it implements.</p>
 opening. The notebook file is
 <code>walkthrough_molab.py</code>, served with this page.</p>
 <p><a href="https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py">Editable notebook on the MoLab link</a></p>
+</div>
+</div>
 </section>
 <section class="panel long" id="panel-references" role="tabpanel" aria-labelledby="tab-references" hidden>
 @@REFERENCES_HTML@@
@@ -373,6 +383,20 @@ function boot(){
 if(!("popover" in HTMLElement.prototype)){
   document.querySelectorAll(".guide[popover]").forEach(function(g){g.removeAttribute("popover");});
   document.querySelectorAll("button.help").forEach(function(b){b.hidden=true;});
+}
+if("IntersectionObserver" in window){
+  var tocSpy=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting){return;}
+      var nav=en.target.closest("section.panel")?en.target.closest("section.panel").querySelector(".toc"):null;
+      if(!nav){return;}
+      nav.querySelectorAll("a").forEach(function(a){
+        if(a.getAttribute("href")==="#"+en.target.id){a.setAttribute("aria-current","true");}
+        else{a.removeAttribute("aria-current");}
+      });
+    });
+  },{rootMargin:"-72px 0px -70% 0px"});
+  document.querySelectorAll("section.panel .panelbody h2[id],section.panel .panelbody h3[id]").forEach(function(h){tocSpy.observe(h);});
 }
 var hash=(location.hash||"#theory").slice(1);
 if(PANELS.indexOf(hash)>=0){showPanel(hash);}
