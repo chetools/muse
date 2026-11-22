@@ -74,5 +74,17 @@ recorded at v7.
 Build: dist/methanol-synthesis-plant-v8.html, 6,003,041 bytes,
 SHA-256 9ef33562fb81dc06e6c5ef7ec28920490dcbea692ea9c307067afa5a9052849a.
 
-Publication: follows in this step; the served-bytes result is
-recorded in the finalising amendment to this file.
+Publication: main source push 0cf2e04 -> 2f9360e (scoped to
+methanol-synthesis-plant; the pushed commit contains exactly
+the 20 in-scope files: build_page.py and verify_page.py
+modified, this record and the 17 shots/v8-*.png added, no
+out-of-scope files, no deletions). gh-pages push 6b7a7a5 ->
+2b31d47 (scoped; the pushed commit contains exactly
+methanol-synthesis-plant/index.html, with walkthrough.html and
+walkthrough_molab.py inherited unchanged). The gh-pages root
+index already links the page and was not changed. Served page
+bytes at https://chetools.github.io/muse/methanol-synthesis-plant/
+are byte-identical to the v8 build (6,003,041 bytes, SHA-256
+above), and the fixed link's target,
+https://chetools.github.io/muse/methanol-synthesis-plant/walkthrough.html,
+returns 200 (the old v1 filename returns 404).
