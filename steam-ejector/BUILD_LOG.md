@@ -760,3 +760,10 @@ none found. Phone scroll width 375 px at 390 px.
 Verification: test_balance.py 14 passed; build checks
 pass (622 KaTeX = 622); SELFTEST pass on the local build
 (635.18 kg/h, 523.56 kW).
+
+- Published: main 9fb36f1 pushed 177742c -> c50fc39
+  (steam-ejector scope only, 28 files, blob-verified);
+  gh-pages 710715b -> f680bc0 (only steam-ejector/index.html).
+  Pages run for f680bc0 completed/success; served bytes
+  byte-identical to the v16 build (4,528,020 bytes,
+  SHA-256 27e49fdd...).
