@@ -52,3 +52,11 @@ v9's Theory-first structure is unchanged.
 - Note: headless load leaves scrollY at 996 on a 390px
   viewport in both v9 and v10 files (pre-existing, measured
   on the untouched v9 build); not a v10 change.
+- [x] Published: main d25e839, pushed as remote head a5187e8
+  (steam-ejector scope only; remote blob SHA of build_page.py
+  verified equal to local). gh-pages 4a5c431, pushed as
+  dbef14f. Served bytes at
+  https://chetools.github.io/muse/steam-ejector/ SHA-256
+  942fe68f... equal to the build output (4,519,294 bytes),
+  observed changing from the v9 hash efe795b9... after the
+  gh-pages push.
