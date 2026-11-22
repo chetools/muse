@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v26"
+VERSION = "v27"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -328,6 +328,16 @@ _T1 = _new_fig(
 _m = re.search(r'(<h2 id="theory-capital-cost-scaling-and-unit-cost">)', rendered["theory"])
 assert _m, "Theory cost heading not found for Fig. T1 insertion"
 rendered["theory"] = rendered["theory"].replace(_m.group(1), _T1 + _m.group(1), 1)
+# Theory Fig. T0: the full sheet as the map of the plant, closing the
+# Introduction (after its tracing paragraph, before the Key points), in
+# the same .pfdbox treatment as the Process panel's Fig. P0. Numbered T0
+# so the saturation curves keep their Fig. T1 number and fragment.
+_T0 = (f'<figure class="subdiagram" id="theory-fig-t0"><div class="pfdbox">{pfd_svg}</div>'
+       f'<figcaption>Fig. T0 | The whole plant on one diagram: compression, purification and cooling prepare the air, the coupled columns separate it, and the returning products give up their cold in the main heat exchanger. '
+       f'The same sheet is the working diagram of the Process panel (Fig. P0), where each unit is taken in turn.</figcaption></figure>')
+_m = re.search(r'(<h2 id="theory-key-points">)', rendered["theory"])
+assert _m, "Theory key points heading not found for Fig. T0 insertion"
+rendered["theory"] = rendered["theory"].replace(_m.group(1), _T0 + _m.group(1), 1)
 # Process Fig. P1: cold box photograph after the overview paragraph that
 # introduces the cold box (only when the verified download is present)
 _PHOTO = ROOT / "assets" / "coldbox.jpg"
@@ -370,6 +380,8 @@ process_toc = _toc_insert(process_toc, "process-pressure-column-t-101",
     [("3", "process-fig-p9", "Fig. P9 — Equilibrium lenses at 130 kPa")])
 process_toc = _toc_insert(process_toc, "process-low-pressure-column-t-102",
     [("3", "process-fig-p11", "Fig. P11 — Argon belly: vapour composition in T-102")])
+tocs["theory"] = _toc_insert(tocs["theory"], "theory-introduction",
+    [("3", "theory-fig-t0", "Fig. T0 — The whole plant on one diagram")])
 tocs["theory"] = _toc_insert(tocs["theory"],
     "theory-saturation-temperature-at-the-condenser-reboiler-pressures",
     [("3", "theory-fig-t1", "Fig. T1 — Saturation curves of nitrogen and oxygen")])
