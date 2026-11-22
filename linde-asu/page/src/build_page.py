@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v22"
+VERSION = "v23"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -245,7 +245,7 @@ for _gid, _gtitle, _gkeys, _gtext in FIELD_GROUPS:
 input_fields = "\n".join(_group_html + _guide_html)
 
 # ---------------- PFD ----------------
-pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v5.svg").read_text()
+pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v6.svg").read_text()
 inner = pfd_svg_text[pfd_svg_text.index(">") + 1: pfd_svg_text.rindex("</svg>")]
 pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">{inner}</svg>'
 
@@ -274,7 +274,7 @@ _SUBDIAGRAMS = [
     ("process-low-pressure-column-t-102", "815 98 523 286",
      "The low-pressure column finishes the separation at near-atmospheric pressure, where the nitrogen-oxygen volatility ratio is highest; the argon content of its vapour peaks at the belly from which the crude argon draw is taken. At the right edge the crop ends at VLV-102 (labelled), whose outlet passes to the E-105 condenser of Fig. P6."),
     ("process-crude-argon-column-t-103-and-condenser-e-105", "1222 72 433 426",
-     "The crude argon column separates the closest-boiling pair of the plant, argon from oxygen, with a volatility ratio near 1.3: the separation needs the tall packed section and the high reflux ratio the diagram shows. The crop begins on stream 30, the crude argon feed from the T-102 belly (Fig. P5); E-104 is shown whole at the left."),
+     "The crude argon column separates the closest-boiling pair of the plant, argon from oxygen, with a volatility ratio near 1.3: the separation needs the tall packed section and the high reflux ratio the diagram shows. The crop begins on stream 29, the crude argon feed from the T-102 belly (Fig. P5); E-104 is shown whole at the left."),
 ]
 for _n, (_hid, _vb, _cap) in enumerate(_SUBDIAGRAMS, 1):
     _fig = (f'<figure class="subdiagram">{_crop_svg(_vb)}'
