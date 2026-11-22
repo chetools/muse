@@ -110,18 +110,26 @@ text(535, 170, "separator", 10)
 # vapour in at (660,340), vent off the top, condensate out at (660,450)
 E.append('<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
 text(658, 490, "heating element", 11)  # centre clear of the Fig. P2 crop window (right edge x=600), whose earlier position let the first letters enter that crop as a sliced fragment
-# Demister: a drawn mesh pad across the separator head, below
-# the vapour outlet, with the label led to it.
-E.append('<rect x="476" y="163" width="118" height="8" '
-         'fill="#ffffff" stroke="#1b1b1b" stroke-width="1.2"/>')
-for hx in range(478, 588, 8):
-    E.append(f'<line x1="{hx}" y1="171" x2="{hx + 6}" y2="163" '
-             f'stroke="#1b1b1b" stroke-width="0.7"/>')
-    E.append(f'<line x1="{hx}" y1="163" x2="{hx + 6}" y2="171" '
-             f'stroke="#1b1b1b" stroke-width="0.7"/>')
-E.append('<line x1="546" y1="129" x2="522" y2="160" '
+# Demister: mesh pads across the two vapour riser channels at
+# their entrances, at the foot of the bundle (y 418-426, on the
+# dashed riser lines at x = 482 and x = 588). The vapour
+# disengages in the separator space at the bottom of the vessel
+# and crosses a pad as it leaves that space and starts to rise
+# beside the bundle to the head. Label inside the bottom
+# chamber, led to both pads.
+for px in (474, 580):
+    E.append(f'<rect x="{px}" y="418" width="16" height="8" '
+             'fill="#ffffff" stroke="#1b1b1b" stroke-width="1.2"/>')
+    for hx in range(px + 2, px + 14, 6):
+        E.append(f'<line x1="{hx}" y1="426" x2="{hx + 4}" y2="418" '
+                 f'stroke="#1b1b1b" stroke-width="0.7"/>')
+        E.append(f'<line x1="{hx}" y1="418" x2="{hx + 4}" y2="426" '
+                 f'stroke="#1b1b1b" stroke-width="0.7"/>')
+E.append('<line x1="518" y1="462" x2="488" y2="430" '
          'stroke="#1b1b1b" stroke-width="1"/>')
-text(550, 125, "demister", 10, anchor="end")
+E.append('<line x1="552" y1="462" x2="584" y2="430" '
+         'stroke="#1b1b1b" stroke-width="1"/>')
+text(535, 472, "demister", 10)
 # Compressor K-101 (top right)
 E.append('<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
 E.append('<path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>')

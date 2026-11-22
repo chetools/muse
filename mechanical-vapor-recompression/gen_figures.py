@@ -274,89 +274,143 @@ def fig_t4_ts():
 
 # ---------------------------------------------------------- Fig. P3
 def fig_p3_cutaway():
-    """Falling-film evaporator cutaway: distributor, film, demister."""
-    fig, ax = plt.subplots(figsize=(5.6, 7.4))
+    """Falling-film evaporator cutaway (v11 redraw).
+
+    Arrangement after the GEA Wiegand falling-film section:
+    distribution head and tray at the top, film and vapour in
+    co-current downflow inside the tubes, separation in the
+    chamber at the bottom, demister pads at the entrances of
+    the riser channels beside the heating shell, vapour out
+    at the top. Five tubes at close pitch in an open shell
+    space (one pale tint for the whole shell side, no blocks).
+    """
+    fig, ax = plt.subplots(figsize=(5.6, 7.6))
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 14.6)
     ax.axis("off")
     lw = 1.2
-    # shell side (heating vapour) tint: only outside the tubes
-    for xa, xb in ((2.0, 3.0), (4.1, 5.9), (7.0, 8.0)):
-        ax.add_patch(Rectangle((xa, 2.3), xb - xa, 6.9,
-                               facecolor=VAP, edgecolor="none",
-                               zorder=0))
-    # vessel shell
-    ax.plot([2, 2, 8, 8], [1.2, 12.1, 12.1, 1.2], color=INK, lw=lw)
+    # shell side (heating vapour) tint: one continuous space
+    ax.add_patch(Rectangle((2.5, 3.55), 5.0, 5.65,
+                           facecolor=VAP, edgecolor="none", zorder=0))
+    # vessel shell: walls, bottom (gap at the outlet), dome
+    ax.plot([2, 2], [1.2, 12.1], color=INK, lw=lw)
+    ax.plot([8, 8], [1.2, 12.1], color=INK, lw=lw)
+    ax.plot([2, 4.7], [1.2, 1.2], color=INK, lw=lw)
+    ax.plot([5.3, 8], [1.2, 1.2], color=INK, lw=lw)
     dome = np.linspace(0, np.pi, 60)
     ax.plot(5 + 3 * np.cos(dome), 12.1 + 0.85 * np.sin(dome),
             color=INK, lw=lw)
-    # vapour outlet and demister pad in the head
+    ax.plot([2, 8], [12.1, 12.1], color=INK, lw=0.7)
+    # vapour riser channels beside the shell (inner walls)
+    for rx in (2.5, 7.5):
+        ax.plot([rx, rx], [3.3, 11.5], color=INK, lw=0.9)
+    ax.plot([2.5, 2.0], [11.5, 11.5], color=INK, lw=0.9)
+    ax.plot([7.5, 8.0], [11.5, 11.5], color=INK, lw=0.9)
+    for rx, ays in ((2.25, (4.6, 7.4)), (7.75, (6.4, 10.2))):
+        for ay in ays:
+            ax.annotate("", xy=(rx, ay + 0.75), xytext=(rx, ay),
+                        arrowprops=dict(arrowstyle="->", color=GRAY,
+                                        lw=1.0))
+    # vapour outlet at the top of the head
     ax.plot([4.65, 4.65, 5.35, 5.35], [13.9, 12.95, 12.95, 13.9],
             color=INK, lw=lw)
     ax.annotate("", xy=(5.0, 14.35), xytext=(5.0, 13.55),
                 arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
     ax.annotate("vapour out to the compressor (stream 3)",
                 xy=(5.45, 13.6), fontsize=8.5)
-    ax.add_patch(Rectangle((2.25, 11.35), 5.5, 0.42,
-                           facecolor="#ffffff", edgecolor=INK, lw=0.9,
-                           hatch="xxx", zorder=3))
-    ax.annotate("demister pad (mesh)", xy=(2.2, 11.56),
-                xytext=(0.1, 12.6), fontsize=8.5,
-                arrowprops=dict(arrowstyle="-", lw=0.7))
-    # feed inlet
-    ax.plot([0.7, 2.0], [10.55, 10.55], color=INK, lw=lw)
-    ax.annotate("", xy=(1.95, 10.55), xytext=(1.1, 10.55),
+    ax.annotate("vapour head", xy=(5.0, 12.42), fontsize=8.5,
+                color=GRAY, ha="center")
+    # feed inlet into the distribution chamber
+    ax.plot([0.7, 2.55], [10.55, 10.55], color=INK, lw=lw)
+    ax.annotate("", xy=(2.45, 10.55), xytext=(1.1, 10.55),
                 arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
     ax.annotate("feed in\n(stream 2)", xy=(0.1, 10.9), fontsize=8.5)
-    # distributor tray and ferrules
-    ax.add_patch(Rectangle((2.3, 9.95), 5.4, 0.5, facecolor=FILM,
+    # distributor tray and ferrules (one per tube)
+    tubes = [3.35, 4.175, 5.0, 5.825, 6.65]
+    ax.add_patch(Rectangle((2.55, 9.95), 4.9, 0.5, facecolor=FILM,
                            edgecolor=INK, lw=0.9, zorder=2))
-    ax.annotate("feed distributor (tray)", xy=(7.7, 10.2),
+    ax.annotate("feed distributor (tray)", xy=(7.5, 10.2),
                 xytext=(8.15, 10.2), fontsize=8.5,
                 arrowprops=dict(arrowstyle="-", lw=0.7))
-    tubes = [3.55, 6.45]
     for cx in tubes:
         ax.add_patch(Rectangle((cx - 0.30, 9.45), 0.60, 0.85,
                                facecolor="#ffffff", edgecolor=INK,
                                lw=0.9, zorder=3))
-        ax.plot([cx - 0.30, cx - 0.11], [10.3, 10.3], color=INK, lw=1.4)
-        ax.plot([cx + 0.11, cx + 0.30], [10.3, 10.3], color=INK, lw=1.4)
+        ax.plot([cx - 0.30, cx - 0.11], [10.3, 10.3], color=INK,
+                lw=1.4)
+        ax.plot([cx + 0.11, cx + 0.30], [10.3, 10.3], color=INK,
+                lw=1.4)
     ax.annotate("distributor ferrule,\nnotched rim (one per tube)",
-                xy=(3.25, 10.05), xytext=(0.1, 8.3), fontsize=8.5,
+                xy=(3.05, 10.0), xytext=(0.1, 8.35), fontsize=8.5,
                 arrowprops=dict(arrowstyle="-", lw=0.7))
-    # tube sheet
-    ax.add_patch(Rectangle((2.0, 9.2), 6.0, 0.25, facecolor=WALLC,
+    # tube sheets
+    ax.add_patch(Rectangle((2.5, 9.2), 5.0, 0.25, facecolor=WALLC,
+                           edgecolor=INK, lw=0.9, zorder=2))
+    ax.add_patch(Rectangle((2.5, 3.3), 5.0, 0.25, facecolor=WALLC,
                            edgecolor=INK, lw=0.9, zorder=2))
     ax.annotate("tube sheet", xy=(8.05, 9.32), fontsize=8.5)
-    # tubes: walls, film on the inner wall, vapour core
-    for cx in tubes:
+    # tubes: walls, film on the inner wall, vapour core; film and
+    # vapour both flow DOWN (co-current falling film)
+    for i, cx in enumerate(tubes):
         for sgn in (-1, 1):
-            ax.plot([cx + sgn * 0.55, cx + sgn * 0.55], [2.3, 9.2],
+            ax.plot([cx + sgn * 0.30, cx + sgn * 0.30], [3.55, 9.2],
                     color=INK, lw=lw)
             ax.add_patch(Rectangle(
-                (cx + sgn * 0.39 - (0.16 if sgn < 0 else 0), 2.3),
-                0.16, 6.9, facecolor="#7fb3dd", edgecolor="none",
+                (cx + sgn * 0.30 - (0.15 if sgn < 0 else 0), 3.55),
+                0.15, 5.65, facecolor="#7fb3dd", edgecolor="none",
                 zorder=1))
-        ax.annotate("", xy=(cx, 6.6), xytext=(cx, 4.6),
+        if i in (0, 2, 4):
+            ax.annotate("", xy=(cx - 0.225, 6.1),
+                        xytext=(cx - 0.225, 7.5),
+                        arrowprops=dict(arrowstyle="->", color=BLUE,
+                                        lw=1.0))
+            ax.annotate("", xy=(cx, 6.1), xytext=(cx, 7.5),
+                        arrowprops=dict(arrowstyle="->", color=GRAY,
+                                        lw=1.0))
+    ax.annotate("liquid film on the\ninner tube wall",
+                xy=(3.12, 7.3), xytext=(0.1, 6.7), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    ax.annotate("vapour core: vapour formed\nflows down with the film",
+                xy=(3.32, 5.2), xytext=(0.1, 4.35), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    # shell-side nozzles (drawn through the riser channel wall)
+    ax.add_patch(Rectangle((7.4, 8.4), 1.25, 0.3, facecolor="#ffffff",
+                           edgecolor=INK, lw=0.9, zorder=3))
+    ax.annotate("", xy=(7.75, 8.55), xytext=(8.5, 8.55),
+                arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
+    ax.annotate("compressed vapour in (stream 4),\n"
+                "condenses on the outer tube walls",
+                xy=(7.42, 8.0), xytext=(8.15, 7.55), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    ax.add_patch(Rectangle((7.4, 3.8), 1.25, 0.3, facecolor="#ffffff",
+                           edgecolor=INK, lw=0.9, zorder=3))
+    ax.annotate("", xy=(8.5, 3.95), xytext=(7.75, 3.95),
+                arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
+    ax.annotate("condensate out (stream 5)", xy=(8.78, 3.9),
+                fontsize=8.5)
+    ax.annotate("vapour riser: disengaged vapour\n"
+                "rises outside the heating shell",
+                xy=(7.72, 6.4), xytext=(8.15, 5.55), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    # separator space at the bottom: mixture in, liquid pool,
+    # vapour turns to the risers across the demister pads
+    ax.annotate("film and vapour leave\nthe tube bottoms together",
+                xy=(5.0, 3.06), fontsize=7.5, ha="center", color=GRAY)
+    for xa, xb in ((4.2, 2.85), (5.8, 7.15)):
+        ax.annotate("", xy=(xb, 2.50), xytext=(xa, 2.50),
                     arrowprops=dict(arrowstyle="->", color=GRAY,
                                     lw=1.0))
-        ax.annotate("", xy=(cx - 0.47, 6.2), xytext=(cx - 0.47, 7.6),
-                    arrowprops=dict(arrowstyle="->", color=BLUE,
-                                    lw=1.0))
-    ax.annotate("liquid film on the\ninner tube wall",
-                xy=(2.92, 5.6), xytext=(0.1, 5.9), fontsize=8.5,
+    for px in (2.02, 7.52):
+        ax.add_patch(Rectangle((px, 2.92), 0.46, 0.34,
+                               facecolor="#ffffff", edgecolor=INK,
+                               lw=0.9, hatch="xxx", zorder=3))
+    ax.annotate("demister pads (mesh),\nat the riser entrances",
+                xy=(2.26, 3.05), xytext=(0.1, 1.95), fontsize=8.5,
                 arrowprops=dict(arrowstyle="-", lw=0.7))
-    ax.annotate("vapour\ncore", xy=(6.45, 8.15), fontsize=8.5,
-                color=GRAY, ha="center")
-    ax.annotate("compressed vapour condenses\non the outer tube wall\n"
-                "(heating element, stream 4 in;\ncondensate, stream 5 out)",
-                xy=(7.62, 6.0), xytext=(8.15, 5.2), fontsize=8.5,
-                arrowprops=dict(arrowstyle="-", lw=0.7))
-    # sump and concentrate outlet
-    ax.add_patch(Rectangle((2.0, 1.55), 6.0, 0.75, facecolor=FILM,
+    ax.add_patch(Rectangle((2.0, 1.55), 6.0, 0.65, facecolor=FILM,
                            edgecolor="none", zorder=0))
-    ax.plot([2, 8], [2.3, 2.3], color=INK, lw=0.9)
-    ax.annotate("concentrate sump", xy=(5.0, 1.85), fontsize=8.5,
+    ax.plot([2, 8], [2.2, 2.2], color=INK, lw=0.6)
+    ax.annotate("concentrate sump", xy=(5.0, 1.86), fontsize=8.5,
                 ha="center")
     ax.plot([4.7, 4.7, 5.3, 5.3], [1.2, 0.45, 0.45, 1.2],
             color=INK, lw=lw)
@@ -365,6 +419,7 @@ def fig_p3_cutaway():
     ax.annotate("concentrate out (stream 6)", xy=(5.45, 0.55),
                 fontsize=8.5)
     save(fig, "fig_p3_cutaway")
+
 
 
 # ---------------------------------------------------------- Fig. P6
@@ -409,78 +464,180 @@ def fig_p6_map():
 
 # ---------------------------------------------------------- Fig. P7
 def fig_p7_machine():
-    """Single-stage centrifugal MVR compressor, side section."""
-    fig, ax = plt.subplots(figsize=(6.3, 4.9))
-    ax.set_xlim(0, 12.6)
-    ax.set_ylim(0, 9.6)
+    """Single-stage centrifugal MVR compressor, meridional section.
+
+    v11 redraw: the section follows the standard centrifugal
+    stage diagram (axial inlet, impeller eye, curved blades
+    between hub and shroud, vaneless diffuser, volute casing),
+    in the vertical direct-drive arrangement of the Piller
+    VapoFan [16]. A front-view inset shows the spiral volute
+    and the tangential discharge, which a section cannot show.
+    """
+    fig, ax = plt.subplots(figsize=(6.6, 5.2))
+    ax.set_xlim(0, 13.2)
+    ax.set_ylim(0, 10.4)
     ax.axis("off")
     lw = 1.2
-    cx = 5.6  # shaft centreline
-    # inlet pipe and casing cover
-    ax.plot([cx - 0.75, cx - 0.75, cx + 0.75, cx + 0.75],
-            [9.3, 8.35, 8.35, 9.3], color=INK, lw=lw)
-    ax.annotate("", xy=(cx, 8.5), xytext=(cx, 9.25),
+    cx = 4.6  # shaft centreline
+    ax.plot([cx, cx], [0.4, 10.25], color=GRAY, lw=0.5, ls=(0, (6, 3, 1, 3)))
+    # inlet pipe and casing cover (curved, converging to the eye)
+    ax.plot([cx - 0.62, cx - 0.62, cx + 0.62, cx + 0.62],
+            [10.15, 9.0, 9.0, 10.15], color=INK, lw=lw)
+    ax.annotate("", xy=(cx, 9.2), xytext=(cx, 10.0),
                 arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
-    ax.annotate("vapour in (from separator)", xy=(cx + 0.95, 8.9),
+    ax.annotate("vapour in (from separator)", xy=(cx + 0.85, 9.62),
                 fontsize=8.5)
-    cover = Polygon([(cx - 2.5, 7.15), (cx - 0.75, 8.35),
-                     (cx + 0.75, 8.35), (cx + 2.5, 7.15)],
-                    closed=True, facecolor="#ffffff", edgecolor=INK,
-                    lw=lw)
+    tt = np.linspace(0, 1, 40)
+    for sgn in (-1, 1):
+        ax.plot(cx + sgn * (0.62 + 2.23 * tt ** 1.5),
+                9.0 - 1.4 * tt, color=INK, lw=lw)
+    cover = Polygon(
+        [(cx - 0.62, 9.0)]
+        + [(cx - (0.62 + 2.23 * t ** 1.5), 9.0 - 1.4 * t) for t in tt]
+        + [(cx + (0.62 + 2.23 * t ** 1.5), 9.0 - 1.4 * t)
+           for t in tt[::-1]] + [(cx + 0.62, 9.0)],
+        closed=True, facecolor="#ffffff", edgecolor="none", zorder=0)
     ax.add_patch(cover)
-    ax.annotate("casing cover", xy=(cx - 2.45, 7.8), xytext=(0.1, 8.6),
-                fontsize=8.5, arrowprops=dict(arrowstyle="-", lw=0.7))
-    # volute casing (section outline) and outlet with diffuser
-    ax.add_patch(Rectangle((cx - 2.9, 5.55), 5.8, 1.65,
-                           facecolor=VAP, edgecolor=INK, lw=lw))
-    ax.plot([cx + 2.9, cx + 3.5, cx + 3.5, cx + 2.9],
-            [7.05, 7.35, 6.05, 5.7], color=INK, lw=lw)
-    ax.annotate("", xy=(cx + 4.6, 6.7), xytext=(cx + 3.45, 6.7),
+    ax.annotate("casing cover", xy=(cx - 2.5, 8.15),
+                xytext=(0.1, 8.65), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    # volute casing in section: outline around impeller + diffuser
+    ax.add_patch(Rectangle((cx - 2.85, 6.15), 5.7, 1.45,
+                           facecolor="#ffffff", edgecolor=INK, lw=lw,
+                           zorder=1))
+    ax.annotate("volute casing", xy=(cx - 2.8, 6.32),
+                xytext=(0.1, 5.55), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    # impeller profiles (offsets from the centreline, one side;
+    # mirrored). Passage bounded by shroud (top) and hub (bottom).
+    shroud_r = np.array([0.62, 1.05, 1.55, 2.05])
+    shroud_y = np.array([8.62, 8.30, 7.80, 7.35])
+    hub_r = np.array([0.52, 0.85, 1.40, 2.05])
+    hub_y = np.array([7.90, 7.45, 7.02, 6.80])
+    fine = np.linspace(0, 1, 60)
+    # impeller body (hub and back plate) as metal under the passages
+    hr_f = np.interp(fine, np.linspace(0, 1, 4), hub_r)
+    hy_f = np.interp(fine, np.linspace(0, 1, 4), hub_y)
+    body = Polygon(
+        [(cx - r, y) for r, y in zip(hr_f[::-1], hy_f[::-1])]
+        + [(cx + r, y) for r, y in zip(hr_f, hy_f)]
+        + [(cx + 2.05, 6.78), (cx - 2.05, 6.78)],
+        closed=True, facecolor="#e3e3e3", edgecolor="none", zorder=2)
+    ax.add_patch(body)
+    for sgn in (-1, 1):
+        sr = np.interp(fine, np.linspace(0, 1, 4), shroud_r)
+        sy = np.interp(fine, np.linspace(0, 1, 4), shroud_y)
+        hr = np.interp(fine, np.linspace(0, 1, 4), hub_r)
+        hy = np.interp(fine, np.linspace(0, 1, 4), hub_y)
+        passage = Polygon(
+            [(cx + sgn * r, y) for r, y in zip(sr, sy)]
+            + [(cx + sgn * r, y) for r, y in zip(hr[::-1], hy[::-1])],
+            closed=True, facecolor=VAP, edgecolor="none", zorder=2.5)
+        ax.add_patch(passage)
+        shroud_metal = Polygon(
+            [(cx + sgn * r, y) for r, y in zip(sr, sy)]
+            + [(cx + sgn * r, y - 0.13) for r, y in
+               zip(sr[::-1], sy[::-1])],
+            closed=True, facecolor="#e3e3e3", edgecolor="none",
+            zorder=2.6)
+        ax.add_patch(shroud_metal)
+        ax.plot(cx + sgn * sr, sy, color=INK, lw=1.1, zorder=3)
+        ax.plot(cx + sgn * sr, sy - 0.13, color=INK, lw=0.6, zorder=3)
+        ax.plot(cx + sgn * hr, hy, color=INK, lw=1.1, zorder=3)
+        # curved blades: lines across the passage, leaning back
+        for tb in (0.30, 0.55, 0.80):
+            r1 = np.interp(tb, fine, hr)
+            y1 = np.interp(tb, fine, hy)
+            r2 = np.interp(min(tb + 0.07, 1.0), fine, sr)
+            y2 = np.interp(min(tb + 0.07, 1.0), fine, sy)
+            ax.plot([cx + sgn * r1, cx + sgn * r2], [y1, y2],
+                    color=INK, lw=1.0, zorder=3)
+        # flow path: down the eye, turning radial, out at the rim
+        for ta, tb_ in ((0.12, 0.45), (0.55, 0.88)):
+            rm = (np.interp(tb_, fine, sr) + np.interp(tb_, fine, hr)) / 2
+            ym = (np.interp(tb_, fine, sy) + np.interp(tb_, fine, hy)) / 2
+            r0 = (np.interp(ta, fine, sr) + np.interp(ta, fine, hr)) / 2
+            y0 = (np.interp(ta, fine, sy) + np.interp(ta, fine, hy)) / 2
+            ax.annotate("", xy=(cx + sgn * rm, ym),
+                        xytext=(cx + sgn * r0, y0),
+                        arrowprops=dict(arrowstyle="->", color=BLUE,
+                                        lw=1.1), zorder=4)
+        ax.annotate("", xy=(cx + sgn * 2.62, 7.07),
+                    xytext=(cx + sgn * 2.12, 7.07),
+                    arrowprops=dict(arrowstyle="->", color=BLUE,
+                                    lw=1.1), zorder=4)
+    # back plate and hub
+    ax.add_patch(Rectangle((cx - 2.05, 6.52), 4.10, 0.26,
+                           facecolor=WALLC, edgecolor=INK, lw=0.9,
+                           zorder=3))
+    ax.add_patch(Rectangle((cx - 0.30, 5.90), 0.60, 0.62,
+                           facecolor=WALLC, edgecolor=INK, lw=0.9,
+                           zorder=3))
+    ax.annotate("impeller",
+                xy=(cx - 1.55, 7.6), xytext=(0.1, 6.95), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    ax.annotate("vaneless diffuser", xy=(cx + 2.48, 7.07),
+                xytext=(7.55, 8.35), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    # discharge duct (diffuser outlet of the volute), to the right
+    ax.plot([cx + 2.85, cx + 4.30], [7.45, 7.60], color=INK, lw=lw)
+    ax.plot([cx + 2.85, cx + 4.30], [6.55, 6.40], color=INK, lw=lw)
+    ax.annotate("", xy=(cx + 4.90, 7.0), xytext=(cx + 4.25, 7.0),
                 arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
-    ax.annotate("compressed vapour out\n(diffuser and volute outlet)",
-                xy=(cx + 3.6, 7.6), fontsize=8.5)
-    ax.annotate("volute casing", xy=(cx + 2.95, 5.9), xytext=(9.6, 5.0),
-                fontsize=8.5, arrowprops=dict(arrowstyle="-", lw=0.7))
-    # impeller: back plate, blades, shroud (side section)
-    ax.add_patch(Rectangle((cx - 2.3, 5.95), 4.6, 0.28,
-                           facecolor=WALLC, edgecolor=INK, lw=0.9))
-    for bx in (-1.85, -1.15, -0.45, 0.45, 1.15, 1.85):
-        ax.add_patch(Rectangle((cx + bx - 0.09, 6.23), 0.18, 0.62,
-                               facecolor=WALLC, edgecolor=INK, lw=0.7))
-    ax.plot([cx - 2.3, cx - 0.55, cx + 0.55, cx + 2.3],
-            [7.15, 6.85, 6.85, 7.15], color=INK, lw=0.9)
-    ax.annotate("impeller", xy=(cx - 2.2, 6.5), xytext=(0.1, 6.3),
-                fontsize=8.5, arrowprops=dict(arrowstyle="-", lw=0.7))
-    ax.annotate("", xy=(cx - 1.3, 7.55), xytext=(cx + 0.6, 7.75),
-                arrowprops=dict(arrowstyle="->", color=GRAY, lw=1.0,
-                                connectionstyle="arc3,rad=0.35"))
-    ax.annotate("rotation", xy=(cx + 0.75, 7.8), fontsize=8,
-                color=GRAY)
+    ax.annotate("compressed vapour out\n(stream 4)", xy=(cx + 2.95, 5.80),
+                fontsize=8.5)
     # shaft, seal, motor
-    ax.add_patch(Rectangle((cx - 0.22, 2.6), 0.44, 3.35,
+    ax.add_patch(Rectangle((cx - 0.20, 2.55), 0.40, 3.35,
                            facecolor=WALLC, edgecolor=INK, lw=0.9))
-    ax.annotate("shaft", xy=(cx + 0.25, 4.6), xytext=(8.6, 4.35),
+    ax.annotate("shaft", xy=(cx + 0.24, 4.55), xytext=(7.6, 4.5),
                 fontsize=8.5, arrowprops=dict(arrowstyle="-", lw=0.7))
-    for sy in (5.18, 4.92):
-        ax.add_patch(Rectangle((cx - 0.5, sy), 1.0, 0.2,
+    for sy in (5.52, 5.26):
+        ax.add_patch(Rectangle((cx - 0.48, sy), 0.96, 0.19,
                                facecolor=INK, edgecolor=INK, lw=0.5))
-    ax.annotate("shaft seal", xy=(cx - 0.55, 5.05), xytext=(0.1, 4.7),
+    ax.annotate("shaft seal", xy=(cx - 0.52, 5.38), xytext=(0.1, 4.62),
                 fontsize=8.5, arrowprops=dict(arrowstyle="-", lw=0.7))
-    ax.add_patch(Rectangle((cx - 1.8, 0.7), 3.6, 1.95,
+    ax.add_patch(Rectangle((cx - 1.8, 0.65), 3.6, 1.95,
                            facecolor="#ffffff", edgecolor=INK, lw=lw))
     for fx in np.linspace(cx - 1.45, cx + 1.45, 6):
-        ax.plot([fx, fx], [0.85, 2.5], color=GRAY, lw=0.5)
-    ax.annotate("high-speed motor", xy=(cx, 1.65), fontsize=8.5,
+        ax.plot([fx, fx], [0.80, 2.45], color=GRAY, lw=0.5)
+    ax.annotate("high-speed motor", xy=(cx, 1.60), fontsize=8.5,
                 ha="center")
     ax.annotate("impeller mounted\ndirectly on the motor shaft",
-                xy=(cx - 1.85, 3.1), xytext=(0.1, 2.6), fontsize=8.5)
+                xy=(cx - 1.85, 3.05), xytext=(0.1, 2.62), fontsize=8.5)
+    # front-view inset: spiral volute, tangential discharge.
+    # The spiral grows counter-clockwise from the tongue at the
+    # right and leaves at full radius through the vertical duct.
+    ix, iy = 10.70, 4.55
+    th = np.linspace(0, 2 * np.pi, 140)
+    rr = 0.78 + 0.40 * th / (2 * np.pi)
+    ax.plot(ix + rr * np.cos(th), iy + rr * np.sin(th), color=INK,
+            lw=1.2)
+    ax.add_patch(plt.Circle((ix, iy), 0.68, facecolor="none",
+                            edgecolor=GRAY, lw=0.9, ls="--"))
+    ax.plot([ix], [iy], "o", ms=3, color=INK)
+    ax.annotate("", xy=(ix + 0.30, iy + 0.68), xytext=(ix - 0.38, iy + 0.60),
+                arrowprops=dict(arrowstyle="->", color=GRAY, lw=1.0,
+                                connectionstyle="arc3,rad=0.4"))
+    duct_x = ix + 1.18
+    ax.plot([duct_x - 0.24, duct_x - 0.24], [iy - 0.05, iy + 1.55],
+            color=INK, lw=lw)
+    ax.plot([duct_x + 0.24, duct_x + 0.24], [iy + 0.35, iy + 1.55],
+            color=INK, lw=lw)
+    ax.annotate("", xy=(duct_x, iy + 1.5), xytext=(duct_x, iy + 0.45),
+                arrowprops=dict(arrowstyle="->", color=INK, lw=1.0))
+    ax.annotate("front view: spiral volute,\ntangential discharge",
+                xy=(ix, iy - 1.62), fontsize=8.5, ha="center")
+    ax.annotate("impeller (dashed)", xy=(ix - 0.62, iy - 0.35),
+                xytext=(8.30, 3.60), fontsize=8,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
     # drive cabinet
-    ax.add_patch(Rectangle((9.8, 0.7), 2.6, 1.95, facecolor="#ffffff",
+    ax.add_patch(Rectangle((9.8, 0.65), 2.6, 1.95, facecolor="#ffffff",
                            edgecolor=INK, lw=lw))
-    ax.annotate("drive cabinet\n(frequency converter)", xy=(11.1, 1.65),
+    ax.annotate("drive cabinet\n(frequency converter)", xy=(11.1, 1.60),
                 fontsize=8, ha="center")
-    ax.plot([cx + 1.8, 9.8], [1.1, 1.1], color=GRAY, lw=0.8, ls="--")
+    ax.plot([cx + 1.8, 9.8], [1.05, 1.05], color=GRAY, lw=0.8, ls="--")
     save(fig, "fig_p7_machine")
+
 
 
 if __name__ == "__main__":

@@ -107,8 +107,8 @@ value in the textbook range for water-like liquors in falling
 film [3].
 
 The mixture leaving the tube bottoms enters the separator space
-in the head of the vessel, where the vapour disengages from the
-concentrated liquid. Concentrate, 20,000 kg/h at the design basis, leaves from the bottom. Before the compressor, the vapour passes a demister — a mesh or vane pack at the vapour outlet. The demister is not a detail: entrained droplets carry
+at the bottom of the vessel, where the vapour disengages from the
+concentrated liquid. Concentrate, 20,000 kg/h at the design basis, leaves from the bottom. Before the compressor, the vapour passes a demister — mesh pads at the entrances of the riser channels beside the heating shell, where the vapour leaves the separator space and rises to the head. The demister is not a detail: entrained droplets carry
 dissolved solids into the compressor and the heating element, where they
 deposit on the heating surface, and in food duty they carry
 product into the condensate. Entrainment rises sharply when the
@@ -118,10 +118,13 @@ form of the turndown and overload limits discussed below.
 [[CROP_EVAP]]
 
 Fig. P2 | Falling-film evaporator and separator. Feed enters at
-the top and boils as a film inside the tubes; vapour disengages
-in the head, passes the demister, and leaves for the compressor;
-concentrate leaves at the bottom. The demister is the hatched
-pad drawn across the head; each tube is drawn as a channel whose
+the top and boils as a film inside the tubes; the mixture leaves
+the tube bottoms, the vapour disengages in the separator space
+at the bottom, crosses the demister pads and rises beside the
+bundle to the head, and leaves for the compressor;
+concentrate leaves at the bottom. The demister is the pair of
+hatched pads at the foot of the bundle, at the entrances of the
+riser channels; each tube is drawn as a channel whose
 tinted core is the film and vapour inside it, and the dashed
 blue arrows beside the bundle show the vapour rising from the
 tube bottoms to the head. At the frame edges, the feed
@@ -136,19 +139,25 @@ distributor tray and passes through a ferrule — a short tubelet
 with a notched rim, one at the top of each heating tube — which
 spreads the liquid over the tube sheet so that every tube
 receives its share as a film on its inner wall [5][15]. The film
-boils as it falls; the vapour formed travels up the core of the
-tube, disengages in the head and crosses the demister pad, the
-mesh pack drawn across the head, before leaving for the
-compressor. On the shell side, compressed vapour condenses on
-the outer tube wall in the heating element, and its condensate
-leaves as stream 5. Liquid reaching the tube bottoms collects in
-the sump, and concentrate leaves at the bottom. Figure P4 shows
+boils as it falls, and the vapour formed travels down the core
+of the tube with the film: a falling film is a co-current
+downflow, and the vapour formed drags the film down with it.
+Film and vapour leave the tube bottoms together into the
+separator space at the bottom of the vessel, where the vapour
+disengages from the liquid, crosses the demister pads at the
+entrances of the riser channels beside the heating shell, and
+rises through those channels to the vapour head, and so to the
+compressor. On the shell side, compressed vapour enters the
+heating element (stream 4), condenses on the outer tube wall,
+and its condensate leaves as stream 5. Liquid reaching the
+bottom collects in the sump, and concentrate leaves at the
+bottom (stream 6). Figure P4 shows
 a single ferrule: the notches in its rim are the passages that
 meter the liquid onto the tube sheet [15].
 
 [[FIG_P3]]
 
-Fig. P3 | Inside the evaporator: the film falls inside the tubes, the vapour rises up the core, and the demister crosses the head. Cutaway of E-102; the distributor tray and the notched ferrule follow refs [5] and [15]. Heating vapour condenses on the outer tube wall, and concentrate collects in the sump.
+Fig. P3 | Inside the evaporator: film and vapour fall together inside the tubes, and the vapour disengages at the bottom, crosses the demister and rises beside the shell to the head. Cutaway of E-102, drawn after the falling-film arrangement of refs [5] and [15]: distributor tray and notched ferrules at the top, five tubes at close pitch in an open shell space, separator space and sump at the bottom. Heating vapour condenses on the outer tube wall, and concentrate collects in the sump.
 
 [[FIG_P4]]
 
@@ -191,8 +200,8 @@ compressor.
 
 [[CROP_COMP]]
 
-Fig. P5 | MVR compressor. All vapour raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head
-with the demister; the feed line enters the body at the left
+Fig. P5 | MVR compressor. All vapour raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head;
+the feed line enters the body at the left
 edge; the evaporator body and the steam chest of the
 heating element continue below the frame (Fig. P2 and Fig. P8), and the
 discharge line also continues below the frame, to the
@@ -224,15 +233,25 @@ Fig. P6 | The operating window of a centrifugal MVR compressor: surge bounds it 
 
 ### Inside the compressor
 
-Figure P7 is a side section of the machine class of the sheet:
+Figure P7 is a meridional section — a section on a plane
+through the shaft axis — of the machine class of the sheet:
 a single-stage centrifugal compressor in the vertical,
 direct-drive form used for MVR duty [16]. Vapour enters axially
-through the casing cover and reaches the impeller, which is
+through the casing cover and reaches the impeller eye, the
+annular inlet at the centre of the impeller. The impeller is
 mounted directly on the shaft of the high-speed motor below the
-casing. The impeller throws the vapour outward into the volute
-casing, and the diffuser and outlet deliver it at the discharge
-pressure. The shaft passes out of the casing through a shaft
-seal, the boundary that keeps the vapour inside the machine.
+casing, and is drawn in section: curved blades between the hub
+and the shroud turn the flow from axial to radial and throw it
+outward at the periphery, as the arrows in the passage show.
+From the periphery the vapour crosses the vaneless diffuser,
+the open annular space in which it slows and its pressure
+rises, and is collected by the volute casing, which delivers
+it at the discharge pressure. A section on the axis cannot
+show the volute's shape, so the inset shows the front view:
+the casing is a spiral of growing radius around the impeller,
+leaving through a tangential discharge. The shaft passes out
+of the casing through a shaft seal, the boundary that keeps
+the vapour inside the machine.
 The motor is fed from a separate drive cabinet, a frequency
 converter, which is also how the speed — and with it the
 operating point of Fig. P6 — is set. Droplets that pass the
@@ -242,7 +261,7 @@ compressor, above; Safety panel).
 
 [[FIG_P7]]
 
-Fig. P7 | Side section of a single-stage centrifugal MVR compressor: axial inlet, impeller mounted directly on the high-speed motor shaft, volute discharge. Component arrangement after the manufacturer's literature [16].
+Fig. P7 | Meridional section of a single-stage centrifugal MVR compressor: axial inlet to the impeller eye, curved blades throwing the flow out to a vaneless diffuser and volute, and a front-view inset showing the spiral volute and tangential discharge. Component arrangement after the manufacturer's literature [16].
 
 ## Heating element, condensate and heat recovery
 
