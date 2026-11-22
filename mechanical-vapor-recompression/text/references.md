@@ -23,3 +23,11 @@
 [11] Process Engineering, "GEA evaporator for major Czech dairy", 28 January 2011. Madeta a.s. sweet whey evaporator: 12.5 tonnes per hour evaporative capacity, live-steam saving and running-cost saving of the MVR design.
 
 [12] Food & Beverage Industry News, "Timing is everything for powder plant", 10 November 2008. Synlait Milk milk-powder plant: multiple-effect falling-film evaporator with mechanical and thermal vapour recompression.
+
+[13] Brine Consulting, "MVR evaporator for brine: energy, lift limits and TVR", brineconsulting.com, accessed 2026. The lift requirement stated in three parts — boiling-point rise, heat-transfer temperature difference and pressure drop in the vapour piping — attributed there to Swenson Technology.
+
+[14] Walmsley, T. G., Atkins, M. J., Walmsley, M. R. W. and Neale, J. R., "Appropriate placement of vapour recompression in ultra-low energy industrial milk evaporation systems using Pinch Analysis", *Energy*, 116, 2016, pp. 1269–1281, doi:10.1016/j.energy.2016.04.026. Placement and energy analysis of vapour recompression in milk evaporation.
+
+[15] Kessler, G., Frank, E. and Laumann, V., "Falling film evaporator", US Patent 3,849,232, Wiegand Karlsruhe GmbH, 1974. Distributor tubes with notched rims discharging onto the tube sheet so that liquid enters every heating tube as a film.
+
+[16] Piller Blowers & Compressors GmbH, "VapoFan 1.0: low-flow MVR blower", product literature, piller.de, accessed 2026. Single-stage radial MVR blower: impeller mounted directly on the motor shaft, synchronous motor with frequency-converter drive, shaft seal; the component arrangement drawn in Fig. P7.

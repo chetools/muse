@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model, sweep_lift  # noqa: E402
 
-VERSION = "v9"
+VERSION = "v10"
 OUT = HERE / "dist" / f"mechanical-vapor-recompression-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -512,21 +512,62 @@ def main():
     # zero-crossing) sheet.svg geometry, viewBox 0 0 1200 720:
     # every label inside a window is whole, no neighbouring item
     # intrudes as a fragment, and only stream lines cross an edge
-    # (named in the Fig. P1-P4 captions). One scale for the
-    # series: CROP_SCALE.
+    # (named in the Fig. P1, P2, P5, P8 captions). One scale for
+    # the series: CROP_SCALE.
     crops = {
         "[[CROP_FEED]]": ("30 262 390 400",
                           "Fig. P1 detail in the text below."),
         "[[CROP_EVAP]]": ("445 100 155 460",
                           "Fig. P2 detail in the text below."),
         "[[CROP_COMP]]": ("445 60 655 270",
-                          "Fig. P3 detail in the text below."),
+                          "Fig. P5 detail in the text below."),
         "[[CROP_COND]]": ("455 262 745 378",
-                          "Fig. P4 detail in the text below."),
+                          "Fig. P8 detail in the text below."),
     }
     for token, (vb, _cap) in crops.items():
         panels["process"] = panels["process"].replace(
             token, crop_svg(sheet_svg, vb, ""))
+    # Clarifying figures (v10): original drawings produced by
+    # gen_figures.py from the model and the cited sources,
+    # inlined as figures with fragment identifiers. The ferrule
+    # image is the one reuse-licensed image on the page
+    # (CC BY-SA 3.0, credited in the Fig. P4 caption).
+    def figure_svg(frag_id, fname):
+        svg = (HERE / "figures" / fname).read_text(encoding="utf-8")
+        if "</svg>" not in svg:
+            raise RuntimeError(f"{fname} is not a complete SVG")
+        svg = re.sub(r'\swidth="[\d.]+pt"\sheight="[\d.]+pt"',
+                     ' style="width:100%;height:auto"', svg, count=1)
+        assert 'style="width:100%' in svg, f"{fname}: size not set"
+        return f'<figure id="{frag_id}">' + svg + "</figure>"
+
+    theory_figs = {
+        "[[FIG_T1]]": ("fig-t1", "fig_t1_psat.svg"),
+        "[[FIG_T2]]": ("fig-t2", "fig_t2_ladder.svg"),
+        "[[FIG_T3]]": ("fig-t3", "fig_t3_wall.svg"),
+        "[[FIG_T4]]": ("fig-t4", "fig_t4_ts.svg"),
+    }
+    for token, (frag_id, fname) in theory_figs.items():
+        panels["theory"] = panels["theory"].replace(
+            token, figure_svg(frag_id, fname))
+    process_figs = {
+        "[[FIG_P3]]": ("fig-p3", "fig_p3_cutaway.svg"),
+        "[[FIG_P6]]": ("fig-p6", "fig_p6_map.svg"),
+        "[[FIG_P7]]": ("fig-p7", "fig_p7_machine.svg"),
+    }
+    for token, (frag_id, fname) in process_figs.items():
+        panels["process"] = panels["process"].replace(
+            token, figure_svg(frag_id, fname))
+    import base64 as _b64
+    photo_b64 = _b64.b64encode(
+        (HERE / "assets" / "ferrule.jpg").read_bytes()).decode("ascii")
+    panels["process"] = panels["process"].replace(
+        "[[FIG_P4]]",
+        '<figure id="fig-p4"><img alt="Rendering of a falling-film '
+        'evaporator distributor ferrule: a short cylindrical tubelet '
+        'with notches cut into its rim" '
+        f'src="data:image/jpeg;base64,{photo_b64}" '
+        'style="width:170px;max-width:60%;height:auto"></figure>')
     cap_table, sens_table = econ_tables()
     panels["economics"] = panels["economics"].replace(
         "[[ECON_CAPITAL_TABLE]]", cap_table)

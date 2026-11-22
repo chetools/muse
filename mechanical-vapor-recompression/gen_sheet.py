@@ -88,7 +88,20 @@ tag(300, 305, "E-101 condensate preheater")
 E.append('<rect x="470" y="180" width="130" height="300" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>')
 E.append('<path d="M 470 180 A 65 40 0 0 1 600 180" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
 for tx in (495, 520, 545, 570):
-    seg(tx, 240, tx, 430, 1.2)
+    # Each tube drawn as a channel: two walls with the film and
+    # vapour core between them tinted, so the tube side (film
+    # inside) reads against the vapour space around the bundle.
+    E.append(f'<rect x="{tx - 3}" y="240" width="6" height="190" '
+             f'fill="#dbe7f0" stroke="none"/>')
+    seg(tx - 3, 240, tx - 3, 430, 1.2)
+    seg(tx + 3, 240, tx + 3, 430, 1.2)
+# Vapour path (annotation, dashed blue): vapour leaving the tube
+# bottoms rises beside the bundle to the separator head.
+for ax_ in (482, 588):
+    E.append(f'<line x1="{ax_}" y1="426" x2="{ax_}" y2="248" '
+             f'stroke="#0072B2" stroke-width="1.5" '
+             f'stroke-dasharray="5 4"/>')
+    E.append(f'<path d="M {ax_} 240 l -4.5 9 h 9 z" fill="#0072B2"/>')
 E.append('<rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#1b1b1b" stroke-width="1.2"/>')
 text(535, 208, "E-102 falling-film", 12, weight="bold")
 text(535, 224, "evaporator", 12, weight="bold")
@@ -96,8 +109,18 @@ text(535, 170, "separator", 10)
 # Heating element (steam chest) on the right face of E-102: compressed
 # vapour in at (660,340), vent off the top, condensate out at (660,450)
 E.append('<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
-text(630, 490, "heating element", 11)
-# Demister label beside the vapour outlet, clear of the line
+text(658, 490, "heating element", 11)  # centre clear of the Fig. P2 crop window (right edge x=600), whose earlier position let the first letters enter that crop as a sliced fragment
+# Demister: a drawn mesh pad across the separator head, below
+# the vapour outlet, with the label led to it.
+E.append('<rect x="476" y="163" width="118" height="8" '
+         'fill="#ffffff" stroke="#1b1b1b" stroke-width="1.2"/>')
+for hx in range(478, 588, 8):
+    E.append(f'<line x1="{hx}" y1="171" x2="{hx + 6}" y2="163" '
+             f'stroke="#1b1b1b" stroke-width="0.7"/>')
+    E.append(f'<line x1="{hx}" y1="163" x2="{hx + 6}" y2="171" '
+             f'stroke="#1b1b1b" stroke-width="0.7"/>')
+E.append('<line x1="546" y1="129" x2="522" y2="160" '
+         'stroke="#1b1b1b" stroke-width="1"/>')
 text(550, 125, "demister", 10, anchor="end")
 # Compressor K-101 (top right)
 E.append('<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')

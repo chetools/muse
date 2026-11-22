@@ -120,10 +120,39 @@ form of the turndown and overload limits discussed below.
 Fig. P2 | Falling-film evaporator and separator. Feed enters at
 the top and boils as a film inside the tubes; vapour disengages
 in the head, passes the demister, and leaves for the compressor;
-concentrate leaves at the bottom. At the frame edges, the feed
+concentrate leaves at the bottom. The demister is the hatched
+pad drawn across the head; each tube is drawn as a channel whose
+tinted core is the film and vapour inside it, and the dashed
+blue arrows beside the bundle show the vapour rising from the
+tube bottoms to the head. At the frame edges, the feed
 enters the body from the left, the vapour (stream 3) leaves
 along the top to the right, and the concentrate (stream 6)
-leaves at the bottom. Fig. P4 shows the heating element, drawn as the steam chest against the right face of the body.
+leaves at the bottom. Fig. P8 shows the heating element, drawn as the steam chest against the right face of the body.
+
+### Film, vapour and demister inside the evaporator
+
+Figure P3 is a cutaway of the same vessel. Feed collects in the
+distributor tray and passes through a ferrule — a short tubelet
+with a notched rim, one at the top of each heating tube — which
+spreads the liquid over the tube sheet so that every tube
+receives its share as a film on its inner wall [5][15]. The film
+boils as it falls; the vapour formed travels up the core of the
+tube, disengages in the head and crosses the demister pad, the
+mesh pack drawn across the head, before leaving for the
+compressor. On the shell side, compressed vapour condenses on
+the outer tube wall in the heating element, and its condensate
+leaves as stream 5. Liquid reaching the tube bottoms collects in
+the sump, and concentrate leaves at the bottom. Figure P4 shows
+a single ferrule: the notches in its rim are the passages that
+meter the liquid onto the tube sheet [15].
+
+[[FIG_P3]]
+
+Fig. P3 | Inside the evaporator: the film falls inside the tubes, the vapour rises up the core, and the demister crosses the head. Cutaway of E-102; the distributor tray and the notched ferrule follow refs [5] and [15]. Heating vapour condenses on the outer tube wall, and concentrate collects in the sump.
+
+[[FIG_P4]]
+
+Fig. P4 | A distributor ferrule: the notched rim meters feed onto the tube sheet, one ferrule per tube. Rendering by UbUb, Wikimedia Commons, licensed under the Creative Commons Attribution-Share Alike 3.0 Unported licence (creativecommons.org/licenses/by-sa/3.0); file page at commons.wikimedia.org/wiki/File:Ferrule.jpg.
 
 ## MVR compressor
 
@@ -162,12 +191,58 @@ compressor.
 
 [[CROP_COMP]]
 
-Fig. P3 | MVR compressor. All vapour raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head
+Fig. P5 | MVR compressor. All vapour raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head
 with the demister; the feed line enters the body at the left
 edge; the evaporator body and the steam chest of the
-heating element continue below the frame (Fig. P2 and Fig. P4), and the
+heating element continue below the frame (Fig. P2 and Fig. P8), and the
 discharge line also continues below the frame, to the
-heating element (Fig. P4).
+heating element (Fig. P8).
+
+### Compressor map and surge
+
+Figure P6 is a compressor map in schematic form: pressure ratio
+$r_p$ against the inlet volumetric flow, drawn as a percentage
+of its design value. Each curve is a constant-speed line — the
+ratio a centrifugal machine delivers falls as the flow through
+it rises — and the dashed surge line joins the left-hand ends of
+the speed lines: at a given ratio the flow cannot fall below
+the surge line without the flow through the impeller breaking
+down, as described above. The design point, ratio 1.49 at
+100% flow, sits on the 100% speed line, and the arrow along that
+line shows falling plant demand moving the operating point
+toward the surge line, which is the turndown limit of the whole
+plant. The anti-surge recycle noted on the figure holds the
+compressor flow up by returning discharge vapour to the suction
+side. The map is a schematic of the operating window, not a
+manufacturer's tested map: the model carries no map (Theory
+panel, section 8), and a purchased machine is selected on the
+manufacturer's map [4].
+
+[[FIG_P6]]
+
+Fig. P6 | The operating window of a centrifugal MVR compressor: surge bounds it on the left, and turndown is movement toward that line. Schematic map, not a vendor map; the design point is the model's pressure ratio of 1.49 at the design flow.
+
+### Inside the compressor
+
+Figure P7 is a side section of the machine class of the sheet:
+a single-stage centrifugal compressor in the vertical,
+direct-drive form used for MVR duty [16]. Vapour enters axially
+through the casing cover and reaches the impeller, which is
+mounted directly on the shaft of the high-speed motor below the
+casing. The impeller throws the vapour outward into the volute
+casing, and the diffuser and outlet deliver it at the discharge
+pressure. The shaft passes out of the casing through a shaft
+seal, the boundary that keeps the vapour inside the machine.
+The motor is fed from a separate drive cabinet, a frequency
+converter, which is also how the speed — and with it the
+operating point of Fig. P6 — is set. Droplets that pass the
+demister strike the impeller first, which is why the impeller
+material and the demister are one design decision (MVR
+compressor, above; Safety panel).
+
+[[FIG_P7]]
+
+Fig. P7 | Side section of a single-stage centrifugal MVR compressor: axial inlet, impeller mounted directly on the high-speed motor shaft, volute discharge. Component arrangement after the manufacturer's literature [16].
 
 ## Heating element, condensate and heat recovery
 
@@ -197,7 +272,7 @@ fouled surface — that the compressor alone cannot cover.
 
 [[CROP_COND]]
 
-Fig. P4 | Heating element condensation and heat recovery. Compressed
+Fig. P8 | Heating element condensation and heat recovery. Compressed
 vapour condenses at 88 °C; condensate leaves through the feed
 preheat train; start-up steam (dashed) and the non-condensable
 vent serve the heating element, and the vent leaves at the top of

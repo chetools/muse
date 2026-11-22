@@ -126,6 +126,24 @@ section 4, so the suction pressure is
 $p_1 = p^{sat}(78\ \mathrm{°C}) = 43.6$ kPa. Condensing temperature is 88 °C (section 4 builds it from the boiling temperature, the transfer difference and the loss allowance), giving the discharge pressure
 $p_2 = p^{sat}(88\ \mathrm{°C}) = 64.9$ kPa.
 
+### Saturation pressure across the lift
+
+Figure T1 plots Eq. (2) over the operating range and marks the
+three suction–discharge pairs of key point 3. Each dotted
+segment joins the suction point of one evaporator temperature —
+a filled circle at the pure-water saturation temperature
+$T_{evap} - \Delta T_{BPE}$ — to its discharge point, an open
+square at the condensing temperature; the ratio $r_p$ printed
+beside the segment is the pressure ratio of Eq. (8) at that
+temperature, and the orange pair is the design case worked above.
+The steepening of the curve is the whole content of key point 3:
+the same 10 K lift spans a ratio of 1.57 at a 60 °C evaporator
+and only 1.42 at 100 °C.
+
+[[FIG_T1]]
+
+Fig. T1 | The same 10 K lift is a smaller pressure ratio at a higher temperature. Saturation pressure of water from Eq. (2), with the Antoine constants of ref [1] checked against ref [2]; suction points (filled circles) and discharge points (open squares) at evaporator temperatures of 60 °C, 80 °C (design, orange) and 100 °C, each pair joined across the 10 K lift of section 4.
+
 ## 3. Latent heat and the heating element duty
 
 The specific latent heat of vaporisation $h_{fg}$, in kJ/kg, is
@@ -222,6 +240,31 @@ transfer difference undersizes the area by the factor 10/7, and a
 designer who forgets the boiling-point elevation undersizes the
 compressor by the pressure ratio belonging to 2 K — at 80 °C,
 about 9% more ratio. Input range for the lift in the model, 5–20 K, with the fixed 3 K of elevation and losses, keeps the transfer difference between 2 K and 17 K over the whole range.
+
+### The lift as a temperature ladder
+
+Figure T2 draws the split of Eq. (7) as a ladder of temperature
+levels at the design basis. The three brackets on the left are
+the three terms of the lift: the boiling-point elevation
+$\Delta T_{BPE}$ between the saturation temperature of pure
+water (78 °C) and the boiling temperature of the solution
+(80 °C); the transfer difference $\Delta T_{tr}$ across the tube
+wall; and the loss allowance $\Delta T_{loss}$ between the top of
+the transfer difference (87 °C, the dotted level) and the
+condensing temperature (88 °C). Above the condensing level, the
+dashed bracket and dashed level are the compressor discharge
+temperature of section 5, 128.9 °C: the vapour arrives at the
+heating element carrying 40.9 K of superheat, which section 3
+spends in the condensing-side balance. The three-part split —
+boiling-point rise, heat-transfer temperature difference and
+vapour-piping pressure drop — is stated in the same form in
+evaporator supplier practice [13], and the lift so defined is
+the quantity that MVR placement and energy studies work with
+[14].
+
+[[FIG_T2]]
+
+Fig. T2 | Of the 10 K lift, only the 7 K transfer difference drives heat across the wall. Temperature levels at the design basis; the dotted 87 °C level is the condensing temperature less the loss allowance, and the dashed level is the superheated discharge of section 5.
 
 ## 5. Compression work, step by step
 
@@ -339,6 +382,31 @@ the area but cuts the lift, and with it the compressor power, so
 an MVR evaporator is an economic balance between steel and
 electricity, struck in the Economics panel.
 
+### Temperature profile across the tube wall
+
+The transfer difference $\Delta T_{tr}$ of Eq. (13) is spent
+across three resistances in series between the condensing vapour
+and the boiling liquid: the condensing film on the outer wall,
+the tube wall itself, and the boiling film on the inner wall
+[3]. Figure T3 draws the temperature profile across those
+layers. The model does not split $U$ into the three coefficients,
+so the falls across the individual layers in Fig. T3 are
+qualitative; only the end temperatures, 88 °C and 80 °C, and
+their difference, $\Delta T_{tr} = 7$ K, are model quantities.
+The fouled panel adds a scale layer on the boiling side, where
+scale forms (Process panel, Operating issues). Its temperature
+drop $\Delta T_{scale}$, in K, the part of the total difference
+consumed by the scale layer, is drawn at an illustrative 2 K;
+because the boiling temperature and the duty are unchanged, the
+condensing temperature rises by that drop, from 88 °C to 90 °C.
+That rise is extra lift bought from the compressor: fouling is
+paid for as electricity, which is the mechanism the Process
+panel describes.
+
+[[FIG_T3]]
+
+Fig. T3 | The transfer difference is spent across the condensing film, the tube wall and the boiling film; a scale layer spends part of it and pushes the condensing temperature up. Falls across the individual layers are qualitative — the model carries the single overall coefficient $U$ of Eq. (13); the end temperatures and the 7 K total are the design basis. In panel b the scale drop $\Delta T_{scale}$ is an illustrative 2 K.
+
 ## 7. Coefficient of performance and specific energy
 
 Coefficient of performance COP, dimensionless, of the MVR heat pump is the heat delivered to the boiling liquid divided by the electric power consumed:
@@ -368,7 +436,31 @@ infinity — the heat pump becomes perfect and useless, because no
 finite exchanger can transfer the duty at no temperature
 difference. As the lift grows, the COP decreases roughly in inverse proportion to the lift; at a 20 K lift the model COP is 11.8. MVR is a small-lift technology: at a separation of a few kelvin between the vapour and the boiling liquid it costs less than multi-effect evaporation, and at a large separation multi-effect evaporation, which spends steam across many effects, costs less.
 
-Specific energy $e_{sp}$, in kWh per tonne of water evaporated, is the electric power divided by the evaporation rate in tonnes per hour:
+### The cycle on a temperature–entropy diagram
+
+Figure T4 collects sections 2 to 7 into one cycle on
+temperature–entropy coordinates, with $s$ the specific entropy
+defined in section 5. Point 1 is the saturated vapour leaving
+the separator (78 °C, 43.6 kPa). Compression is the vertical,
+constant-entropy rise to point 2s, the isentropic discharge
+(116.6 °C, Eq. (10)); the actual machine, at $\eta_{is} = 0.75$,
+ends at point 2 (128.9 °C, Eq. (11)), displaced to higher
+entropy. From point 2 the vapour desuperheats to point 3,
+saturated vapour at the condensing condition (88 °C, 64.9 kPa),
+then condenses at constant temperature to point 4, and the
+condensate leaves toward the preheater at point 5 (63 °C, the
+preheater outlet temperature of the Process panel). There is no
+throttling leg: the condensate is not expanded back, because the
+evaporator and the heating element are one vessel served by one
+compressor, not two machines joined by a valve. The diagram is
+schematic — the dome and the entropy scale are not computed from
+the steam tables [2] — but every temperature and pressure marked
+on it is a model value, and the two COP values annotated on it
+are Eqs. (14) and (15) at the design basis [2][3].
+
+[[FIG_T4]]
+
+Fig. T4 | One loop of the heat pump: compression raises the vapour from the separator condition to the condensing condition, and condensation returns its latent heat to the boiling liquid. Schematic temperature–entropy diagram; the dome and the entropy scale are not to scale, and all marked temperatures and pressures are design-basis model values. COP from Eq. (14); Carnot limit from Eq. (15).
 
 $$e_{sp} = \frac{P_{el}}{\dot{m}_{evap}/1000} \tag{16}$$
 
