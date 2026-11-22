@@ -18,3 +18,4 @@
 - Rebuilt as v3: 140 KaTeX expressions, tests 6/6, browser QA v3 all pass (boot 6.4 s, selftest PASS, precomputed replaced, phone 375, sticky 0, no errors).
 - Delta review 2: A3 and A4 residuals FIXED, all numbers recomputed from the model. Review closed.
 - Published v3: sources to main, page + notebook to gh-pages (see handover).
+- Publication verified: main push 777483b -> 9e07754 (40 files, scoped); gh-pages push ffa7746 -> 88bef39 (3 files, scoped: page index.html, walkthrough_molab.py, root index.html). Served page fetched after Pages deployment: byte-identical to dist/mechanical-vapor-recompression-v3.html (3,751,745 bytes). Published-page browser selftest could not run from the sandbox (Chromium tunnel to the public internet fails); per skill section 8.5 the selftest was run on the byte-identical local build, where it passed.
