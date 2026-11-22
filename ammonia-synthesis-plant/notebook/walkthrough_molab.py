@@ -266,7 +266,7 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Synthesis loop flows
 
-    Three loop flows follow from the Part 2 inputs by addition and subtraction of streams at two junctions. The converter feed rate (converter_feed_rate, in kg/h) is the fresh synthesis gas rate plus the recycle gas rate at the feed junction. Loop purge rate (loop_purge_rate, in kg/h) is the fresh rate minus the product rate: at steady state the loop receives the fresh rate and discharges product and purge only, and the purge carries the balance of the fresh feed, including the inerts that enter with the fresh gas. Separator vapour rate (separator_vapour_rate, in kg/h) is the converter feed rate minus the product rate, and it divides into recycle gas and purge gas, which the second assertion checks.
+    Three loop flows follow from the Part 2 inputs by addition and subtraction of streams at two junctions. The converter feed rate (converter_feed_rate, in kg/h) is the fresh synthesis gas rate plus the recycle gas rate at the feed junction. The loop purge rate (loop_purge_rate, in kg/h) is the fresh rate minus the product rate: at steady state the loop receives the fresh rate and discharges product and purge only, and the purge carries the balance of the fresh feed, including the inerts that enter with the fresh gas. Separator vapour rate (separator_vapour_rate, in kg/h) is the converter feed rate minus the product rate, and it divides into recycle gas and purge gas, which the second assertion checks.
     """)
     return
 
@@ -355,7 +355,7 @@ def _(mo):
     mo.md(r"""
     ## Step 7: Full model run and design anchor
 
-    The complete model is run once through the module function run_model, and the design anchor function checks every closure of the design basis: 122,000 kg/h on each side of the overall balance and a converter feed rate of 292,000 kg/h. The printed dictionary is the same result structure that the App panel displays for a live run.
+    A full run of the module function run_model closes the walkthrough, and the design anchor function checks every closure of the design basis: 122,000 kg/h on each side of the overall balance and a converter feed rate of 292,000 kg/h. The printed dictionary is the same result structure that the App panel displays for a live run.
     """)
     return
 

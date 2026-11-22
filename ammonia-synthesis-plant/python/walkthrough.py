@@ -6,9 +6,7 @@ module), and the name figure is supplied by the runner or by the
 notebook setup cell as a recording function for plotly figure
 dictionaries.
 
-All flow rates are mass
-flow rates in kilogram per hour (kg/h, where kg denotes kilogram and
-h denotes hour).
+All flow rates are mass flow rates in kg/h.
 """
 
 CELLS = [
@@ -76,7 +74,7 @@ CELLS = [
             "addition and subtraction of streams at two junctions. "
             "The converter feed rate (converter_feed_rate, in kg/h) "
             "is the fresh synthesis gas rate plus the recycle gas "
-            "rate at the feed junction. Loop purge rate "
+            "rate at the feed junction. The loop purge rate "
             "(loop_purge_rate, in kg/h) is the fresh rate minus the "
             "product rate: at steady state the loop receives the "
             "fresh rate and discharges product and purge only, and "
@@ -165,8 +163,8 @@ CELLS = [
     dict(
         title="Full model run and design anchor",
         md=(
-            "The complete model is run once through the module "
-            "function run_model, and the design anchor function "
+            "A full run of the module function run_model "
+            "closes the walkthrough, and the design anchor function "
             "checks every closure of the design basis: "
             "122,000 kg/h on each side of the overall balance and a "
             "converter feed rate of 292,000 kg/h. The printed "

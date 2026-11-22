@@ -77,18 +77,18 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 </header></div>
 <div class="wrap">
 <nav class="tabs" role="tablist">
-<button role="tab" id="tabbtn-app" aria-selected="true" data-panel="app">App</button>
-<button role="tab" id="tabbtn-process" aria-selected="false" data-panel="process">Process</button>
+<button role="tab" id="tabbtn-process" aria-selected="true" data-panel="process">Process</button>
 <button role="tab" id="tabbtn-theory" aria-selected="false" data-panel="theory">Theory</button>
+<button role="tab" id="tabbtn-app" aria-selected="false" data-panel="app">App</button>
 <button role="tab" id="tabbtn-economics" aria-selected="false" data-panel="economics">Economics</button>
 <button role="tab" id="tabbtn-safety" aria-selected="false" data-panel="safety">Safety</button>
 <button role="tab" id="tabbtn-code" aria-selected="false" data-panel="code">Code</button>
 <button role="tab" id="tabbtn-references" aria-selected="false" data-panel="references">References</button>
 </nav>
 
-<div class="panel active" id="panel-app">
+<div class="panel" id="panel-app">
 <h2 id="app-model">Overall and synthesis loop balance model</h2>
-<p>All rates are mass flow rates in kilogram per hour (kg/h, where kg denotes kilogram and h denotes hour). Part 1, the overall plant balance, takes the natural gas, process steam and process air feed rates and the process condensate, carbon dioxide product and purge gas rates, and returns the liquid ammonia product rate as the closing stream of the balance. Part 2, the synthesis loop balance, takes the fresh synthesis gas rate, the liquid ammonia product rate and the recycle gas rate, and returns the loop purge rate (fresh rate minus product rate), the converter feed rate (fresh rate plus recycle rate), the separator vapour rate (converter feed rate minus product rate), the recycle ratio (recycle rate divided by fresh rate, dimensionless) and the ammonia formation per pass (product rate divided by converter feed rate, in mass per cent). The precomputed default run is displayed on load; a live run replaces the displayed values.</p>
+<p>All rates are mass flow rates in kg/h. Part 1, the overall plant balance, takes the natural gas, process steam and process air feed rates and the process condensate, carbon dioxide product and purge gas rates, and returns the liquid ammonia product rate as the closing stream of the balance. Part 2, the synthesis loop balance, takes the fresh synthesis gas rate, the liquid ammonia product rate and the recycle gas rate, and returns the loop purge rate (fresh rate minus product rate), the converter feed rate (fresh rate plus recycle rate), the separator vapour rate (converter feed rate minus product rate), the recycle ratio (recycle rate divided by fresh rate, dimensionless) and the ammonia formation per pass (product rate divided by converter feed rate, in mass per cent). The precomputed default run is displayed on load; a live run replaces the displayed values.</p>
 <div class="grid">
 <div>
 <p class="sans" style="font-weight:bold;margin:4px 0 0">Part 1: overall plant balance</p>
@@ -110,19 +110,19 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 <div>
 <p class="metric" id="out-summary">@@PRESTART_SUMMARY@@</p>
 <div id="out-table">@@PRESTART_TABLE@@</div>
-<p id="out-note">Displayed results: precomputed default run, computed when this page was built.</p>
+<p id="out-note">Displayed results: precomputed default run.</p>
 <div id="chart" style="width:100%;height:430px"></div>
 <p class="sans" style="font-size:.9rem;color:var(--ink2)">Fig. 1 | Synthesis loop flows of the displayed run. Flow denotes mass flow rate (in kg/h) of the converter feed, recycle gas, liquid ammonia product and purge gas streams of Part 2.</p>
 </div>
 </div>
 </div>
 
-<div class="panel" id="panel-process">
+<div class="panel active" id="panel-process">
 <div class="with-toc">
 <nav class="toc" id="process-toc"><div class="toc-title">Contents</div>@@PROCESS_TOC@@</nav>
 <div>
 <h2 id="process-pfd">Process flow diagram</h2>
-<p>Ammonia synthesis plant: feed preparation and reforming, shift conversion and condensate separation, carbon dioxide removal with solvent regeneration, methanation and synthesis gas compression, and the ammonia synthesis loop with recycle and purge, on the design basis of 28,000 kg/h of natural gas, 42,000 kg/h of process steam and 52,000 kg/h of process air, where kg/h denotes kilogram per hour. Stream values on the drawing are sample design values; the overall balance closes at 122,000 kg/h on each side, and the balance of the displayed values closes on every unit.</p>
+<p>Ammonia synthesis plant: feed preparation and reforming, shift conversion and condensate separation, carbon dioxide removal with solvent regeneration, methanation and synthesis gas compression, and the ammonia synthesis loop with recycle and purge, on the design basis of 28,000 kg/h of natural gas, 42,000 kg/h of process steam and 52,000 kg/h of process air. Stream values on the drawing are sample design values; the overall balance closes at 122,000 kg/h on each side, and the balance of the displayed values closes on every unit.</p>
 <div class="diagram">@@PFD_SVG@@</div>
 <h2 id="process-equipment-index">Equipment index</h2>
 @@EQUIPMENT_INDEX@@
@@ -172,7 +172,7 @@ footer{border-top:1px solid var(--rule);padding:14px 0 30px;color:var(--ink2);fo
 </div>
 <div id="code-walkthrough" style="display:none">
 <h2 id="code-walkthrough-sec">Walkthrough</h2>
-<p>The walkthrough results were computed when this page was built.</p>
+<p>The walkthrough works through the balance model at the design basis.</p>
 @@WALKTHROUGH_HTML@@
 </div>
 </div>
@@ -214,14 +214,22 @@ function checkStale(){
   document.getElementById("stale-note").style.display = (currentInputs() !== displayedParams) ? "block" : "none";
 }
 ["in-ng","in-steam","in-air","in-cond","in-co2","in-purge","in-fresh","in-product","in-recycle"].forEach(function(id){ document.getElementById(id).addEventListener("input", checkStale); });
+function refitCharts(){
+  if(typeof Plotly === "undefined") return;
+  document.querySelectorAll(".js-plotly-plot").forEach(function(el){
+    if(el.offsetParent !== null){ try{ Plotly.Plots.resize(el); }catch(e){} }
+  });
+}
+window.addEventListener("load", function(){ requestAnimationFrame(refitCharts); });
 function showPanel(name, push){
-  ["app","process","theory","economics","safety","code","references"].forEach(function(p){
+  ["process","theory","app","economics","safety","code","references"].forEach(function(p){
     document.getElementById("panel-" + p).classList.toggle("active", p === name);
     document.getElementById("tabbtn-" + p).setAttribute("aria-selected", p === name ? "true" : "false");
   });
   if(push){ history.replaceState(null, "", "#" + name); }
+  requestAnimationFrame(refitCharts);
 }
-["app","process","theory","economics","safety","code","references"].forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
+["process","theory","app","economics","safety","code","references"].forEach(function(p){ document.getElementById("tabbtn-" + p).addEventListener("click", function(){ showPanel(p, true); }); });
 function showSub(name){
   document.getElementById("code-listings").style.display = name === "listings" ? "block" : "none";
   document.getElementById("code-walkthrough").style.display = name === "walkthrough" ? "block" : "none";
@@ -242,7 +250,7 @@ document.querySelectorAll(".toc a").forEach(function(a){
     var id = a.getAttribute("href").slice(1);
     var panel = id.split("-")[0];
     if(panel === "code"){ showPanel("code", false); showSub(walkthroughId(id) ? "walkthrough" : "listings"); }
-    else if(["app","process","theory","economics","safety","references"].indexOf(panel) >= 0){ showPanel(panel, false); }
+    else if(["process","theory","app","economics","safety","references"].indexOf(panel) >= 0){ showPanel(panel, false); }
   });
 });
 function walkthroughId(id){ return id === "code-walkthrough-sec" || id.indexOf("code-walkthrough-step") === 0; }
@@ -257,7 +265,7 @@ document.querySelectorAll("section[id], h2[id]").forEach(function(el){ spy.obser
 function route(){
   var h = location.hash.slice(1);
   if(!h) return;
-  var panels = ["app","process","theory","economics","safety","code","references"];
+  var panels = ["process","theory","app","economics","safety","code","references"];
   if(panels.indexOf(h) >= 0){ showPanel(h, false); return; }
   var panel = h.split("-")[0];
   if(panel === "code"){ showPanel("code", false); showSub(walkthroughId(h) ? "walkthrough" : "listings"); }
@@ -267,7 +275,7 @@ function route(){
 }
 window.addEventListener("hashchange", route);
 var prestart = JSON.parse(document.getElementById("prestart-data").textContent);
-renderResult(prestart.result, "Displayed results: precomputed default run, computed when this page was built.");
+renderResult(prestart.result, "Displayed results: precomputed default run.");
 route();
 </script>
 <script type="text/worker" id="worker-src">
@@ -335,6 +343,7 @@ try{
     if(e.data && e.data.ready){
       clearTimeout(readyTimer);
       bootBar.style.width = "100%";
+      document.getElementById("bootbar").style.display = "none";
       bootStatus.textContent = "Python runtime: ready.";
       document.getElementById("btn-run").disabled = false;
       return;
