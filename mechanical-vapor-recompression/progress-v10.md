@@ -156,3 +156,19 @@ every entry is cited.
   deep links #fig-t2, #fig-p4 and #fig-p6 open the owning panel
   with the figure in the viewport; both panel contents list the
   new subsections.
+
+## Publication
+
+- Main: commit 299769a; scoped push 0c080a5 -> d448db9
+  (compare view: 27 files changed, all inside
+  mechanical-vapor-recompression). A first push attempt was
+  refused as non-fast-forward because the remote head moved
+  during the push (a parallel Linde push); the retry on the
+  settled head succeeded. No force-push was used.
+- gh-pages: scoped push 9a8234c -> 8e00db9, index.html only;
+  the MoLab walkthrough notebook is unchanged.
+- Served bytes verified: the page served at
+  https://chetools.github.io/muse/mechanical-vapor-recompression/
+  is byte-identical to dist/mechanical-vapor-recompression-v10.html,
+  SHA-256 c2f17dce7fed57a1ea292f5a51882d26a0850fe37fc10d687c44a10a33eb5ac6
+  (the v9 hash was served until the Pages deployment completed).
