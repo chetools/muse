@@ -2986,6 +2986,11 @@ def main():
           "v37: when the app never answers, the browser is "
           "not opened and the opener reports failure")
     for bat37 in ("run-web.bat", "run-web-portable.bat"):
+        # In the portable folder only run-web.bat exists (the
+        # portable launcher under its installed name); the
+        # source tree holds both.
+        if not (web.HERE / bat37).exists():
+            continue
         raw37 = (web.HERE / bat37).read_bytes()
         check(b'start "" http' not in raw37
               and b"browser opens by itself" in raw37,
