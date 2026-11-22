@@ -797,3 +797,76 @@ and standalone closings in theory.md count 24 and 24).
   SELFTEST not run in a browser: sandbox Chromium cannot
   reach the public internet; the verdict stands on the
   byte-identical local build.
+
+## v18 — sheet revision r4: hot-well vent geometry (2026-11-22)
+
+The last v16 residual is fixed. "Vent to atmosphere" sat
+3.00 units above its own vent arrowhead on r3, and label
+placement could not clear it: 8 units above the arrowhead
+needed the baseline at most y 415, while 8 units below the
+barometric-leg readout ink ending at y 399 needed it at
+least y 418 — an empty window. Revision r4
+(sheet-r4.svg, issued fresh; r1, r2 and r3 untouched)
+makes one geometry change, to the vent pipe only: the
+pipe is shortened by 8 units, so the arrowhead moves down
+8 units (apex y 426 -> 434, base y 438 -> 446) and the
+pipe runs y 446 -> 470 from the hot-well top. The label
+does not move. The vent keeps its source (the V-101 top
+port at (500, 470)), its destination (the atmosphere
+terminal at the arrowhead), its upward arrow direction
+and its orthogonal routing; no other element changes.
+
+Measured on the issued files (getBBox ink, Chromium):
+
+- Label to arrowhead apex: 3.00 -> 11.00 units.
+- Label to leg readout ink ("336.9 kg/h condensate",
+  ink y 385-399, x to 499.76): 10.00 units, unchanged —
+  both clearances now sit in the 9-12 band.
+- Full-sheet scan on r4 (all 48 texts, per-text ink, all
+  lines, rects and polygons): zero line-through-text
+  strikes; zero text-text overlaps; every text-to-object
+  clearance at or above 8 units. The scan minimum is
+  8.00 units, at the same locations as r3 (leg labels
+  against their legs, duty labels against their inlet
+  pipes, the Vent label against the cooling-water header
+  line, interior readouts 8 inside their outlines); the
+  inter-unit text-text minimum is 8.62 (E-102 tag against
+  "91.4 kg/h"). Run on r3 first, the same scan reproduces
+  the recorded r3 state exactly (3.00 at the vent, 8.00
+  elsewhere), so the r4 result is measured against a
+  validated instrument. The one remaining recorded item
+  is the intra-unit lettering pitch (1-6 units between
+  the lines of one label group, minimum 1.0), unchanged
+  since r1 and outside the clearance rule's scope.
+- Graph comparison r3 -> r4: 21 of 22 line elements and
+  4 of 5 polygons byte-identical; the differing two are
+  the vent pipe and its arrowhead (translated +8 in y,
+  same shape). All 5 rects identical; all 48 text strings
+  and positions identical — topology, ports, values and
+  labels unchanged, so balance closure on displayed
+  values is the r1-r3 proposition (7 of 9 close exactly;
+  E-102 discharge 0.1 kg/h and hot-well overflow
+  0.3 kg/h within displayed rounding per A5).
+- Connectivity audit (PFD skill Sections 9.9-9.11,
+  classes C1-C8, checker checks/connectivity_check.py
+  with check_passes=True; declaration derived from the
+  drawn geometry — ports are the points where drawn
+  segments meet drawn glyph outlines, outlines are the
+  drawn rect and polygon edges): 0 defects. The
+  checker's planted-defect selftest passes 11 of 11.
+- Crop windows: re-measured against the r4 ink; no edge
+  changed (wholeness check over all 48 text ink boxes
+  against all 8 windows: no text partially cut; the
+  moved arrowhead, y 434-446, stays whole inside the
+  hotwell window, y 405-545). Scale rule unchanged (2.0x).
+- Three-class figure audit (Figs. P1-P10, desktop and
+  390 px, shots/v18-audit/, the vent at full size in
+  fullsize-vent.png): ABSURD — no scale or emphasis
+  change; CONFUSING — zero fragments, zero collisions,
+  the vent label now clear of its arrowhead and of the
+  leg readout; UNNECESSARY — none found. Phone scroll
+  width 375 px at 390 px.
+
+Verification: test_balance.py 14 passed; build checks
+pass (624 KaTeX = 624); SELFTEST pass on the local build
+(635.18 kg/h, 523.56 kW), no page errors.
