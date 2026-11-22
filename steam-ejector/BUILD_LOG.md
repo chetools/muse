@@ -538,3 +538,8 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   existing .katex-display overflow rule (widest: the T1
   whole-stage balance, 674 px against the 516 px desktop
   column).
+- Published: main 5c0aad9 pushed be83e33 -> 153d014
+  (steam-ejector scope only, blob-verified); gh-pages
+  e0ac0b6 -> cb8dac0 (only steam-ejector/index.html).
+  Served bytes byte-identical to the v13 build (SHA-256
+  4dc75fca…).

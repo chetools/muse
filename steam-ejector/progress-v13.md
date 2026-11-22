@@ -64,5 +64,19 @@ textbook.
   524 px, T5 collected area–Mach relation 520 px. At
   390 px (313 px column) 17 displays exceed the column,
   the same four widest among them.
-- [ ] Published: main and gh-pages heads, served-byte
-  comparison — filled in after the push below.
+- [x] Published: main commit 5c0aad9, pushed be83e33 ->
+  153d014 (compare: 9 files, all in steam-ejector/; remote
+  blob SHAs of theory.md and build_page.py equal to local
+  git hash-object). gh-pages d42826e, pushed e0ac0b6 ->
+  cb8dac0 (compare: only steam-ejector/index.html modified;
+  walkthrough untouched). The Pages run for cb8dac0 started
+  and a successor run (a parallel publish from another page)
+  completed/success on a tree containing it; served bytes
+  at https://chetools.github.io/muse/steam-ejector/
+  byte-identical to dist/steam-ejector-v13.html (SHA-256
+  4dc75fca…). Published-page selftest: the sandbox Chromium
+  cannot reach the public internet, so the ?selftest=1 run
+  was taken on the byte-identical local build — PASS
+  (635.18 kg/h, 523.56 kW).
+- MoLab link (as carried in the published page):
+  https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py
