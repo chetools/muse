@@ -1,0 +1,44 @@
+{
+  "live_run": {
+    "metrics_changed_after_input": true,
+    "liveregion_before": "Run complete. Electric power 131.3 kW, COP 24.4.",
+    "liveregion_after": "Run complete. Electric power 198.6 kW, COP 16.1.",
+    "precomputed_remaining": false,
+    "metrics_before_head": "131.3\nElectric power (kW)\n24.4\nCoefficient of performance\n26.3\nSpecific energy (kWh/t)\n3,204\nCalandria duty (kW)\n1.48\nPressure ratio\n1.22\nSimple payback (yr)",
+    "metrics_after_head": "198.6\nElectric power (kW)\n16.1\nCoefficient of performance\n39.7\nSpecific energy (kWh/t)\n3,204\nCalandria duty (kW)\n1.79\nPressure ratio\n1.28\nSimple payback (yr)",
+    "page_errors": []
+  },
+  "phone_overflow": {
+    "scrollW": 375,
+    "innerW": 390,
+    "offenders": [
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "skip",
+        "left": -9999,
+        "right": -9866,
+        "w": 133,
+        "parent": "BODY#"
+      },
+      {
+        "tag": "svg",
+        "id": "js-plotly-tester",
+        "cls": "",
+        "left": -10000,
+        "right": -1000,
+        "w": 9000,
+        "parent": "BODY#"
+      },
+      {
+        "tag": "path",
+        "id": "",
+        "cls": "js-reference-point",
+        "left": -10000,
+        "right": -9999,
+        "w": 1,
+        "parent": "svg#js-plotly-tester"
+      }
+    ]
+  }
+}

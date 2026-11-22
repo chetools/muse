@@ -1,0 +1,256 @@
+{
+  "desktop": {
+    "booted": true,
+    "boot_s": 6.4,
+    "precomputed_at_first_paint": true,
+    "charts_pre": 26,
+    "charts_live": 26,
+    "live_replaced_precomputed": true,
+    "metrics_changed": false,
+    "geometry": {
+      "svgs": [
+        {
+          "w": 546,
+          "parentW": 546
+        },
+        {
+          "w": 546,
+          "parentW": 546
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 546,
+          "parentW": 546
+        },
+        {
+          "w": 546,
+          "parentW": 546
+        },
+        {
+          "w": 546,
+          "parentW": 546
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 546,
+          "parentW": 546
+        }
+      ],
+      "scrollW": 1265,
+      "innerW": 1280,
+      "navTop": 0,
+      "headerL": 344,
+      "headerR": 922,
+      "mainL": 344,
+      "mainR": 922
+    },
+    "sticky_nav_top_after_scroll": 0,
+    "theory_visible": true,
+    "details_opens": true,
+    "console_errors": [],
+    "page_errors": []
+  },
+  "phone": {
+    "geometry": {
+      "svgs": [
+        {
+          "w": 343,
+          "parentW": 343
+        },
+        {
+          "w": 343,
+          "parentW": 343
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 343,
+          "parentW": 343
+        },
+        {
+          "w": 343,
+          "parentW": 343
+        },
+        {
+          "w": 343,
+          "parentW": 343
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 16,
+          "parentW": 24
+        },
+        {
+          "w": 343,
+          "parentW": 343
+        }
+      ],
+      "scrollW": 375,
+      "innerW": 390,
+      "navTop": 0,
+      "headerL": 0,
+      "headerR": 375,
+      "mainL": 0,
+      "mainR": 375
+    },
+    "page_errors": []
+  },
+  "selftest": {
+    "pass": true,
+    "p_el_kw": 133.07396143789381,
+    "q_kw": 3203.611111111111,
+    "cop": 24.073914058733795
+  },
+  "selftest_page_errors": []
+}

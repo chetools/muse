@@ -1,0 +1,20 @@
+# Build log — mechanical-vapor-recompression
+- 2026-11-22: Brief read; governing skill read; steam-ejector template cloned (template.html, build_page.py, make_molab.py, python/, text/, review QA).
+- Trial research subagent run first (health routine): browser.search failed for that agent on all queries. Coordinator retried two independent searches: same tool failure. CONCLUSION: web search unavailable this session. Dossier records this; commercial-sites figures are vendor-attributed and flagged unverified in handover.
+- Design basis frozen: 5,000 kg/h evaporation at 80 degC, lift 10 K (BPE 2 K + transfer 7 K + losses 1 K), eta_is 0.75, feed 25,000 kg/h, concentrate 20,000 kg/h.
+- Model written and tested: 6 pytest tests pass (design anchors, Antoine vs steam tables <1%, whole-range sweep, invalid-input errors). Design anchors: p1 47.27 kPa, p2 70.03 kPa, ratio 1.482, w 89.83 kJ/kg, shaft 124.8 kW, P_el 131.3 kW, Q 3203.6 kW, A 183.1 m2, COP 24.39, e_sp 26.26 kWh/t, capital USD 1.5M, payback 1.22 yr.
+- PFD sheet.svg generated from model (gen_sheet.py), screenshot-inspected twice; label collisions fixed.
+- Dossier written (dossier.md); sites section vendor-attributed, class-level capacities, flagged unverified due to search outage.
+- Build v1 succeeds: 132 KaTeX expressions, citation mechanical check passes.
+- Browser QA (CDN mirror): boot 7.7 s, precomputed replaced in place (26 charts before/after), live run lift 10->15 K moved P_el 131.3->198.6 kW, sticky nav top 0, phone scrollW 375 <= 390, 2560px header/main edges equal (984/1562), ?selftest PASS, zero console/page errors.
+- Notebook: marimo check shows only markdown-indentation warnings (template generator pattern); notebook executes end-to-end with correct step outputs after fixing a MultipleDefinitionError for sys (installer cell now uses subprocess alias). Fix applied in make_molab.py.
+- Independent reviewer (clean context, Brief A + process plausibility) commissioned; awaiting report.
+- Publication prep: gh-pages index.html refreshed from remote head 9b8e16a (scoped, --force at task start, no local work in scope). New dir does not yet exist on either branch (expected).
+- Reviewer A (clean context): 56/58 numbers matched; 6 confirmed findings (A1 Antoine 100C value, A2 cold-feed %, A3 lift/BPE definitional inconsistency, A4 preheater infeasible as drawn, A5 three symbol definitions, A6 unsupported date). ALL UPHELD AND FIXED: model now takes p1 = psat(T_boil - BPE) = 43.56 kPa, T_cond = 88 degC, p2 = 64.86 kPa, ratio 1.489, P_el 133.1 kW, COP 24.07, e_sp 26.62 kWh/t; preheat redesigned as two stages (condensate 319 kW + concentrate 116 kW = 435 kW duty) with feed arriving at 65 degC; sheet stream table updated (condensate out 35 degC).
+- Rebuilt as v2 (never re-deliver changed content under same name): 138 KaTeX, tests 6/6, QA v2 all pass (boot 6.6 s, selftest PASS, live lift-15 run 201.3 kW, phone 375, sticky 0, no errors).
+- Delta review of the six fixes commissioned.
+- Publication staged: sources copied to muse-repo-main/mechanical-vapor-recompression/, page v2 as index.html + walkthrough_molab.py to muse-repo-pages/mechanical-vapor-recompression/, root index entry added.
+- Delta review 1: A1, A2, A5, A6 fixed; A3/A4 residuals (section 5 ratio formula, section 7 Carnot denominator, sheet condensate 35 vs 33 degC, concentrate preheater not drawn). Fixed: formulae rewritten under the corrected definitions; preheat simplified to a single condensate stage with feed arriving at 75 degC (duty 145.1 kW both sides, condensate 88 -> 63 degC); sheet stream table updated.
+- Rebuilt as v3: 140 KaTeX expressions, tests 6/6, browser QA v3 all pass (boot 6.4 s, selftest PASS, precomputed replaced, phone 375, sticky 0, no errors).
+- Delta review 2: A3 and A4 residuals FIXED, all numbers recomputed from the model. Review closed.
+- Published v3: sources to main, page + notebook to gh-pages (see handover).
