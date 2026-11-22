@@ -108,16 +108,19 @@ until the first live run replaces it.</p>
 <p class="bootline" id="bootdone" hidden>Runtime ready.</p>
 </header>
 <nav class="tabs" role="tablist" aria-label="Panels">
-<button role="tab" aria-selected="true" data-panel="theory" id="tab-theory">Theory</button>
+<button role="tab" aria-selected="true" data-panel="process" id="tab-process">Process</button>
+<button role="tab" aria-selected="false" data-panel="theory" id="tab-theory">Theory</button>
 <button role="tab" aria-selected="false" data-panel="app" id="tab-app">App</button>
-<button role="tab" aria-selected="false" data-panel="process" id="tab-process">Process</button>
 <button role="tab" aria-selected="false" data-panel="economics" id="tab-economics">Economics</button>
 <button role="tab" aria-selected="false" data-panel="safety" id="tab-safety">Safety</button>
 <button role="tab" aria-selected="false" data-panel="code" id="tab-code">Code</button>
 <button role="tab" aria-selected="false" data-panel="references" id="tab-references">References</button>
 </nav>
 <main id="main">
-<section class="panel long haslayout" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory">
+<section class="panel long haslayout" id="panel-process" role="tabpanel" aria-labelledby="tab-process">
+@@PROCESS_HTML@@
+</section>
+<section class="panel long haslayout" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory" hidden>
 @@THEORY_HTML@@
 </section>
 <section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app" hidden>
@@ -174,9 +177,6 @@ needs and the condenser duties. Change an input to recompute.</p>
 <div class="guide" id="guide-stages" popover><p><strong>Stages.</strong> The number of stages divides the overall compression, from suction pressure to atmospheric pressure, into equal stage ratios. Fewer stages raise the ratio each stage must bridge, and past a ratio of about 6 a stage leaves the range of the entrainment correlation. Look at the compression ratio per stage card and at any warnings below the stage table.</p></div>
 <div class="guide" id="guide-econ" popover><p><strong>Economics.</strong> The steam price and operating hours convert the computed flows into an annual operating cost. They change no flow, pressure, or duty on this panel. Look at the annual operating cost card and the Economics section below the stage table.</p></div>
 </section>
-<section class="panel long haslayout" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
-@@PROCESS_HTML@@
-</section>
 <section class="panel long haslayout" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
 @@ECONOMICS_HTML@@
 </section>
@@ -218,7 +218,7 @@ panel.</p>
 @@KATEX_JS@@
 <script>
 "use strict";
-var PANELS=["theory","app","process","economics","safety","code","references"];
+var PANELS=["process","theory","app","economics","safety","code","references"];
 var displayedParams=null, liveReady=false, firstLiveDone=false, runTimer=null, runPending=false;
 function showPanel(name){
   PANELS.forEach(function(p){
@@ -397,13 +397,13 @@ if("IntersectionObserver" in window){
   },{rootMargin:"-72px 0px -70% 0px"});
   document.querySelectorAll("section.panel .panelbody h2[id],section.panel .panelbody h3[id]").forEach(function(h){tocSpy.observe(h);});
 }
-var hash=(location.hash||"#theory").slice(1);
+var hash=(location.hash||"#process").slice(1);
 if(PANELS.indexOf(hash)>=0){showPanel(hash);}
 else{
   var target=document.getElementById(hash);
   var owner=target?target.closest("section.panel"):null;
   if(owner){showPanel(owner.id.replace("panel-",""));target.scrollIntoView();if(history.replaceState){history.replaceState(null,"","#"+hash);}}
-  else{showPanel("theory");}
+  else{showPanel("process");}
 }
 boot();
 </script>

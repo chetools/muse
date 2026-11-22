@@ -11,7 +11,11 @@ and vapour, the pressure would rise and the vacuum would be lost.
 The steam ejector system on this page is the machine that removes
 it, continuously, and delivers it to the atmosphere. It has no
 moving parts. Its only energy input is a supply of high-pressure
-steam.
+steam. That construction sets the economics in outline: a machine
+with no moving parts is cheap to buy and cheap to maintain, and
+nearly all of what it costs to run is the motive steam itself, so
+steam consumption, not purchase price, is what the design of the
+system has to keep down.
 
 Follow one parcel of gas. It starts in the vessel at the suction
 pressure, 2 kPa abs — about one fiftieth of atmospheric pressure

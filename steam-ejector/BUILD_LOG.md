@@ -954,3 +954,50 @@ the local build (635.18 kg/h, 523.56 kW), no page errors.
   Published-page SELFTEST not run in a browser: sandbox
   Chromium cannot reach the public internet; the verdict
   stands on the byte-identical local build.
+
+## v20 — Panel reorder: Process first (2026-11-22)
+
+Applies the standing process-page panel-order rule
+(2026-11-22; Linde v15) to this page, the last process
+page still in the Theory-first order. Panel order is
+now Process, Theory, App, Economics, Safety, Code,
+References, and a hash-less load opens on Process.
+Changes are in template.html only: tab bar order with
+aria-selected on Process, panel sections re-emitted in
+the same DOM order (panel-process unhidden,
+panel-theory hidden), the PANELS array, and the
+default/fallback panel ("#theory" -> "#process",
+showPanel("theory") -> showPanel("process")). No
+section identifier, URL fragment, figure number, or
+cross-reference changed.
+
+Process introduction audit (progress-v20.md): plain
+terms, characterised principle, and features/challenges
+were already present in the System overview opening;
+qualitative economics as motivation was missing and was
+added to its first paragraph, qualitative only: a
+machine with no moving parts is cheap to buy and cheap
+to maintain, and nearly all of what it costs to run is
+the motive steam itself, so steam consumption, not
+purchase price, is what the design has to keep down.
+Order-dependent wording audit: every cross-panel
+reference in the texts is by panel name or section
+number and stays true in the new order; no wording edit
+was needed. Theory keeps its introduction, key points,
+guided experiments, and closing discussion; only its
+position changed.
+
+Verification: test_balance.py 14 passed; build checks
+pass (624 KaTeX = 624); hash-less landing on Process at
+1280 px and 390 px; all seven panels reachable by tab
+and by panel fragment; deep-link sample (two Process,
+two Theory, one each App, Economics, Safety, Code)
+lands in the v19 panel with the target at the top of
+the reading area; header alignment re-measured —
+863.5-1681.5 px at 2560 px and 223.5-1041.5 px at
+1280 px, reading column 546 px, identical to v11;
+side contents present (Process 13 links, Theory 19,
+Economics 5, Safety 10); phone scroll width 375 px at
+390 px; three-class audit (shots/v20-audit/) clean at
+both widths; SELFTEST pass on the local build
+(635.18 kg/h, 523.56 kW), no page errors.
