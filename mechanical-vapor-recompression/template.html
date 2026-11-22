@@ -33,6 +33,7 @@ section.panel[hidden]{display:none}
 .panelgrid{display:block}
 .panelbody{min-width:0}
 @media(min-width:1000px){
+header,nav.tabs{max-width:min(1160px,calc(100vw - 32px))}
 section.panel.long,section#panel-code,section#panel-app{width:min(1160px,calc(100vw - 32px));position:relative;left:50%;transform:translateX(-50%)}
 .panelgrid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:8px 28px;align-items:start}
 .panelgrid .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;margin:16px 0}

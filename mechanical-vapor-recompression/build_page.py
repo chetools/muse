@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model, sweep_lift  # noqa: E402
 
-VERSION = "v4"
+VERSION = "v5"
 OUT = HERE / "dist" / f"mechanical-vapor-recompression-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
