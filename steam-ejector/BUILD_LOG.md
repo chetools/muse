@@ -575,3 +575,72 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   gh-pages c44ff8c -> 8ed9495 (only steam-ejector/index.html).
   Pages run completed/success; served bytes byte-identical
   to the v14 build (SHA-256 e662a7a1...).
+
+## v15 — sheet revision r2: three sheet-level label defects fixed (2026-11-22)
+
+Sheet redraw under PFD-SPEC-001, label placement only. The
+issued sheet.svg (r1) is not overwritten: the new revision is
+sheet-r2.svg, and build_page.py now reads sheet-r2.svg.
+Topology, stream values, equipment, and layout structure are
+unchanged — verified by graph comparison (all 32 geometry
+elements byte-identical between r1 and r2; all 48 text strings
+identical as a multiset; only the position/anchor attributes
+of 10 text elements changed) and by balance closure on the
+displayed values, which is the same proposition as r1 (7 of 9
+unit/overall balances close exactly; E-102 discharge and the
+hot-well overflow sit within the displayed rounding, 0.1 and
+0.3 kg/h, the latter from the two integer leg labels).
+
+The three defects, measured with getBBox before and after:
+
+1. Discharge label tail vs next condenser's pressure text.
+   Before: ink overlap 10.05 x 10 units at C-101 ("428.3 kg/h"
+   x 292-348.05, y 217-231, against "7.40 kPa" from x 338),
+   overlap 6.05 x 10 at C-102, a point touch at C-103
+   (gap -0.05). Fix: each discharge label is right-aligned
+   ending 9 units before its condenser face, raised to ink
+   y 192-206. After: rectangular gaps 22.67 / 22.67 / 21.21
+   units to the pressure texts; 9.00 units to the condenser
+   face; 9.00 units to the ejector top edge.
+2. Condenser name struck through by its leg/condensate line
+   (line x 370 / 630 / 890 through name ink; distance 0).
+   Fix: each name is right-aligned ending left of its line,
+   baselines lowered to clear the ejector steam labels, and
+   the "155.9 kg/h" label lowered 8 units for clearance.
+   After: name ink ends 8.51 / 9.00 units (C-101), 8.51 /
+   9.00 (C-102), 9.00 / 8.34 (C-103) left of the line; no
+   line passes through any name text.
+3. "207.3 kg/h" overlaying the E-103 outline tip (the slant
+   from (810,215) passed through the label's first glyphs).
+   Fixed by the defect-1 move: after, the label ink bottom
+   (y 206) is 9.00 units above the slant's top corner.
+
+Crop windows: every window re-measured against the r2 ink;
+no edge changed. Each moved label is whole inside or whole
+outside every window it meets (names' second lines end at
+ink y 345, above the condenser windows' 365 bottom edge;
+names' first lines now fall below the stage windows' 313
+bottom edge and are excluded whole; the stage 3 discharge
+label, ink ending x 841, is now excluded whole from Fig.
+P8, whose caption already states that cut). The v14 scale
+rule is unchanged (crops at 2.0x Fig. P1, capped, centred).
+
+Three-class figure audit (Figs. P1-P10, desktop and 390 px,
+screenshots in shots/v15-audit/): zero clipped fragments,
+zero label collisions among the moved labels; the three
+fixed locations inspected at full size on the new Fig. P1
+(shots/v15-audit/fullsize-c101/c102/c103.png). Residual
+sheet-level items measured on r2, all pre-existing in r1
+and outside the three assigned defects, recorded for a
+future sheet revision: the cooling-water drop at x 890
+passes through the "g" glyph of the "Vent 51.4 kg/h" label
+(glyph ink x 885-892.3, y 128-143); the motive-steam drop
+at x 520 passes through the "/" glyph of the cooling-water
+header text (glyph ink x 517.3-520.9, y 93-108); C-103
+interior texts sit 7.81 / 6.00 units from the end of the
+stage 3 discharge pipe; the "CW return 10.23 m3/h" label
+sits 4.00 units above its return line.
+
+Verification: test_balance.py 14 passed; build checks pass
+(622 KaTeX = 622); phone scroll width 375 px at 390 px;
+SELFTEST pass on the local build (635.18 kg/h, 523.56 kW).

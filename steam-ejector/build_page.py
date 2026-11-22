@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v14"
+VERSION = "v15"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -313,6 +313,19 @@ CROP_WINDOWS = {
     # label, the name, and the interior texts all whole; the window
     # is cut at the condenser's left face (x 856) with the name left
     # to the caption, as its boundary note states.
+    # v15: the sheet is now sheet-r2.svg (label placement only:
+    # discharge labels right-aligned ending 9 units before each
+    # condenser face at ink y 192-206; condenser names right-aligned
+    # ending 8.3-9.0 units left of their leg/condensate line at ink
+    # y 314-345; the 155.9 kg/h label lowered to ink y 357-371).
+    # Every window was re-measured against the r2 ink and NO edge
+    # changed: each moved label is whole inside or whole outside
+    # every window it meets (the condenser names' second lines end
+    # at ink y 345, above the condenser windows' 365 bottom edge;
+    # the names' first lines now fall below the stage windows' 313
+    # bottom edge and are excluded whole there; the stage 3
+    # discharge label, ink ending x 841, is now excluded whole from
+    # Fig. P8, whose caption already states that cut).
     "motive": ("0 0 960 150", "the motive steam header, its branches down toward the three ejectors, and the cooling-water header below it, whose drops leave at the bottom edge"),
     "stage1": ("145 180 252 133", "the suction line from the vessel at the left edge, cooling water entering the first intercondenser at the top, its barometric leg leaving at the bottom, and the first intercondenser (Fig. P4) entering at the right edge"),
     "cond1": ("204 180 215.4 185", "the stage 1 ejector and its discharge entering from the left, cooling water entering at the top, the gas line to stage 2 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
@@ -644,9 +657,9 @@ def main():
                             + "\n</div></div>")
     # Computed content, from the model, never hand-typed.
     result = run_model(**DESIGN)
-    sheet_svg = (HERE / "sheet.svg").read_text(encoding="utf-8")
+    sheet_svg = (HERE / "sheet-r2.svg").read_text(encoding="utf-8")
     if "</svg>" not in sheet_svg:
-        raise RuntimeError("sheet.svg is not a complete SVG document")
+        raise RuntimeError("sheet-r2.svg is not a complete SVG document")
     panels["process"] = panels["process"].replace(
         "[[SHEET]]", "<figure>" + sheet_svg + "</figure>")
     crop_figs = {
