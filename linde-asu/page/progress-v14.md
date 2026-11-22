@@ -59,3 +59,9 @@ boundary items. Listing 2 stays (Code panel listings are required).
   header edges at 2560 px share left 680 / right 1880; scroll width
   equals client width at 390 px on all seven panels. Console errors
   were only the known KaTeX font 404s from the local /dist/ path.
+- [x] Published: main commit 1f93627 (scoped push, 16 blobs, linde-asu
+  only); gh-pages commit cb048f9 (index.html + walkthrough_molab.py).
+  Served bytes verified equal to build output: index.html SHA-256
+  64415a81a40043c8334857e19d1d145a046190081d614037668be4a22df4a97a,
+  walkthrough_molab.py SHA-256
+  f963b5b400cd87d9b6b7338f38045e188d6e68f6e1b705b1313eb35ea076f3af.
