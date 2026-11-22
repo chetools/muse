@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v28"
+VERSION = "v29"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -245,7 +245,7 @@ for _gid, _gtitle, _gkeys, _gtext in FIELD_GROUPS:
 input_fields = "\n".join(_group_html + _guide_html)
 
 # ---------------- PFD ----------------
-pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v8.svg").read_text()
+pfd_svg_text = (ROOT.parent / "pfd" / "linde-asu-pfd-v9.svg").read_text()
 inner = pfd_svg_text[pfd_svg_text.index(">") + 1: pfd_svg_text.rindex("</svg>")]
 pfd_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1190" width="100%" role="img">{inner}</svg>'
 
@@ -336,7 +336,7 @@ rendered["theory"] = rendered["theory"].replace(_m.group(1), _T1 + _m.group(1), 
 # curves keep their Fig. T1 number and fragment.
 _T0 = (f'<figure class="subdiagram sheetwide" id="theory-fig-t0"><div class="sheetbox">{pfd_svg}</div>'
        f'<figcaption>Fig. T0 | The whole plant on one diagram: compression, purification and cooling prepare the air, the coupled columns separate it, and the returning products give up their cold in the main heat exchanger. '
-       f'The same sheet is the working diagram of the Process panel (Fig. P0), where each unit is taken in turn.</figcaption></figure>')
+       f'The same sheet is the working diagram of the Process panel (Fig. P0), where each unit is taken in turn. The phase of every numbered stream is stated in the stream table on the sheet and in the legend below its equipment summary: all vapour, all liquid, or, for streams 14 and 17 only, vapour and liquid together.</figcaption></figure>')
 _m = re.search(r'(<h2 id="theory-key-points">)', rendered["theory"])
 assert _m, "Theory key points heading not found for Fig. T0 insertion"
 rendered["theory"] = rendered["theory"].replace(_m.group(1), _T0 + _m.group(1), 1)
