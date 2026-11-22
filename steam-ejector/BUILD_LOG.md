@@ -651,3 +651,112 @@ SELFTEST pass on the local build (635.18 kg/h, 523.56 kW).
   Pages run for 194c590 completed/success; served bytes
   byte-identical to the v15 build (4,527,858 bytes,
   SHA-256 7d398ddf...).
+
+## v16 — sheet revision r3: the four v15 residuals fixed (2026-11-22)
+
+Sheet redraw under PFD-SPEC-001, label placement only. The
+issued sheet.svg (r1) and sheet-r2.svg (r2) are not
+overwritten: the new revision is sheet-r3.svg, and
+build_page.py now reads sheet-r3.svg. Topology, stream
+values, equipment, and all text strings are unchanged —
+verified by graph comparison (all 32 geometry elements
+byte-identical between r2 and r3; no line was rerouted, so
+nodes, edges, and ports are trivially the same; all 48 text
+strings identical as a multiset; only the position/anchor
+attributes of 14 text elements changed) and by balance
+closure on the displayed values, which is the same
+proposition as r1/r2 (7 of 9 unit/overall balances close
+exactly; E-102 discharge and the hot-well overflow sit
+within the displayed rounding, 0.1 and 0.3 kg/h).
+
+The four residuals recorded at v15, measured with getBBox
+(glyph-level where the defect was glyph-level) before and
+after:
+
+1. Cooling-water drop at x 890 through the "g" glyph of
+   the "Vent 51.4 kg/h" label (glyph ink x 885-892.3,
+   y 128-143; distance 0, a strike). Fix: the label is
+   right-aligned ending at x 876 (ink x 772.88-876).
+   After: 14.00 units clear of the x 890 lines; 15.65
+   units from the vent pipe top; the sheet-wide
+   line-through-glyph scan finds zero strikes.
+2. Motive-steam drop at x 520 through the "/" glyph of
+   the cooling-water header text (glyph ink x 517.3-520.9,
+   y 93-108; distance 0, a strike). Fix: the header label
+   is shifted left to start at x 270 (ink x 270-496.43),
+   so it sits between the x 250 and x 520 drops. Label
+   placement alone clears it, so no line was rerouted.
+   After: 23.57 units from the label ink box to the
+   x 520 drop; nearest glyph 23.67 units.
+3. C-103 interior texts 7.81 / 6.00 units from the end of
+   the stage 3 discharge pipe (and 6 units inside their
+   own box outline). Fix: both texts moved from x 856 to
+   x 860. After: 11.18 / 10.00 units from the pipe end;
+   10 units inside the box outline.
+4. "CW return 10.23 m3/h" label 4.00 units above its
+   return line, and touching its own arrowhead (0.0).
+   Fix: baseline raised from y 438 to y 427. After:
+   15.00 units above the return line; 9.00 units from
+   the arrowhead.
+
+The full-sheet geometric scan was run on r3, not only at
+the four locations. Further sub-8 clearances of the same
+class (label placement) surfaced and were fixed in the
+same pass: the three ejector tags sat 7.00 units above
+their outlines (moved to baselines y 202 and x +6; after:
+10.00); the "91.4 kg/h" and "55.7 kg/h" flow labels sat
+0.62 units from the next ejector's outline (raised to
+baseline y 203, the discharge-label row, the "150 kg/h"
+label raised with them for a uniform row; after: 9.02);
+the vessel readout "50 dry + 100 vap." sat 4.92 units
+inside the vessel's right edge (the three vessel readouts
+moved to x 38; after: 8.00 left, 8.92 right).
+
+Scan result on r3: zero line-through-glyph strikes; zero
+text-text overlaps; every text-to-glyph and text-to-line
+clearance at or above 8 units. The scan's minimum
+clearance is 8.00 units, occurring at the leg labels
+against their leg lines (x 378 / 638 labels against the
+x 370 / 630 legs), the intercondenser duty labels against
+their inlet pipes, the "Vent 51.4 kg/h" label against the
+cooling-water header line, and several interior readouts
+sitting exactly 8 units inside their equipment outlines.
+The minimum inter-unit text-to-text gap is 8.62 units
+(E-102 tag against the "91.4 kg/h" label). Two measured
+items are recorded as residuals, not fixed:
+
+- Intra-unit line pitch: the two lines of one label or
+  readout group sit 1-6 units apart (minimum 1.0, between
+  the two lines of each condenser name). That is the
+  sheet's lettering pitch, identical in r1, r2, and r3;
+  the 8-unit rule governs clearance between a label and
+  other objects, and re-pitching every label group is a
+  re-typesetting outside this revision's scope.
+- "Vent to atmosphere" sits 3.00 units above its own
+  vent arrowhead (arrowhead apex y 426; label ink
+  y 409-423). Label placement cannot clear it: the
+  baseline would have to be at most y 415 for 8 units
+  above the arrowhead and at least y 418 to stay 8 units
+  below the leg readout ink ending at y 399 — an empty
+  window. Clearing it requires moving the vent pipe or
+  arrowhead geometry, which is outside a label-placement
+  revision; recorded here for a future sheet revision.
+
+Crop windows: every window re-measured against the r3
+ink; no edge changed. A wholeness check over all 48 text
+ink boxes against all eight windows finds no text
+partially cut by any window (each moved label is whole
+inside or whole outside every window it meets). The v14
+scale rule is unchanged (crops at 2.0x Fig. P1, capped,
+centred).
+
+Three-class figure audit (Figs. P1-P10, desktop and
+390 px, screenshots in shots/v16-audit/, the four fixed
+locations at full size): zero clipped fragments, zero
+strikes or collisions at the fixed locations; ABSURD —
+no scale change, all crops remain at 2.00x; UNNECESSARY —
+none found. Phone scroll width 375 px at 390 px.
+
+Verification: test_balance.py 14 passed; build checks
+pass (622 KaTeX = 622); SELFTEST pass on the local build
+(635.18 kg/h, 523.56 kW).

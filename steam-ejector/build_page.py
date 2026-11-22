@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v15"
+VERSION = "v16"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -326,6 +326,17 @@ CROP_WINDOWS = {
     # bottom edge and are excluded whole there; the stage 3
     # discharge label, ink ending x 841, is now excluded whole from
     # Fig. P8, whose caption already states that cut).
+    # v16: the sheet is now sheet-r3.svg (label placement only,
+    # fixing the four residuals recorded at v15: the Vent label
+    # right-aligned ending at x 876, clear of the x 890 lines; the
+    # cooling-water header label shifted to ink x 270-496, clear
+    # of the x 520 steam drop; the C-103 interior texts moved to
+    # x 860; the CW return label raised to baseline y 427; plus
+    # the ejector tags, the inter-unit flow labels, and the vessel
+    # readouts adjusted to the same 8-unit clearance standard).
+    # Every window was re-measured against the r3 ink and NO edge
+    # changed: a wholeness check over all 48 text ink boxes finds
+    # no text partially cut by any window.
     "motive": ("0 0 960 150", "the motive steam header, its branches down toward the three ejectors, and the cooling-water header below it, whose drops leave at the bottom edge"),
     "stage1": ("145 180 252 133", "the suction line from the vessel at the left edge, cooling water entering the first intercondenser at the top, its barometric leg leaving at the bottom, and the first intercondenser (Fig. P4) entering at the right edge"),
     "cond1": ("204 180 215.4 185", "the stage 1 ejector and its discharge entering from the left, cooling water entering at the top, the gas line to stage 2 leaving at the right edge, and the barometric leg continuing below the window to the hot well (Fig. P9)"),
@@ -657,9 +668,9 @@ def main():
                             + "\n</div></div>")
     # Computed content, from the model, never hand-typed.
     result = run_model(**DESIGN)
-    sheet_svg = (HERE / "sheet-r2.svg").read_text(encoding="utf-8")
+    sheet_svg = (HERE / "sheet-r3.svg").read_text(encoding="utf-8")
     if "</svg>" not in sheet_svg:
-        raise RuntimeError("sheet-r2.svg is not a complete SVG document")
+        raise RuntimeError("sheet-r3.svg is not a complete SVG document")
     panels["process"] = panels["process"].replace(
         "[[SHEET]]", "<figure>" + sheet_svg + "</figure>")
     crop_figs = {
