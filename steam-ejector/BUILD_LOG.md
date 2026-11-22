@@ -1054,3 +1054,14 @@ document scroll width 375 px, lettering small at full-column
 width as recorded for Fig. P11, with every anchor value
 carried in the caption text; SELFTEST pass on the local
 build (635.18 kg/h, 523.56 kW), no page errors.
+
+- Published: main 14b3461 pushed 6c4100a -> 28afebf
+  (compare view: 9 files, all in steam-ejector/);
+  gh-pages ac5188d -> d6a45e5 (compare view: only
+  steam-ejector/index.html; walkthrough untouched).
+  Pages run for d6a45e5 completed (built); served bytes
+  byte-identical to the v21 build (4,582,573 bytes,
+  SHA-256 f1a8f3b6...). Published-page SELFTEST not run
+  in a browser: sandbox Chromium cannot reach the public
+  internet; the verdict stands on the byte-identical
+  local build.
