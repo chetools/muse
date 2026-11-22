@@ -4,26 +4,20 @@ A steam ejector produces vacuum with no moving parts. High-pressure
 motive steam expands through a nozzle to a high velocity and a low
 static pressure, entrains the gas to be removed, mixes with it, and
 is then slowed in a diffuser that converts velocity back into
-pressure. The discharge leaves at a pressure above the suction
-pressure. Staging repeats that step, with a condenser between
-stages that removes most of the vapour before the next stage. This
-panel derives every relation the App panel computes except the
-cost relations, which the Economics panel carries, in the order
-the fluid meets them: the energy balance, the compressible-flow
-relations, the nozzle, the mixing throat, the diffuser, the stage
-ratio, and the interstage condenser. Each derivation is shown in
-full in an expandable block under the step that uses it, with its
-assumptions and its alternative route named. A symbol is defined
-where it first appears.
+pressure. Discharge is at a pressure above the suction pressure. Staging repeats that step, with a condenser between
+stages that removes most of the vapour before the next stage. Cost relations are in the Economics panel. Relations for the
+remaining steps follow the order the fluid meets them: the energy
+balance, the compressible-flow relations, the nozzle, the mixing
+throat, the diffuser, the stage ratio, and the interstage
+condenser.
 
 Steam ejectors hold vacuum on condensers, evaporators, and
 distillation columns across the process industries, and they are
 the standard choice where a rotating machine would face a wet,
 corrosive, or very large volumetric flow: there are no moving
 parts to wear or to seal against the vacuum, and the motive fluid
-is steam, which the plant already makes. The cost of that
-robustness is steam consumption, and the design questions are
-therefore quantitative ones — how many stages a given suction
+is steam, which the plant already makes. Steam consumption is the cost of that robustness, and the design questions are
+quantitative ones — how many stages a given suction
 pressure needs, how much motive steam each stage draws, and how
 much of the load the interstage condensers can remove before the
 next stage sees it. Those are the questions this page answers
@@ -31,24 +25,59 @@ with a live model.
 
 ## Key points
 
-Five quantities organise everything that follows. The stage
-compression ratio $C_r$, the discharge pressure of a stage
-divided by its suction pressure, is dimensionless, as is the
-entrainment ratio $R_a$, the motive steam mass flow divided by
-the entrained mass flow of one stage. Pressures in this opening
+Five quantities organise everything that follows. $C_r$, the stage compression ratio (discharge pressure of a stage divided by its suction pressure), is dimensionless, as is $R_a$, the entrainment ratio (motive steam mass flow divided by the entrained mass flow of one stage). Pressures in this opening
 are in kPa absolute, except the motive steam pressure, which the
 App takes in MPa absolute, and mass flows are in kg/h, the units
-of the App panel.
+of the App panel. Each item below is a preview of a design
+outcome; the section named in the item derives that outcome.
 
-1. One stage bridges only a limited ratio. A single stage works at a compression ratio of at most about 6 (§T9); the design basis compresses from a suction pressure of 2 kPa to atmospheric pressure, an overall ratio of 50.7, so it needs three stages at $C_r = 3.70$ each. Guided experiment: in the App, set the number of stages from 3 to 2. The compression ratio per stage rises from 3.70 to 7.12, the total motive steam rises from 635.2 kg/h to 946.1 kg/h, and warnings appear, because a ratio of 7.12 is outside the range of the entrainment correlation of §T10.
-2. The entrainment ratio sets the steam bill. Each stage draws $R_a$ kg of motive steam per kg of gas and vapour it entrains (§T10), so the total motive steam is the sum over stages of $R_a$ times the load each stage actually sees. Guided experiment: in the App, lower the motive steam pressure from 0.8 MPa to 0.4 MPa. Every stage's entrainment ratio in the stage table rises (stage 1 from 1.86 to 2.20), and the total motive steam rises from 635.2 kg/h to 754.1 kg/h: a weaker jet entrains less per kg of steam.
-3. Interstage condensation unloads the later stages. A condenser after each stage removes most of the vapour, so a later stage entrains a much smaller flow than the stage before it (§T11). Guided experiment: in the App, raise the condensable vapour flow from 100 kg/h to 300 kg/h. Stage 1 motive steam rises from 278.3 kg/h to 649.4 kg/h and the first intercondenser duty rises from 231.3 kW to 623.2 kW, while stages 2 and 3 are unchanged: the first condenser condenses the extra vapour, and the vapour that survives it is set by the cooling water, not by the inlet flow.
-4. Cooling-water temperature caps what a condenser can remove. The vapour surviving a condenser is the entering vapour or the vapour in equilibrium at the condenser outlet temperature, whichever is smaller; the outlet temperature is the cooling-water temperature plus 5 K (§T11). Warmer cooling water raises that equilibrium amount, so more vapour can survive each condenser and pass to the later stages. Guided experiment: in the App, raise the cooling-water temperature from 25 °C to 35 °C. The total motive steam rises from 635.2 kg/h to 1,406.9 kg/h and the total condenser duty rises from 523.6 kW to 1,059.8 kW.
-5. Suction pressure is a major cost lever. Lower suction pressure raises both the overall compression ratio and every stage's entrainment ratio, and the motive steam sweep in the App shows the combined effect as a curve. Guided experiment: in the App, raise the suction pressure from 2 kPa to 5 kPa. The total motive steam falls from 635.2 kg/h to 437.2 kg/h, and the diamond on the sweep chart moves along the curve to the new point.
+1. One stage bridges only a limited ratio. Design outcome
+(derived in §T9 and §T10): a single stage works at a compression
+ratio of at most about 6; the design basis compresses from a
+suction pressure of 2 kPa to atmospheric pressure, an overall
+ratio of 50.7, so it needs three stages at $C_r = 3.70$ each.
+In the App, set the number of stages from 3 to 2: the
+compression ratio per stage rises from 3.70 to 7.12, the total
+motive steam rises from 635.2 kg/h to 946.1 kg/h, and warnings
+appear, because a ratio of 7.12 is outside the range of the
+entrainment correlation of §T10.
+2. Entrainment ratio sets the steam bill. Design outcome
+(derived in §T10): each stage draws $R_a$ kg of motive steam
+per kg of gas and vapour it entrains, and the total motive
+steam is the sum over stages of $R_a$ times the load each stage
+actually sees. Try a lower motive pressure in the App, from
+0.8 MPa to 0.4 MPa: every stage's entrainment ratio in the
+stage table rises (stage 1 from 1.86 to 2.20), and the total
+motive steam rises from 635.2 kg/h to 754.1 kg/h.
+3. Interstage condensation unloads the later stages. Design
+outcome (derived in §T11): a condenser after each stage removes
+most of the vapour, and a later stage entrains a much smaller
+flow than the stage before it. For a check in the App, raise
+the condensable vapour flow from 100 kg/h to 300 kg/h: stage 1
+motive steam rises from 278.3 kg/h to 649.4 kg/h and the first
+intercondenser duty rises from 231.3 kW to 623.2 kW, while
+stages 2 and 3 are unchanged.
+4. Cooling-water temperature caps what a condenser can remove.
+Design outcome (derived in §T11): the vapour surviving a
+condenser is the entering vapour or the vapour in equilibrium
+at the condenser outlet temperature, whichever is smaller; the
+outlet temperature is the cooling-water temperature plus 5 K.
+Changing the cooling-water temperature in the App from 25 °C
+to 35 °C raises the total motive steam from 635.2 kg/h to
+1,406.9 kg/h and the total condenser duty from 523.6 kW to
+1,059.8 kW.
+5. Suction pressure is a major cost lever. Design outcome
+(derived in §T9 and §T10): lower suction pressure raises both
+the overall compression ratio and every stage's entrainment
+ratio, and the motive steam sweep in the App shows the combined
+effect as a curve. A further App change, raising the suction
+pressure from 2 kPa to 5 kPa, lowers the total motive steam
+from 635.2 kg/h to 437.2 kg/h, and the diamond on the sweep
+chart moves along the curve to the new point.
 
 ## How the demonstration is done
 
-The App panel is the demonstration. Its inputs are the suction
+Demonstration is by the App panel. Its inputs are the suction
 pressure, the dry gas flow, the condensable vapour flow, the
 motive steam pressure, the cooling-water temperature, the number
 of stages, and two economics assumptions, the steam price and
@@ -61,8 +90,7 @@ pressure, and the stage table, which gives each stage's suction
 and discharge pressures, entrainment ratio, motive steam,
 condenser duty, and cooling-water flow. Every guided experiment
 above changes one of those inputs and reads the effect off those
-outputs. The Process panel supplies the physical route each key
-point refers to:
+outputs. Each key point's physical route is in the Process panel:
 
 | Key point | Process sections |
 |---|---|
@@ -70,14 +98,12 @@ point refers to:
 | 2. Entrainment ratio sets the steam bill | Motive steam supply; Inside one stage |
 | 3. Interstage condensation unloads later stages | First and second barometric intercondensers; Surface aftercondenser |
 | 4. Cooling-water temperature caps removal | First and second barometric intercondensers; Hot well |
-| 5. Suction pressure is the cost lever | Follow the gas through the system; Stream table |
+| 5. Suction pressure is the cost lever | System overview; Stream table |
 
-The derivations below then justify each relation the model uses,
-in the order the fluid meets them: §T1 to §T8 build the single
-stage, §T9 and §T10 give the stage ratio and the entrainment
-correlation, §T11 gives the interstage condenser, §T12 covers
-off-design behaviour, and §T13 and §T14 state what the model
-computes and work the design basis in full.
+§T1 to §T8 cover the single stage, §T9 and §T10 give the stage
+ratio and the entrainment correlation, §T11 gives the interstage
+condenser, §T12 covers off-design behaviour, and §T13 and §T14
+state the model calculation and the design basis in full.
 
 ## Symbols
 
@@ -110,6 +136,7 @@ computes and work the design basis in full.
 | $u$ | specific internal energy | J/kg |
 | $s$ | specific entropy | J/(kg K) |
 | $c_p$ | specific heat capacity at constant pressure | J/(kg K) |
+| $c_v$ | specific heat capacity at constant volume | J/(kg K) |
 | $k$ | ratio of specific heats, $c_p/c_v$ | — |
 | $R$ | specific gas constant | J/(kg K) |
 | $R_a$ | entrainment ratio, motive over entrained mass flow | — |
@@ -122,13 +149,9 @@ computes and work the design basis in full.
 Density $\rho$ appears first in §T2. Velocity $v$ and enthalpy
 $h$ appear first in §T1. Area $A$ appears first
 in §T5. Entropy $s$ and the Mach number $M$ appear first in §T4.
-The compression ratio $C_r$ appears first in §T1. The entrainment
-ratio $R_a$ appears first in §T9. The expansion ratio $E_r$ appears
-first in §T10. The throat-entry pressure $p_{m,2}$ appears first
-in §T7. The symbol $s$ is specific entropy only: the distance
+$C_r$, the compression ratio, appears first in Key points. $R_a$, the entrainment ratio, appears first in Key points. $E_r$, the expansion ratio, appears first in §T10. $p_{m,2}$, the throat-entry pressure, appears first in §T7. $s$ is specific entropy only: the distance
 along a streamline in the §T2 derivation is written $l$, the
-path length in m. The system-inlet suction pressure is written
-$p_{ev,1}$, because $p_s$ is the stage discharge pressure
+path length in m. System-inlet suction pressure is written $p_{ev,1}$, because $p_s$ is the stage discharge pressure
 everywhere on this page and a suction pressure must not carry
 that subscript. Specific volume appears only
 in the definition of specific enthalpy in §T1, written $\nu$ in
@@ -136,13 +159,12 @@ m3/kg so it cannot be confused with the velocity $v$ in m/s.
 
 ## T1 What an ejector does
 
-In plain words: an ejector is a pump with no moving parts. It spends the energy of a high-pressure steam jet to drag a low-pressure gas along with it, then trades the mixture's speed back for pressure. Everything in this panel is an accounting of that one exchange — energy first, then momentum, then pressure — part by part, in the order the fluid meets the parts. The familiar anchor is the laboratory water aspirator: water driven through a constriction speeds up, its pressure falls, and air is drawn in at the side arm. An ejector is the same device, run with steam at speeds where the gas can no longer be treated as incompressible, which is what most of this panel is about.
+An ejector is a pump with no moving parts. It spends the energy of a high-pressure steam jet to drag a low-pressure gas along with it, then trades the mixture's speed back for pressure. Everything in this panel is an accounting of that one exchange — energy first, then momentum, then pressure — part by part, in the order the fluid meets the parts. The familiar anchor is the laboratory water aspirator: water driven through a constriction speeds up, its pressure falls, and air is drawn in at the side arm [7]. An ejector is the same device, run with steam at speeds where the gas can no longer be treated as incompressible, which is what most of this panel is about.
 
 A single ejector stage has four parts in series: a motive nozzle,
 a suction chamber, a mixing throat of constant area, and a
 diffuser. Motive steam enters the nozzle at the motive pressure
-$p_m$ and a low velocity. The nozzle converts the enthalpy drop of
-the expanding steam into kinetic energy. Specific enthalpy $h$ in
+$p_m$ and a low velocity. Enthalpy drop of the expanding steam is converted into kinetic energy in the nozzle. Specific enthalpy $h$ in
 J/kg is defined as $h = u + p\nu$, where $u$ is the specific
 internal energy in J/kg, $p$ is the pressure in Pa, and $\nu$ is
 the specific volume in m3/kg, the volume occupied by one
@@ -150,14 +172,10 @@ kilogram; $\nu$ is written with that symbol, and not with the
 letter used for velocity, because $v$ on this page is the
 velocity in m/s. Enthalpy is the quantity the steady-flow energy
 balance keeps account of, because a flowing stream carries its
-internal energy $u$ and the flow work $p\nu$ together. The jet
-leaves the
-nozzle at a velocity of the order of 1000 m/s and a static pressure
-below the suction pressure $p_{ev}$. The jet enters the suction
-chamber, where the low static pressure draws in the suction gas.
-The two streams mix in the throat, exchanging momentum, and the
-mixture then enters the diffuser, where it is slowed and its static
-pressure rises to the discharge pressure $p_s$. The stage therefore
+internal energy $u$ and the flow work $p\nu$ together. From the nozzle, the jet leaves at a velocity of the order of 1000 m/s and a static pressure
+below the suction pressure $p_{ev}$. Next, the jet enters the suction chamber, where the low static pressure draws in the suction gas.
+In the throat, the two streams mix, exchanging momentum, and the mixture then enters the diffuser, where it is slowed and its static
+pressure rises to the discharge pressure $p_s$. A stage
 takes in gas at $p_{ev}$ and delivers the mixture at $p_s$, with
 $C_r = p_s/p_{ev}$ as its compression ratio. No shaft work crosses
 the boundary of the stage, and no heat is added or removed inside
@@ -168,7 +186,7 @@ motive steam.
 The steady-flow energy equation for a control volume with one
 inlet and one outlet, written per unit mass, is
 
-$$h_1 + v_1^2/2 + g z_1 + q = h_2 + v_2^2/2 + g z_2 + w$$
+$$h_1 + v_1^2/2 + g z_1 + q = h_2 + v_2^2/2 + g z_2 + w \tag{1}$$
 
 where $h$ is specific
 enthalpy in J/kg, $v$ is velocity in m/s, $g$ is the acceleration
@@ -184,7 +202,7 @@ the whole stage as
 $$\dot{m}_m h_{m} + \dot{m}_{ev} h_{ev} +
 \dot{m}_m v_m^2/2 + \dot{m}_{ev} v_{ev}^2/2 =
 (\dot{m}_m + \dot{m}_{ev}) h_s + (\dot{m}_m + \dot{m}_{ev})
-v_s^2/2$$
+v_s^2/2 \tag{2}$$
 
 where $\dot{m}$ is mass flow rate in kg/s. The inlet
 velocities are small beside the jet velocity, so the inlet kinetic
@@ -192,18 +210,17 @@ energy terms are dropped in the stage balance, giving
 
 $$\dot{m}_m h_m + \dot{m}_{ev} h_{ev} =
 (\dot{m}_m + \dot{m}_{ev}) h_s + (\dot{m}_m + \dot{m}_{ev})
-v_s^2/2$$
+v_s^2/2 \tag{3}$$
 
 The same equation, applied to the nozzle alone with one
 inlet and one outlet and no work or heat, gives
 
-$$h_0 = h + v^2/2$$
+$$h_0 = h + v^2/2 \tag{4}$$
 
 at every point of the nozzle, where $h_0$ is the stagnation
-specific enthalpy defined in §T3. The alternative route is the
-differential form
+specific enthalpy defined in §T3. An alternative route is the differential form
 
-$$dh + v\,dv = 0$$
+$$dh + v\,dv = 0 \tag{5}$$
 
 along a streamline, integrated
 between the same two states; it gives the same result.
@@ -211,45 +228,38 @@ between the same two states; it gives the same result.
 
 ## T2 The Bernoulli equation and where it stops working
 
-In plain words: along a flowing stream, speed and pressure trade against each other — where the fluid moves faster, its static pressure is lower. That single trade is why a fast jet can pull gas in at all. The Bernoulli equation states the trade exactly, but only for a fluid whose density stays constant; the motive jet violates that condition by a factor of more than forty, so this section states the equation, derives it, and then marks the boundary where the compressible relations of the next sections must take over.
+Along a flowing stream, speed and pressure trade against each other — where the fluid moves faster, its static pressure is lower. That single trade is why a fast jet can pull gas in at all. Bernoulli's equation states the trade exactly, but only for a fluid whose density stays constant; the motive jet violates that condition by a factor of more than forty, so this section states the equation, derives it, and then marks the boundary where the compressible relations of the next sections must take over.
 
 For a steady, incompressible, frictionless flow along a streamline,
 the Bernoulli equation states that $p/\rho + v^2/2 + g z$ is
 constant, where $p$ is static pressure in Pa, $\rho$ is density in
 kg/m3, $v$ is velocity in m/s, $g$ is the acceleration due to
-gravity in m/s2, and $z$ is elevation in m. The term $p/\rho$ is
-pressure energy per unit mass, $v^2/2$ is kinetic energy per unit
+gravity in m/s2, and $z$ is elevation in m. $p/\rho$ is pressure energy per unit mass, $v^2/2$ is kinetic energy per unit
 mass, and $g z$ is potential energy per unit mass. The equation
 says that a rise in velocity along a streamline is paid for by a
 fall in static pressure, which is the qualitative reason a fast jet
-has a low static pressure and can entrain suction gas. The
-laboratory vacuum aspirator works on the same statement: water
-through a constriction speeds up, its static pressure falls below
-atmospheric pressure, and air is drawn in at the side arm [7].
-
+has a low static pressure and can entrain suction gas. 
 ::: detail Derivation — Bernoulli equation from the Euler equation
 The Euler equation for steady flow of a frictionless fluid along a
 streamline, with $l$ as the path length along the streamline in
 m, is
 
-$$(1/\rho)\,dp/dl + v\,dv/dl + g\,dz/dl = 0$$
+$$(1/\rho)\,dp/dl + v\,dv/dl + g\,dz/dl = 0 \tag{6}$$
 
 where $dp/dl$
 is the pressure gradient in Pa/m, $dv/dl$ is the velocity
-gradient in 1/s, and $dz/dl$ is the elevation gradient. The
-letter $l$ is used for the path length so that $s$ remains
-specific entropy only. The equation is Newton's second law per
+gradient in 1/s, and $dz/dl$ is the elevation gradient. $l$ is used for the path length so that $s$ remains specific entropy only. The equation is Newton's second law per
 unit volume along the streamline: pressure force, inertia, and
 weight. Multiply by $dl$ to get
 
-$$dp/\rho + v\,dv + g\,dz = 0$$
+$$dp/\rho + v\,dv + g\,dz = 0 \tag{7}$$
 
 For an incompressible fluid $\rho$
 is constant, so $dp/\rho$ integrates to $p/\rho$; $v\,dv$
 integrates to $v^2/2$; $g\,dz$ integrates to $g z$. Integration
 between two points 1 and 2 on the same streamline gives
 
-$$p_1/\rho + v_1^2/2 + g z_1 = p_2/\rho + v_2^2/2 + g z_2$$
+$$p_1/\rho + v_1^2/2 + g z_1 = p_2/\rho + v_2^2/2 + g z_2 \tag{8}$$
 
 The
 three assumptions enter at three places: steady flow removes the
@@ -258,13 +268,13 @@ the viscous stress; constant density lets $1/\rho$ come out of
 the integral. The alternative route starts from the steady-flow
 energy equation of §T1 with $q = 0$ and $w = 0$ and uses
 
-$$dh = dp/\rho$$
+$$dh = dp/\rho \tag{9}$$
 
 for an incompressible fluid at constant
 temperature, which gives the same result.
 :::
 
-The Bernoulli equation fails for the motive jet in two places.
+For the motive jet, the Bernoulli equation fails in two places.
 First, the density of steam changes by a factor of more than
 forty between the motive inlet and the nozzle exit, so $\rho$
 cannot be treated as constant and $dp/\rho$ does not integrate to
@@ -285,8 +295,7 @@ Motive steam at $p_m = 800$ kPa abs is saturated at $T_0 = 170.4$
 °C, where its saturated-vapour density is about 4.16 kg/m3. At
 the nozzle exit, near the suction pressure of 2 kPa, the static
 temperature of an isentropic expansion falls towards 100 K and
-the density falls below 0.1 kg/m3. The ratio of the two densities
-exceeds 40, so the constant-density assumption of the Bernoulli
+the density falls below 0.1 kg/m3. Because the ratio of the two densities exceeds 40, the constant-density assumption of the Bernoulli
 equation is wrong by more than an order of magnitude. By contrast,
 air at 2 kPa and 20 °C moving at 30 m/s has a Mach number of about
 0.09, and its density change along a streamline is below 1%, so
@@ -295,22 +304,17 @@ the Bernoulli equation applies there to within 1%.
 
 ## T3 Stagnation pressure, stagnation enthalpy, and total energy
 
-In plain words: a moving stream carries two kinds of energy at once — the energy of its pressure and temperature, and the energy of its motion. The stagnation state is a bookkeeping device that merges the two: imagine the stream slowed gently to rest, with no heat lost and no work done, and ask what pressure and temperature it would then have. Those stagnation values are the totals the nozzle spends and the diffuser partly recovers, and comparing them at two points shows at once how much of the stream's total has been lost to irreversibility between the points.
+A moving stream carries two kinds of energy at once — the energy of its pressure and temperature, and the energy of its motion. The stagnation state is a bookkeeping device that merges the two: imagine the stream slowed gently to rest, with no heat lost and no work done, and ask what pressure and temperature it would then have. Those stagnation values are the totals the nozzle spends and the diffuser partly recovers, and comparing them at two points shows at once how much of the stream's total has been lost to irreversibility between the points.
 
-The stagnation state of a moving fluid is the state reached if the
-fluid is brought to rest isentropically and adiabatically, with
+For a moving fluid, the stagnation state is the state reached if the fluid is brought to rest isentropically and adiabatically, with
 no shaft work. Its
 stagnation specific enthalpy $h_0$ in J/kg, stagnation temperature
 $T_0$ in K, and stagnation pressure $p_0$ in Pa are the enthalpy,
 temperature, and pressure of that brought-to-rest state. For a
 perfect gas with constant $c_p$ in J/(kg K), the energy equation
 $h_0 = h + v^2/2$ of §T1 becomes $c_p T_0 = c_p T + v^2/2$, so
-$T_0 = T + v^2/(2 c_p)$. The stagnation temperature therefore
-exceeds the static temperature by the kinetic energy expressed as
-a temperature rise. The stagnation pressure follows from the
-isentropic relation between $p_0$ and $p$ derived in §T4. The
-motive steam enters the nozzle at approximately its stagnation
-state, because its inlet velocity is small; the jet at the nozzle
+$T_0 = T + v^2/(2 c_p)$. Stagnation temperature therefore exceeds the static temperature by the kinetic energy expressed as
+a temperature rise. Stagnation pressure follows from the isentropic relation between $p_0$ and $p$ derived in §T4. Motive steam enters the nozzle at approximately its stagnation state, because its inlet velocity is small; the jet at the nozzle
 exit has nearly the same $h_0$ and $p_0$ as the inlet, but a much
 lower static $h$, $T$, and $p$, with the difference carried as
 kinetic energy.
@@ -318,40 +322,40 @@ kinetic energy.
 ::: detail Derivation — stagnation temperature from the energy equation
 Start from the nozzle energy balance
 
-$$h_1 + v_1^2/2 = h_2 + v_2^2/2$$
+$$h_1 + v_1^2/2 = h_2 + v_2^2/2 \tag{10}$$
 
 derived in §T1. For a perfect gas, specific enthalpy
 depends only on temperature,
 
-$$h = c_p T$$
+$$h = c_p T \tag{11}$$
 
 with the reference state
 chosen so that $h = 0$ at $T = 0$ K. Substituting gives
 
-$$c_p T_1 + v_1^2/2 = c_p T_2 + v_2^2/2$$
+$$c_p T_1 + v_1^2/2 = c_p T_2 + v_2^2/2 \tag{12}$$
 
 Define the stagnation temperature at
 any point as the temperature the fluid would have if brought to
 rest from that point,
 
-$$T_0 = T + v^2/(2 c_p)$$
+$$T_0 = T + v^2/(2 c_p) \tag{13}$$
 
 Then the balance
 reads
 
-$$c_p T_{0,1} = c_p T_{0,2}$$
+$$c_p T_{0,1} = c_p T_{0,2} \tag{14}$$
 
 so $T_0$ is constant along an
 adiabatic nozzle with no work. The same argument with $h$ in place
 of $c_p T$ gives
 
-$$h_0 = h + v^2/2$$
+$$h_0 = h + v^2/2 \tag{15}$$
 
 for any fluid, including steam
 near saturation, where $c_p$ is not constant. The alternative route
 uses the differential form
 
-$$dh + v\,dv = 0$$
+$$dh + v\,dv = 0 \tag{16}$$
 
 and integrates $dh =
 c_p\,dT$ for a perfect gas, giving the same $T_0$.
@@ -371,12 +375,9 @@ isentropic relation of §T4.
 
 ## T4 Speed of sound, Mach number, and the isentropic relations
 
-In plain words: sound is how fast news travels through a gas — a small pressure disturbance moving from molecule to molecule. A flow slower than sound can hear what is downstream and adjust in advance; a flow faster than sound cannot, and that is why supersonic flow behaves in ways that reverse ordinary intuition, widening ducts speeding it up instead of slowing it down. The Mach number simply measures flow speed in units of that news speed, and the isentropic relations of this section give the exact links between pressure, temperature, density, and Mach number for a compression or expansion with no friction and no heat transfer.
+Sound is how fast news travels through a gas — a small pressure disturbance moving from molecule to molecule. A flow slower than sound can hear what is downstream and adjust in advance; a flow faster than sound cannot, and that is why supersonic flow behaves in ways that reverse ordinary intuition, widening ducts speeding it up instead of slowing it down. The Mach number simply measures flow speed in units of that news speed, and the isentropic relations of this section give the exact links between pressure, temperature, density, and Mach number for a compression or expansion with no friction and no heat transfer.
 
-The speed of sound $a$ in m/s is the speed at which a small
-pressure disturbance travels through a fluid at rest. The Mach
-number $M = v/a$ is the ratio of the flow velocity $v$ to the speed
-of sound. Flow with $M < 1$ is subsonic, with $M = 1$ is sonic, and
+Speed of sound $a$ in m/s is the speed at which a small pressure disturbance travels through a fluid at rest. Mach number $M = v/a$ is the ratio of the flow velocity $v$ to the speed of sound. Flow with $M < 1$ is subsonic, with $M = 1$ is sonic, and
 with $M > 1$ is supersonic. For a perfect gas, $a = \sqrt{k R T}$,
 where $k$ is the ratio of specific heats, $R$ is the specific gas
 constant in J/(kg K), and $T$ is the static temperature in K.
@@ -390,9 +391,7 @@ unit mass in J/kg and $T$ is the absolute temperature in K. A
 change carried out with no heat transfer and no irreversibility
 keeps $s$ constant and is called isentropic; friction, mixing of
 streams at different velocities, and a shock wave all raise $s$,
-and no process inside the ejector can lower the total. The
-isentropic relations connect the static and stagnation states at a
-given Mach number: $T_0/T = 1 + (k-1) M^2/2$, $p_0/p = (1 +
+and no process inside the ejector can lower the total. Isentropic relations connect the static and stagnation states at a given Mach number: $T_0/T = 1 + (k-1) M^2/2$, $p_0/p = (1 +
 (k-1) M^2/2)^{k/(k-1)}$, and $\rho_0/\rho = (1 + (k-1)
 M^2/2)^{1/(k-1)}$. At $M = 1$ these give the critical ratios
 $T^*/T_0 = 2/(k+1)$, $p^*/p_0 = (2/(k+1))^{k/(k-1)}$, and
@@ -405,7 +404,7 @@ the same ratio is 0.528.
 ::: detail Derivation — speed of sound from the isentropic derivative
 The speed of sound is defined by
 
-$$a^2 = (\partial p/\partial \rho)_s$$
+$$a^2 = (\partial p/\partial \rho)_s \tag{17}$$
 
 where the subscript $s$ denotes constant specific
 entropy in J/(kg K). Consider a weak pressure wave moving at speed
@@ -414,57 +413,57 @@ frame moving with the wave, fluid enters at speed $a$ and leaves
 at speed $a + dv$ with density $\rho + d\rho$ and pressure $p +
 dp$. Mass conservation across the wave gives
 
-$$\rho a = (\rho + d\rho)(a + dv)$$
+$$\rho a = (\rho + d\rho)(a + dv) \tag{18}$$
 
 which to first order in the small changes gives
 
-$$a\,d\rho + \rho\,dv = 0$$
+$$a\,d\rho + \rho\,dv = 0 \tag{19}$$
 
 Momentum conservation gives
 
-$$p + \rho a^2 = p + dp + (\rho + d\rho)(a + dv)^2$$
+$$p + \rho a^2 = p + dp + (\rho + d\rho)(a + dv)^2 \tag{20}$$
 
 expanding the last
 term to first order,
 
 $$(\rho + d\rho)(a + dv)^2 = \rho a^2 + 2\rho
-a\,dv + a^2 d\rho$$
+a\,dv + a^2 d\rho \tag{21}$$
 
 so the momentum equation becomes
 
-$$dp + 2\rho a\,dv + a^2 d\rho = 0$$
+$$dp + 2\rho a\,dv + a^2 d\rho = 0 \tag{22}$$
 
 The $a^2 d\rho$ term must be kept: it is
 first order in the small changes, the same order as the other two
 terms. Eliminate $dv$ with the continuity relation: from $a\,d\rho
 + \rho\,dv = 0$,
 
-$$\rho\,dv = -a\,d\rho$$
+$$\rho\,dv = -a\,d\rho \tag{23}$$
 
 so $2\rho a\,dv =
 -2a^2 d\rho$, and the momentum equation becomes
 
-$$dp - 2a^2 d\rho + a^2 d\rho = dp - a^2 d\rho = 0$$
+$$dp - 2a^2 d\rho + a^2 d\rho = dp - a^2 d\rho = 0 \tag{24}$$
 
 giving
 
-$$a^2 = dp/d\rho$$
+$$a^2 = dp/d\rho \tag{25}$$
 
 The
 wave is isentropic because the changes are small and no heat is
 transferred on the time scale of the wave, so
 
-$$a^2 = (\partial p/\partial \rho)_s$$
+$$a^2 = (\partial p/\partial \rho)_s \tag{26}$$
 
 For a perfect gas, $p = \rho R T$ and an
 isentropic change obeys $p/\rho^k = \text{constant}$;
 differentiating gives
 
-$$dp/d\rho = k p/\rho = k R T$$
+$$dp/d\rho = k p/\rho = k R T \tag{27}$$
 
 so
 
-$$a = \sqrt{k R T}$$
+$$a = \sqrt{k R T} \tag{28}$$
 
 The alternative route uses the isentropic relation
 $T\,ds = dh - dp/\rho$ with $ds = 0$ to get $dh = dp/\rho$, then
@@ -472,20 +471,21 @@ $a^2 = (\partial p/\partial \rho)_s$ follows from $h = c_p T$ and
 $p = \rho R T$.
 :::
 
-::: detail Derivation — isentropic stagnation relations
-Start from $T_0 = T + v^2/(2 c_p)$ of §T3. Write $v = M a = M
-\sqrt{k R T}$ and use $c_p = k R/(k-1)$, which follows from $c_p -
-c_v = R$ and $k = c_p/c_v$ by eliminating $c_v$:
+::: detail Derivation — isentropic stagnation relations Start from
+$T_0 = T + v^2/(2 c_p)$ of §T3. Write $v = M a = M \sqrt{k R T}$ and
+use $c_p = k R/(k-1)$, which follows from $c_p - c_v = R$ and $k =
+c_p/c_v$ by eliminating $c_v$, the specific heat capacity at constant
+volume in J/(kg K):
 
-$$c_p = k R/(k-1)$$
+$$c_p = k R/(k-1) \tag{29}$$
 
 Then
 
-$$v^2/(2 c_p) = M^2 k R T (k-1)/(2 k R) = (k-1) M^2 T/2$$
+$$v^2/(2 c_p) = M^2 k R T (k-1)/(2 k R) = (k-1) M^2 T/2 \tag{30}$$
 
 so
 
-$$T_0/T = 1 + (k-1) M^2/2$$
+$$T_0/T = 1 + (k-1) M^2/2 \tag{31}$$
 
 For an isentropic change of a perfect
 gas, $p/\rho^k$ is constant and $p = \rho R T$, so $p \propto
@@ -493,14 +493,14 @@ T^{k/(k-1)}$; applying this between the static and stagnation
 states gives
 
 $$p_0/p = (T_0/T)^{k/(k-1)} = (1 + (k-1)
-M^2/2)^{k/(k-1)}$$
+M^2/2)^{k/(k-1)} \tag{32}$$
 
 Likewise
 
-$$\rho_0/\rho = (T_0/T)^{1/(k-1)}$$
+$$\rho_0/\rho = (T_0/T)^{1/(k-1)} \tag{33}$$
 
 Setting $M = 1$ gives the critical ratios quoted in the main text.
-The conditions are: perfect gas, constant $k$, isentropic flow.
+Conditions are: perfect gas, constant $k$, isentropic flow.
 Steam near saturation violates the constant-$k$ condition, so the
 relations are used here as an ideal-gas reference, and the
 correlation of §T10 carries the real-fluid behaviour.
@@ -519,19 +519,16 @@ is why the motive nozzle diverges after its throat.
 
 ## T5 The converging-diverging nozzle
 
-In plain words: the nozzle is where the stage's pressure energy is cashed in for speed. Steam enters slow and at high pressure; it leaves at the order of 1,000 m/s and at the suction pressure. The shape — narrow, then wide — is forced by the physics of the last section: below the speed of sound a narrowing duct accelerates a stream, above the speed of sound only a widening duct does, so a nozzle that must cross the speed of sound needs both halves, joined at the throat where the flow is exactly sonic.
+The nozzle converts the stage's pressure energy into kinetic energy. Steam enters slow and at high pressure; it leaves at the order of 1,000 m/s and at the suction pressure. A shape — narrow, then wide — is forced by the physics of the last section: below the speed of sound a narrowing duct accelerates a stream, above the speed of sound only a widening duct does, so a nozzle that must cross the speed of sound needs both halves, joined at the throat where the flow is exactly sonic.
 
-The motive nozzle has a converging section, a throat of minimum
-area $A^*$ in m2, and a diverging section. In the converging
+A motive nozzle has a converging section, a throat of minimum area $A^*$ in m2, and a diverging section. In the converging
 section the flow is subsonic and accelerates as the area falls. At
 the throat the flow reaches $M = 1$ if the pressure ratio across
 the nozzle is large enough; the nozzle is then choked, and the mass
 flow rate is fixed by the upstream stagnation state and the throat
 area, independent of the downstream pressure. In the diverging
 section the supersonic flow accelerates further as the area rises,
-and the static pressure and temperature fall. The area–Mach
-relation gives the area ratio $A/A^*$ required for a given Mach
-number: $A/A^* = (1/M) ((2/(k+1))(1 + (k-1) M^2/2))^{(k+1)/(2(k-1))}$.
+and the static pressure and temperature fall. For a given Mach number, the area ratio $A/A^*$ required is given by the area–Mach relation: $A/A^* = (1/M) ((2/(k+1))(1 + (k-1) M^2/2))^{(k+1)/(2(k-1))}$.
 At $M = 1$ the ratio is 1. For steam with $k = 1.33$, $M = 2$
 needs $A/A^* = 1.75$, $M = 3$ needs $A/A^* = 4.83$, and $M = 4$
 needs $A/A^* = 13.95$. The nozzle exit Mach number is therefore set
@@ -547,49 +544,48 @@ proportionally (see §T12).
 ::: detail Derivation — area–Mach relation
 Mass conservation along the nozzle gives
 
-$$\dot{m} = \rho A v$$
+$$\dot{m} = \rho A v \tag{34}$$
 
 constant along the nozzle, where $\dot{m}$ is mass flow rate in
 kg/s. At the throat,
 
-$$\dot{m} = \rho^* A^* a^*$$
+$$\dot{m} = \rho^* A^* a^* \tag{35}$$
 
 where the
 asterisk denotes the sonic state and $a^*$ is the speed of sound
 there. Dividing gives
 
-$$A/A^* = (\rho^* a^*)/(\rho v)$$
+$$A/A^* = (\rho^* a^*)/(\rho v) \tag{36}$$
 
 Write $v =
 M a$ and use the isentropic relations of §T4:
 
 $$\rho^*/\rho =
-(\rho^*/\rho_0)(\rho_0/\rho)$$
+(\rho^*/\rho_0)(\rho_0/\rho) \tag{37}$$
 
 with $\rho^*/\rho_0 =
 (2/(k+1))^{1/(k-1)}$ and $\rho_0/\rho = (1 + (k-1)
 M^2/2)^{1/(k-1)}$, and
 
-$$a^*/a = \sqrt{T^*/T}$$
+$$a^*/a = \sqrt{T^*/T} \tag{38}$$
 
 with $T^*/T_0 =
 2/(k+1)$ and $T_0/T = 1 + (k-1) M^2/2$. Collecting powers gives
 
-$$A/A^* = (1/M) ((2/(k+1))(1 + (k-1) M^2/2))^{(k+1)/(2(k-1))}$$
+$$A/A^* = (1/M) ((2/(k+1))(1 + (k-1) M^2/2))^{(k+1)/(2(k-1))} \tag{39}$$
 
 The derivation uses continuity, the perfect-gas isentropic
-relations, and the definitions of $M$ and $a$ only. The same
-relation shows that $A$ has a minimum at $M = 1$: differentiating
+relations, and the definitions of $M$ and $a$ only. From the same relation, $A$ has a minimum at $M = 1$: differentiating
 $\ln(A/A^*)$ with respect to $M$ gives zero at $M = 1$, and the
 second derivative is positive there. The alternative route
 differentiates the continuity equation in the form
 
-$$d\rho/\rho + dA/A + dv/v = 0$$
+$$d\rho/\rho + dA/A + dv/v = 0 \tag{40}$$
 
 and combines it with the momentum equation to
 get
 
-$$(M^2 - 1)\,dv/v = dA/A$$
+$$(M^2 - 1)\,dv/v = dA/A \tag{41}$$
 
 which shows directly that $dv$ and
 $dA$ have the same sign for supersonic flow and opposite signs for
@@ -597,10 +593,9 @@ subsonic flow.
 :::
 
 ::: detail Derivation — choking and the critical pressure ratio
-Choking occurs when the flow at the throat reaches $M = 1$. The
-pressure ratio at which this first happens is the critical ratio
+Choking occurs when the flow at the throat reaches $M = 1$. At this first occurrence, the pressure ratio is the critical ratio
 
-$$p^*/p_0 = (2/(k+1))^{k/(k-1)}$$
+$$p^*/p_0 = (2/(k+1))^{k/(k-1)} \tag{42}$$
 
 of §T4, derived by setting $M =
 1$ in the isentropic pressure relation. For steam ($k = 1.33$) the
@@ -609,39 +604,36 @@ throat once the pressure downstream of the throat falls below 432
 kPa abs. The mass flow rate at choking is
 
 $$\dot{m} = \rho^* A^*
-a^* = p_0 A^* \sqrt{k/(R T_0)} (2/(k+1))^{(k+1)/(2(k-1))}$$
+a^* = p_0 A^* \sqrt{k/(R T_0)} (2/(k+1))^{(k+1)/(2(k-1))} \tag{43}$$
 
 found
 by writing $\rho^* = p^*/(R T^*)$ with $p^*$ and $T^*$ from the
-critical ratios and $a^* = \sqrt{k R T^*}$. The mass flow rate
-depends on $p_0$, $T_0$, and $A^*$ only, not on the downstream
-pressure, which is the defining property of choked flow. The
+critical ratios and $a^* = \sqrt{k R T^*}$. Downstream pressure does not enter the mass flow rate, which depends on $p_0$, $T_0$, and $A^*$ only, which is the defining property of choked flow. The
 alternative route starts from $\dot{m} = \rho A v$ with $v = M
 \sqrt{k R T}$ and maximises $\dot{m}$ with respect to $M$ at fixed
 $A$; the maximum is at $M = 1$.
 :::
 
 ::: detail Side note — the nozzle exit velocity as an ideal-gas limit
-The App panel reports a nozzle exit velocity and Mach number for
-the first stage, computed as an ideal-gas isentropic expansion
-from the motive stagnation state to the suction pressure with a
-nozzle efficiency of 0.90. At the design basis (800 kPa abs motive
-steam, 2 kPa abs suction) the limit is 1078 m/s at Mach 4.3, with
-an exit static temperature of 100 K. A temperature of 100 K is
-below the saturation temperature at 2 kPa, so real steam would
+The App panel reports a nozzle exit velocity and Mach number for the
+first stage, computed as an ideal-gas isentropic expansion from the
+motive stagnation state to the suction pressure with a nozzle
+isentropic efficiency of $\eta_n = 0.90$. At the design basis (800 kPa
+abs motive steam, 2 kPa abs suction) the limit is 1078 m/s at Mach
+4.3, with an exit static temperature of 100 K. A temperature of 100 K
+is below the saturation temperature at 2 kPa, so real steam would
 condense in the jet; condensation releases latent heat, raises the
-static temperature, and lowers the velocity below the ideal-gas
-limit. The number is therefore an upper limit on the jet speed,
-not a measurement of it, and the page uses it only to show the
-scale of the velocity that makes entrainment possible.
+static temperature, and lowers the velocity below the ideal-gas limit.
+That number is an upper limit on the jet speed, not a measurement of
+it, and the page uses it only to show the scale of the velocity that
+makes entrainment possible.
 :::
 
 ## T6 Suction entrainment
 
-In plain words: the jet does not suck the suction gas in the way a straw does. It drags it. At the surface of the fast jet, friction between the moving jet and the nearly still gas around it pulls the gas along, layer by layer, and the chamber around the jet is emptied faster than gas can arrive except through the suction connection — which is the flow the system exists to draw. This section describes that dragging region and states what sets the rate at which gas is entrained.
+The jet does not suck the suction gas in the way a straw does. It drags it. At the surface of the fast jet, friction between the moving jet and the nearly still gas around it pulls the gas along, layer by layer, and the chamber around the jet is emptied faster than gas can arrive except through the suction connection — which is the flow the system exists to draw. This section describes that dragging region and states what sets the rate at which gas is entrained.
 
-The supersonic jet leaves the nozzle as a free jet into the suction
-chamber. At the edge of the jet, the velocity falls from the jet
+As a free jet into the suction chamber, the supersonic jet leaves the nozzle. At the edge of the jet, the velocity falls from the jet
 velocity to the low velocity of the suction gas over a thin shear
 layer. Turbulent eddies in the shear layer transfer momentum from
 the jet to the surrounding gas, accelerating the suction gas and
@@ -664,12 +656,9 @@ quantifies.
 
 ## T7 Momentum balance in the mixing throat
 
-In plain words: mixing is a collision that conserves momentum, not speed. A small mass moving at 1,000 m/s meets a larger mass moving slowly; afterwards they move together at one intermediate speed, fixed by the rule that total mass times velocity is unchanged by the collision itself. Kinetic energy is not conserved in that collision — the difference becomes internal energy, which is why the mixture warms as it mixes — and this section writes the momentum balance for the throat and shows what mixture speed, and what pressure rise across the mixing zone, it predicts.
+Mixing is a collision that conserves momentum, not speed. A small mass moving at 1,000 m/s meets a larger mass moving slowly; afterwards they move together at one intermediate speed, fixed by the rule that total mass times velocity is unchanged by the collision itself. Kinetic energy is not conserved in that collision — the difference becomes internal energy, which is why the mixture warms as it mixes — and this section writes the momentum balance for the throat and shows what mixture speed, and what pressure rise across the mixing zone, it predicts.
 
-The mixing throat is a duct of constant cross-sectional area in
-which the motive jet and the suction gas mix to a single stream of
-uniform velocity and pressure. The momentum balance over the
-throat is the relation that fixes how much suction gas a given
+Mixing takes place in a throat of constant cross-sectional area, in which the motive jet and the suction gas mix to a single stream of uniform velocity and pressure. Over the throat, the momentum balance is the relation that fixes how much suction gas a given
 motive jet can entrain and compress. Take the control volume as
 the throat from its inlet plane to its outlet plane. The motive
 stream enters with mass flow rate $\dot{m}_m$ in kg/s, velocity
@@ -686,8 +675,7 @@ acting on the wall, the balance reduces to $p_{m,2} A_m + p_{ev}
 A_{ev} + \dot{m}_m v_m + \dot{m}_{ev} v_{ev} = p_3 A_3 +
 (\dot{m}_m + \dot{m}_{ev}) v_3$, where $A_m$, $A_{ev}$, and $A_3$
 are the entry areas of the two streams and the throat area in m2.
-The energy balance over the same volume gives the mixture
-stagnation enthalpy as the mass-weighted mean of the two inlet
+Over the same volume, the energy balance gives the mixture stagnation enthalpy as the mass-weighted mean of the two inlet
 stagnation enthalpies. Together with mass conservation, these two
 balances determine the mixed velocity $v_3$ and pressure $p_3$ for
 given inlet states. The classical one-dimensional ejector theory
@@ -717,16 +705,15 @@ neglects friction. Momentum flux in is $\dot{m}_m v_m +
 gives
 
 $$p_{m,2} A_m + p_{ev} A_{ev} - p_3 A_3 = (\dot{m}_m +
-\dot{m}_{ev}) v_3 - \dot{m}_m v_m - \dot{m}_{ev} v_{ev}$$
+\dot{m}_{ev}) v_3 - \dot{m}_m v_m - \dot{m}_{ev} v_{ev} \tag{44}$$
 
 which
-rearranges to the form in the main text. The step that needs care
-is the wall force: in a duct whose area changes, the wall pressure
+rearranges to the form in the main text. Care is needed at one step, the wall force: in a duct whose area changes, the wall pressure
 has an axial component $\int p\,dA$ that must be kept. The
 alternative route writes the balance in differential form along
 the throat,
 
-$$dp + \rho v\,dv = 0$$
+$$dp + \rho v\,dv = 0 \tag{45}$$
 
 with $\rho v$ replaced by the
 mixed density, and integrates it; it gives the same result when
@@ -742,16 +729,16 @@ only if $p_3 = p_2$; in general $p_3$ differs from $p_2$. With
 $v_{ev}$ small beside $v_m$, the momentum balance gives
 
 $$(\dot{m}_m + \dot{m}_{ev}) v_3 = \dot{m}_m v_m + (p_2 - p_3)
-A_3$$
+A_3 \tag{46}$$
 
 The mass balance gives
 
 $$\dot{m}_m + \dot{m}_{ev} =
-\dot{m}_3$$
+\dot{m}_3 \tag{47}$$
 
 Dividing the momentum balance by $\dot{m}_3$ gives
 
-$$v_3 = (\dot{m}_m v_m + (p_2 - p_3) A_3)/\dot{m}_3$$
+$$v_3 = (\dot{m}_m v_m + (p_2 - p_3) A_3)/\dot{m}_3 \tag{48}$$
 
 The mixed
 velocity is therefore the mass-weighted mean of the inlet
@@ -762,7 +749,7 @@ slower than the mass-weighted mean. The energy balance then gives
 the mixed static temperature from
 
 $$h_{0,3} = (\dot{m}_m h_{0,m} +
-\dot{m}_{ev} h_{0,ev})/\dot{m}_3$$
+\dot{m}_{ev} h_{0,ev})/\dot{m}_3 \tag{49}$$
 
 with $h_{0,3} = h_3 + v_3^2/2$.
 Solving the momentum and energy balances together, with the
@@ -779,7 +766,7 @@ Mixing streams of different velocities is irreversible: kinetic
 energy of the relative motion is dissipated into internal energy
 by turbulent eddies, and the stagnation pressure of the mixture is
 below the mass-weighted mean of the inlet stagnation pressures.
-The loss is larger when the velocity ratio is larger, which is one
+When the velocity ratio is larger, the loss is larger, which is one
 reason a very high motive pressure does not raise entrainment in
 proportion. Friction on the throat wall adds a further loss, and
 the shock that usually stands in the throat adds a third. All
@@ -789,17 +776,15 @@ three losses are absorbed into the empirical entrainment ratio of
 
 ## T8 The diffuser and pressure recovery
 
-In plain words: the diffuser runs the nozzle backwards. The mixture enters fast and at low pressure; the widening duct slows it, and the kinetic energy it gives up reappears as pressure. The recovery is never complete — the shock wave in the throat and friction on the walls each take a share — and this section accounts for what the diffuser can deliver, including the normal-shock relations that fix the pressure jump where the supersonic stream collapses to subsonic speed.
+The diffuser runs the nozzle backwards. The mixture enters fast and at low pressure; the widening duct slows it, and the kinetic energy it gives up reappears as pressure. The recovery is never complete — the shock wave in the throat and friction on the walls each take a share — and this section accounts for what the diffuser can deliver, including the normal-shock relations that fix the pressure jump where the supersonic stream collapses to subsonic speed.
 
-The diffuser is a diverging duct that slows the mixture from the
-throat to the discharge pipe. As the velocity falls, the static
+A diverging duct, the diffuser slows the mixture from the throat to the discharge pipe. As the velocity falls, the static
 pressure rises: the kinetic energy of the mixture is converted
 back into pressure energy. For the subsonic part of the diffuser
 the incompressible intuition is quantitatively close — a fall in
 $v^2/2$ is matched by a rise in $p/\rho$ — and the compressible
 form is the same energy equation $h_0 = h + v^2/2$ used in §T3,
-with $h_0$ constant along the diffuser. The pressure recovery is
-limited by two effects. First, the mixture usually enters the
+with $h_0$ constant along the diffuser. Two effects limit the pressure recovery. First, the mixture usually enters the
 diffuser supersonically, so a normal shock stands at or just
 inside the diffuser throat; the shock compresses the flow
 abruptly to subsonic speed and raises the static pressure, but
@@ -808,8 +793,7 @@ can separate if the divergence angle is too large, which
 unsteadies the flow and loses recovery. The discharge pressure
 $p_s$ is therefore below the value an isentropic deceleration
 from the throat state would give, and the difference is the
-diffuser loss. The diffuser sets the maximum discharge pressure a
-stage can hold: if the pressure downstream of the stage rises
+diffuser loss. Maximum discharge pressure a stage can hold is set by the diffuser: if the pressure downstream of the stage rises
 above that maximum, the shock moves upstream into the throat, the
 entrainment rate falls sharply, and the stage breaks down (see
 §T12).
@@ -818,23 +802,22 @@ entrainment rate falls sharply, and the stage breaks down (see
 Apply the energy equation between the diffuser inlet (subscript 3)
 and outlet (subscript $s$):
 
-$$h_3 + v_3^2/2 = h_s + v_s^2/2$$
+$$h_3 + v_3^2/2 = h_s + v_s^2/2 \tag{50}$$
 
 with
 no work and no heat. For a perfect gas, $h = c_p T$, and with the
 isentropic relation $p \propto T^{k/(k-1)}$ the pressure ratio is
 
-$$p_s/p_3 = ((T_0 - v_s^2/(2 c_p))/(T_0 - v_3^2/(2 c_p)))^{k/(k-1)}$$
+$$p_s/p_3 = ((T_0 - v_s^2/(2 c_p))/(T_0 - v_3^2/(2 c_p)))^{k/(k-1)} \tag{51}$$
 
 where $T_0$ is the common stagnation temperature. In the
 incompressible limit, $h$ is replaced by $p/\rho$ and the same
 energy equation gives
 
-$$p_s - p_3 = \rho (v_3^2 - v_s^2)/2$$
+$$p_s - p_3 = \rho (v_3^2 - v_s^2)/2 \tag{52}$$
 
 the
-pressure rise equals the fall in dynamic pressure. The diffuser
-efficiency is defined as the ratio of the actual pressure rise to
+pressure rise equals the fall in dynamic pressure. Diffuser efficiency is defined as the ratio of the actual pressure rise to
 the isentropic pressure rise between the same inlet state and the
 same outlet velocity. The alternative route computes the recovery
 from the momentum equation with the wall pressure integral $\int
@@ -846,48 +829,46 @@ in a diverging duct.
 Across a stationary normal shock, mass, momentum, and energy are
 conserved — mass,
 
-$$\rho_1 v_1 = \rho_2 v_2$$
+$$\rho_1 v_1 = \rho_2 v_2 \tag{53}$$
 
 momentum,
 
 $$p_1 + \rho_1 v_1^2 = p_2 +
-\rho_2 v_2^2$$
+\rho_2 v_2^2 \tag{54}$$
 
 and energy,
 
-$$h_1 + v_1^2/2 = h_2 + v_2^2/2$$
+$$h_1 + v_1^2/2 = h_2 + v_2^2/2 \tag{55}$$
 
 With $M_1$ as the
 upstream Mach number, the perfect-gas solution is
 
 $$p_2/p_1 = 1 +
-2k(M_1^2 - 1)/(k+1)$$
+2k(M_1^2 - 1)/(k+1) \tag{56}$$
 
 $$T_2/T_1 = (2k M_1^2 - (k-1))((k-1) M_1^2 +
-2)/((k+1)^2 M_1^2)$$
+2)/((k+1)^2 M_1^2) \tag{57}$$
 
 and
 
 $$M_2^2 = ((k-1) M_1^2 + 2)/(2k M_1^2 -
-(k-1))$$
+(k-1)) \tag{58}$$
 
 The stagnation pressure falls across the shock, and the
 fall grows rapidly with $M_1$: at $M_1 = 2$ and $k = 1.33$, $p_{0,2}/
 p_{0,1}$ is about 0.71. The derivation solves the three
 conservation equations with $h = c_p T$ and $p = \rho R T$; the
 algebra is elimination of $\rho_2$, $v_2$, and $T_2$ in favour of
-$M_1$. The alternative route uses the Rayleigh pitot formula for
-the stagnation pressure behind the shock. The shock is the reason
-the diffuser throat is the most sensitive part of the stage: a
+$M_1$. An alternative route uses the Rayleigh pitot formula for the stagnation pressure behind the shock. Because of the shock, the diffuser throat is the most sensitive part of the stage: a
 small rise in back pressure moves the shock upstream and the
 stagnation-pressure loss grows.
 :::
 
 ## T9 Stage compression ratio and why one stage cannot reach low pressure
 
-In plain words: one stage can multiply pressure only so far — by a factor of a few, not by the factor of fifty that separates 2 kPa from the atmosphere. The limit is set by the momentum balance of the last sections: a jet carries a fixed stock of momentum, and asking it to lift the mixture through a larger pressure rise spends that stock sooner. So deep vacuum is reached by repetition — stages in series, each multiplying by the same modest factor — and this section shows why equal factors per stage are nearly the cheapest arrangement, and what the total motive steam costs as the number of stages changes.
+One stage can multiply pressure only so far — by a factor of a few, not by the factor of fifty that separates 2 kPa from the atmosphere. The limit is set by the momentum balance of the last sections: a jet carries a fixed stock of momentum, and asking it to lift the mixture through a larger pressure rise spends that stock sooner. So deep vacuum is reached by repetition — stages in series, each multiplying by the same modest factor — and this section shows why equal factors per stage are nearly the cheapest arrangement, and what the total motive steam costs as the number of stages changes.
 
-The compression ratio of a stage is $C_r = p_s/p_{ev}$. The
+For one stage, compression ratio is $C_r = p_s/p_{ev}$. The
 overall compression ratio from the suction pressure at the
 system inlet $p_{ev,1}$ in Pa — the first stage's suction
 pressure, $p_{ev}$ of stage 1 — to atmospheric pressure $p_{atm}$
@@ -906,8 +887,10 @@ stage at $C_r = 50.7$ would need $R_a$ above 40, or more than 6000
 kg/h of motive steam for a 150 kg/h suction load, and no real
 ejector reaches that ratio at all: the shock moves into the throat
 and the stage breaks down long before. Staging keeps every stage
-inside the range where the correlation holds and where the
-motive-steam demand is affordable. Interstage condensation is
+inside the range where the correlation holds. With condensation,
+the staged total at the design basis is 635.2 kg/h, against
+5024.0 kg/h without the condensers, as the comparison in this
+section states. Interstage condensation is
 what keeps the staged total at 635.2 kg/h: without the
 condensers, each stage would have to entrain the previous stage's
 whole discharge, and the same correlation gives motive steam of
@@ -924,13 +907,13 @@ equal-ratio design is kept for its simplicity.
 Write the motive steam of stage $i$ as
 
 $$\dot{m}_{m,i} = R_{a,i}
-\dot{m}_{ev,i}$$
+\dot{m}_{ev,i} \tag{59}$$
 
 where $\dot{m}_{ev,i}$ is the mass flow entrained
 by stage $i$. The total motive steam $\sum_i \dot{m}_{m,i}$ is to
 be minimised subject to
 
-$$\prod_i C_{r,i} = C_{r,total}$$
+$$\prod_i C_{r,i} = C_{r,total} \tag{60}$$
 
 The
 Lagrange condition for that minimisation is equal marginal cost,
@@ -967,10 +950,9 @@ One stage from 2 kPa to 101.325 kPa needs $C_r = 50.7$. The
 correlation of §T10 at $p_{ev} = 2$ kPa, $p_s = 101.325$ kPa, and
 $p_m = 800$ kPa gives $R_a = 41.77$, so the motive steam would be
 
-$$41.77 \times 150 = 6266$$
+$$41.77 \times 150 = 6266 \tag{61}$$
 
-kg/h. The model reports this with a
-warning that $C_r$ and $R_a$ are outside the correlation range.
+kg/h. With a warning that $C_r$ and $R_a$ are outside the correlation range, the model reports this.
 Three stages need $C_r = 3.70$ each and $R_a$ values of 1.86, 2.24,
 and 2.72, with a total motive steam of 635 kg/h. Staging cuts the
 motive steam by a factor of about 10 at this suction pressure.
@@ -978,10 +960,9 @@ motive steam by a factor of about 10 at this suction pressure.
 
 ## T10 The entrainment correlation used by the model
 
-In plain words: the theory so far explains how an ejector works, but a designer needs a number — how much motive steam a stage will use for a given suction load. That number comes from measurements on real ejectors, fitted into a correlation. This section states the correlation the App panel uses, what each factor in it corrects for, the range of conditions its data covered, and how far the page's design basis sits inside that range. A correlation is a summary of experiments, not a derivation, and the section keeps the two kinds of statement separate.
+The theory so far explains how an ejector works, but a designer needs a number — how much motive steam a stage will use for a given suction load. That number comes from measurements on real ejectors, fitted into a correlation. This section states the correlation the App panel uses, what each factor in it corrects for, the range of conditions its data covered, and how far the page's design basis sits inside that range. A correlation is a summary of experiments, not a derivation, and the section keeps the two kinds of statement separate.
 
-The model does not solve the one-dimensional momentum and energy
-balances of §T7–§T8 for each stage. It uses the semi-empirical
+For each stage, the one-dimensional momentum and energy balances of §T7–§T8 are not solved by the model. It uses the semi-empirical
 entrainment correlation in the reciprocal form $R_a = 0.296\,
 p_s^{1.19}/p_{ev}^{1.04}\, (p_m/p_{ev})^{0.015}\, P_{CF}/T_{CF}$,
 with all pressures in kPa, as stated by El-Dessouky and Ettouney
@@ -995,8 +976,7 @@ p_m^2 - 0.0009 p_m + 1.6101$ is the motive-pressure correction
 factor; and $T_{CF} = 2\times10^{-8} T_{ev}^2 - 0.0006 T_{ev} +
 1.0047$ is the entrained-temperature correction factor, with
 $T_{ev}$ as the saturation temperature in °C of the entrained
-vapour at $p_{ev}$. The expansion ratio is $E_r = p_m/p_{ev}$ and
-the compression ratio is $C_r = p_s/p_{ev}$. El-Dessouky,
+vapour at $p_{ev}$. Expansion ratio is $E_r = p_m/p_{ev}$ and compression ratio is $C_r = p_s/p_{ev}$. El-Dessouky,
 Ettouney, Alatiqi, and Al-Nuwaibit [1] define the entrainment
 ratio the other way round, as $w$, the entrained vapour flow
 divided by the motive steam flow, so $R_a = 1/w$; their
@@ -1012,8 +992,7 @@ was developed for steam as the motive fluid and water vapour as
 the entrained vapour; the model applies it to a suction load of
 air plus water vapour by treating the dry gas as air in the
 condenser balances of §T11 and using the correlation for the
-entrainment step, which is a stated model approximation. The model
-warns whenever a stage leaves the stated range, including when
+entrainment step, which is a stated model approximation. Whenever a stage leaves the stated range, the model warns, including when
 $T_{ev}$ is at or below 10 °C (a suction pressure below about
 1.22 kPa), and the warning appears in the App panel. Four limits
 of the correlation as used here are stated plainly. The lower
@@ -1046,18 +1025,17 @@ this factor. The factor $P_{CF}$ corrects for the motive pressure
 itself: at $p_m = 800$ kPa,
 
 $$P_{CF} = 3\times10^{-7}\times
-800^2 - 0.0009\times 800 + 1.6101 = 1.082$$
+800^2 - 0.0009\times 800 + 1.6101 = 1.082 \tag{62}$$
 
 The factor $T_{CF}$
 corrects for the temperature of the entrained vapour: at $T_{ev} =
 17.5$ °C,
 
 $$T_{CF} = 2\times10^{-8}\times 17.5^2 - 0.0006\times
-17.5 + 1.0047 = 0.994$$
+17.5 + 1.0047 = 0.994 \tag{63}$$
 
 Dividing by $T_{CF}$ therefore raises
-$R_a$ by about 0.6% at the design basis. The coefficient 0.296
-sets the overall level and carries the units that make $R_a$
+$R_a$ by about 0.6% at the design basis. Overall level is set by the coefficient 0.296, which also carries the units that make $R_a$
 dimensionless when the pressures are entered in kPa. The
 alternative route is the one-dimensional theory of §T7 with an
 assumed mixing efficiency; it gives the same qualitative
@@ -1072,33 +1050,27 @@ $p_{ev}^{1.04} = 2^{1.04} = 2.06$, $(p_m/p_{ev})^{0.015} =
 400^{0.015} = 1.094$, $P_{CF} = 1.082$, and $T_{CF} = 0.994$, so
 
 $$R_a = 0.296 \times 10.8/2.06 \times 1.094 \times 1.082/0.994
-\approx 1.85$$
+\approx 1.85 \tag{64}$$
 
-(the model value is 1.856). The entrained flow is
-150 kg/h, so the motive steam for stage 1 is
+(the model value is 1.856). At an entrained flow of 150 kg/h, the motive steam for stage 1 is
 
 $$1.856 \times 150 =
-278$$
+278 \tag{65}$$
 
-kg/h. The same arithmetic for stages 2 and 3 gives $R_a =
-2.24$ and $R_a = 2.72$.
+kg/h. For stages 2 and 3, the same arithmetic gives $R_a = 2.24$ and $R_a = 2.72$.
 :::
 
 ## T11 Interstage condensation
 
-In plain words: between stages, the system throws away most of what the last stage just compressed. That is not waste; it is the economy of the whole arrangement. Most of the discharge is spent motive steam, and condensing it back to liquid shrinks the next stage's load by a factor of four or more, so the next ejector is smaller and uses less steam than the steam it saves. This section writes the condenser balance — how much vapour can remain with the dry gas at the condenser outlet temperature, and hence how much must condense — for the direct-contact barometric condensers and the surface aftercondenser of the Process panel.
+Between stages, most of the discharge from the previous stage is condensed and removed. Most of that discharge is spent motive steam, and condensing it back to liquid reduces the next stage's load by a factor of four or more, so the next ejector is smaller and uses less steam than the steam it saves. This section writes the condenser balance — how much vapour can remain with the dry gas at the condenser outlet temperature, and hence how much must condense — for the direct-contact barometric condensers and the surface aftercondenser of the Process panel.
 
 Between stages, the discharge of one stage passes through a
-condenser before the next stage. The condenser removes heat, so
-most of the water vapour in the discharge condenses to liquid and
-leaves through the hot well, while the dry gas passes on to the
+condenser before the next stage. In the condenser, heat is removed, and most of the water vapour in the discharge condenses to liquid and leaves through the hot well, while the dry gas passes on to the
 next stage with only the water vapour that remains saturated at
 the condenser outlet temperature. The load on the next stage is
 therefore much smaller than the discharge of the previous stage,
 and the next stage needs much less motive steam than it would
-without the condenser. The mass balance over a condenser is:
-vapour in equals condensate out plus vapour out, and dry gas in
-equals dry gas out. The energy balance is: heat removed equals the
+without the condenser. Over a condenser, the mass balance is: vapour in equals condensate out plus vapour out, and dry gas in equals dry gas out. The energy balance is: heat removed equals the
 latent heat of the condensed vapour plus the sensible cooling of
 the condensate and the gas from the discharge temperature to the
 outlet temperature. The vapour that remains is fixed by the
@@ -1106,9 +1078,7 @@ vapour-pressure limit: the gas leaving the condenser is saturated
 at the outlet temperature $T_{out}$, so its water-vapour partial
 pressure is $p_{sat}(T_{out})$, and its vapour mole fraction is
 $p_{sat}(T_{out})/p$, where $p$ is the total pressure in the
-condenser. The outlet temperature is $T_{out} = T_{cw} + 5$ K,
-where $T_{cw}$ is the cooling-water temperature in °C and 5 K is
-the approach, a stated model assumption. The saturation pressure
+condenser. Outlet temperature is $T_{out} = T_{cw} + 5$ K, where $T_{cw}$ is the cooling-water temperature in °C and 5 K is the approach, a stated model assumption. The saturation pressure
 $p_{sat}(T)$ is computed from the Antoine equation [8], and the
 latent heat from $h_{fg} = 2501 - 2.43\,T$ kJ/kg with $T$ in °C.
 
@@ -1119,17 +1089,17 @@ in kmol/h. The total molar flow leaving is $n_{dry} + n_v$, and
 by Dalton's law the vapour partial pressure is
 
 $$p_v = p\, n_v/
-(n_{dry} + n_v)$$
+(n_{dry} + n_v) \tag{66}$$
 
 where $p$ is the total pressure. The gas is
 saturated at the outlet temperature, so
 
-$$p_v = p_{sat}(T_{out})$$
+$$p_v = p_{sat}(T_{out}) \tag{67}$$
 
 Solving $p_{sat} = p\, n_v/(n_{dry} + n_v)$ for $n_v$ gives
 
 $$n_v
-= n_{dry}\, p_{sat}/(p - p_{sat})$$
+= n_{dry}\, p_{sat}/(p - p_{sat}) \tag{68}$$
 
 Multiplying by the molar mass
 of water, 18 kg/kmol, gives the vapour mass flow leaving. Two
@@ -1151,7 +1121,7 @@ converting with the molar masses.
 The Antoine equation is
 
 $$\log_{10}(p_{sat}/\mathrm{mmHg}) = A -
-B/(C + T)$$
+B/(C + T) \tag{69}$$
 
 where $T$ is temperature in °C and $A$, $B$, $C$ are
 fitted constants. The model uses $(A, B, C) = (8.07131, 1730.63,
@@ -1166,7 +1136,7 @@ still contains $p$, and repeat 80 times, which narrows the bracket
 to below $10^{-20}$ °C. Bisection is used instead of the algebraic
 inversion
 
-$$T = B/(A - \log_{10} p) - C$$
+$$T = B/(A - \log_{10} p) - C \tag{70}$$
 
 because the constants
 change at 99 °C and the algebraic form would need a branch test;
@@ -1178,7 +1148,7 @@ steam-table values [5][6].
 :::
 
 ::: detail Derivation — condenser duty, term by term
-The duty $Q$ in W is the heat removed in the condenser. Its first
+Heat removed in the condenser is the duty $Q$ in W. Its first
 term is the latent heat of the condensed vapour, $m_{condensed}\,
 h_{fg}(T_{out})$, where $m_{condensed}$ is the condensed mass flow
 rate in kg/s and $h_{fg}$ is evaluated at the outlet temperature.
@@ -1210,19 +1180,19 @@ sensible cooling of the discharge gas from its discharge
 temperature to the outlet temperature. The cooling-water flow
 follows from
 
-$$Q = m_{cw}\, c_{p,liq}\, \Delta T_{cw}$$
+$$Q = m_{cw}\, c_{p,liq}\, \Delta T_{cw} \tag{71}$$
 
 with
 $\Delta T_{cw} = 10$ K, so
 
 $$m_{cw} = Q/(c_{p,liq}\, \Delta
-T_{cw})$$
+T_{cw}) \tag{72}$$
 
 The alternative route measures the duty from the
 cooling-water side,
 
 $$Q = m_{cw} c_{p,liq} (T_{cw,out} -
-T_{cw,in})$$
+T_{cw,in}) \tag{73}$$
 
 the two agree when the balance closes.
 :::
@@ -1233,16 +1203,16 @@ intercondenser. The outlet temperature is $25 + 5 = 30$ °C, where
 $p_{sat} = 4.23$ kPa. The dry gas is 50 kg/h, or 1.724 kmol/h, so
 the vapour leaving is
 
-$$1.724 \times 4.23/(7.40 - 4.23) = 2.30$$
+$$1.724 \times 4.23/(7.40 - 4.23) = 2.30 \tag{74}$$
 
 kmol/h, or 41.4 kg/h. The condensed vapour is
 
-$$428.3 - 50 - 41.4 = 336.9$$
+$$428.3 - 50 - 41.4 = 336.9 \tag{75}$$
 
 kg/h. The duty is
 
 $$336.9 \times 2428/3600
-= 227$$
+= 227 \tag{76}$$
 
 kW of latent heat plus about 4 kW of sensible cooling,
 231 kW in total. Without the condenser, stage 2 would have to
@@ -1251,13 +1221,11 @@ entrain 428.3 kg/h; with it, stage 2 entrains 91.4 kg/h.
 
 ## T12 Off-design behaviour
 
-In plain words: an ejector is a fixed piece of shaped metal, so it has one geometry, and its good behaviour lives inside a region of operating conditions, not everywhere. Inside the region it runs double-choked and holds its vacuum stubbornly; outside it, the performance falls off a cliff rather than along a slope — the shock is driven back, entrainment collapses, and the vacuum breaks. This section maps that region: what motive pressure, suction load, cooling-water temperature, and discharge pressure each do when they move away from the design point.
+An ejector is a fixed piece of shaped metal, so it has one geometry, and its good behaviour lives inside a region of operating conditions, not everywhere. Inside the region it runs double-choked; outside it, performance decreases sharply — the shock moves back towards the throat, entrainment decreases, and the vacuum is lost. This section maps that region: what motive pressure, suction load, cooling-water temperature, and discharge pressure each do when they move away from the design point.
 
 An ejector is designed for one set of motive pressure, suction
 pressure, and discharge pressure. Away from that set, its
-performance changes in ways that follow from §T5–§T8. The nozzle
-has a fixed area ratio, so by the isentropic relations of §T4 its
-exit pressure scales with the motive pressure: at the design
+performance changes in ways that follow from §T5–§T8. A fixed area ratio is built into the nozzle, so by the isentropic relations of §T4 its exit pressure scales with the motive pressure: at the design
 basis the exit pressure is 2.0 kPa at a motive pressure of 800
 kPa. If the motive pressure falls to 600 kPa, the exit pressure
 falls in proportion, to 1.5 kPa, which is below the 2 kPa back
@@ -1293,7 +1261,7 @@ motive flow.
 
 ## T13 What the model computes
 
-In plain words: this section is the contract between the theory and the App panel. It lists, in order, exactly what the live model calculates from the six reader inputs, which relations from the earlier sections each step uses, and what the model leaves out — so that any number the App panel shows can be traced back to the section that justifies it, and no number appears that no section covers.
+For the inputs of §T10–§T11, the live model calculates stage ratios, entrainment ratios, motive steam flows, condenser duties and cooling-water flows, and the vent flow, in the order stated in this section. Nozzle and diffuser geometry are not calculated.
 
 The App panel computes, for the inputs of §T10–§T11: the equal
 stage compression ratio $C_r = (p_{atm}/p_{ev,1})^{1/N}$; the
@@ -1305,18 +1273,16 @@ the central value; the vapour surviving each condenser from the
 vapour-pressure limit of §T11; the condenser duty and
 cooling-water flow of each condenser; the vent flow leaving the
 aftercondenser; and the nozzle diagnostic of §T5 as an ideal-gas
-limit. The model assumptions are: steady flow; saturated motive
+limit. Model assumptions are: steady flow; saturated motive
 steam; equal stage compression ratios; condenser outlet at
 cooling-water temperature plus 5 K; cooling-water rise 10 K;
 dry gas treated as air; the entrainment correlation of §T10 for
 entrainment; and no pressure drop in the condensers or pipework.
-The model has no energy balance on the ejector stages themselves
-beyond the correlation, and it does not compute nozzle or diffuser
-geometry.
+Beyond the correlation, the model has no energy balance on the ejector stages themselves, and it does not compute nozzle or diffuser geometry.
 
 ## T14 Worked design basis
 
-In plain words: this section runs the whole chain once, by hand, at the conditions the rest of the page uses — the same 2 kPa suction, the same loads, the same three stages — and shows every intermediate value, so the reader can check the App panel's design-basis run line by line against the theory. The check is a consistency check: it shows that the same arithmetic is transcribed identically in the Theory panel, the App panel, and the Code panel. It cannot detect an error in the entrainment correlation or in the saturation fit itself, which are taken from their sources as §T10 states.
+This section runs the whole chain once, by hand, at the conditions the rest of the page uses — the same 2 kPa suction, the same loads, the same three stages — and shows every intermediate value, so the reader can check the App panel's design-basis run line by line against the theory. Consistency is what this check establishes: it shows that the same arithmetic is transcribed identically in the Theory panel, the App panel, and the Code panel. It cannot detect an error in the entrainment correlation or in the saturation fit itself, which are taken from their sources as §T10 states.
 
 Suction 2 kPa abs, dry gas 50 kg/h, condensable vapour 100 kg/h,
 motive steam 0.8 MPa abs saturated, cooling water 25 °C, 3 stages.
@@ -1336,26 +1302,22 @@ the same arithmetic cell by cell.
 
 ## Conclusion and discussion
 
-The five key points reduce to one accounting. Key point 1 sets
-the number of stages: the overall ratio from suction to
-atmosphere, divided into equal stage ratios, must keep each
-stage at a compression ratio the entrainment correlation covers.
-Key point 2 then prices each stage: its motive steam is its
-entrainment ratio times the load it sees. Key points 3 and 4 set
-that load: the interstage condensers remove vapour down to the
-amount in equilibrium at the outlet temperature where the
-entering vapour exceeds that amount, and remove none where it
-does not. The cooling-water temperature — a utility condition,
-not an ejector dimension — thus enters the steam bill through
-the load each later stage sees, alongside the suction pressure
-of key point 5. A design that looks cheap
-at 25 °C cooling water and dear at 35 °C is the same hardware;
-the model separates the two because the condenser limit of §T11
-is inside the stage calculation, not an afterthought.
+One accounting covers the five key points. Key point 1 sets the number
+of stages: the overall ratio from suction to atmosphere, divided into
+equal stage ratios, must keep each stage at a compression ratio the
+entrainment correlation covers. Key point 2 then prices each stage:
+its motive steam is its entrainment ratio times the load it sees. Key
+points 3 and 4 set that load: the interstage condensers remove vapour
+down to the amount in equilibrium at the outlet temperature where the
+entering vapour exceeds that amount, and remove none where it does
+not. The cooling-water temperature — a utility condition, not an
+ejector dimension — enters the steam bill through the load each later
+stage sees, alongside the suction pressure of key point 5. A design
+that looks cheap at 25 °C cooling water and dear at 35 °C is the same
+hardware; the model separates the two because the condenser limit of
+§T11 is inside the stage calculation, not an afterthought.
 
-Two limits bound the whole account. The entrainment ratio comes
-from a semi-empirical correlation (§T10), so the page reports a
-band of 0.8 to 1.25 times the central motive steam, and warns
+Two limits bound the whole account. From a semi-empirical correlation (§T10) comes the entrainment ratio, so the page reports a band of 0.8 to 1.25 times the central motive steam, and warns
 when an input takes a stage outside the correlation's range —
 key point 1's two-stage experiment is the direct way to see that
 warning appear. And the model is a stage calculation, not a

@@ -168,10 +168,10 @@ needs and the condenser duties. Change an input to recompute.</p>
 <div id="econ"></div>
 </div>
 </div>
-<div class="guide" id="guide-load" popover><p><strong>Suction and load.</strong> The suction pressure is the vacuum the train must hold; the dry gas and condensable vapour flows are the load it must remove. Lower suction pressure or a larger load raises every stage's work. Look at the total motive steam card and at the stage table: the first stage carries the full inlet load.</p></div>
+<div class="guide" id="guide-load" popover><p><strong>Suction and load.</strong> The suction pressure is the vacuum the train must hold; the dry gas and condensable vapour flows are the load the train must remove. Lower suction pressure or a larger load raises every stage's work. Look at the total motive steam card and at the stage table: the first stage carries the full inlet load.</p></div>
 <div class="guide" id="guide-motive" popover><p><strong>Motive steam.</strong> The motive pressure sets the energy of the jet that entrains the suction flow. A lower motive pressure raises the entrainment ratio of each stage, so the train draws more steam for the same load. Look at the entrainment ratio column of the stage table and the total motive steam card.</p></div>
-<div class="guide" id="guide-cw" popover><p><strong>Cooling water.</strong> The cooling-water temperature sets the lowest temperature each interstage condenser can reach, and so how much vapour survives into the next stage. Warmer water passes more vapour downstream. Look at the total condenser duty, the cooling-water card, and the motive steam of the later stages.</p></div>
-<div class="guide" id="guide-stages" popover><p><strong>Stages.</strong> The number of stages divides the overall compression from suction pressure to atmospheric pressure into equal stage ratios. Fewer stages raise the ratio each stage must bridge, and past a ratio of about 6 a stage leaves the range of the entrainment correlation. Look at the compression ratio per stage card and at any warnings below the stage table.</p></div>
+<div class="guide" id="guide-cw" popover><p><strong>Cooling water.</strong> The cooling-water temperature sets the lowest temperature each interstage condenser can reach, and so sets how much vapour survives into the next stage. Warmer water passes more vapour downstream. Look at the total condenser duty, the cooling-water card, and the motive steam of the later stages.</p></div>
+<div class="guide" id="guide-stages" popover><p><strong>Stages.</strong> The number of stages divides the overall compression, from suction pressure to atmospheric pressure, into equal stage ratios. Fewer stages raise the ratio each stage must bridge, and past a ratio of about 6 a stage leaves the range of the entrainment correlation. Look at the compression ratio per stage card and at any warnings below the stage table.</p></div>
 <div class="guide" id="guide-econ" popover><p><strong>Economics.</strong> The steam price and operating hours convert the computed flows into an annual operating cost. They change no flow, pressure, or duty on this panel. Look at the annual operating cost card and the Economics section below the stage table.</p></div>
 </section>
 <section class="panel long haslayout" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
@@ -189,13 +189,11 @@ needs and the condenser duties. Change an input to recompute.</p>
 @@CODE_TOC@@
 <div class="panelbody">
 <h3 id="code-model">Model listing</h3>
-<p>The listing below is the file <code>python/balance.py</code> as
-built, and the model the App panel runs is this file.</p>
+<p><code>python/balance.py</code> is the model the App panel runs.</p>
 <pre id="codelisting">@@CODE_LISTING@@</pre>
 <h3 id="code-walkthrough">Walkthrough</h3>
-<p>The walkthrough below was computed when this page was built. It
-repeats the design-basis arithmetic cell by cell, with each step
-tied to the Theory section it implements.</p>
+<p>The walkthrough repeats the design-basis arithmetic cell by cell,
+with each step tied to the Theory section it implements.</p>
 @@WALKTHROUGH_HTML@@
 <h3 id="code-notebook">Editable notebook</h3>
 <p>The MoLab notebook is editable; run all cells once after
