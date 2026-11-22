@@ -1,0 +1,1 @@
+v15 published 2026-11-22: gh-pages e77b167; served bytes verified identical to build output (linde-asu-v15.html, 5,425,105 bytes at final build); live page tabs process,theory,app,economics,safety,code,references; default panel process; ref [41] Linde brochure cited.
