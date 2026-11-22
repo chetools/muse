@@ -519,3 +519,22 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   a7a5052 -> 5ebf257 (only steam-ejector/index.html). Pages
   run completed/success; served bytes byte-identical to the
   v11 build (SHA-256 ca79038d…).
+
+## v13 — Derivation display formatting (2026-11-22)
+
+- Presentation only (text/theory.md, text/economics.md):
+  every step relation in the collapsible derivation blocks
+  now stands as a displayed equation on its own line, prose
+  between steps, per the user's textbook-layout rule. 21 of
+  26 detail blocks reformatted, 86 equations moved to
+  display form; the TeX span multiset is identical before
+  and after, so no mathematics changed. Full record:
+  progress-v13.md.
+- Verification: test_balance.py 14 passed; build checks
+  pass (622 KaTeX expressions = 622 elements); SELFTEST
+  pass on the local build (635.18 kg/h, 523.56 kW);
+  document scroll width 375 px at 390 px; wide displays
+  scroll inside their own strip under the template's
+  existing .katex-display overflow rule (widest: the T1
+  whole-stage balance, 674 px against the 516 px desktop
+  column).

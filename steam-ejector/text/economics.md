@@ -19,14 +19,24 @@ equipment cost is 104000 USD and the installed capital is 166400
 USD.
 
 ::: detail Derivation — capital cost arithmetic at the design basis
-Equipment cost $C_{equip}$ in USD is $C_{equip} = 12000 + 14000
-N + 11000 (N-1) + 19000 + 9000$, where $N$ is the number of
+Equipment cost $C_{equip}$ in USD is
+
+$$C_{equip} = 12000 + 14000
+N + 11000 (N-1) + 19000 + 9000$$
+
+where $N$ is the number of
 stages. The terms are, in order: fixed cost 12000 USD; ejector
 assemblies $14000 \times 3 = 42000$ USD; barometric intercondensers
 $11000 \times 2 = 22000$ USD; surface aftercondenser 19000 USD;
-hot well and condensate handling 9000 USD. The sum is $12000 +
-42000 + 22000 + 19000 + 9000 = 104000$ USD. Installed capital
-$C_{cap} = 1.6 \times C_{equip} = 1.6 \times 104000 = 166400$
+hot well and condensate handling 9000 USD. The sum is
+
+$$12000 +
+42000 + 22000 + 19000 + 9000 = 104000$$
+
+USD. Installed capital is
+
+$$C_{cap} = 1.6 \times C_{equip} = 1.6 \times 104000 = 166400$$
+
 USD. The same arithmetic with $N = 1, 2, 4, 5$ gives the table
 below.
 :::
@@ -52,21 +62,46 @@ annual operating cost is 170479 USD/yr, of which steam is 89%.
 The operating cost per kilogram of suction load is 0.142 USD/kg.
 
 ::: detail Derivation — operating cost arithmetic at the design basis
-Annual steam cost $= \dot{m}_{motive} \times H \times c_{steam}$,
+Annual steam cost
+
+$$= \dot{m}_{motive} \times H \times c_{steam}$$
+
 where $\dot{m}_{motive}$ is total motive steam in t/h, $H$ is
 operating hours per year, and $c_{steam}$ is the steam price in
 USD/t. Substituting the unrounded motive flow $\dot{m}_{motive}
 = 635.18/1000 = 0.63518$ t/h, $H = 8000$ h/yr, and $c_{steam} =
-30$ USD/t gives $0.63518 \times 8000 \times 30 = 152443$ USD/yr.
-Annual cooling-water cost $= V_{cw} \times H \times c_{cw}$,
+30$ USD/t gives
+
+$$0.63518 \times 8000 \times 30 = 152443$$
+
+USD/yr.
+Annual cooling-water cost
+
+$$= V_{cw} \times H \times c_{cw}$$
+
 where $V_{cw}$ is total cooling water in m3/h and $c_{cw} = 0.05$
-USD/m3: the unrounded flow $45.0911 \times 8000 \times 0.05 =
-18036$ USD/yr. The total is $152443 + 18036 = 170479$ USD/yr.
+USD/m3: the unrounded flow gives
+
+$$45.0911 \times 8000 \times 0.05 =
+18036$$
+
+USD/yr. The total is
+
+$$152443 + 18036 = 170479$$
+
+USD/yr.
 The cost per kilogram of suction load is the total annual cost
 divided by the annual suction load, $150 \times 8000 = 1200000$
-kg/yr: $170479/1200000 = 0.142$ USD/kg. The specific steam
+kg/yr:
+
+$$170479/1200000 = 0.142$$
+
+USD/kg. The specific steam
 consumption — motive steam per kilogram of suction load — is
-$635.18/150 = 4.23$ kg/kg at the design basis. The band endpoints
+
+$$635.18/150 = 4.23$$
+
+kg/kg at the design basis. The band endpoints
 are full re-runs of the model with the per-stage motive steam
 scaled by 0.8 and by 1.25, with duties and cooling-water flows
 recomputed at each end; they give 136,871 and 212,490 USD/yr of

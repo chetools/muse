@@ -166,8 +166,11 @@ motive steam.
 
 ::: detail Derivation — steady-flow energy balance of one stage
 The steady-flow energy equation for a control volume with one
-inlet and one outlet, written per unit mass, is $h_1 + v_1^2/2 +
-g z_1 + q = h_2 + v_2^2/2 + g z_2 + w$, where $h$ is specific
+inlet and one outlet, written per unit mass, is
+
+$$h_1 + v_1^2/2 + g z_1 + q = h_2 + v_2^2/2 + g z_2 + w$$
+
+where $h$ is specific
 enthalpy in J/kg, $v$ is velocity in m/s, $g$ is the acceleration
 due to gravity in m/s2, $z$ is elevation in m, $q$ is heat added
 per unit mass in J/kg, and $w$ is shaft work done by the fluid per
@@ -176,19 +179,33 @@ negligible, so the $g z$ terms drop out; the stage is taken as
 adiabatic, so $q = 0$; and there is no shaft, so $w = 0$. With two
 inlets (motive steam, subscript $m$, and suction gas, subscript
 $ev$) and one outlet (subscript $s$), the balance is taken over
-the whole stage as $\dot{m}_m h_{m} + \dot{m}_{ev} h_{ev} +
+the whole stage as
+
+$$\dot{m}_m h_{m} + \dot{m}_{ev} h_{ev} +
 \dot{m}_m v_m^2/2 + \dot{m}_{ev} v_{ev}^2/2 =
 (\dot{m}_m + \dot{m}_{ev}) h_s + (\dot{m}_m + \dot{m}_{ev})
-v_s^2/2$, where $\dot{m}$ is mass flow rate in kg/s. The inlet
+v_s^2/2$$
+
+where $\dot{m}$ is mass flow rate in kg/s. The inlet
 velocities are small beside the jet velocity, so the inlet kinetic
 energy terms are dropped in the stage balance, giving
-$\dot{m}_m h_m + \dot{m}_{ev} h_{ev} =
+
+$$\dot{m}_m h_m + \dot{m}_{ev} h_{ev} =
 (\dot{m}_m + \dot{m}_{ev}) h_s + (\dot{m}_m + \dot{m}_{ev})
-v_s^2/2$. The same equation, applied to the nozzle alone with one
-inlet and one outlet and no work or heat, gives $h_0 = h + v^2/2$
+v_s^2/2$$
+
+The same equation, applied to the nozzle alone with one
+inlet and one outlet and no work or heat, gives
+
+$$h_0 = h + v^2/2$$
+
 at every point of the nozzle, where $h_0$ is the stagnation
 specific enthalpy defined in §T3. The alternative route is the
-differential form $dh + v\,dv = 0$ along a streamline, integrated
+differential form
+
+$$dh + v\,dv = 0$$
+
+along a streamline, integrated
 between the same two states; it gives the same result.
 :::
 
@@ -213,23 +230,37 @@ atmospheric pressure, and air is drawn in at the side arm [7].
 ::: detail Derivation — Bernoulli equation from the Euler equation
 The Euler equation for steady flow of a frictionless fluid along a
 streamline, with $l$ as the path length along the streamline in
-m, is $(1/\rho)\,dp/dl + v\,dv/dl + g\,dz/dl = 0$, where $dp/dl$
+m, is
+
+$$(1/\rho)\,dp/dl + v\,dv/dl + g\,dz/dl = 0$$
+
+where $dp/dl$
 is the pressure gradient in Pa/m, $dv/dl$ is the velocity
 gradient in 1/s, and $dz/dl$ is the elevation gradient. The
 letter $l$ is used for the path length so that $s$ remains
 specific entropy only. The equation is Newton's second law per
 unit volume along the streamline: pressure force, inertia, and
-weight. Multiply by $dl$ to get $dp/\rho + v\,dv + g\,dz = 0$. For an incompressible fluid $\rho$
+weight. Multiply by $dl$ to get
+
+$$dp/\rho + v\,dv + g\,dz = 0$$
+
+For an incompressible fluid $\rho$
 is constant, so $dp/\rho$ integrates to $p/\rho$; $v\,dv$
 integrates to $v^2/2$; $g\,dz$ integrates to $g z$. Integration
 between two points 1 and 2 on the same streamline gives
-$p_1/\rho + v_1^2/2 + g z_1 = p_2/\rho + v_2^2/2 + g z_2$. The
+
+$$p_1/\rho + v_1^2/2 + g z_1 = p_2/\rho + v_2^2/2 + g z_2$$
+
+The
 three assumptions enter at three places: steady flow removes the
 time derivative from the Euler equation; frictionless flow removes
 the viscous stress; constant density lets $1/\rho$ come out of
 the integral. The alternative route starts from the steady-flow
 energy equation of §T1 with $q = 0$ and $w = 0$ and uses
-$dh = dp/\rho$ for an incompressible fluid at constant
+
+$$dh = dp/\rho$$
+
+for an incompressible fluid at constant
 temperature, which gives the same result.
 :::
 
@@ -285,18 +316,44 @@ lower static $h$, $T$, and $p$, with the difference carried as
 kinetic energy.
 
 ::: detail Derivation — stagnation temperature from the energy equation
-Start from the nozzle energy balance $h_1 + v_1^2/2 = h_2 +
-v_2^2/2$, derived in §T1. For a perfect gas, specific enthalpy
-depends only on temperature, $h = c_p T$, with the reference state
-chosen so that $h = 0$ at $T = 0$ K. Substituting gives $c_p T_1 +
-v_1^2/2 = c_p T_2 + v_2^2/2$. Define the stagnation temperature at
+Start from the nozzle energy balance
+
+$$h_1 + v_1^2/2 = h_2 + v_2^2/2$$
+
+derived in §T1. For a perfect gas, specific enthalpy
+depends only on temperature,
+
+$$h = c_p T$$
+
+with the reference state
+chosen so that $h = 0$ at $T = 0$ K. Substituting gives
+
+$$c_p T_1 + v_1^2/2 = c_p T_2 + v_2^2/2$$
+
+Define the stagnation temperature at
 any point as the temperature the fluid would have if brought to
-rest from that point, $T_0 = T + v^2/(2 c_p)$. Then the balance
-reads $c_p T_{0,1} = c_p T_{0,2}$, so $T_0$ is constant along an
+rest from that point,
+
+$$T_0 = T + v^2/(2 c_p)$$
+
+Then the balance
+reads
+
+$$c_p T_{0,1} = c_p T_{0,2}$$
+
+so $T_0$ is constant along an
 adiabatic nozzle with no work. The same argument with $h$ in place
-of $c_p T$ gives $h_0 = h + v^2/2$ for any fluid, including steam
+of $c_p T$ gives
+
+$$h_0 = h + v^2/2$$
+
+for any fluid, including steam
 near saturation, where $c_p$ is not constant. The alternative route
-uses the differential form $dh + v\,dv = 0$ and integrates $dh =
+uses the differential form
+
+$$dh + v\,dv = 0$$
+
+and integrates $dh =
 c_p\,dT$ for a perfect gas, giving the same $T_0$.
 :::
 
@@ -346,30 +403,70 @@ $M = 1$, is 54% of the motive pressure. For air with $k = 1.4$,
 the same ratio is 0.528.
 
 ::: detail Derivation — speed of sound from the isentropic derivative
-The speed of sound is defined by $a^2 = (\partial p/\partial
-\rho)_s$, where the subscript $s$ denotes constant specific
+The speed of sound is defined by
+
+$$a^2 = (\partial p/\partial \rho)_s$$
+
+where the subscript $s$ denotes constant specific
 entropy in J/(kg K). Consider a weak pressure wave moving at speed
 $a$ into still fluid of density $\rho$ and pressure $p$. In the
 frame moving with the wave, fluid enters at speed $a$ and leaves
 at speed $a + dv$ with density $\rho + d\rho$ and pressure $p +
-dp$. Mass conservation across the wave gives $\rho a = (\rho +
-d\rho)(a + dv)$, which to first order in the small changes gives
-$a\,d\rho + \rho\,dv = 0$. Momentum conservation gives $p +
-\rho a^2 = p + dp + (\rho + d\rho)(a + dv)^2$; expanding the last
-term to first order, $(\rho + d\rho)(a + dv)^2 = \rho a^2 + 2\rho
-a\,dv + a^2 d\rho$, so the momentum equation becomes $dp + 2\rho
-a\,dv + a^2 d\rho = 0$. The $a^2 d\rho$ term must be kept: it is
+dp$. Mass conservation across the wave gives
+
+$$\rho a = (\rho + d\rho)(a + dv)$$
+
+which to first order in the small changes gives
+
+$$a\,d\rho + \rho\,dv = 0$$
+
+Momentum conservation gives
+
+$$p + \rho a^2 = p + dp + (\rho + d\rho)(a + dv)^2$$
+
+expanding the last
+term to first order,
+
+$$(\rho + d\rho)(a + dv)^2 = \rho a^2 + 2\rho
+a\,dv + a^2 d\rho$$
+
+so the momentum equation becomes
+
+$$dp + 2\rho a\,dv + a^2 d\rho = 0$$
+
+The $a^2 d\rho$ term must be kept: it is
 first order in the small changes, the same order as the other two
 terms. Eliminate $dv$ with the continuity relation: from $a\,d\rho
-+ \rho\,dv = 0$, $\rho\,dv = -a\,d\rho$, so $2\rho a\,dv =
--2a^2 d\rho$, and the momentum equation becomes $dp - 2a^2 d\rho
-+ a^2 d\rho = dp - a^2 d\rho = 0$, giving $a^2 = dp/d\rho$. The
++ \rho\,dv = 0$,
+
+$$\rho\,dv = -a\,d\rho$$
+
+so $2\rho a\,dv =
+-2a^2 d\rho$, and the momentum equation becomes
+
+$$dp - 2a^2 d\rho + a^2 d\rho = dp - a^2 d\rho = 0$$
+
+giving
+
+$$a^2 = dp/d\rho$$
+
+The
 wave is isentropic because the changes are small and no heat is
-transferred on the time scale of the wave, so $a^2 = (\partial
-p/\partial \rho)_s$. For a perfect gas, $p = \rho R T$ and an
+transferred on the time scale of the wave, so
+
+$$a^2 = (\partial p/\partial \rho)_s$$
+
+For a perfect gas, $p = \rho R T$ and an
 isentropic change obeys $p/\rho^k = \text{constant}$;
-differentiating gives $dp/d\rho = k p/\rho = k R T$, so $a =
-\sqrt{k R T}$. The alternative route uses the isentropic relation
+differentiating gives
+
+$$dp/d\rho = k p/\rho = k R T$$
+
+so
+
+$$a = \sqrt{k R T}$$
+
+The alternative route uses the isentropic relation
 $T\,ds = dh - dp/\rho$ with $ds = 0$ to get $dh = dp/\rho$, then
 $a^2 = (\partial p/\partial \rho)_s$ follows from $h = c_p T$ and
 $p = \rho R T$.
@@ -378,13 +475,30 @@ $p = \rho R T$.
 ::: detail Derivation — isentropic stagnation relations
 Start from $T_0 = T + v^2/(2 c_p)$ of §T3. Write $v = M a = M
 \sqrt{k R T}$ and use $c_p = k R/(k-1)$, which follows from $c_p -
-c_v = R$ and $k = c_p/c_v$ by eliminating $c_v$: $c_p = k R/(k-1)$.
-Then $v^2/(2 c_p) = M^2 k R T (k-1)/(2 k R) = (k-1) M^2 T/2$, so
-$T_0/T = 1 + (k-1) M^2/2$. For an isentropic change of a perfect
+c_v = R$ and $k = c_p/c_v$ by eliminating $c_v$:
+
+$$c_p = k R/(k-1)$$
+
+Then
+
+$$v^2/(2 c_p) = M^2 k R T (k-1)/(2 k R) = (k-1) M^2 T/2$$
+
+so
+
+$$T_0/T = 1 + (k-1) M^2/2$$
+
+For an isentropic change of a perfect
 gas, $p/\rho^k$ is constant and $p = \rho R T$, so $p \propto
 T^{k/(k-1)}$; applying this between the static and stagnation
-states gives $p_0/p = (T_0/T)^{k/(k-1)} = (1 + (k-1)
-M^2/2)^{k/(k-1)}$. Likewise $\rho_0/\rho = (T_0/T)^{1/(k-1)}$.
+states gives
+
+$$p_0/p = (T_0/T)^{k/(k-1)} = (1 + (k-1)
+M^2/2)^{k/(k-1)}$$
+
+Likewise
+
+$$\rho_0/\rho = (T_0/T)^{1/(k-1)}$$
+
 Setting $M = 1$ gives the critical ratios quoted in the main text.
 The conditions are: perfect gas, constant $k$, isentropic flow.
 Steam near saturation violates the constant-$k$ condition, so the
@@ -431,25 +545,53 @@ entrainment, which is why motive pressure matters more than
 proportionally (see §T12).
 
 ::: detail Derivation — area–Mach relation
-Mass conservation along the nozzle gives $\dot{m} = \rho A v$,
+Mass conservation along the nozzle gives
+
+$$\dot{m} = \rho A v$$
+
 constant along the nozzle, where $\dot{m}$ is mass flow rate in
-kg/s. At the throat, $\dot{m} = \rho^* A^* a^*$, where the
+kg/s. At the throat,
+
+$$\dot{m} = \rho^* A^* a^*$$
+
+where the
 asterisk denotes the sonic state and $a^*$ is the speed of sound
-there. Dividing gives $A/A^* = (\rho^* a^*)/(\rho v)$. Write $v =
-M a$ and use the isentropic relations of §T4: $\rho^*/\rho =
-(\rho^*/\rho_0)(\rho_0/\rho)$, with $\rho^*/\rho_0 =
+there. Dividing gives
+
+$$A/A^* = (\rho^* a^*)/(\rho v)$$
+
+Write $v =
+M a$ and use the isentropic relations of §T4:
+
+$$\rho^*/\rho =
+(\rho^*/\rho_0)(\rho_0/\rho)$$
+
+with $\rho^*/\rho_0 =
 (2/(k+1))^{1/(k-1)}$ and $\rho_0/\rho = (1 + (k-1)
-M^2/2)^{1/(k-1)}$, and $a^*/a = \sqrt{T^*/T}$, with $T^*/T_0 =
+M^2/2)^{1/(k-1)}$, and
+
+$$a^*/a = \sqrt{T^*/T}$$
+
+with $T^*/T_0 =
 2/(k+1)$ and $T_0/T = 1 + (k-1) M^2/2$. Collecting powers gives
-$A/A^* = (1/M) ((2/(k+1))(1 + (k-1) M^2/2))^{(k+1)/(2(k-1))}$.
+
+$$A/A^* = (1/M) ((2/(k+1))(1 + (k-1) M^2/2))^{(k+1)/(2(k-1))}$$
+
 The derivation uses continuity, the perfect-gas isentropic
 relations, and the definitions of $M$ and $a$ only. The same
 relation shows that $A$ has a minimum at $M = 1$: differentiating
 $\ln(A/A^*)$ with respect to $M$ gives zero at $M = 1$, and the
 second derivative is positive there. The alternative route
-differentiates the continuity equation in the form $d\rho/\rho +
-dA/A + dv/v = 0$ and combines it with the momentum equation to
-get $(M^2 - 1)\,dv/v = dA/A$, which shows directly that $dv$ and
+differentiates the continuity equation in the form
+
+$$d\rho/\rho + dA/A + dv/v = 0$$
+
+and combines it with the momentum equation to
+get
+
+$$(M^2 - 1)\,dv/v = dA/A$$
+
+which shows directly that $dv$ and
 $dA$ have the same sign for supersonic flow and opposite signs for
 subsonic flow.
 :::
@@ -457,12 +599,19 @@ subsonic flow.
 ::: detail Derivation — choking and the critical pressure ratio
 Choking occurs when the flow at the throat reaches $M = 1$. The
 pressure ratio at which this first happens is the critical ratio
-$p^*/p_0 = (2/(k+1))^{k/(k-1)}$ of §T4, derived by setting $M =
+
+$$p^*/p_0 = (2/(k+1))^{k/(k-1)}$$
+
+of §T4, derived by setting $M =
 1$ in the isentropic pressure relation. For steam ($k = 1.33$) the
 ratio is 0.540, so a motive pressure of 800 kPa abs chokes the
 throat once the pressure downstream of the throat falls below 432
-kPa abs. The mass flow rate at choking is $\dot{m} = \rho^* A^*
-a^* = p_0 A^* \sqrt{k/(R T_0)} (2/(k+1))^{(k+1)/(2(k-1))}$, found
+kPa abs. The mass flow rate at choking is
+
+$$\dot{m} = \rho^* A^*
+a^* = p_0 A^* \sqrt{k/(R T_0)} (2/(k+1))^{(k+1)/(2(k-1))}$$
+
+found
 by writing $\rho^* = p^*/(R T^*)$ with $p^*$ and $T^*$ from the
 critical ratios and $a^* = \sqrt{k R T^*}$. The mass flow rate
 depends on $p_0$, $T_0$, and $A^*$ only, not on the downstream
@@ -565,13 +714,21 @@ friction is the only remaining axial wall force; the ideal balance
 neglects friction. Momentum flux in is $\dot{m}_m v_m +
 \dot{m}_{ev} v_{ev}$; momentum flux out is $(\dot{m}_m +
 \dot{m}_{ev}) v_3$. Equating forces to flux out minus flux in
-gives $p_{m,2} A_m + p_{ev} A_{ev} - p_3 A_3 = (\dot{m}_m +
-\dot{m}_{ev}) v_3 - \dot{m}_m v_m - \dot{m}_{ev} v_{ev}$, which
+gives
+
+$$p_{m,2} A_m + p_{ev} A_{ev} - p_3 A_3 = (\dot{m}_m +
+\dot{m}_{ev}) v_3 - \dot{m}_m v_m - \dot{m}_{ev} v_{ev}$$
+
+which
 rearranges to the form in the main text. The step that needs care
 is the wall force: in a duct whose area changes, the wall pressure
 has an axial component $\int p\,dA$ that must be kept. The
 alternative route writes the balance in differential form along
-the throat, $dp + \rho v\,dv = 0$ with $\rho v$ replaced by the
+the throat,
+
+$$dp + \rho v\,dv = 0$$
+
+with $\rho v$ replaced by the
 mixed density, and integrates it; it gives the same result when
 the density is taken as the mixed density.
 :::
@@ -583,17 +740,31 @@ at the mixing plane, and that the throat area is $A_3 = A_m +
 A_{ev}$. Then the pressure terms cancel between inlet and outlet
 only if $p_3 = p_2$; in general $p_3$ differs from $p_2$. With
 $v_{ev}$ small beside $v_m$, the momentum balance gives
-$(\dot{m}_m + \dot{m}_{ev}) v_3 = \dot{m}_m v_m + (p_2 - p_3)
-A_3$. The mass balance gives $\dot{m}_m + \dot{m}_{ev} =
-\dot{m}_3$. Dividing the momentum balance by $\dot{m}_3$ gives
-$v_3 = (\dot{m}_m v_m + (p_2 - p_3) A_3)/\dot{m}_3$. The mixed
+
+$$(\dot{m}_m + \dot{m}_{ev}) v_3 = \dot{m}_m v_m + (p_2 - p_3)
+A_3$$
+
+The mass balance gives
+
+$$\dot{m}_m + \dot{m}_{ev} =
+\dot{m}_3$$
+
+Dividing the momentum balance by $\dot{m}_3$ gives
+
+$$v_3 = (\dot{m}_m v_m + (p_2 - p_3) A_3)/\dot{m}_3$$
+
+The mixed
 velocity is therefore the mass-weighted mean of the inlet
 velocities, corrected by the pressure change across the throat.
 When $p_3 > p_2$, the correction is negative: part of the jet
 momentum is spent raising the pressure, and the mixture leaves
 slower than the mass-weighted mean. The energy balance then gives
-the mixed static temperature from $h_{0,3} = (\dot{m}_m h_{0,m} +
-\dot{m}_{ev} h_{0,ev})/\dot{m}_3$ with $h_{0,3} = h_3 + v_3^2/2$.
+the mixed static temperature from
+
+$$h_{0,3} = (\dot{m}_m h_{0,m} +
+\dot{m}_{ev} h_{0,ev})/\dot{m}_3$$
+
+with $h_{0,3} = h_3 + v_3^2/2$.
 Solving the momentum and energy balances together, with the
 perfect-gas relations of §T4 for $h_3$ and $p_3$, gives $v_3$ and
 $p_3$. The page does not solve this system in the App panel: the
@@ -645,13 +816,23 @@ entrainment rate falls sharply, and the stage breaks down (see
 
 ::: detail Derivation — pressure recovery of a subsonic diffuser
 Apply the energy equation between the diffuser inlet (subscript 3)
-and outlet (subscript $s$): $h_3 + v_3^2/2 = h_s + v_s^2/2$, with
+and outlet (subscript $s$):
+
+$$h_3 + v_3^2/2 = h_s + v_s^2/2$$
+
+with
 no work and no heat. For a perfect gas, $h = c_p T$, and with the
 isentropic relation $p \propto T^{k/(k-1)}$ the pressure ratio is
-$p_s/p_3 = ((T_0 - v_s^2/(2 c_p))/(T_0 - v_3^2/(2 c_p)))^{k/(k-1)}$,
+
+$$p_s/p_3 = ((T_0 - v_s^2/(2 c_p))/(T_0 - v_3^2/(2 c_p)))^{k/(k-1)}$$
+
 where $T_0$ is the common stagnation temperature. In the
 incompressible limit, $h$ is replaced by $p/\rho$ and the same
-energy equation gives $p_s - p_3 = \rho (v_3^2 - v_s^2)/2$: the
+energy equation gives
+
+$$p_s - p_3 = \rho (v_3^2 - v_s^2)/2$$
+
+the
 pressure rise equals the fall in dynamic pressure. The diffuser
 efficiency is defined as the ratio of the actual pressure rise to
 the isentropic pressure rise between the same inlet state and the
@@ -663,12 +844,34 @@ in a diverging duct.
 
 ::: detail Derivation — normal shock relations
 Across a stationary normal shock, mass, momentum, and energy are
-conserved: $\rho_1 v_1 = \rho_2 v_2$; $p_1 + \rho_1 v_1^2 = p_2 +
-\rho_2 v_2^2$; $h_1 + v_1^2/2 = h_2 + v_2^2/2$. With $M_1$ as the
-upstream Mach number, the perfect-gas solution is $p_2/p_1 = 1 +
-2k(M_1^2 - 1)/(k+1)$; $T_2/T_1 = (2k M_1^2 - (k-1))((k-1) M_1^2 +
-2)/((k+1)^2 M_1^2)$; and $M_2^2 = ((k-1) M_1^2 + 2)/(2k M_1^2 -
-(k-1))$. The stagnation pressure falls across the shock, and the
+conserved — mass,
+
+$$\rho_1 v_1 = \rho_2 v_2$$
+
+momentum,
+
+$$p_1 + \rho_1 v_1^2 = p_2 +
+\rho_2 v_2^2$$
+
+and energy,
+
+$$h_1 + v_1^2/2 = h_2 + v_2^2/2$$
+
+With $M_1$ as the
+upstream Mach number, the perfect-gas solution is
+
+$$p_2/p_1 = 1 +
+2k(M_1^2 - 1)/(k+1)$$
+
+$$T_2/T_1 = (2k M_1^2 - (k-1))((k-1) M_1^2 +
+2)/((k+1)^2 M_1^2)$$
+
+and
+
+$$M_2^2 = ((k-1) M_1^2 + 2)/(2k M_1^2 -
+(k-1))$$
+
+The stagnation pressure falls across the shock, and the
 fall grows rapidly with $M_1$: at $M_1 = 2$ and $k = 1.33$, $p_{0,2}/
 p_{0,1}$ is about 0.71. The derivation solves the three
 conservation equations with $h = c_p T$ and $p = \rho R T$; the
@@ -718,10 +921,18 @@ expandable block below) finds an optimum of 630.1 kg/h against
 equal-ratio design is kept for its simplicity.
 
 ::: detail Derivation — equal stage ratios are a near-optimal simplification
-Write the motive steam of stage $i$ as $\dot{m}_{m,i} = R_{a,i}
-\dot{m}_{ev,i}$, where $\dot{m}_{ev,i}$ is the mass flow entrained
+Write the motive steam of stage $i$ as
+
+$$\dot{m}_{m,i} = R_{a,i}
+\dot{m}_{ev,i}$$
+
+where $\dot{m}_{ev,i}$ is the mass flow entrained
 by stage $i$. The total motive steam $\sum_i \dot{m}_{m,i}$ is to
-be minimised subject to $\prod_i C_{r,i} = C_{r,total}$. The
+be minimised subject to
+
+$$\prod_i C_{r,i} = C_{r,total}$$
+
+The
 Lagrange condition for that minimisation is equal marginal cost,
 $dR_a/d\ln C_r$, at every stage. But equal marginal cost does not
 mean equal $C_r$: $R_{a,i}$ depends on $p_{ev,i}$ as well as on
@@ -755,7 +966,10 @@ small beside the correlation uncertainty (the ±25% band of §T10).
 One stage from 2 kPa to 101.325 kPa needs $C_r = 50.7$. The
 correlation of §T10 at $p_{ev} = 2$ kPa, $p_s = 101.325$ kPa, and
 $p_m = 800$ kPa gives $R_a = 41.77$, so the motive steam would be
-$41.77 \times 150 = 6266$ kg/h. The model reports this with a
+
+$$41.77 \times 150 = 6266$$
+
+kg/h. The model reports this with a
 warning that $C_r$ and $R_a$ are outside the correlation range.
 Three stages need $C_r = 3.70$ each and $R_a$ values of 1.86, 2.24,
 and 2.72, with a total motive steam of 635 kg/h. Staging cuts the
@@ -829,11 +1043,19 @@ exponent is only 0.015, so doubling the expansion ratio raises
 $R_a$ by about 1%, which says that motive pressure matters mainly
 through the choking condition and the jet momentum, not through
 this factor. The factor $P_{CF}$ corrects for the motive pressure
-itself: at $p_m = 800$ kPa, $P_{CF} = 3\times10^{-7}\times
-800^2 - 0.0009\times 800 + 1.6101 = 1.082$. The factor $T_{CF}$
+itself: at $p_m = 800$ kPa,
+
+$$P_{CF} = 3\times10^{-7}\times
+800^2 - 0.0009\times 800 + 1.6101 = 1.082$$
+
+The factor $T_{CF}$
 corrects for the temperature of the entrained vapour: at $T_{ev} =
-17.5$ °C, $T_{CF} = 2\times10^{-8}\times 17.5^2 - 0.0006\times
-17.5 + 1.0047 = 0.994$. Dividing by $T_{CF}$ therefore raises
+17.5$ °C,
+
+$$T_{CF} = 2\times10^{-8}\times 17.5^2 - 0.0006\times
+17.5 + 1.0047 = 0.994$$
+
+Dividing by $T_{CF}$ therefore raises
 $R_a$ by about 0.6% at the design basis. The coefficient 0.296
 sets the overall level and carries the units that make $R_a$
 dimensionless when the pressures are entered in kPa. The
@@ -848,10 +1070,17 @@ Stage 1 of the design basis has $p_{ev} = 2$ kPa, $p_s = 7.40$ kPa,
 and $p_m = 800$ kPa. Then $p_s^{1.19} = 7.40^{1.19} = 10.8$,
 $p_{ev}^{1.04} = 2^{1.04} = 2.06$, $(p_m/p_{ev})^{0.015} =
 400^{0.015} = 1.094$, $P_{CF} = 1.082$, and $T_{CF} = 0.994$, so
-$R_a = 0.296 \times 10.8/2.06 \times 1.094 \times 1.082/0.994
-\approx 1.85$ (the model value is 1.856). The entrained flow is
-150 kg/h, so the motive steam for stage 1 is $1.856 \times 150 =
-278$ kg/h. The same arithmetic for stages 2 and 3 gives $R_a =
+
+$$R_a = 0.296 \times 10.8/2.06 \times 1.094 \times 1.082/0.994
+\approx 1.85$$
+
+(the model value is 1.856). The entrained flow is
+150 kg/h, so the motive steam for stage 1 is
+
+$$1.856 \times 150 =
+278$$
+
+kg/h. The same arithmetic for stages 2 and 3 gives $R_a =
 2.24$ and $R_a = 2.72$.
 :::
 
@@ -887,11 +1116,22 @@ latent heat from $h_{fg} = 2501 - 2.43\,T$ kJ/kg with $T$ in °C.
 Let $n_{dry}$ be the molar flow rate of dry gas in kmol/h and
 $n_v$ the molar flow rate of water vapour leaving the condenser
 in kmol/h. The total molar flow leaving is $n_{dry} + n_v$, and
-by Dalton's law the vapour partial pressure is $p_v = p\, n_v/
-(n_{dry} + n_v)$, where $p$ is the total pressure. The gas is
-saturated at the outlet temperature, so $p_v = p_{sat}(T_{out})$.
-Solving $p_{sat} = p\, n_v/(n_{dry} + n_v)$ for $n_v$ gives $n_v
-= n_{dry}\, p_{sat}/(p - p_{sat})$. Multiplying by the molar mass
+by Dalton's law the vapour partial pressure is
+
+$$p_v = p\, n_v/
+(n_{dry} + n_v)$$
+
+where $p$ is the total pressure. The gas is
+saturated at the outlet temperature, so
+
+$$p_v = p_{sat}(T_{out})$$
+
+Solving $p_{sat} = p\, n_v/(n_{dry} + n_v)$ for $n_v$ gives
+
+$$n_v
+= n_{dry}\, p_{sat}/(p - p_{sat})$$
+
+Multiplying by the molar mass
 of water, 18 kg/kmol, gives the vapour mass flow leaving. Two
 limits follow. When $p$ is only just above $p_{sat}$, the
 denominator $p - p_{sat}$ is small and $n_v$ is large: the
@@ -908,8 +1148,12 @@ converting with the molar masses.
 :::
 
 ::: detail Derivation — Antoine equation and its inversion
-The Antoine equation is $\log_{10}(p_{sat}/\mathrm{mmHg}) = A -
-B/(C + T)$, where $T$ is temperature in °C and $A$, $B$, $C$ are
+The Antoine equation is
+
+$$\log_{10}(p_{sat}/\mathrm{mmHg}) = A -
+B/(C + T)$$
+
+where $T$ is temperature in °C and $A$, $B$, $C$ are
 fitted constants. The model uses $(A, B, C) = (8.07131, 1730.63,
 233.426)$ below 100 °C and $(8.14019, 1810.94, 244.485)$ from 99
 °C upward; at 100 °C the low-temperature set gives 760 mmHg and
@@ -920,7 +1164,11 @@ on $p_{sat}(T)$: start with the bracket $T = -10$ °C and $T = 250$
 °C, evaluate $p_{sat}$ at the midpoint, keep the half-bracket that
 still contains $p$, and repeat 80 times, which narrows the bracket
 to below $10^{-20}$ °C. Bisection is used instead of the algebraic
-inversion $T = B/(A - \log_{10} p) - C$ because the constants
+inversion
+
+$$T = B/(A - \log_{10} p) - C$$
+
+because the constants
 change at 99 °C and the algebraic form would need a branch test;
 bisection handles the branch automatically. The saturation
 temperatures from this procedure are 17.6 °C at 2 kPa, 40.1 °C at
@@ -960,21 +1208,43 @@ cooling-water cost at the design basis. In the no-condensation
 branch the model reports a duty of exactly 0, omitting the small
 sensible cooling of the discharge gas from its discharge
 temperature to the outlet temperature. The cooling-water flow
-follows from $Q = m_{cw}\, c_{p,liq}\, \Delta T_{cw}$ with
-$\Delta T_{cw} = 10$ K, so $m_{cw} = Q/(c_{p,liq}\, \Delta
-T_{cw})$. The alternative route measures the duty from the
-cooling-water side, $Q = m_{cw} c_{p,liq} (T_{cw,out} -
-T_{cw,in})$; the two agree when the balance closes.
+follows from
+
+$$Q = m_{cw}\, c_{p,liq}\, \Delta T_{cw}$$
+
+with
+$\Delta T_{cw} = 10$ K, so
+
+$$m_{cw} = Q/(c_{p,liq}\, \Delta
+T_{cw})$$
+
+The alternative route measures the duty from the
+cooling-water side,
+
+$$Q = m_{cw} c_{p,liq} (T_{cw,out} -
+T_{cw,in})$$
+
+the two agree when the balance closes.
 :::
 
 ::: detail Worked check — first intercondenser at the design basis
 Stage 1 discharges 428.3 kg/h at 7.40 kPa into the first
 intercondenser. The outlet temperature is $25 + 5 = 30$ °C, where
 $p_{sat} = 4.23$ kPa. The dry gas is 50 kg/h, or 1.724 kmol/h, so
-the vapour leaving is $1.724 \times 4.23/(7.40 - 4.23) = 2.30$
+the vapour leaving is
+
+$$1.724 \times 4.23/(7.40 - 4.23) = 2.30$$
+
 kmol/h, or 41.4 kg/h. The condensed vapour is
-$428.3 - 50 - 41.4 = 336.9$ kg/h. The duty is $336.9 \times 2428/3600
-= 227$ kW of latent heat plus about 4 kW of sensible cooling,
+
+$$428.3 - 50 - 41.4 = 336.9$$
+
+kg/h. The duty is
+
+$$336.9 \times 2428/3600
+= 227$$
+
+kW of latent heat plus about 4 kW of sensible cooling,
 231 kW in total. Without the condenser, stage 2 would have to
 entrain 428.3 kg/h; with it, stage 2 entrains 91.4 kg/h.
 :::
