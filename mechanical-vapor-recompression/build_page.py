@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model, sweep_lift  # noqa: E402
 
-VERSION = "v7"
+VERSION = "v8"
 OUT = HERE / "dist" / f"mechanical-vapor-recompression-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -274,7 +274,7 @@ def design_table_html(result):
         ("Discharge pressure (kPa)", f"{result['p2_kpa']:.1f}"),
         ("Pressure ratio", f"{result['pressure_ratio']:.2f}"),
         ("Discharge temperature (degC)", f"{result['t_discharge_c']:.1f}"),
-        ("Calandria duty (kW)", f"{result['q_kw']:.1f}"),
+        ("Heating element duty (kW)", f"{result['q_kw']:.1f}"),
         ("Electric power (kW)", f"{result['p_el_kw']:.1f}"),
         ("COP", f"{result['cop']:.2f}"),
         ("Specific energy (kWh/t)", f"{result['e_sp_kwh_t']:.2f}"),

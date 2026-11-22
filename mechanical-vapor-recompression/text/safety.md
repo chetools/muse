@@ -2,17 +2,17 @@
 
 ## Pressure and stored energy
 
-The vapour main, the separator and the calandria hold steam at
+The vapour main, the separator and the heating element hold steam at
 pressure — 64.9 kPa absolute at the design basis, which is below
 atmospheric pressure, but the same design at a boiling temperature
 of 100 °C or above works at or above atmospheric pressure, and the
-start-up steam line brings boiler-pressure steam to the calandria.
+start-up steam line brings boiler-pressure steam to the heating element.
 Vessels and piping are designed, relieved and inspected as
 pressure equipment: a relief path sized for the blocked-outlet
-case (compressor running against a closed calandria vent), vacuum
+case (compressor running against a closed heating element vent), vacuum
 relief where a vessel full of steam can be condensed by cold feed
 and collapse inward, and isolation that lets the compressor and
-the calandria be opened separately. The vacuum case is the one
+the heating element be opened separately. The vacuum case is the one
 specific to this process: a vessel at 43.6 kPa absolute carries an
 external-pressure load, and vessels in vacuum service are designed
 against buckling, not only against bursting [3].
@@ -31,16 +31,16 @@ monitoring with trip levels, guarding of couplings, and a
 lubrication system with a rundown supply. Maintenance on the
 machine follows lockout of both the electrical drive and the
 steam side: a compressor isolated only electrically can still be
-turned by vapour flowing backwards from the calandria [4].
+turned by vapour flowing backwards from the heating element [4].
 
 ## Hot surfaces, condensate and start-up
 
 Surfaces between 80 °C and 129 °C at the design basis cause burns
 on contact and are lagged or guarded where personnel work. Two
 transient hazards are specific to the cycle. On start-up, live
-steam admitted to a cold calandria condenses violently where it
+steam admitted to a cold heating element condenses violently where it
 meets pooled condensate — condensate-induced hammer — so the
-calandria and the vapour main are drained and warmed through
+heating element and the vapour main are drained and warmed through
 before the steam is opened fully. On compressor trip, boiling
 stops at once while hot concentrate remains in the tubes; the
 feed is interlocked to stop with the compressor so that cold feed

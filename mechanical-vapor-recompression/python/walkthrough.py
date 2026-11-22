@@ -33,7 +33,7 @@ STEPS = [
                 "ratio = {p2/p1:.3f}')",
     },
     {
-        "title": "Step 3: Latent heat and calandria duty",
+        "title": "Step 3: Latent heat and heating element duty",
         "theory": "Theory 3",
         "md": "The duty is the evaporation rate times the latent "
               "heat at the boiling temperature; the feed enters at "

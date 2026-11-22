@@ -7,7 +7,7 @@ Layout (v4, drawn for zero crossings): equipment is placed so
 every stream routes orthogonally without crossing any other.
 Feed train on the left at mid height; evaporator centre;
 compressor top right; compressed vapour down the right side to
-the calandria; condensate out of the calandria on a right-side
+the heating element; condensate out of the heating element on a right-side
 lane down to a bottom perimeter lane (y = 620) that returns to
 the preheater from below; concentrate out on its own lane
 (y = 580) that ends before the condensate lane's vertical;
@@ -93,10 +93,10 @@ E.append('<rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#
 text(535, 208, "E-102 falling-film", 12, weight="bold")
 text(535, 224, "evaporator", 12, weight="bold")
 text(535, 170, "separator", 10)
-# Calandria (heating chest) on the right face of E-102: compressed
+# Heating element (steam chest) on the right face of E-102: compressed
 # vapour in at (660,340), vent off the top, condensate out at (660,450)
 E.append('<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
-text(630, 490, "calandria", 11)
+text(630, 490, "heating element", 11)
 # Demister label beside the vapour outlet, clear of the line
 text(550, 125, "demister", 10, anchor="end")
 # Compressor K-101 (top right)
@@ -122,13 +122,13 @@ stream(3, [(565, 144), (565, 110), (820, 110), (820, 175)])
 arrow(820, 165, 90)
 stream_no(680, 110, 3)
 text(750, 88, "Vapour 5,000 kg/h, 80 °C, 43.6 kPa", 12)
-# Stream 4: compressor discharge -> right -> down lane x=930 -> calandria
+# Stream 4: compressor discharge -> right -> down lane x=930 -> heating element
 stream(4, [(860, 215), (930, 215), (930, 340), (660, 340)])
 arrow(670, 340, 180)
 stream_no(930, 290, 4)
 text(950, 300, "5,000 kg/h,", 11, anchor="start")
 text(950, 316, "129 °C, 64.9 kPa", 11, anchor="start")
-# Stream 5: calandria condensate -> right -> down lane x=900 ->
+# Stream 5: heating element condensate -> right -> down lane x=900 ->
 # bottom perimeter lane y=620 -> up into preheater hot side
 stream(5, [(660, 450), (900, 450), (900, 620), (330, 620), (330, 390)])
 arrow(330, 400, -90)
@@ -145,7 +145,7 @@ stream(6, [(535, 480), (535, 580), (770, 580)])
 arrow(760, 580)
 stream_no(650, 580, 6)
 text(650, 606, "Concentrate 20,000 kg/h", 12)
-# Non-condensable vent: calandria right face (600,300) -> right -> up
+# Non-condensable vent: heating element top (630,306) -> up
 stream("vent", [(630, 306), (630, 240)])
 arrow(630, 248, -90)
 text(642, 278, "non-condensable", 11, anchor="start")

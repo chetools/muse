@@ -19,7 +19,7 @@
 <text x="535" y="224" font-size="12" font-family="system-ui,sans-serif" font-weight="bold" text-anchor="middle">evaporator</text>
 <text x="535" y="170" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">separator</text>
 <rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
-<text x="630" y="490" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">calandria</text>
+<text x="630" y="490" font-size="11" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="middle">heating element</text>
 <text x="550" y="125" font-size="10" font-family="system-ui,sans-serif" font-weight="normal" text-anchor="end">demister</text>
 <circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>
 <path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>

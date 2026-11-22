@@ -20,6 +20,6 @@
 
 [10] Packaging South Asia, "GEA to build Asia's largest milk production facility in India", 26 July 2017. AmulFed Dairy, Gandhinagar: order value, site scale, and the MVR system's energy and carbon role.
 
-[11] Process Engineering, "GEA evaporator for major Czech dairy", 28 January 2011. Madeta a.s. sweet whey evaporator: 12.5 tonnes per hour evaporative capacity, live-steam saving and running-cost economy of the MVR design.
+[11] Process Engineering, "GEA evaporator for major Czech dairy", 28 January 2011. Madeta a.s. sweet whey evaporator: 12.5 tonnes per hour evaporative capacity, live-steam saving and running-cost saving of the MVR design.
 
 [12] Food & Beverage Industry News, "Timing is everything for powder plant", 10 November 2008. Synlait Milk milk-powder plant: multiple-effect falling-film evaporator with mechanical and thermal vapour recompression.

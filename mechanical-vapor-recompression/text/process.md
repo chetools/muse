@@ -4,16 +4,20 @@
 
 Mechanical vapour recompression (MVR) is a heat pump applied to an
 evaporator. An evaporator that boils a liquid at 80 °C produces
-vapour at 80 °C, and that vapour is normally worthless as a heating
+vapour at 80 °C, and that vapour cannot serve as a heating
 medium for the same evaporator, because heat flows only from a
 hotter body to a colder one and the vapour is at exactly the
 temperature of the boiling liquid. Compressing the vapour raises
 its pressure, and with the pressure its saturation temperature —
 the temperature at which it condenses. Compress it enough to
 condense at 88 °C and the same vapour, condensing in the heating
-chest (the calandria) of its own evaporator, releases its latent
-heat at a temperature 8 K above the boiling liquid, which is
-enough to drive the evaporation that produced it. The loop then
+element of its own evaporator, releases its latent heat at a
+temperature 8 K above the boiling liquid, which is enough to
+drive the evaporation that produced it. The heating element is
+the tube bundle in the evaporator body: the vapour condenses on
+the shell side of the tubes, in the steam chest, and the liquor
+flows down inside the tubes as a film. The bundle is called the
+calandria in the older evaporator literature. The loop then
 needs no live steam in steady operation: the only steady energy
 input is the electricity that drives the compressor, and that
 input is small next to the heat circulated, because the compressor
@@ -30,6 +34,36 @@ on the sheet are sample values at the design basis: a feed of
 balance closes exactly on the values shown: feed in equals
 concentrate plus condensate out, and the vapour raised equals the
 vapour compressed and condensed [1][3].
+
+Three features set this process apart from a steam-heated
+evaporator. First, one machine does all the heating: there is no
+boiler duty, no steam main and no condensate system in steady
+operation, and the plant's energy input is a single electric
+drive. Second, the whole cycle lives on a temperature difference
+of a few kelvin, so everything that consumes temperature
+difference — boiling-point elevation, fouling, pressure drop —
+is paid for directly in compressor work; the process rewards a
+clean, well-wetted heating surface and punishes a scaled one
+faster than any steam-heated design. Third, the compressor and
+the evaporator are one coupled machine: the compressor's surge
+limit sets the plant's turndown, its trip stops the boiling
+within seconds, and it cannot start the plant, which must first
+be boiled on live steam. Start-up, fouling, foaming and turndown
+are treated in the sections below.
+
+The qualitative economics follow from the same picture. The
+energy enters as electricity at the compressor shaft, and
+because the compressor only has to lift the vapour through a
+few kelvin, the electricity bought is a small fraction of the
+heat circulated — the trade is a large, continuous steam bill
+for a much smaller electricity bill. Capital behaves the other
+way: the compressor is a high-speed machine, and the heating
+element area grows quickly as the design lift is reduced,
+because a smaller temperature difference needs more surface to
+pass the same duty. The design point is therefore an economic
+balance between steel and electricity, struck where the
+annualised cost of the area equals the saving in power; the
+Economics panel puts numbers on that balance at stated prices.
 
 [[SHEET]]
 
@@ -54,17 +88,17 @@ which the Theory panel states as a design-basis assumption.
 
 Fig. P1 | Feed tank, pump and condensate preheater. The feed is
 heated to its boiling point by the hot condensate before
-it reaches the evaporator, so the calandria duty is spent on
+it reaches the evaporator, so the heating element duty is spent on
 evaporation, not on warming the feed. At the frame edges, the
 feed line (stream 2) leaves at the top for the evaporator, the
-condensate return from the calandria enters at the right along
+condensate return from the heating element enters at the right along
 the bottom lane and rises into the preheater, and the
 condensate leaves at the left.
 
 ## Condensate preheater
 
 The preheater E-101 is a shell-and-tube exchanger in which the
-incoming feed is heated by the condensate leaving the calandria
+incoming feed is heated by the condensate leaving the heating element
 at 88 °C. At the design basis the feed arrives warm, at 75 °C,
 and is heated to its boiling point, 80 °C, a duty of 145 kW; the
 condensate, flowing at one fifth of the feed rate, is cooled from
@@ -73,7 +107,7 @@ exactly. A plant whose feed arrives cold cannot close this
 balance on condensate alone — the condensate stream is too small
 — and adds a second stage against the warm concentrate or a
 steam trim; the design basis is the warm-feed case. This heat recovery is what allows the model to
-treat the calandria duty as latent heat only: a cold feed would
+treat the heating element duty as latent heat only: a cold feed would
 consume part of the condensing vapour's heat as sensible heat and
 would need either more area or a higher lift, a point the Theory
 panel derives as the feed sensible-heat term and then sets to
@@ -86,7 +120,7 @@ In the evaporator E-102 the preheated feed is distributed over
 the top of a bundle of vertical tubes and flows down their inner
 walls as a thin film, boiling as it falls. The heating medium —
 the compressed vapour — condenses on the outside of the tubes in
-the calandria. A falling film gives a high heat-transfer
+the heating element. A falling film gives a high heat-transfer
 coefficient at a small temperature difference, which is precisely
 what MVR needs: every kelvin of temperature difference between
 the condensing vapour and the boiling liquid must be bought from
@@ -103,7 +137,7 @@ concentrated liquid. The concentrate, 20,000 kg/h at the design
 basis, leaves from the bottom. The vapour passes a demister — a
 mesh or vane pack at the vapour outlet — before it reaches the
 compressor. The demister is not a detail: entrained droplets carry
-dissolved solids into the compressor and the calandria, where they
+dissolved solids into the compressor and the heating element, where they
 deposit on the heating surface, and in food duty they carry
 product into the condensate. Entrainment rises sharply when the
 separator is run above its design vapour velocity, which is one
@@ -117,8 +151,8 @@ in the head, passes the demister, and leaves for the compressor;
 concentrate leaves at the bottom. At the frame edges, the feed
 enters the body from the left, the vapour (stream 3) leaves
 along the top to the right, and the concentrate (stream 6)
-leaves at the bottom. The calandria chest against the right
-face of the body is shown in Fig. P4.
+leaves at the bottom. The heating element, drawn as the steam
+chest against the right face of the body, is shown in Fig. P4.
 
 ## MVR compressor
 
@@ -164,14 +198,14 @@ Fig. P3 | MVR compressor. The whole vapour stream raised in the
 separator is compressed from 43.6 kPa to 64.9 kPa; the discharge
 is superheated at 129 °C. At the left is the evaporator head
 with the demister; the feed line enters the body at the left
-edge; the evaporator body and the calandria chest
-continue below the frame (Fig. P2 and Fig. P4), and the
+edge; the evaporator body and the steam chest of the
+heating element continue below the frame (Fig. P2 and Fig. P4), and the
 discharge line also continues below the frame, to the
-calandria (Fig. P4).
+heating element (Fig. P4).
 
-## Calandria, condensate and heat recovery
+## Heating element, condensate and heat recovery
 
-The compressed vapour enters the calandria and condenses on the
+The compressed vapour enters the heating element and condenses on the
 tube outsides at 88 °C. Its latent heat, released at a temperature
 8 K above the boiling liquid, passes through the tube walls into
 the boiling film. The condensing side actually delivers slightly
@@ -188,11 +222,11 @@ the economics of the process [5].
 
 Two small lines on the sheet carry duties that decide whether the
 plant runs well. The non-condensable vent draws air and dissolved
-gases out of the calandria: gases that arrive with the vapour do
+gases out of the heating element: gases that arrive with the vapour do
 not condense, accumulate at the tube surface, and blanket it, and
-a calandria that is not vented loses duty steadily for no visible
+a heating element that is not vented loses duty steadily for no visible
 reason. The start-up steam line, dashed on the sheet, admits live
-steam to the calandria for start-up and for trimming: the loop
+steam to the heating element for start-up and for trimming: the loop
 cannot start itself, because at start-up there is no vapour to
 compress, so the evaporator is first boiled on live steam until
 the vapour flow is established, the compressor is started, and
@@ -202,10 +236,10 @@ fouled surface — that the compressor alone cannot cover.
 
 [[CROP_COND]]
 
-Fig. P4 | Calandria condensation and heat recovery. Compressed
+Fig. P4 | Heating element condensation and heat recovery. Compressed
 vapour condenses at 88 °C; condensate leaves through the feed
 preheat train; start-up steam (dashed) and the non-condensable
-vent serve the calandria, and the vent leaves at the top of
+vent serve the heating element, and the vent leaves at the top of
 the frame. The evaporator body is at the left
 and continues above the frame (Fig. P2); the compressed vapour
 (stream 4) enters from the right, with the start-up steam

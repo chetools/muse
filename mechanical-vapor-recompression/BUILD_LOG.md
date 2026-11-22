@@ -27,3 +27,86 @@
 - Published v6: main push 74af427 -> 585ca09 (25 in-scope files); gh-pages push c89ace1 -> 994e2b3 (index.html only). Served page byte-identical to dist/mechanical-vapor-recompression-v6.html (3,775,122 bytes, SHA-256 946074813e984a843d5c7028781e77ad7c2f5223fe28c66e51e990899ad54c55).
 - v7 MERGE (MERGE-BRIEF.md): base refreshed to published v6 sources; donor sheet (zero crossings, verify_sheet PASS) and donor verified sites (AmulFed [9][10], Madeta [11], Synlait [12]) merged; unverified v6 site rows removed; crops re-measured on the new sheet (P1 30 262 390 400, P2 445 100 155 460, P3 445 60 655 270, P4 455 262 745 378, all at 0.9 px/unit) with two first-round defects fixed (P2 K-101 label fragment, P4 K-101 arc sliver); fresh independent sheet review clean on the full sheet (0 crossings, 9/9 arrows, 7/7 connections, 6/6 stream table), 3 crop findings adjudicated (2 caption fixes, 1 not upheld) in progress-v7.md; build v7 (3,783,373 bytes, 149 KaTeX), tests 6/6, browser QA all pass, selftest PASS. Publication follows.
 - v7 PUBLISHED: main scoped push e078012 -> 836899f (47 in-scope blobs: merged sources, sheet, verify_sheet.py, research-sites.md, progress-v7.md, v7 review + shots); gh-pages scoped push 194c590 -> 0b18759 (index.html only; walkthrough notebook unchanged, byte-identical). Pages build for 0b18759 confirmed started and completed (status built). Served page fetched and compared: byte-identical to dist/mechanical-vapor-recompression-v7.html (3,783,373 bytes, SHA-256 1a2e9d484728b514aaa2369c74a1096706c8e4750b5fc97a804f605f388ba1aa).
+
+## v8 — terminology, SI purge, Process-first (2026-11-22, V8-BRIEF.md)
+- Finding recorded: "calandria" is a genuine older evaporator term (the
+  tube bundle of a calandria/Robert evaporator, Perry's, sugar
+  literature) but not the term for a modern falling-film MVR unit.
+  Primary term is now "heating element" everywhere: text panels,
+  template (subtitle, App metric card "Heating element duty (kW)",
+  guide popover), balance.py, walkthrough.py, build_page.py prestart
+  table, sheet label. Process section renamed "Heating element,
+  condensate and heat recovery"; Theory key-point table cross-refs
+  updated. ONE sentence remains, at the first use in Process: "The
+  bundle is called the calandria in the older evaporator literature."
+  Built page contains exactly 1 occurrence of "calandria" (that
+  sentence, verified by grep).
+- Heating element defined at first use in Process: the tube bundle in
+  the evaporator body, vapour condensing on the shell side (steam
+  chest), liquor film inside the tubes.
+- Temperature lift: kept; defined precisely at first use in Theory
+  key points and in the App lift popover as the difference between
+  the condensing temperature on the heating side and the saturation
+  temperature of pure water at the separator pressure (Theory §4
+  already carried this definition: dT_lift = T_cond - T_sat =
+  dT_bpe + dT_tr + dT_loss). Every "lift" occurrence audited: all
+  denote dT_lift itself; transfer difference and boiling-point
+  elevation keep their own names throughout.
+- Antoine SI conversion: model now uses the kPa form directly,
+  log10(p_sat/kPa) = A - B/(C + T), A = 7.19621 (below 99 degC) and
+  7.26509 (from 99 degC), B and C unchanged; the 0.133322 factor and
+  every mmHg mention are gone from code, text and notebook.
+  Proof of no numerical change: A' = A + log10(0.133322) reproduces
+  the old pressures to <0.001 kPa (p1 43.5609 -> 43.5607 kPa from
+  rounding A' to 5 dp); pytest 6/6 passes; design-basis anchors
+  unchanged: p1 43.56 kPa, p2 64.86 kPa, ratio 1.489, w_s 68.27,
+  w 91.02 kJ/kg, P_el 133.07 kW, Q 3203.6 kW, COP 24.07,
+  A 183.1 m2, discharge 128.9 degC. Selftest on the built page PASS
+  with the same values.
+- SI audit of the built page (base64 data URIs stripped first; raw
+  grep hits for psi/BTU/inch/etc. were random base64 substrings in
+  the embedded KaTeX fonts, and "psi" hits were the Greek letter Psi
+  in KaTeX's symbol table): mmHg 0, torr 0, psi(unit) 0, BTU 0,
+  degF 0, atm 0, inch 0, feet 0, lb 0, gal 0 in page text and code
+  listings. EUR/USD currency figures retained (source-reported
+  currency, not units).
+- Field-terminology audit (old -> new): calandria -> heating element
+  (throughout, see above); "heating chest" -> steam chest / tube
+  bundle as context required; "is normally worthless as a heating
+  medium" -> "cannot serve as a heating medium" (plain field
+  wording); "turn-key" -> "turnkey"; Madeta "an economy of nearly
+  EUR 80,000" -> "a running-cost saving of nearly EUR 80,000"
+  (references entry likewise). Checked and kept as the field's own
+  terms: steam economy (defined in Theory §7 as water evaporated
+  per unit live steam), specific energy (kWh/t), duty, battery
+  limits, trim steam, lagging, surge, demister. No number, equation
+  or model result changed by the audit.
+- Process-first order: tabs and panels reordered to Process
+  (landing, hash-less load), Theory, App, Economics, Safety, Code,
+  References; default-panel JS fallback changed to Process. Process
+  panel opens with a qualitative introduction: plain-terms process
+  description (existing first section), three features/challenges
+  (one machine does all heating; few-kelvin cycle punishes fouling;
+  compressor-evaporator coupling, surge/turndown/start-up), and
+  qualitative economics (energy in as electricity at the shaft,
+  capital grows with area as lift shrinks, steel-vs-electricity
+  balance) before the sheet and subunit sections. All cost numbers
+  remain in Economics.
+- Sheet regenerated via gen_sheet.py with label "heating element";
+  verify_sheet PASS (crossings 0, overlaps 0, bends unchanged,
+  balance exact). Fig. P4 crop (contains the label) re-inspected at
+  desktop and phone: label whole, clear of lines and glyphs.
+- QA v8: build assertions pass (KaTeX 149 = 149, citations,
+  crop scale); browser QA desktop/2560/390: default panel Process,
+  tab order as above, side TOC beside body on Process and Theory
+  (TOC 53-303, body 331-909 at 1280 px), header/tabs/grid edges
+  equal (53/1213 desktop; 693/1853 at 2560), App inputs left
+  (53-353) results right (377), sticky tab top 0, phone scrollW
+  375 on Theory/App/Process, deep links OK, popover OK, live run
+  replaced precomputed, boot 7.5 s, ?selftest PASS, zero console /
+  page errors. Notebook regenerated (calandria 0, kPa constants in),
+  executes end-to-end with correct outputs; marimo check --strict
+  shows only the 7 known markdown-indentation warnings.
+- QA harness fixes (test, not page): waits changed to
+  state="attached" and Theory tab selected before detail clicks,
+  since Theory is no longer the default panel.

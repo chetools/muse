@@ -8,7 +8,7 @@ cooling water. Mechanical vapour recompression (MVR) instead
 compresses the vapour the evaporator has just raised, so that
 the vapour condenses a few kelvin hotter than it boiled and
 gives its latent heat back to the same evaporator through the
-calandria. The energy bought is then only the compressor work,
+heating element. The energy bought is then only the compressor work,
 which the design basis of this page puts at about one
 twenty-fourth of the heat circulated. MVR is therefore the
 standard choice where a large evaporation duty runs
@@ -22,23 +22,26 @@ are the questions this page answers with a live model.
 ## Key points
 
 Six relations organise everything that follows. The temperature
-lift $\Delta T_{lift}$, in K, is the total temperature rise the
-compression must achieve; the pressure ratio $r_p$, the
+lift $\Delta T_{lift}$, in K, is the difference between the
+condensing temperature on the heating side and the saturation
+temperature of pure water at the separator pressure — the rise
+in saturation temperature the compression must impart to the
+vapour (section 4 splits it into its three parts); the pressure ratio $r_p$, the
 compressor discharge pressure divided by its suction pressure,
 is dimensionless; the specific energy $e_{sp}$, in kWh per
 tonne of water evaporated, and the coefficient of performance
-(COP), dimensionless, the calandria duty divided by the
+(COP), dimensionless, the heating element duty divided by the
 electric power, are the two figures of merit; and the heat-transfer area $A$, in
 m2, is what the lift buys in hardware. Values quoted in this
 opening are at the design basis — an evaporation rate of
 5,000 kg/h at 80 °C, a lift of 10 K and an isentropic
 efficiency of 0.75 — unless a guided experiment changes them.
 
-1. **The lift sets the pressure ratio, and the ratio sets the work.** Raising the vapour's condensing temperature by the lift means raising its saturation pressure from the suction pressure to the discharge pressure (section 2), and the isentropic work grows with the ratio of the two (section 5). Guided experiment: in the App, raise the temperature lift from 10 K to 20 K. The pressure ratio rises from 1.49 to 2.16, the electric power rises from 133.1 kW to 270.7 kW, the specific energy rises from 26.6 kWh/t to 54.1 kWh/t, and the COP falls from 24.1 to 11.8, at an unchanged calandria duty of 3,204 kW.
-2. **Only part of the lift transfers heat.** Of the 10 K lift, 2 K is the boiling-point elevation of the solution and 1 K is an allowance for pressure-drop and desuperheating losses, so the temperature difference that actually drives heat across the calandria wall, $\Delta T_{tr}$, in K, is 7 K, and the area follows from the duty divided by that difference (sections 4 and 6). Guided experiment: in the App, lower the temperature lift from 10 K to 5 K. The transfer difference falls from 7 K to 2 K, the area rises from 183.1 m2 to 640.7 m2, and the COP rises from 24.1 to 48.6: a smaller lift is cheaper to run and dearer to build.
+1. **The lift sets the pressure ratio, and the ratio sets the work.** Raising the vapour's condensing temperature by the lift means raising its saturation pressure from the suction pressure to the discharge pressure (section 2), and the isentropic work grows with the ratio of the two (section 5). Guided experiment: in the App, raise the temperature lift from 10 K to 20 K. The pressure ratio rises from 1.49 to 2.16, the electric power rises from 133.1 kW to 270.7 kW, the specific energy rises from 26.6 kWh/t to 54.1 kWh/t, and the COP falls from 24.1 to 11.8, at an unchanged heating element duty of 3,204 kW.
+2. **Only part of the lift transfers heat.** Of the 10 K lift, 2 K is the boiling-point elevation of the solution and 1 K is an allowance for pressure-drop and desuperheating losses, so the temperature difference that actually drives heat across the heating element wall, $\Delta T_{tr}$, in K, is 7 K, and the area follows from the duty divided by that difference (sections 4 and 6). Guided experiment: in the App, lower the temperature lift from 10 K to 5 K. The transfer difference falls from 7 K to 2 K, the area rises from 183.1 m2 to 640.7 m2, and the COP rises from 24.1 to 48.6: a smaller lift is cheaper to run and dearer to build.
 3. **At a fixed lift, a hotter evaporator is cheaper to compress.** The saturation pressure curve of water steepens as temperature rises, so the same temperature interval is a smaller pressure ratio at a higher temperature (section 2), and a smaller ratio is less work per kilogram (section 5). Guided experiment: in the App, raise the evaporator temperature from 80 °C to 100 °C. The suction pressure rises from 43.6 kPa to 94.3 kPa, the pressure ratio falls from 1.49 to 1.42, the actual compression work falls from 91.0 kJ/kg to 84.6 kJ/kg, and the specific energy falls from 26.6 kWh/t to 24.7 kWh/t.
-4. **The compressor efficiency divides the work, and changes nothing else.** The actual specific work is the isentropic work divided by the isentropic efficiency $\eta_{is}$, dimensionless (section 5); the pressures, the duty and the area are set before the efficiency enters. Guided experiment: in the App, lower the compressor isentropic efficiency from 0.75 to 0.60. The actual work rises from 91.0 kJ/kg to 113.8 kJ/kg, the electric power rises from 133.1 kW to 166.3 kW, and the COP falls from 24.1 to 19.3, while the pressure ratio stays at 1.49, the calandria duty at 3,204 kW and the area at 183.1 m2.
-5. **Scale changes every flow and power in proportion, and no intensive quantity.** The model is linear in the evaporation rate: the feed is five times the evaporation and the concentrate four times it (section 1), and the duty, the powers and the area are each the evaporation rate times a per-kilogram quantity (sections 3, 5 and 6). Guided experiment: in the App, raise the evaporation rate from 5,000 kg/h to 10,000 kg/h. The feed rises from 25,000 kg/h to 50,000 kg/h, the calandria duty from 3,204 kW to 6,407 kW, the electric power from 133.1 kW to 266.1 kW and the area from 183.1 m2 to 366.1 m2, while the COP stays at 24.1 and the specific energy at 26.6 kWh/t.
+4. **The compressor efficiency divides the work, and changes nothing else.** The actual specific work is the isentropic work divided by the isentropic efficiency $\eta_{is}$, dimensionless (section 5); the pressures, the duty and the area are set before the efficiency enters. Guided experiment: in the App, lower the compressor isentropic efficiency from 0.75 to 0.60. The actual work rises from 91.0 kJ/kg to 113.8 kJ/kg, the electric power rises from 133.1 kW to 166.3 kW, and the COP falls from 24.1 to 19.3, while the pressure ratio stays at 1.49, the heating element duty at 3,204 kW and the area at 183.1 m2.
+5. **Scale changes every flow and power in proportion, and no intensive quantity.** The model is linear in the evaporation rate: the feed is five times the evaporation and the concentrate four times it (section 1), and the duty, the powers and the area are each the evaporation rate times a per-kilogram quantity (sections 3, 5 and 6). Guided experiment: in the App, raise the evaporation rate from 5,000 kg/h to 10,000 kg/h. The feed rises from 25,000 kg/h to 50,000 kg/h, the heating element duty from 3,204 kW to 6,407 kW, the electric power from 133.1 kW to 266.1 kW and the area from 183.1 m2 to 366.1 m2, while the COP stays at 24.1 and the specific energy at 26.6 kWh/t.
 6. **Prices move the payback, and nothing physical.** The App compares the MVR plant's annual electricity cost with the live-steam cost of a steam-driven single-effect evaporator doing the same duty, and the simple payback is the installed capital divided by the annual saving. Guided experiment: in the App, raise the electricity price from 0.10 USD/kWh to 0.20 USD/kWh. The annual MVR cost rises from 106,459 USD/yr to 212,918 USD/yr and the payback lengthens from 1.22 yr to 1.34 yr; no pressure, flow, duty or area changes, and the cost chart shows the MVR bar doubling while the steam bar stands.
 
 ## How the demonstration is done
@@ -48,7 +51,7 @@ evaporation rate, the evaporator temperature, the temperature
 lift and the compressor isentropic efficiency, together with
 three economics assumptions: the electricity price, the steam
 price and the operating hours. Its outputs are the metric cards
-(electric power, COP, specific energy, calandria duty, pressure
+(electric power, COP, specific energy, heating element duty, pressure
 ratio and simple payback), the derived-quantities table
 (suction and discharge pressures, condensing temperature,
 transfer temperature difference, isentropic and actual work,
@@ -63,8 +66,8 @@ panel supplies the physical route each key point refers to:
 
 | Key point | Process sections |
 |---|---|
-| 1. Lift, ratio and work | MVR compressor; Calandria, condensate and heat recovery |
-| 2. Only part of the lift transfers heat | Falling-film evaporator and separator; Calandria, condensate and heat recovery |
+| 1. Lift, ratio and work | MVR compressor; Heating element, condensate and heat recovery |
+| 2. Only part of the lift transfers heat | Falling-film evaporator and separator; Heating element, condensate and heat recovery |
 | 3. A hotter evaporator compresses cheaper | Falling-film evaporator and separator; Condensate preheater |
 | 4. Efficiency divides the work | MVR compressor |
 | 5. Scale is proportional | The process in one view; Products and battery limits |
@@ -101,7 +104,7 @@ $$\dot{m}_{feed} = \frac{\dot{m}_{evap}}{f}, \qquad
 \dot{m}_{cond} = \dot{m}_{evap}$$
 
 The condensate equals the evaporation because all vapour raised
-in the separator is compressed and condensed in the calandria:
+in the separator is compressed and condensed in the heating element:
 vapour is neither vented (the non-condensable vent carries gases,
 not steam, in the model's balance) nor accumulated at steady
 state. At the design basis the three relations give
@@ -119,16 +122,17 @@ temperature, which sets the discharge pressure. It uses the
 Antoine equation, an empirical three-constant relation between
 saturation pressure and temperature $T$, in °C:
 
-$$\log_{10}\left(\frac{p^{sat}}{\mathrm{mmHg}}\right) =
+$$\log_{10}\left(\frac{p^{sat}}{\mathrm{kPa}}\right) =
 A - \frac{B}{C + T}$$
 
 where $A$, $B$ and $C$ are empirical constants for water: $A$ is
-dimensionless, and $B$ and $C$ are in °C. The model uses the constants tabulated in
-Perry's Chemical Engineers' Handbook [1]: $A = 8.07131$,
+dimensionless, and $B$ and $C$ are in °C. The model uses the
+constants tabulated in Perry's Chemical Engineers' Handbook [1]
+for pressure in kPa: $A = 7.19621$,
 $B = 1730.63$ °C, $C = 233.426$ °C below 99 °C, and
-$A = 8.14019$, $B = 1810.94$ °C, $C = 244.485$ °C from 99 °C
-upward, and converts mmHg to kPa with the factor 0.133322 kPa per
-mmHg. The check on the correlation is against the steam tables
+$A = 7.26509$, $B = 1810.94$ °C, $C = 244.485$ °C from 99 °C
+upward, so the equation gives the pressure directly in kPa.
+The check on the correlation is against the steam tables
 [2]: at 60 °C the equation gives 19.9 kPa against a table value
 of 19.94 kPa; at 80 °C, 47.3 kPa against 47.39 kPa; at 100 °C,
 101.9 kPa against 101.33 kPa. The model's tests assert agreement
@@ -148,7 +152,7 @@ temperature, the transfer difference and the loss allowance),
 giving the discharge pressure
 $p_2 = p^{sat}(88\ \mathrm{°C}) = 64.9$ kPa.
 
-## 3. Latent heat and the calandria duty
+## 3. Latent heat and the heating element duty
 
 The specific latent heat of vaporisation $h_{fg}$, in kJ/kg, is
 the heat that must be supplied to evaporate one kilogram of liquid
@@ -161,7 +165,7 @@ with $T$ in °C and $h_{fg}$ in kJ/kg. At 80 °C the fit gives
 2306.6 kJ/kg against the steam-table value 2308.8 kJ/kg [2], an
 error of 0.1%, asserted in the model's tests.
 
-The calandria duty $Q$, in kW, is the heat the condensing vapour
+The heating element duty $Q$, in kW, is the heat the condensing vapour
 must deliver. A steady-flow energy balance on the evaporator,
 with the feed entering at its boiling point (the preheater of the
 Process panel brings it there), the concentrate leaving at the
@@ -236,7 +240,7 @@ $\Delta T_{tr}$, in K, is the heat-transfer temperature difference
 across the tube wall, the only productive part of the lift: it
 drives the duty of section 3 through the area relation of
 section 6. The third term $\Delta T_{loss} = 1$ K is an allowance
-for pressure drops in the vapour main and calandria and for the
+for pressure drops in the vapour main and heating element and for the
 approach lost in desuperheating. At the design basis,
 $\Delta T_{lift} = 10$ K splits as $2 + 7 + 1$ K: the vapour is
 raised over the 2 K elevation, condenses at
@@ -454,7 +458,7 @@ The six key points reduce to one chain. Key point 1 chooses
 the lift, and with it the pressure ratio and the compression
 work; key point 2 then splits that lift, and only the part
 left after the boiling-point elevation and the losses drives
-heat across the calandria wall, which is why the same choice
+heat across the heating element wall, which is why the same choice
 that raises the running cost lowers the area. Key point 3
 places the operating temperature on that chain: at a higher
 evaporator temperature the same lift is a smaller ratio and

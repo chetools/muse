@@ -3,8 +3,8 @@
 One falling-film evaporator effect. The vapour raised in the
 separator is compressed by a mechanical compressor so that its
 saturation (condensing) temperature rises by the temperature lift,
-in kelvin (K), and the compressed vapour condenses in the calandria
-(the heating chest of the same evaporator) and drives the
+in kelvin (K), and the compressed vapour condenses in the heating element
+(the tube bundle of the same evaporator) and drives the
 evaporation that produced it.
 
 Symbols, defined at first use in this module (SI units):
@@ -19,7 +19,7 @@ latent heat of vaporisation (kJ/kg); w_s, isentropic specific
 compression work (kJ/kg); eta_is, compressor isentropic efficiency
 (dimensionless); eta_mot, motor efficiency (dimensionless);
 W_shaft, shaft power (kW); P_el, electric power (kW);
-Q, calandria duty (kW); U, overall heat-transfer coefficient
+Q, heating element duty (kW); U, overall heat-transfer coefficient
 (W/(m2 K)); A, heat-transfer area (m2); COP, coefficient of
 performance, Q/P_el (dimensionless); e_sp, specific energy
 (kWh per tonne of water evaporated).
@@ -95,18 +95,19 @@ def validate_inputs(m_evap_kg_h, t_evap_c, dt_lift_k, eta_is):
 def psat_kpa(t_c):
     """Saturation pressure of water in kPa at temperature t_c in degC.
 
-    Antoine equation, log10(p/mmHg) = A - B/(C + T), with the
-    constants (8.07131, 1730.63, 233.426) below 99 degC and
-    (8.14019, 1810.94, 244.485) from 99 degC upward (constants as
-    tabulated in Perry's Chemical Engineers' Handbook for water).
+    Antoine equation, log10(p/kPa) = A - B/(C + T), with the
+    constants (7.19621, 1730.63, 233.426) below 99 degC and
+    (7.26509, 1810.94, 244.485) from 99 degC upward (constants as
+    tabulated in Perry's Chemical Engineers' Handbook for water,
+    for pressure in kPa, so the result is in kPa directly).
     At 80 degC it gives 47.3 kPa against the steam-table value
     47.39 kPa; at 100 degC, 101.9 kPa against 101.33 kPa.
     """
     if t_c < 99.0:
-        a, b, c = 8.07131, 1730.63, 233.426
+        a, b, c = 7.19621, 1730.63, 233.426
     else:
-        a, b, c = 8.14019, 1810.94, 244.485
-    return 10.0 ** (a - b / (c + t_c)) * 0.133322
+        a, b, c = 7.26509, 1810.94, 244.485
+    return 10.0 ** (a - b / (c + t_c))
 
 
 def h_fg_kj_per_kg(t_c):
@@ -131,7 +132,7 @@ def run_model(m_evap_kg_h=DESIGN["m_evap_kg_h"],
     gives the actual specific work; multiplying by the vapour mass
     flow (equal to m_evap, because all raised vapour is compressed)
     gives shaft power; dividing by eta_mot gives electric power.
-    The calandria duty is m_evap times h_fg at T_evap. The lift is
+    The heating element duty is m_evap times h_fg at T_evap. The lift is
     split as dT_lift = dT_bpe + dT_tr + dT_loss, and the area
     follows from Q = U*A*dT_tr. Mass balance: feed is five times
     m_evap (a stated design-basis evaporation fraction of 0.20 of
