@@ -493,3 +493,8 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   1280px (223.5 / 1041.5); 390px scrollWidth 375, no sideways
   scroll (shots/v11-*.png); live-run SELFTEST pass through
   the local CDN cache.
+- Published: main 0038dad pushed as remote head 8e6a60b
+  (steam-ejector scope only, blob-verified); gh-pages
+  a7a5052 -> 5ebf257 (only steam-ejector/index.html). Pages
+  run completed/success; served bytes byte-identical to the
+  v11 build (SHA-256 ca79038d…).

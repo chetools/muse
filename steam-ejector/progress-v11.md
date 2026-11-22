@@ -45,5 +45,18 @@ unchanged.
   unmodified): SELFTEST pass (total motive 635.18 kg/h,
   total duty 523.56 kW, against the design basis 635.2 kg/h
   and 523.6 kW).
-- [ ] Published: main and gh-pages heads, served-byte
-  comparison — filled in after the push below.
+- [x] Published: main commit 0038dad, pushed as remote head
+  8e6a60b (compare d77e8c9…8e6a60b: 8 files, all in
+  steam-ejector/; remote blob SHAs of template.html and
+  build_page.py equal to local git hash-object). gh-pages
+  local 1-file commit, pushed a7a5052 -> 5ebf257 (compare:
+  only steam-ejector/index.html modified; walkthrough
+  untouched). Pages run for 5ebf257 completed/success.
+  Served bytes at https://chetools.github.io/muse/steam-ejector/
+  byte-identical to dist/steam-ejector-v11.html (4,519,350
+  bytes, SHA-256 ca79038d…). Published-page selftest: the
+  sandbox Chromium cannot reach the public internet, so the
+  ?selftest=1 run was taken on the byte-identical local
+  build — PASS (635.18 kg/h, 523.56 kW).
+- MoLab link (as carried in the published page):
+  https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py
