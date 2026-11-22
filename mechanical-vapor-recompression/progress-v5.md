@@ -45,7 +45,10 @@
   v5-header-2560.png, v5-theory-detail-desktop.png,
   v5-theory-detail-phone.png, v5-app-desktop.png,
   v5-app-popover.png, v5-theory-phone.png, v5-app-phone.png.
-- Publication: main scoped push, then gh-pages index.html
-  replaced with dist/mechanical-vapor-recompression-v5.html
-  (3,772,596 bytes; +58 bytes against v4, the added CSS rule) and
-  served bytes verified equal to the build output.
+- Publication: main scoped push ae15298 -> 289394a (14 in-scope
+  blobs, 0 deleted); gh-pages scoped push a299313 -> e0ac0b6
+  (index.html only). Served page fetched after deployment:
+  byte-identical to dist/mechanical-vapor-recompression-v5.html
+  (3,772,596 bytes, SHA-256 d87fda37485433fe934e7cfdc068584f
+  505b697df430d20f32eb9f6e87da283c; +58 bytes against v4, the
+  added CSS rule).
