@@ -1,0 +1,60 @@
+{
+  "desktop": {
+    "default_panel": "theory",
+    "tab_order": [
+      "theory",
+      "app",
+      "process",
+      "economics",
+      "safety",
+      "code",
+      "references"
+    ],
+    "toc_geometry_desktop": {
+      "tocL": 53,
+      "tocR": 303,
+      "bodyL": 331,
+      "bodyR": 909,
+      "bodyW": 578,
+      "tocTop": 64,
+      "bodyTop": -0.0
+    },
+    "booted": true,
+    "boot_s": 10.1,
+    "boot_progress_hidden_after_load": true,
+    "precomputed_at_first_paint": true,
+    "popover_opened": true,
+    "popover_dismissed": true,
+    "live_replaced_precomputed": true,
+    "metrics_changed_on_input": true,
+    "app_geometry": {
+      "inputsL": 53,
+      "inputsR": 353,
+      "resultsL": 377,
+      "scrollW": 1265,
+      "innerW": 1280
+    },
+    "sticky_nav_top_after_scroll": 0,
+    "console_errors": [],
+    "page_errors": []
+  },
+  "phone_theory": {
+    "tocAboveBody": true,
+    "scrollW": 375,
+    "innerW": 390
+  },
+  "phone_app": {
+    "inputsAboveResults": true,
+    "scrollW": 375
+  },
+  "phone_page_errors": [],
+  "deep_link_panel_app": true,
+  "deep_link_theory_section": true,
+  "selftest": {
+    "pass": true,
+    "p_el_kw": 133.07396143789381,
+    "q_kw": 3203.611111111111,
+    "cop": 24.073914058733795
+  },
+  "selftest_page_errors": []
+}

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Mechanical vapour recompression — MVR evaporation</title>
+@@KATEX_CSS@@
+<style>
+:root{--ink:#1b1b1b;--ink2:#5a5a5a;--rule:#d6d6d6;--paper:#ffffff;--tint:#f4f6f8;--accent:#0072B2;--accent2:#D55E00;--measure:68ch}
+*{box-sizing:border-box}
+html{scrollbar-gutter:stable}
+body{background:var(--paper);color:var(--ink);font:17px/1.55 Georgia,"Source Serif 4",serif;margin:0}
+header,main{max-width:var(--measure);margin:0 auto;padding:0 16px}
+header{padding-top:24px}
+h1{font:600 30px/1.2 system-ui,sans-serif;margin:0 0 8px}
+.subtitle{font:16px/1.5 system-ui,sans-serif;color:var(--ink2);margin:0 0 16px}
+h2{font:600 22px/1.25 system-ui,sans-serif;margin:28px 0 8px;scroll-margin-top:72px}
+h3{font:600 18px/1.3 system-ui,sans-serif;margin:22px 0 6px;scroll-margin-top:72px}
+p{margin:0 0 12px;overflow-wrap:anywhere}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+nav.tabs{position:sticky;top:0;z-index:60;background:var(--paper);border-bottom:1px solid var(--rule);margin:0 auto;max-width:var(--measure);padding:0 16px;display:flex;flex-wrap:wrap;gap:2px}
+nav.tabs button{font:600 15px/1.2 system-ui,sans-serif;background:none;border:none;border-bottom:3px solid transparent;padding:12px 10px;cursor:pointer;color:var(--ink)}
+nav.tabs button[aria-selected="true"]{border-bottom-color:var(--accent);color:var(--accent)}
+main{min-width:0}
+section.panel{min-width:0}
+section.panel[hidden]{display:none}
+.toc{border:1px solid var(--rule);background:var(--tint);padding:12px 16px;margin:16px 0;font:15px/1.5 system-ui,sans-serif}
+.toc strong{display:block;margin-bottom:6px}
+.toc ul{margin:0;padding-left:20px}
+.toc a[aria-current="true"]{font-weight:700}
+.panelgrid{display:block}
+.panelbody{min-width:0}
+@media(min-width:1000px){
+section.panel.long,section#panel-code,section#panel-app{width:min(1160px,calc(100vw - 32px));position:relative;left:50%;transform:translateX(-50%)}
+.panelgrid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:8px 28px;align-items:start}
+.panelgrid .toc{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;margin:16px 0}
+.panelgrid .panelbody{max-width:68ch}
+}
+.appgrid{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:8px 24px;align-items:start}
+.appgrid .inputs{display:block;margin:0}
+.appgrid .inputs label{margin-bottom:12px}
+.appgroup{border:1px solid var(--rule);padding:10px 12px;margin:0 0 12px;min-width:0}
+.appgroup h3{font:600 15px/1.3 system-ui,sans-serif;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+button.help{font:600 13px/1 system-ui,sans-serif;background:var(--tint);border:1px solid var(--rule);border-radius:50%;width:24px;height:24px;cursor:pointer;color:var(--accent);flex:none}
+.guide{font:15px/1.5 system-ui,sans-serif;max-width:46ch;border:1px solid var(--rule);background:var(--paper);padding:12px 16px;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+.guide p{margin:0}
+.appresults{min-width:0}
+.appinputs{min-width:0}
+@media(max-width:800px){.appgrid{grid-template-columns:minmax(0,1fr)}}
+figure{margin:20px 0;min-width:0}
+figcaption{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin-top:8px}
+figure svg{max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font:15px/1.45 system-ui,sans-serif;margin:12px 0;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--rule);padding:6px 8px;text-align:right;min-width:0}
+th:first-child,td:first-child{text-align:left}
+th{background:var(--tint);text-align:right}
+th:first-child{text-align:left}
+details{border:1px solid var(--rule);background:var(--tint);padding:10px 14px;margin:12px 0}
+details summary{font:600 15px/1.4 system-ui,sans-serif;cursor:pointer}
+details p,details table{margin:8px 0}
+aside.sidenote{border-left:3px solid var(--accent);background:var(--tint);padding:10px 14px;margin:12px 0;font-size:15px}
+aside.sidenote strong{font-family:system-ui,sans-serif}
+code{font:14px/1.4 ui-monospace,monospace;background:var(--tint);padding:1px 4px}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow:auto;font:13px/1.5 ui-monospace,monospace}
+pre code{background:none;padding:0}
+.inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.inputs label{font:600 14px/1.4 system-ui,sans-serif;display:block}
+.inputs input{width:100%;font:16px/1.4 system-ui,sans-serif;padding:8px;margin-top:4px;border:1px solid var(--rule);border-radius:4px}
+.inputs .hint{font:400 13px/1.4 system-ui,sans-serif;color:var(--ink2)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}
+.metric{border:1px solid var(--rule);padding:12px;min-width:0}
+.metric .v{font:600 22px/1.2 system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.metric .k{font:14px/1.4 system-ui,sans-serif;color:var(--ink2)}
+.chart{width:100%;min-width:0;margin:16px 0}
+.chartcap{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin:-8px 0 16px}
+.tablewrap{overflow-x:auto;margin:12px 0;min-width:0}
+.tablewrap table{margin:0}
+button.run{font:600 16px/1.2 system-ui,sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:10px 18px;cursor:pointer}
+button.run:disabled{background:#9a9a9a;cursor:default}
+.stale{font:14px/1.4 system-ui,sans-serif;color:var(--accent2);margin:8px 0}
+.error{font:15px/1.4 system-ui,sans-serif;color:#8b0000;margin:8px 0}
+.warn{font:15px/1.4 system-ui,sans-serif;margin:8px 0}
+progress{width:100%;height:10px;appearance:none}
+progress::-webkit-progress-value{background:var(--accent)}
+progress::-moz-progress-bar{background:var(--accent)}
+.bootline{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin:8px 0}
+.katex-display{overflow-x:auto;overflow-y:hidden}
+section.long h2,section.long h3{content-visibility:auto;contain-intrinsic-size:auto 600px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:static;left:0}
+footer{max-width:var(--measure);margin:40px auto 0;padding:16px;border-top:1px solid var(--rule);font:14px/1.5 system-ui,sans-serif;color:var(--ink2)}
+@media(max-width:480px){body{font-size:16px}h1{font-size:24px}nav.tabs button{padding:10px 7px;font-size:14px}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header>
+<h1>Mechanical vapour recompression</h1>
+<p class="subtitle">A falling-film evaporator whose own vapour, compressed
+by a mechanical compressor, condenses in its calandria and drives the
+evaporation: the heat pump cycle, its derivations, and its economics.</p>
+<p class="bootline" id="bootline">Runtime loading. The App panel shows the design basis
+until the first live run replaces it.</p>
+<progress id="bootprogress" max="100" value="20" aria-label="Runtime loading progress"></progress>
+<p class="bootline" id="bootdone" hidden>Runtime ready.</p>
+</header>
+<nav class="tabs" role="tablist" aria-label="Panels">
+<button role="tab" aria-selected="true" data-panel="theory" id="tab-theory">Theory</button>
+<button role="tab" aria-selected="false" data-panel="app" id="tab-app">App</button>
+<button role="tab" aria-selected="false" data-panel="process" id="tab-process">Process</button>
+<button role="tab" aria-selected="false" data-panel="economics" id="tab-economics">Economics</button>
+<button role="tab" aria-selected="false" data-panel="safety" id="tab-safety">Safety</button>
+<button role="tab" aria-selected="false" data-panel="code" id="tab-code">Code</button>
+<button role="tab" aria-selected="false" data-panel="references" id="tab-references">References</button>
+</nav>
+<main id="main">
+<section class="panel long" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory">
+@@THEORY_HTML@@
+</section>
+<section class="panel" id="panel-app" role="tabpanel" aria-labelledby="tab-app" hidden>
+<h2 id="app">App</h2>
+<div class="appgrid">
+<div class="appinputs">
+<p>Evaporation rate, evaporator temperature, temperature lift and
+compressor isentropic efficiency set the pressure ratio, the
+compressor power, the coefficient of performance and the
+heat-transfer area. Electricity and steam prices set the annual
+comparison against a steam-driven single-effect evaporator.
+Change an input to recompute.</p>
+<form class="inputs" id="inputs">
+<div class="appgroup">
+<h3>Duty and temperature <button type="button" class="help" popovertarget="guide-duty" aria-label="Guidance: duty and temperature">?</button></h3>
+<label>Evaporation rate (kg/h)<input type="number" id="in-mevap" value="5000" min="1000" max="20000" step="100"><span class="hint">Range 1,000–20,000 kg/h.</span></label>
+<label>Evaporator temperature (°C)<input type="number" id="in-tevap" value="80" min="60" max="100" step="1"><span class="hint">Range 60–100 °C.</span></label>
+</div>
+<div class="appgroup">
+<h3>Temperature lift <button type="button" class="help" popovertarget="guide-lift" aria-label="Guidance: temperature lift">?</button></h3>
+<label>Temperature lift (K)<input type="number" id="in-lift" value="10" min="5" max="20" step="0.5"><span class="hint">Range 5–20 K; includes 2 K boiling-point elevation and 1 K losses.</span></label>
+</div>
+<div class="appgroup">
+<h3>Compressor efficiency <button type="button" class="help" popovertarget="guide-eta" aria-label="Guidance: compressor efficiency">?</button></h3>
+<label>Compressor isentropic efficiency<input type="number" id="in-eta" value="0.75" min="0.60" max="0.85" step="0.01"><span class="hint">Range 0.60–0.85, dimensionless.</span></label>
+</div>
+<div class="appgroup">
+<h3>Prices and hours <button type="button" class="help" popovertarget="guide-prices" aria-label="Guidance: prices and hours">?</button></h3>
+<label>Electricity price (USD/kWh)<input type="number" id="in-elec" value="0.10" min="0" max="2" step="0.01"><span class="hint">Economics assumption.</span></label>
+<label>Steam price (USD/t)<input type="number" id="in-steamprice" value="30" min="0" max="200" step="1"><span class="hint">Economics assumption.</span></label>
+<label>Operating hours (h/yr)<input type="number" id="in-hours" value="8000" min="1000" max="8760" step="100"><span class="hint">Economics assumption.</span></label>
+</div>
+</form>
+<button class="run" id="runbtn" disabled>Run</button>
+<p class="stale" id="stalenote" hidden>Inputs changed since the displayed run.</p>
+<p class="error" id="aperror" role="alert" hidden></p>
+<div aria-live="polite" id="liveregion" class="bootline"></div>
+</div>
+<div class="appresults">
+<div class="metrics" id="metrics"></div>
+<div class="chart" id="chart-lift" style="height:340px"></div>
+<p class="chartcap">Specific energy (kWh per tonne evaporated) against temperature lift at the current evaporation rate, temperature and efficiency; the diamond marks the current lift.</p>
+<div class="chart" id="chart-cost" style="height:340px"></div>
+<p class="chartcap">Annual operating cost of the MVR plant (electricity) against the steam-driven single-effect alternative at the current prices.</p>
+<div id="resulttable"></div>
+<div id="warnings"></div>
+<div id="econ"></div>
+</div>
+</div>
+<div class="guide" id="guide-duty" popover><p><strong>Duty and temperature.</strong> The evaporation rate is the water the plant must boil off; every flow, duty, power and area is proportional to it, while the COP and the specific energy do not move with it. The evaporator temperature sets the suction pressure: at a fixed lift, a hotter evaporator needs a smaller pressure ratio and less work per kilogram. Look at the feed, concentrate and duty rows of the derived-quantities table, and at the suction pressure when the temperature changes.</p></div>
+<div class="guide" id="guide-lift" popover><p><strong>Temperature lift.</strong> The lift is the temperature rise the compressor must give the vapour. Of the lift, 2 K is boiling-point elevation and 1 K is losses; the rest drives heat transfer in the calandria. A larger lift costs power and saves area; a smaller lift saves power and costs area. Look at the specific-energy chart, the pressure ratio and COP cards, and the heat-transfer area row.</p></div>
+<div class="guide" id="guide-eta" popover><p><strong>Compressor efficiency.</strong> The isentropic efficiency divides the ideal compression work to give the actual work. It changes the power, the COP and the specific energy, and nothing else: pressures, duty and area are set before it enters. Look at the isentropic and actual work rows of the derived-quantities table.</p></div>
+<div class="guide" id="guide-prices" popover><p><strong>Prices and hours.</strong> The electricity price, steam price and operating hours convert the computed power and the alternative's steam flow into annual costs and a simple payback. They change no pressure, flow, duty or area on this panel. Look at the annual cost chart and the payback card.</p></div>
+</section>
+
+
+<section class="panel long" id="panel-process" role="tabpanel" aria-labelledby="tab-process" hidden>
+@@PROCESS_HTML@@
+</section>
+<section class="panel long" id="panel-economics" role="tabpanel" aria-labelledby="tab-economics" hidden>
+@@ECONOMICS_HTML@@
+</section>
+<section class="panel long" id="panel-safety" role="tabpanel" aria-labelledby="tab-safety" hidden>
+@@SAFETY_HTML@@
+</section>
+<section class="panel" id="panel-code" role="tabpanel" aria-labelledby="tab-code" hidden>
+<h2 id="code">Code</h2>
+<div class="panelgrid">
+@@CODE_TOC@@
+<div class="panelbody">
+<h3 id="code-model">Model listing</h3>
+<p>The listing below is the file <code>python/balance.py</code> as
+built, and the model the App panel runs is this file.</p>
+<pre id="codelisting">@@CODE_LISTING@@</pre>
+<h3 id="code-walkthrough">Walkthrough</h3>
+<p>The walkthrough below was computed when this page was built. It
+repeats the design-basis arithmetic cell by cell, with each step
+tied to the Theory section it implements.</p>
+@@WALKTHROUGH_HTML@@
+<h3 id="code-notebook">Editable notebook</h3>
+<p>The MoLab notebook is editable; run all cells once after
+opening. The notebook file is
+<code>walkthrough_molab.py</code>, served with this page.</p>
+<p><a href="https://molab.marimo.io/github/chetools/muse/blob/gh-pages/mechanical-vapor-recompression/walkthrough_molab.py">Editable notebook on the MoLab link</a></p>
+</div></div>
+</section>
+<section class="panel long" id="panel-references" role="tabpanel" aria-labelledby="tab-references" hidden>
+@@REFERENCES_HTML@@
+</section>
+</main>
+<footer>
+<p>Pressures are absolute unless stated. Flows are mass flow rates.
+Costs are in 2026 USD and follow the relations of the Economics
+panel.</p>
+</footer>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script id="balance-src" type="text/plain">@@BALANCE_PY@@</script>
+@@PLOTLY_JS@@
+@@KATEX_JS@@
+<script>
+"use strict";
+var PANELS=["theory","app","process","economics","safety","code","references"];
+var displayedParams=null, liveReady=false, firstLiveDone=false, runTimer=null;
+function showPanel(name){
+  PANELS.forEach(function(p){
+    document.getElementById("panel-"+p).hidden=(p!==name);
+    document.getElementById("tab-"+p).setAttribute("aria-selected", p===name?"true":"false");
+  });
+  if(history.replaceState){history.replaceState(null,"","#"+name);}
+  refitCharts();
+}
+document.querySelectorAll("nav.tabs button").forEach(function(b){
+  b.addEventListener("click",function(){showPanel(b.getAttribute("data-panel"));});
+});
+function refitCharts(){
+  if(window.Plotly){
+    ["chart-lift","chart-cost"].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&el.data){try{Plotly.Plots.resize(el);}catch(e){}}
+    });
+  }
+}
+window.addEventListener("resize",refitCharts);
+new MutationObserver(refitCharts).observe(document.getElementById("panel-app"),{attributes:true,attributeFilter:["hidden"]});
+function readInputs(){
+  return {
+    m_evap_kg_h:parseFloat(document.getElementById("in-mevap").value),
+    t_evap_c:parseFloat(document.getElementById("in-tevap").value),
+    dt_lift_k:parseFloat(document.getElementById("in-lift").value),
+    eta_is:parseFloat(document.getElementById("in-eta").value),
+    elec_price:parseFloat(document.getElementById("in-elec").value),
+    steam_price:parseFloat(document.getElementById("in-steamprice").value),
+    hours:parseFloat(document.getElementById("in-hours").value)
+  };
+}
+function fmt(x,n){return x.toLocaleString("en-US",{minimumFractionDigits:n,maximumFractionDigits:n});}
+function renderPayload(d,precomputed){
+  var suffix=precomputed?" (precomputed)":"";
+  var m=document.getElementById("metrics");
+  m.innerHTML=""
+    +"<div class='metric'><div class='v'>"+fmt(d.p_el_kw,1)+"</div><div class='k'>Electric power (kW)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+fmt(d.cop,1)+"</div><div class='k'>Coefficient of performance"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+fmt(d.e_sp_kwh_t,1)+"</div><div class='k'>Specific energy (kWh/t)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+fmt(d.q_kw,0)+"</div><div class='k'>Calandria duty (kW)"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+fmt(d.pressure_ratio,2)+"</div><div class='k'>Pressure ratio"+suffix+"</div></div>"
+    +"<div class='metric'><div class='v'>"+fmt(d.payback_yr,2)+"</div><div class='k'>Simple payback (yr)"+suffix+"</div></div>";
+  var lx=d.sweep.map(function(p){return p.lift;});
+  var ly=d.sweep.map(function(p){return p.e_sp;});
+  Plotly.react("chart-lift",[{x:lx,y:ly,mode:"lines+markers",name:"Specific energy"+suffix,line:{color:"#0072B2"},marker:{symbol:"circle"}},{x:[d.dt_lift_k],y:[d.e_sp_kwh_t],mode:"markers",name:"Current point"+suffix,marker:{symbol:"diamond",size:12,color:"#D55E00"}}],{margin:{l:70,r:120,t:10,b:50},xaxis:{title:"Temperature lift (K)"},yaxis:{title:"Specific energy (kWh/t)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
+  Plotly.react("chart-cost",[{x:["MVR (electricity)","Steam single-effect"],y:[d.annual_mvr_usd,d.annual_steam_usd],type:"bar",name:"Annual operating cost"+suffix,marker:{color:["#0072B2","#D55E00"]}}],{margin:{l:80,r:120,t:10,b:50},yaxis:{title:"Annual cost (USD/yr)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
+  var rows=[["Suction pressure (kPa)",fmt(d.p1_kpa,1)],["Discharge pressure (kPa)",fmt(d.p2_kpa,1)],["Condensing temperature (°C)",fmt(d.t_cond_c,1)],["Transfer temperature difference (K)",fmt(d.dt_tr_k,1)],["Isentropic work (kJ/kg)",fmt(d.w_s_kj_kg,1)],["Actual work (kJ/kg)",fmt(d.w_kj_kg,1)],["Discharge temperature (°C)",fmt(d.t_discharge_c,1)],["Shaft power (kW)",fmt(d.shaft_kw,1)],["Heat-transfer area (m2)",fmt(d.area_m2,1)],["Condensing-side duty (kW)",fmt(d.q_cond_kw,0)],["Feed (kg/h)",fmt(d.feed_kg_h,0)],["Concentrate (kg/h)",fmt(d.concentrate_kg_h,0)],["Condensate (kg/h)",fmt(d.condensate_kg_h,0)],["Live steam, single-effect (kg/h)",fmt(d.steam_single_kg_h,0)]];
+  document.getElementById("resulttable").innerHTML="<h3>Derived quantities"+suffix+"</h3><div class=\"tablewrap\"><table><tr><th>Quantity</th><th>Value</th></tr>"+rows.map(function(r){return "<tr><td>"+r[0]+"</td><td>"+r[1]+"</td></tr>";}).join("")+"</table></div>";
+  document.getElementById("warnings").innerHTML="";
+  document.getElementById("econ").innerHTML="<h3>Economics"+suffix+"</h3><p>Installed capital "+fmt(d.capital_usd,0)+" USD; annual MVR electricity cost "+fmt(d.annual_mvr_usd,0)+" USD/yr; annual steam cost of the single-effect alternative "+fmt(d.annual_steam_usd,0)+" USD/yr; annual saving "+fmt(d.annual_saving_usd,0)+" USD/yr.</p>";
+  document.getElementById("stalenote").hidden=true;
+  refitCharts();
+}
+var prestart=JSON.parse(document.getElementById("prestart-data").textContent);
+renderPayload(prestart,true);
+displayedParams=prestart.inputs;
+document.getElementById("liveregion").textContent="Design basis shown. Runtime loading.";
+var pyodide=null;
+function setError(msg){
+  var e=document.getElementById("aperror");
+  e.textContent=msg;e.hidden=false;
+  document.getElementById("liveregion").textContent=msg;
+}
+function clearError(){var e=document.getElementById("aperror");e.hidden=true;e.textContent="";}
+function runLive(){
+  if(!liveReady||!pyodide){return;}
+  clearError();
+  var inputs=readInputs();
+  try{
+    var code="import json\n"
+      +"r=run_model("+inputs.m_evap_kg_h+","+inputs.t_evap_c+","+inputs.dt_lift_k+","+inputs.eta_is+")\n"
+      +"e=economics(r,"+inputs.elec_price+","+inputs.steam_price+","+inputs.hours+")\n"
+      +"r.update(e)\n"
+      +"r['sweep']=sweep_lift("+inputs.m_evap_kg_h+","+inputs.t_evap_c+","+inputs.eta_is+")\n"
+      +"r['inputs']={'m_evap_kg_h': "+inputs.m_evap_kg_h+", 't_evap_c': "+inputs.t_evap_c+", 'dt_lift_k': "+inputs.dt_lift_k+", 'eta_is': "+inputs.eta_is+", 'elec_price': "+inputs.elec_price+", 'steam_price': "+inputs.steam_price+", 'hours': "+inputs.hours+"}\n"
+      +"json.dumps(r)";
+    var out=pyodide.runPython(code);
+    var d=JSON.parse(out);
+    renderPayload(d,false);
+    displayedParams=inputs;
+    firstLiveDone=true;
+    document.getElementById("liveregion").textContent="Run complete. Electric power "+d.p_el_kw.toFixed(1)+" kW, COP "+d.cop.toFixed(1)+".";
+    if(window.SELFTEST_PENDING){window.SELFTEST=checkSelftest(d);window.SELFTEST_PENDING=false;}
+  }catch(err){
+    var msg=String(err&&err.message?err.message:err);
+    var clean=msg.split("\n").filter(function(l){return l.indexOf("ValueError")>=0;}).join(" ");
+    setError(clean||"The inputs could not be run. Check the ranges and try again.");
+  }
+}
+function checkSelftest(d){
+  var ok=Math.abs(d.p_el_kw-prestart.p_el_kw)<0.5
+    &&Math.abs(d.q_kw-prestart.q_kw)<2.0
+    &&Math.abs(d.cop-prestart.cop)<0.1;
+  return {pass:ok,p_el_kw:d.p_el_kw,q_kw:d.q_kw,cop:d.cop};
+}
+function scheduleRun(){
+  if(!liveReady){document.getElementById("stalenote").hidden=false;return;}
+  if(runTimer){clearTimeout(runTimer);}
+  runTimer=setTimeout(function(){runLive();},350);
+}
+["in-mevap","in-tevap","in-lift","in-eta","in-elec","in-steamprice","in-hours"].forEach(function(id){
+  document.getElementById(id).addEventListener("input",function(){
+    if(firstLiveDone){document.getElementById("stalenote").hidden=false;}
+    scheduleRun();
+  });
+});
+document.getElementById("runbtn").addEventListener("click",function(){runLive();});
+function boot(){
+  var s=document.createElement("script");
+  s.src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+  s.onload=function(){
+    document.getElementById("bootprogress").value=60;
+    loadPyodide().then(function(py){
+      pyodide=py;
+      var src=document.getElementById("balance-src").textContent;
+      py.FS.writeFile("/balance.py",src);
+      py.runPython("import sys; sys.path.insert(0,'/'); from balance import run_model, economics, sweep_lift");
+      liveReady=true;
+      document.getElementById("bootprogress").value=100;
+      document.getElementById("bootdone").hidden=false;
+      document.getElementById("bootline").hidden=true;
+      document.getElementById("bootprogress").hidden=true;
+      document.getElementById("runbtn").disabled=false;
+      document.getElementById("liveregion").textContent="Runtime ready. Running the design basis.";
+      if(new URLSearchParams(location.search).get("selftest")==="1"){window.SELFTEST_PENDING=true;}
+      runLive();
+    }).catch(function(err){
+      document.getElementById("bootline").textContent="The Python runtime failed to load, so no live run is available. The design basis display above remains, labelled as precomputed.";
+      setError("The Python runtime failed to load. Check the network connection and reload the page.");
+    });
+  };
+  s.onerror=function(){
+    document.getElementById("bootline").textContent="The Python runtime failed to load, so no live run is available. The design basis display above remains, labelled as precomputed.";
+    setError("The Python runtime failed to load. Check the network connection and reload the page.");
+  };
+  document.head.appendChild(s);
+}
+if(!("popover" in HTMLElement.prototype)){
+  document.querySelectorAll(".guide[popover]").forEach(function(g){g.removeAttribute("popover");});
+  document.querySelectorAll("button.help").forEach(function(b){b.hidden=true;});
+}
+var hash=(location.hash||"#theory").slice(1);
+if(PANELS.indexOf(hash)>=0){showPanel(hash);}
+else{
+  var target=document.getElementById(hash);
+  var owner=target?target.closest("section.panel"):null;
+  if(owner){showPanel(owner.id.replace("panel-",""));target.scrollIntoView();if(history.replaceState){history.replaceState(null,"","#"+hash);}}
+  else{showPanel("theory");}
+}
+boot();
+</script>
+</body>
+</html>

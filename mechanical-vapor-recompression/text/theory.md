@@ -1,5 +1,83 @@
 # Theory
 
+Evaporation separates a solvent from a solution by boiling the
+solvent off, and the heat that does it is the latent heat of
+every kilogram boiled. A steam-driven evaporator pays that heat
+once, in live steam, and throws the vapour's latent heat away to
+cooling water. Mechanical vapour recompression (MVR) instead
+compresses the vapour the evaporator has just raised, so that
+the vapour condenses a few kelvin hotter than it boiled and
+gives its latent heat back to the same evaporator through the
+calandria. The energy bought is then only the compressor work,
+which the design basis of this page puts at about one
+twenty-fourth of the heat circulated. MVR is therefore the
+standard choice where a large evaporation duty runs
+continuously at a small temperature lift — concentration and
+crystallisation duties of the kind the Process panel describes
+— and the design questions are quantitative ones: how much work
+a given lift costs, how much heat-transfer area a given lift
+buys, and where the comparison against live steam lands. Those
+are the questions this page answers with a live model.
+
+## Key points
+
+Six relations organise everything that follows. The temperature
+lift $\Delta T_{lift}$, in K, is the total temperature rise the
+compression must achieve; the pressure ratio $r_p$, the
+compressor discharge pressure divided by its suction pressure,
+is dimensionless; the specific energy $e_{sp}$, in kWh per
+tonne of water evaporated, and the coefficient of performance
+(COP), dimensionless, the calandria duty divided by the
+electric power, are the two figures of merit; and the heat-transfer area $A$, in
+m2, is what the lift buys in hardware. Values quoted in this
+opening are at the design basis — an evaporation rate of
+5,000 kg/h at 80 °C, a lift of 10 K and an isentropic
+efficiency of 0.75 — unless a guided experiment changes them.
+
+1. **The lift sets the pressure ratio, and the ratio sets the work.** Raising the vapour's condensing temperature by the lift means raising its saturation pressure from the suction pressure to the discharge pressure (section 2), and the isentropic work grows with the ratio of the two (section 5). Guided experiment: in the App, raise the temperature lift from 10 K to 20 K. The pressure ratio rises from 1.49 to 2.16, the electric power rises from 133.1 kW to 270.7 kW, the specific energy rises from 26.6 kWh/t to 54.1 kWh/t, and the COP falls from 24.1 to 11.8, at an unchanged calandria duty of 3,204 kW.
+2. **Only part of the lift transfers heat.** Of the 10 K lift, 2 K is the boiling-point elevation of the solution and 1 K is an allowance for pressure-drop and desuperheating losses, so the temperature difference that actually drives heat across the calandria wall, $\Delta T_{tr}$, in K, is 7 K, and the area follows from the duty divided by that difference (sections 4 and 6). Guided experiment: in the App, lower the temperature lift from 10 K to 5 K. The transfer difference falls from 7 K to 2 K, the area rises from 183.1 m2 to 640.7 m2, and the COP rises from 24.1 to 48.6: a smaller lift is cheaper to run and dearer to build.
+3. **At a fixed lift, a hotter evaporator is cheaper to compress.** The saturation pressure curve of water steepens as temperature rises, so the same temperature interval is a smaller pressure ratio at a higher temperature (section 2), and a smaller ratio is less work per kilogram (section 5). Guided experiment: in the App, raise the evaporator temperature from 80 °C to 100 °C. The suction pressure rises from 43.6 kPa to 94.3 kPa, the pressure ratio falls from 1.49 to 1.42, the actual compression work falls from 91.0 kJ/kg to 84.6 kJ/kg, and the specific energy falls from 26.6 kWh/t to 24.7 kWh/t.
+4. **The compressor efficiency divides the work, and changes nothing else.** The actual specific work is the isentropic work divided by the isentropic efficiency $\eta_{is}$, dimensionless (section 5); the pressures, the duty and the area are set before the efficiency enters. Guided experiment: in the App, lower the compressor isentropic efficiency from 0.75 to 0.60. The actual work rises from 91.0 kJ/kg to 113.8 kJ/kg, the electric power rises from 133.1 kW to 166.3 kW, and the COP falls from 24.1 to 19.3, while the pressure ratio stays at 1.49, the calandria duty at 3,204 kW and the area at 183.1 m2.
+5. **Scale changes every flow and power in proportion, and no intensive quantity.** The model is linear in the evaporation rate: the feed is five times the evaporation and the concentrate four times it (section 1), and the duty, the powers and the area are each the evaporation rate times a per-kilogram quantity (sections 3, 5 and 6). Guided experiment: in the App, raise the evaporation rate from 5,000 kg/h to 10,000 kg/h. The feed rises from 25,000 kg/h to 50,000 kg/h, the calandria duty from 3,204 kW to 6,407 kW, the electric power from 133.1 kW to 266.1 kW and the area from 183.1 m2 to 366.1 m2, while the COP stays at 24.1 and the specific energy at 26.6 kWh/t.
+6. **Prices move the payback, and nothing physical.** The App compares the MVR plant's annual electricity cost with the live-steam cost of a steam-driven single-effect evaporator doing the same duty, and the simple payback is the installed capital divided by the annual saving. Guided experiment: in the App, raise the electricity price from 0.10 USD/kWh to 0.20 USD/kWh. The annual MVR cost rises from 106,459 USD/yr to 212,918 USD/yr and the payback lengthens from 1.22 yr to 1.34 yr; no pressure, flow, duty or area changes, and the cost chart shows the MVR bar doubling while the steam bar stands.
+
+## How the demonstration is done
+
+The App panel is the demonstration. Its inputs are the
+evaporation rate, the evaporator temperature, the temperature
+lift and the compressor isentropic efficiency, together with
+three economics assumptions: the electricity price, the steam
+price and the operating hours. Its outputs are the metric cards
+(electric power, COP, specific energy, calandria duty, pressure
+ratio and simple payback), the derived-quantities table
+(suction and discharge pressures, condensing temperature,
+transfer temperature difference, isentropic and actual work,
+discharge temperature, shaft power, heat-transfer area,
+condensing-side duty, feed, concentrate, condensate and the
+live-steam flow of the single-effect alternative), the chart of
+specific energy against temperature lift with the current point
+marked, and the chart of annual operating cost, MVR against
+steam. Every guided experiment above changes one of those
+inputs and reads the effect off those outputs. The Process
+panel supplies the physical route each key point refers to:
+
+| Key point | Process sections |
+|---|---|
+| 1. Lift, ratio and work | MVR compressor; Calandria, condensate and heat recovery |
+| 2. Only part of the lift transfers heat | Falling-film evaporator and separator; Calandria, condensate and heat recovery |
+| 3. A hotter evaporator compresses cheaper | Falling-film evaporator and separator; Condensate preheater |
+| 4. Efficiency divides the work | MVR compressor |
+| 5. Scale is proportional | The process in one view; Products and battery limits |
+| 6. Prices move the payback | Economics panel; the App cost chart |
+
+The derivations below then justify each relation the model
+uses, in the order the vapour meets them: section 1 fixes the
+balance, section 2 the saturation pressures, section 3 the
+duty, section 4 the split of the lift, section 5 the
+compression work, section 6 the area, and section 7 the COP,
+the specific energy and the steam comparison. Section 8 states
+what the model does not compute.
+
 ## 1. The balance structure
 
 The model computes one steady state of the plant on the Process
@@ -369,3 +447,39 @@ ratio, so surge and turndown appear in the Process text, not in
 the numbers). Temperatures and pressures beyond the saturation
 relations of section 2 are not computed. These limits are stated
 so that the numbers are used inside their scope.
+
+## Conclusion and discussion
+
+The six key points reduce to one chain. Key point 1 chooses
+the lift, and with it the pressure ratio and the compression
+work; key point 2 then splits that lift, and only the part
+left after the boiling-point elevation and the losses drives
+heat across the calandria wall, which is why the same choice
+that raises the running cost lowers the area. Key point 3
+places the operating temperature on that chain: at a higher
+evaporator temperature the same lift is a smaller ratio and
+less work, which is one reason MVR duties are run as hot as
+the product allows. Key point 4 prices the machine itself —
+the efficiency divides the work and touches nothing upstream
+of it — and key point 5 states that none of these choices
+interacts with scale: double the evaporation and every flow,
+duty, power and area doubles, while the COP and the specific
+energy, the two numbers that judge the design, stand. Key
+point 6 closes the account in money: the physics fixes the
+electric power, the prices turn it into an annual cost, and
+the payback compares that cost with the steam the same duty
+would have burned.
+
+Two limits bound the account, both from section 8. The model
+holds the boiling-point elevation, the loss allowance, the
+overall heat-transfer coefficient and the compressor
+efficiency fixed at stated values, so the guided experiments
+show the effect of the four App inputs exactly and the effect
+of those fixed quantities not at all; a design study would
+next vary the coefficient and the elevation, which enter the
+area and the transfer difference directly. And the model is
+one effect at one steady state: it computes the balance, the
+compression and the comparison, and it does not size the
+separator, the tubes or the compressor, whose behaviour the
+Process panel describes. Within those limits, every number in
+the App panel traces to a section of this panel.

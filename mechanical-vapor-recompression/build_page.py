@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model, sweep_lift  # noqa: E402
 
-VERSION = "v3"
+VERSION = "v4"
 OUT = HERE / "dist" / f"mechanical-vapor-recompression-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -222,13 +222,23 @@ def md_to_html(md_text):
             out.append("<ul>" + "".join(f"<li>{x}</li>" for x in items)
                        + "</ul>")
             continue
+        if re.match(r"^\d+\.\s+", stripped):
+            items = []
+            while i < n and re.match(r"^\d+\.\s+", lines[i].strip()):
+                items.append(inline_md(
+                    re.sub(r"^\d+\.\s+", "", lines[i].strip())))
+                i += 1
+            out.append("<ol>" + "".join(f"<li>{x}</li>" for x in items)
+                       + "</ol>")
+            continue
         buf = []
         while i < n and lines[i].strip() and not re.match(
                 r"^(#{1,3})\s+", lines[i].strip()) \
                 and not lines[i].strip().startswith(":::") \
                 and not lines[i].strip().startswith("```") \
                 and not lines[i].strip().startswith("|") \
-                and not re.match(r"^[-*]\s+", lines[i].strip()):
+                and not re.match(r"^[-*]\s+", lines[i].strip()) \
+                and not re.match(r"^\d+\.\s+", lines[i].strip()):
             buf.append(lines[i])
             i += 1
         para_block(buf)
@@ -470,7 +480,9 @@ def main():
         panels[name] = html_text
         if name != "references":
             tocs[name] = build_toc(headings)
-            panels[name] = tocs[name] + "\n" + panels[name]
+            panels[name] = ('<div class="panelgrid">\n' + tocs[name]
+                            + '\n<div class="panelbody">\n'
+                            + panels[name] + "\n</div></div>")
     # Computed content, from the model, never hand-typed.
     result = run_model(**DESIGN)
     sheet_svg = (HERE / "sheet.svg").read_text(encoding="utf-8")
