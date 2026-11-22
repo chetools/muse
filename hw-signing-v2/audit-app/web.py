@@ -144,6 +144,25 @@ check fingerprint now also records the acoustic tooling
 (the ffmpeg program found, or None), and the retry is owed
 only when that changes; a pre-v37 fingerprint, which has no
 tooling entry, earns a degraded result exactly one retry.
+
+v38: four efficiency changes, none of which alters what a
+check measures. (1) Chromaprint fingerprints are cached in
+audit.py, so the YouTube video shared by every package of an
+assignment is decoded once per run of the app, not once per
+package. (2) The check fingerprint records a check-schema
+number instead of the app version, so a release that does not
+change check semantics no longer re-checks every package.
+(3) The media files (audio, ZIP, video) are guarded by size
+plus a sample hash — the first and last megabyte — instead of
+size plus modification time, so copying the installation to
+another folder or drive (which rewrites every modification
+time) changes no fingerprint and triggers no re-check wave; a
+stored fingerprint written before v38, whose media signatures
+have the old form, is migrated without a full check when the
+package's content hashes (ZIP watermark, HTML) still match,
+earning at most the acoustic re-check. (4) A check run writes
+the results file at checkpoints and once at the end, not once
+per finished package.
 """
 
 import argparse
@@ -1464,26 +1483,51 @@ def _youtube_only_entry(cfg, pkg, base_entry):
 # package files (watermarked immutable — a new submission is a new
 # submitted_at / attempt / ZIP hash), the downloaded YouTube video,
 # the acoustic threshold, the grading Worker that verifies the
-# receipt, and the app version doing the checking. The fingerprint
+# receipt, and the semantics of the check itself. The fingerprint
 # below records exactly those inputs: the download watermark, one
 # small content hash (the HTML file, which carries the grades,
-# critique and transcript claims), and file stats for the large
-# media files — so deciding that a package can be skipped costs
-# nothing next to the check itself (hash recomputation, a Worker
-# round trip and two Chromaprint fingerprints). Detection bound:
-# the media files are guarded by size and modification time; an
-# edit that preserves both is not detected. No write path in this
-# system (download, extraction, redownload, video download)
-# preserves a modification time, and the files sit on the
-# teacher's own disk between checks.
+# critique and transcript claims), a size-and-sample signature
+# for the large media files, and the check-schema number — so
+# deciding that a package can be skipped costs little next to
+# the check itself (hash recomputation, a Worker round trip and
+# two Chromaprint fingerprints). Detection bound: the media
+# files are guarded by size and a hash of their first and last
+# megabyte; an edit that preserves the size and both sampled
+# regions is not detected. The package's own content is pinned
+# exactly by the watermark and HTML hashes; the sample signature
+# guards the downloaded video, which has no content hash, and
+# survives the files being copied, which a modification-time
+# signature did not (v38; before v38 the media signature was
+# size and modification time, and the fingerprint recorded the
+# app version in place of the check schema).
 
-def _stat_sig(path):
-    """[size, mtime_ns] of one file, or None when it is absent."""
+# Raised only when a change alters what a check computes or
+# what its result means — never for a release as such. A stored
+# fingerprint with no schema entry predates v38 and is judged
+# on its remaining inputs (see _check_mode).
+CHECK_SCHEMA = 1
+
+_SAMPLE_BYTES = 1024 * 1024
+
+
+def _media_sig(path):
+    """[size, sample SHA-256] of one file, or None when it is
+    absent. The sample is the first _SAMPLE_BYTES and, when the
+    file is larger, the last _SAMPLE_BYTES; a file no larger
+    than the sample is hashed whole."""
     try:
-        st = Path(path).stat()
+        p = Path(path)
+        size = p.stat().st_size
+        h = hashlib.sha256()
+        with p.open("rb") as f:
+            head = f.read(_SAMPLE_BYTES)
+            h.update(head)
+            if size > len(head):
+                f.seek(max(len(head), size - _SAMPLE_BYTES))
+                h.update(f.read())
     except OSError:
         return None
-    return [st.st_size, st.st_mtime_ns]
+    return [size, h.hexdigest()]
 
 
 def _package_check_inputs(cfg, pkg, dl_state):
@@ -1507,13 +1551,13 @@ def _package_check_inputs(cfg, pkg, dl_state):
         html_sha = None
     return {
         "zip_sha256": mark.get("zip_sha256"),
-        "audio": _stat_sig(pkg["audio_path"]),
+        "audio": _media_sig(pkg["audio_path"]),
         "html_sha256": html_sha,
-        "zip": _stat_sig(zip_path),
-        "video": _stat_sig(_video_file_for(cfg, pkg)),
+        "zip": _media_sig(zip_path),
+        "video": _media_sig(_video_file_for(cfg, pkg)),
         "threshold": float(cfg.get("acoustic_threshold", 0.85)),
         "worker": cfg.get("worker_base_url"),
-        "app": audit.USER_AGENT,
+        "check_schema": CHECK_SCHEMA,
         # v37: the acoustic tooling itself — the ffmpeg program
         # the fingerprinting runs through, by path, or None when
         # none is found. A degraded result (video present, no
@@ -1564,7 +1608,22 @@ def _check_mode(existing, inputs, force):
     one retry under v37 and then stands. A tooling-path-only
     change does not re-run a result that did measure: the
     fingerprint is left as stored in that case, which is
-    harmless — the decision is the same on every later pass."""
+    harmless — the decision is the same on every later pass.
+
+    v38: the fingerprint records the check schema in place of
+    the app version. A stored fingerprint with no schema entry
+    predates v38; the schema difference alone is not a change
+    of inputs (v38 check semantics are v37's), so it is set
+    aside and the entry is judged on its remaining inputs. A
+    pre-v38 fingerprint also carries media signatures in the
+    old size-and-modification-time form; when the package's
+    content hashes — the ZIP watermark and the HTML hash —
+    still match, the package is byte-identical and only the
+    signature form (or a copy of the files) differs, so the
+    entry earns at most the acoustic re-check for a moved
+    video signature, never a full check. Without a stored ZIP
+    watermark to pin the content, that shortcut is not taken
+    and the entry gets its one full check."""
     if force:
         return "full"
     if existing is None or existing.get("error"):
@@ -1575,6 +1634,15 @@ def _check_mode(existing, inputs, force):
     if stored == inputs:
         return None
     diff = {k for k in inputs if stored.get(k) != inputs.get(k)}
+    if "check_schema" in diff and "check_schema" not in stored:
+        diff.discard("check_schema")
+        if not diff:
+            return None
+    if diff and diff <= {"audio", "zip", "video"} \
+            and stored.get("zip_sha256") \
+            and stored.get("zip_sha256") == inputs.get("zip_sha256") \
+            and stored.get("html_sha256") == inputs.get("html_sha256"):
+        return "youtube" if "video" in diff else None
     if diff <= {"video", "threshold", "acoustic_tool"}:
         if diff == {"acoustic_tool"} \
                 and not _acoustic_degraded(existing):
@@ -1596,10 +1664,13 @@ def run_checks(cfg, force=False, only_keys=None, stats=None):
     entry with no fingerprint, or force — gets the full check.
     only_keys, when given, restricts the run to those store keys
     (the automatic pass's follow-up stage passes the packages that
-    owe an acoustic check). Each finished check is written to
-    audit-results.json as it completes, so if the app is stopped
-    mid-run the finished checks survive and the next pass re-runs
-    only the ones still missing or failed. Previous attempts on
+    owe an acoustic check). Finished checks are written to
+    audit-results.json at checkpoints (every ten completions)
+    and once at the end of the run (v38; before v38 the file was
+    rewritten after every package), so if the app is stopped
+    mid-run the finished checks survive apart from the last few
+    and the next pass re-runs only the ones still missing or
+    failed. Previous attempts on
     disk are checked too (v35): an attempt's result is stored
     under its own "<unit>::a<n>" key, so it never overwrites —
     and is never read as — the current attempt's check, which
@@ -1646,6 +1717,7 @@ def run_checks(cfg, force=False, only_keys=None, stats=None):
         return store
     results_path = _state_file(cfg, "audit-results.json")
     lock = threading.Lock()
+    done = [0]
 
     def work(job):
         pkg, mode, inputs, existing = job
@@ -1679,7 +1751,9 @@ def run_checks(cfg, force=False, only_keys=None, stats=None):
                           else "checked"] += 1
         with lock:
             store[skey] = entry
-            write_json_atomic(results_path, store)
+            done[0] += 1
+            if done[0] % 10 == 0:
+                write_json_atomic(results_path, store)
         if entry.get("error"):
             log_activity("check",
                          f"integrity check FAILED — {label}: "
@@ -1701,6 +1775,8 @@ def run_checks(cfg, force=False, only_keys=None, stats=None):
     else:
         with ThreadPoolExecutor(max_workers=4) as pool:
             list(pool.map(work, jobs))
+    with lock:
+        write_json_atomic(results_path, store)
     return store
 
 
@@ -5980,13 +6056,29 @@ class Handler(BaseHTTPRequestHandler):
                 # package itself or the Worker changed, the stored
                 # integrity results belong to the old inputs and
                 # the package is still owed its full check.
+                # v38: the difference is judged as _check_mode
+                # judges it — a pre-v38 fingerprint's missing
+                # schema entry is not a moved input, and media
+                # signatures that moved only in form (the stored
+                # ZIP watermark and HTML hash still pin the same
+                # package content) are acoustic-side moves.
                 dl_state = read_json_file(
                     _state_file(cfg, "download-state.json"), {})
                 current = _package_check_inputs(cfg, pkg, dl_state)
                 stored = entry["check_inputs"]
-                diff = {k for k in set(stored) | set(current)
+                diff = {k for k in current
                         if stored.get(k) != current.get(k)}
-                if diff <= {"video", "threshold", "acoustic_tool"}:
+                if "check_schema" in diff \
+                        and "check_schema" not in stored:
+                    diff.discard("check_schema")
+                media_only = diff <= {"audio", "zip", "video"} \
+                    and stored.get("zip_sha256") \
+                    and stored.get("zip_sha256") \
+                    == current.get("zip_sha256") \
+                    and stored.get("html_sha256") \
+                    == current.get("html_sha256")
+                if diff <= {"video", "threshold", "acoustic_tool"} \
+                        or media_only:
                     entry["check_inputs"] = current
             store[pkg["key"]] = entry
             write_json_atomic(_state_file(cfg, "audit-results.json"),

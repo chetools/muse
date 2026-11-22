@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/37.0",
-          "user agent bumped to 37.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/38.0",
+          "user agent bumped to 38.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2715,12 +2715,14 @@ def main():
               and ci999.get("video") is not None
               and ci999.get("threshold") == 0.85
               and ci999.get("worker") == cfg36["worker_base_url"]
-              and ci999.get("app") == audit.USER_AGENT
+              and ci999.get("check_schema") == web.CHECK_SCHEMA
+              and "app" not in ci999
               and ci999.get("html_sha256") == audit.sha256_file(
                   unit999 / "submission.html"),
               "v36: the first check stores the input fingerprint, "
-              "with the threshold, Worker, app version, video "
-              "signature and HTML hash it actually used")
+              "with the threshold, Worker, check schema (v38; the "
+              "app version before v38), video signature and HTML "
+              "hash it actually used")
         check(entry36(KEY999 + "::a1").get("internally_consistent")
               and entry36(KEY999 + "::a1").get("check_inputs"),
               "v36: a previous attempt is checked and "
@@ -3012,6 +3014,141 @@ def main():
               and "123 bytes" in m for m in msgs37),
           "v37: a post-fetch skip logs the fetched byte "
           "count and the hash match that decided it")
+
+    # ---------------------------------------------------------
+    # 17. v38: efficiency, no change to what a check measures.
+    # (a) Chromaprint fingerprints are cached: a second
+    # fingerprint of an unchanged file runs no subprocess.
+    # (b) Media signatures are size + sample hash, so copying
+    # the installation (same bytes, new modification times)
+    # changes no fingerprint and owes no check. (c) A pre-v38
+    # stored fingerprint (stat-form media signatures, an app
+    # version, no check schema) migrates without a full check
+    # when the content hashes still pin the same package: at
+    # most the acoustic re-check runs, and the entry leaves
+    # with a v38 fingerprint. (d) A check run writes the
+    # results file once at the end, not once per package.
+    if audit.shutil.which("ffmpeg"):
+        fp_calls38 = {"n": 0}
+        _orig_run38 = audit.subprocess.run
+
+        def counting_run38(*a, **k):
+            fp_calls38["n"] += 1
+            return _orig_run38(*a, **k)
+
+        audit.subprocess.run = counting_run38
+        try:
+            audit._FP_CACHE.clear()
+            fp1_38 = audit.chromaprint_fingerprint(wav_tmp)
+            n1_38 = fp_calls38["n"]
+            fp2_38 = audit.chromaprint_fingerprint(wav_tmp)
+            if fp1_38 is not None:
+                check(fp1_38 == fp2_38
+                      and fp_calls38["n"] == n1_38,
+                      "v38: a second fingerprint of an unchanged "
+                      "file is served from the cache — no second "
+                      "ffmpeg run")
+        finally:
+            audit.subprocess.run = _orig_run38
+
+    counts38 = {"pkg": 0, "yt": 0, "worker": 0}
+    _orig_cp38 = audit.check_package
+    _orig_yt38 = audit.youtube_cross_check
+    _orig_wv38 = audit.worker_verify_grade
+
+    def counting_cp38(*a, **k):
+        counts38["pkg"] += 1
+        return _orig_cp38(*a, **k)
+
+    def fake_yt38(*a, **k):
+        counts38["yt"] += 1
+        return {"available": True, "youtube_flag": False,
+                "passed": True, "similarity": 0.99,
+                "threshold": 0.85, "acoustic_configured": True}
+
+    def counting_wv38(*a, **k):
+        counts38["worker"] += 1
+        return _orig_wv38(*a, **k)
+
+    audit.check_package = counting_cp38
+    audit.youtube_cross_check = fake_yt38
+    audit.worker_verify_grade = counting_wv38
+    try:
+        web.run_checks(cfg36)  # settle under v38 fingerprints
+        base38 = dict(counts38)
+        # (b) Simulate the copy: same bytes, new mtimes.
+        import os as _os38
+        touched38 = []
+        for p38 in web.downloaded_packages(cfg36) \
+                + web.downloaded_attempt_packages(cfg36):
+            for path38 in {p38["audio_path"],
+                           p38.get("zip_path") or "",
+                           str(web._video_file_for(cfg36, p38))}:
+                if path38 and Path(path38).exists():
+                    st38 = Path(path38).stat()
+                    _os38.utime(path38, ns=(
+                        st38.st_atime_ns,
+                        st38.st_mtime_ns + 10 ** 12))
+                    touched38.append(path38)
+        check(bool(touched38),
+              "v38: fixture media files exist to be copied")
+        web.run_checks(cfg36)
+        check(counts38 == base38,
+              "v38: copying the installation (new modification "
+              "times, same bytes) owes no check at all — the "
+              "media signatures are content samples, not times")
+        # (c) Rewrite one stored fingerprint in the pre-v38
+        # form and confirm the migration costs no full check.
+        saved38 = json.loads(
+            (data_dir / "audit-results.json").read_text())
+        legacy38 = dict(saved38[KEY999]["check_inputs"])
+        for k38 in ("audio", "zip", "video"):
+            if legacy38.get(k38):
+                legacy38[k38] = [legacy38[k38][0], 123456789]
+        legacy38["app"] = "HWSigning-Teacher-Audit/37.0"
+        del legacy38["check_schema"]
+        saved38[KEY999]["check_inputs"] = legacy38
+        (data_dir / "audit-results.json").write_text(
+            json.dumps(saved38))
+        web.run_checks(cfg36)
+        check(counts38["pkg"] == base38["pkg"]
+              and counts38["worker"] == base38["worker"]
+              and counts38["yt"] == base38["yt"] + 1,
+              "v38: a pre-v38 fingerprint whose content hashes "
+              "still match migrates with only the acoustic "
+              "re-check — no package check, no Worker call")
+        ci38 = entry36()["check_inputs"]
+        check(ci38.get("check_schema") == web.CHECK_SCHEMA
+              and "app" not in ci38,
+              "v38: the migrated entry leaves with a v38 "
+              "fingerprint (check schema, no app version)")
+        base38 = dict(counts38)
+        web.run_checks(cfg36)
+        check(counts38 == base38,
+              "v38: after migration the package is skipped "
+              "like any other")
+        # (d) One results-file write for a multi-package run.
+        writes38 = {"n": 0}
+        _orig_wj38 = web.write_json_atomic
+
+        def counting_wj38(*a, **k):
+            if str(a[0]).endswith("audit-results.json"):
+                writes38["n"] += 1
+            return _orig_wj38(*a, **k)
+
+        web.write_json_atomic = counting_wj38
+        try:
+            web.run_checks(cfg36, force=True)
+        finally:
+            web.write_json_atomic = _orig_wj38
+        check(writes38["n"] == 1,
+              "v38: a run over several packages writes the "
+              "results file once at the end, not once per "
+              "package")
+    finally:
+        audit.check_package = _orig_cp38
+        audit.youtube_cross_check = _orig_yt38
+        audit.worker_verify_grade = _orig_wv38
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,

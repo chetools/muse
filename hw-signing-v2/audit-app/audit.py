@@ -22,7 +22,11 @@ version and User-Agent: the browser opens only once the
 server answers, the download log states when a skip was
 decided from the local record with no bytes fetched, and a
 degraded acoustic result is retried only when the acoustic
-tooling changes, not on every pass.)
+tooling changes, not on every pass; v38 adds a process-wide
+Chromaprint fingerprint cache in this file, so a YouTube
+video shared by every package of an assignment is decoded
+once per run of the app rather than once per package — the
+remaining v38 changes are in web.py.)
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -77,6 +81,7 @@ import string
 import struct
 import subprocess
 import sys
+import threading
 import wave
 import zipfile
 from pathlib import Path
@@ -129,7 +134,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/37.0"
+USER_AGENT = "HWSigning-Teacher-Audit/38.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -1322,13 +1327,41 @@ def find_ffmpeg():
     return shutil.which("ffmpeg")
 
 
+# v38: fingerprints are cached process-wide, keyed by the file's
+# identity (path, size, modification time) and the ffmpeg used.
+# Every package of an assignment is cross-checked against the
+# same downloaded YouTube video, so without the cache that video
+# was fully decoded once per package; with it, once per run of
+# the app (and again only if the file itself changes). Only
+# successful fingerprints are cached — a failure stays a failure
+# to be retried, never a cached None. The cache is small (a
+# fingerprint is about 20 KB per 10 minutes of audio) and is
+# cleared whole when it grows past _FP_CACHE_MAX entries.
+_FP_CACHE = {}
+_FP_CACHE_LOCK = threading.Lock()
+_FP_CACHE_MAX = 256
+
+
 def chromaprint_fingerprint(media_path, ffmpeg=None):
     """Chromaprint fingerprint of any media file ffmpeg can decode,
     as a list of uint32 items, or None when ffmpeg or the
-    chromaprint muxer is unavailable or the file cannot be read."""
+    chromaprint muxer is unavailable or the file cannot be read.
+    Successful results are cached (see _FP_CACHE above); the
+    returned list is shared and must not be mutated."""
     ffmpeg = ffmpeg or find_ffmpeg()
     if not ffmpeg:
         return None
+    key = None
+    try:
+        st = os.stat(media_path)
+        key = (str(media_path), st.st_size, st.st_mtime_ns, ffmpeg)
+    except OSError:
+        key = None
+    if key is not None:
+        with _FP_CACHE_LOCK:
+            hit = _FP_CACHE.get(key)
+        if hit is not None:
+            return hit
     try:
         proc = subprocess.run(
             [ffmpeg, "-v", "error", "-i", str(media_path), "-vn",
@@ -1339,7 +1372,13 @@ def chromaprint_fingerprint(media_path, ffmpeg=None):
     if proc.returncode != 0 or len(proc.stdout) < 8:
         return None
     data = proc.stdout[:len(proc.stdout) // 4 * 4]
-    return list(struct.unpack(f"<{len(data) // 4}I", data))
+    fp = list(struct.unpack(f"<{len(data) // 4}I", data))
+    if key is not None:
+        with _FP_CACHE_LOCK:
+            if len(_FP_CACHE) >= _FP_CACHE_MAX:
+                _FP_CACHE.clear()
+            _FP_CACHE[key] = fp
+    return fp
 
 
 def _fp_ber(a, b, offset=0):

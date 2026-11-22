@@ -113,7 +113,7 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v37 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v38 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
   installs). v37: the browser opens only once the app
@@ -121,10 +121,18 @@ folder's `web.py` — copy it again into this folder.
   submission was decided from the local record with no bytes
   downloaded, and an acoustic result that could not measure
   a video is retried only when the acoustic tooling changes,
-  not on every pass. The first pass after updating does one
-  full check of each package (the checker version is part of
-  each stored check's fingerprint); later passes skip
-  unchanged packages as before.
+  not on every pass. v38 (efficiency only — what a check
+  measures is unchanged): the YouTube video shared by an
+  assignment's packages is fingerprinted once per run of the
+  app instead of once per package; stored checks are keyed
+  to a check-schema number rather than the app version, so
+  later updates no longer re-check every package; and the
+  media files are guarded by a content sample rather than
+  their modification times, so copying the installation —
+  this transfer included — triggers no re-check wave. The
+  first pass after updating to v38 re-runs at most the
+  acoustic part of each unchanged package; later passes
+  skip unchanged packages as before.
 - Python: CPython 3.13.18, python-build-standalone
   (`cpython-3.13.18+20261110-x86_64-pc-windows-msvc-install_only`),
   trimmed of debug symbols, the test suite and Tk.
