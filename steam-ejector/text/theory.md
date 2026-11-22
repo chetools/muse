@@ -525,7 +525,10 @@ Fig. P11 shows this nozzle in place in the stage, mounted in the
 steam chest at the left of the section, with the suction chamber,
 mixing chamber, throat, and diffuser that the sections after this
 one treat. On the axial scale of Fig. P10 the nozzle occupies the
-first 22% of the stage length.
+first 22% of the stage length, and Fig. P10's panels mark the
+throat state that the critical-ratio derivation in this section
+gives: at the throat the Mach number is 1 and the static pressure
+is 432 kPa abs.
 
 [[XSECTION_T]]
 
@@ -1233,7 +1236,9 @@ An ejector is a fixed piece of shaped metal, so it has one geometry, and its goo
 
 An ejector is designed for one set of motive pressure, suction
 pressure, and discharge pressure. Away from that set, its
-performance changes in ways that follow from §T5–§T8. A fixed area ratio is built into the nozzle, so by the isentropic relations of §T4 its exit pressure scales with the motive pressure: at the design
+performance changes in ways that follow from §T5–§T8. Fig. P10 of
+the Process panel draws the double-choked state of the first
+stage, with both chokes marked. A fixed area ratio is built into the nozzle, so by the isentropic relations of §T4 its exit pressure scales with the motive pressure: at the design
 basis the exit pressure is 2.0 kPa at a motive pressure of 800
 kPa. If the motive pressure falls to 600 kPa, the exit pressure
 falls in proportion, to 1.5 kPa, which is below the 2 kPa back

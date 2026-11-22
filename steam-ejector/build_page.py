@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v20"
+VERSION = "v21"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -387,86 +387,223 @@ def crop_figure(sheet_svg, name, fignum, title):
             f"The window shows {boundary}.</figcaption></figure>")
 
 
-PVT_CURVES = {
-    # Digitised in shape from the normalized design-basis profile:
-    # (axial position %, normalized value %) for each quantity.
-    "P": [(0, 100), (8, 82), (13, 62), (15, 55), (17, 52), (22, 30),
-          (27, 10), (31, 2), (40, 1), (56, 1.5), (58, 5), (70, 5.5),
-          (85, 6), (100, 6.5)],
-    "V": [(0, 3.1), (5, 12.2), (10, 32.7), (13, 45.9), (15, 49), (17, 51), (22, 73.5), (27, 93.9), (31, 100), (35, 99), (42, 81.6), (48, 65.3), (53, 60.2), (56, 57.1), (58, 22.4), (62, 21.4), (75, 17.3), (88, 10.2), (100, 4.1)],
-    "T": [(0, 100), (8, 89.6), (13, 81.2), (15, 80.2), (20, 57.3), (25, 22.9), (29, 8.3), (31, 6.2), (35, 9.4), (42, 25), (48, 35.4), (53, 38.5), (56, 39.6), (58, 61.5), (70, 63.5), (85, 68.8), (100, 71.9)],
+# Fig. P10 anchor values for stage 1 at the design basis, computed
+# from python/balance.py and the Theory relations (progress-v21.md
+# carries the anchor table and the anchor-check script):
+#   inlet: 800 kPa abs, 444 K (saturation at 0.8 MPa), M = 0.
+#   nozzle throat (16% of the length, the throat position of the
+#     Fig. P11 section): M = 1, 432 kPa, 381 K (critical ratios,
+#     section T4; eq. (42) of section T5).
+#   nozzle exit (22%): 2.0 kPa (the design exit pressure of
+#     section T12), M = 4.34 and 1078 m/s and 100 K from
+#     balance.nozzle_diagnostic (the ideal-gas limit of section T5).
+#   mixing at constant pressure (the limiting case of section T7):
+#     the momentum balance (eq. (48)) and energy balance (eq. (49))
+#     give a mixed Mach number of 1.75 at 260 K just before the
+#     shock, still at 2.0 kPa.
+#   normal shock at 57% (eqs. (56)-(58) of section T8): pressure
+#     2.0 -> 6.7 kPa, temperature 260 -> 368 K, Mach 1.75 -> 0.62.
+#   diffuser exit (100%): 7.40 kPa (the stage-1 discharge pressure
+#     of the model), 390 K (the mixed stagnation temperature of
+#     eq. (49)), Mach number about 0.1 in the discharge pipe.
+# Between the anchors the curves are schematic in shape.
+PVT_ANCHORS = {
+    "throat_x": 16.0, "shock_x": 57.0,
+    "p": [(0, 800.0), (8, 560.0), (16, 432.0), (19, 60.0), (22, 2.0),
+          (36, 2.0), (51, 2.0), (56.8, 2.0), (57.2, 6.74), (65, 6.95),
+          (82, 7.2), (100, 7.40)],
+    "m": [(0, 0.0), (8, 0.5), (16, 1.0), (19, 2.7), (22, 4.34),
+          (30, 3.6), (40, 2.7), (51, 2.05), (56.8, 1.75), (57.2, 0.62),
+          (65, 0.55), (82, 0.3), (100, 0.10)],
+    "t": [(0, 444.0), (8, 408.0), (16, 381.0), (19, 210.0), (22, 100.0),
+          (30, 150.0), (40, 205.0), (51, 240.0), (56.8, 260.0),
+          (57.2, 368.0), (65, 376.0), (82, 384.0), (100, 390.0)],
 }
-PVT_COLORS = {"P": "#56B4E9", "V": "#009E73", "T": "#E69F00"}
-PVT_LABELS = {"P": "Pressure (P)", "V": "Velocity (V)", "T": "Temperature (T)"}
+PVT_COLORS = {"p": "#0072B2", "m": "#009E73", "t": "#E69F00"}
 SHOCK_X = 57.0
 
 
 def pvt_figure():
-    """Schematic normalized P/V/T profile of one ejector stage in
-    double-choking (critical) mode, with the shock at 57% of the
-    axial length. Curves are schematic: each quantity is divided
-    by its own maximum along the stage and multiplied by 100."""
-    x0, x1, y0, y1 = 70.0, 900.0, 150.0, 390.0
+    """Pressure, Mach number, and temperature along the first
+    ejector stage in double-choking (critical) mode: three stacked
+    panels in real units sharing the axial axis of Fig. P11, whose
+    section the top strip repeats. Both chokes of section T12 are
+    marked, and the curves pass through the computed anchors of
+    PVT_ANCHORS (schematic in shape between them)."""
+    import math
+    X0, X1 = 110.0, 890.0
 
     def px(x):
-        return x0 + (x1 - x0) * x / 100.0
+        return X0 + (X1 - X0) * x / 100.0
 
-    def py(v):
-        return y1 - (y1 - y0) * v / 100.0
+    INK = "#1b1b1b"
+    VERM = "#D55E00"
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 700" '
+             'role="img" aria-label="Static pressure, Mach number and '
+             'static temperature along the first ejector stage in '
+             'double-choking mode, with both chokes marked">']
+    parts.append('<defs><marker id="ahP10" markerWidth="6" markerHeight="6" '
+                 'refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 '
+                 'L0,6 z" fill="#0072B2"/></marker></defs>')
+    # ---- Choke callouts above the geometry strip.
+    def callout(cx, line1, line2, leader_x):
+        parts.append(f'<text x="{cx:.0f}" y="16" font-size="13" '
+                     f'text-anchor="middle" fill="{INK}" '
+                     f'font-weight="bold">{line1}</text>')
+        parts.append(f'<text x="{cx:.0f}" y="33" font-size="12" '
+                     f'text-anchor="middle" fill="{INK}">{line2}</text>')
+        parts.append(f'<line x1="{leader_x:.0f}" y1="40" x2="{leader_x:.0f}" '
+                     f'y2="64" stroke="{INK}" stroke-width="1"/>')
+        parts.append(f'<polygon points="{leader_x - 4:.0f},64 '
+                     f'{leader_x + 4:.0f},64 {leader_x:.0f},70" fill="{INK}"/>')
+    callout(px(17), "Motive nozzle choked", "M = 1 at the nozzle throat",
+            px(16))
+    callout(px(52), "Mixing section choked",
+            "suction gas sonic around the jet", px(52))
+    # ---- Geometry strip: the Fig. P11 section on the same scale.
+    CL = 112.0
+    BORE = [(0, 11), (8, 24), (33, 26), (51, 11), (65, 11), (100, 30)]
 
-    parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" '
-             'role="img" aria-label="Normalized pressure, velocity and '
-             'temperature along one ejector stage">']
-    # Geometry strip: nozzle (0-22), mixing (22-51), throat (51-65),
-    # diffuser (65-100); wall half-height narrows then widens.
-    def half(x):
-        if x < 8:
-            return 26 - 1.5 * x
-        if x < 22:
-            return 14 + 0.9 * (x - 8)
-        if x < 51:
-            return 26.6 - 0.25 * (x - 22)
-        if x < 65:
-            return 19.4
-        return 19.4 + 0.35 * (x - 65)
-
-    top = " ".join(f"{px(x):.0f},{60 - half(x):.0f}" for x in range(0, 101, 2))
-    bot = " ".join(f"{px(x):.0f},{60 + half(x):.0f}" for x in range(100, -1, -2))
-    parts.append(f'<polygon points="{top} {bot}" fill="#eef2f5" stroke="#1b1b1b" stroke-width="1.5"/>')
-    parts.append(f'<rect x="{px(51):.0f}" y="18" width="{px(65) - px(51):.0f}" height="84" fill="#dbe7f3" opacity="0.7"/>')
-    parts.append(f'<line x1="{px(SHOCK_X):.0f}" y1="18" x2="{px(SHOCK_X):.0f}" y2="102" stroke="#D55E00" stroke-width="2" stroke-dasharray="5 4"/>')
+    def strip_pts(pts, dy=0.0):
+        top = [(px(x), CL - h + dy) for x, h in pts]
+        bot = [(px(x), CL + h + dy) for x, h in reversed(pts)]
+        return " ".join(f"{a:.0f},{b:.0f}" for a, b in top + bot)
+    parts.append(f'<rect x="{px(51):.0f}" y="{CL - 33:.0f}" '
+                 f'width="{px(65) - px(51):.0f}" height="66" fill="#dbe7f3" '
+                 'opacity="0.6"/>')
+    parts.append(f'<polygon points="{strip_pts(BORE)}" fill="#eef2f5" '
+                 f'stroke="{INK}" stroke-width="1.5"/>')
+    outer = [(x, h + 7) for x, h in BORE]
+    parts.append(f'<polygon points="{strip_pts(outer)}" fill="none" '
+                 f'stroke="{INK}" stroke-width="1.2" opacity="0.55"/>')
+    # Nozzle insert (bore throat at 16%, exit at 22%, as Fig. P11).
+    noz_top = [(px(8.5), CL - 24), (px(11), CL - 9.5), (px(16), CL - 3.6),
+               (px(22), CL - 7.7)]
+    noz_bot = [(x, 2 * CL - y) for x, y in reversed(noz_top)]
+    noz = " ".join(f"{a:.0f},{b:.0f}" for a, b in noz_top + noz_bot)
+    parts.append(f'<polygon points="{noz}" fill="#c9d4dd" stroke="{INK}" '
+                 'stroke-width="1.2"/>')
+    # Jet cone from the nozzle exit into the mixing chamber.
+    parts.append(f'<polygon points="{px(22):.0f},{CL - 7.7:.0f} '
+                 f'{px(36):.0f},{CL - 10.5:.0f} {px(36):.0f},{CL + 10.5:.0f} '
+                 f'{px(22):.0f},{CL + 7.7:.0f}" fill="{VERM}" opacity="0.25"/>')
+    # Suction inlet branch under the chamber (as Fig. P11).
+    parts.append(f'<path d="M{px(23):.0f},{CL + 26:.0f} L{px(23):.0f},160 '
+                 f'L{px(29):.0f},160 L{px(29):.0f},{CL + 24:.0f}" fill="none" '
+                 f'stroke="{INK}" stroke-width="1.5"/>')
+    parts.append(f'<line x1="{px(26):.0f}" y1="152" x2="{px(26):.0f}" '
+                 f'y2="140" stroke="#0072B2" stroke-width="2.5" '
+                 'marker-end="url(#ahP10)"/>')
     for x, lab in ((11, "Motive nozzle"), (36, "Mixing"), (58, "Throat"),
                    (82, "Diffuser")):
-        parts.append(f'<text x="{px(x):.0f}" y="122" font-size="13" text-anchor="middle" fill="#1b1b1b">{lab}</text>')
-    parts.append(f'<text x="{px(SHOCK_X):.0f}" y="12" font-size="13" text-anchor="middle" fill="#D55E00">Shock wave</text>')
-    # Chart grid and axes.
-    for v in (0, 20, 40, 60, 80, 100):
-        parts.append(f'<line x1="{x0}" y1="{py(v):.0f}" x2="{x1}" y2="{py(v):.0f}" stroke="#cccccc" stroke-width="0.7"/>')
-        parts.append(f'<text x="{x0 - 8}" y="{py(v) + 4:.0f}" font-size="12" text-anchor="end" fill="#1b1b1b">{v}</text>')
+        parts.append(f'<text x="{px(x):.0f}" y="182" font-size="13" '
+                     f'text-anchor="middle" fill="{INK}">{lab}</text>')
+    # ---- Panels.
+    panels = [
+        ("p", 216.0, 324.0, "Static pressure (kPa abs)", "log",
+         (1, 10, 100, 1000)),
+        ("m", 372.0, 480.0, "Mach number", "lin5", (0, 1, 2, 3, 4, 5)),
+        ("t", 528.0, 636.0, "Static temperature (K)", "lin500",
+         (0, 100, 200, 300, 400, 500)),
+    ]
+
+    def ymap(kind, top, bot):
+        if kind == "log":
+            return lambda v: bot - (bot - top) * math.log10(v) / 3.0
+        if kind == "lin5":
+            return lambda v: bot - (bot - top) * v / 5.0
+        return lambda v: bot - (bot - top) * v / 500.0
+
+    for key, top, bot, ylab, kind, ticks in panels:
+        yv = ymap(kind, top, bot)
+        for x in (22, 51, 65):
+            parts.append(f'<line x1="{px(x):.0f}" y1="{top:.0f}" '
+                         f'x2="{px(x):.0f}" y2="{bot:.0f}" stroke="#e3e3e3" '
+                         'stroke-width="0.8"/>')
+        for v in ticks:
+            parts.append(f'<line x1="{X0}" y1="{yv(v):.0f}" x2="{X1}" '
+                         f'y2="{yv(v):.0f}" stroke="#cccccc" '
+                         'stroke-width="0.7"/>')
+            parts.append(f'<text x="{X0 - 8}" y="{yv(v) + 4:.0f}" '
+                         f'font-size="11.5" text-anchor="end" '
+                         f'fill="{INK}">{v:g}</text>')
+        parts.append(f'<text x="24" y="{(top + bot) / 2:.0f}" font-size="12.5" '
+                     f'text-anchor="middle" fill="{INK}" '
+                     f'transform="rotate(-90 24 {(top + bot) / 2:.0f})">'
+                     f'{ylab}</text>')
+        pts = " ".join(f"{px(x):.0f},{yv(v):.0f}"
+                       for x, v in PVT_ANCHORS[key])
+        parts.append(f'<polyline points="{pts}" fill="none" '
+                     f'stroke="{PVT_COLORS[key]}" stroke-width="2.5"/>')
+        for x, v in PVT_ANCHORS[key]:
+            if (x, v) in ((0, 800.0), (16, 432.0), (22, 2.0), (57.2, 6.74),
+                          (100, 7.40), (16, 1.0), (22, 4.34), (56.8, 1.75),
+                          (57.2, 0.62), (0, 444.0), (16, 381.0), (22, 100.0),
+                          (57.2, 368.0), (100, 390.0)):
+                parts.append(f'<circle cx="{px(x):.0f}" cy="{yv(v):.0f}" '
+                             f'r="3.2" fill="{PVT_COLORS[key]}" '
+                             f'stroke="#ffffff" stroke-width="1"/>')
+    # M = 1 dashed reference line on the Mach panel.
+    ym = ymap("lin5", 372.0, 480.0)
+    parts.append(f'<line x1="{X0}" y1="{ym(1):.0f}" x2="{X1}" '
+                 f'y2="{ym(1):.0f}" stroke="#666666" stroke-width="1" '
+                 'stroke-dasharray="4 3"/>')
+    parts.append(f'<text x="{X1 - 4}" y="{ym(1) - 5:.0f}" font-size="11.5" '
+                 f'text-anchor="end" fill="{INK}">M = 1</text>')
+    # Anchor value labels.
+    yp = ymap("log", 216.0, 324.0)
+    yt = ymap("lin500", 528.0, 636.0)
+
+    def lab(x, y, s, anchor="middle", color=INK):
+        parts.append(f'<text x="{x:.0f}" y="{y:.0f}" font-size="11.5" '
+                     f'text-anchor="{anchor}" fill="{color}">{s}</text>')
+    lab(px(0) + 4, yp(800) - 6, "800", "start")
+    lab(px(16), yp(432) - 6, "432")
+    lab(px(36), yp(2.0) - 6, "2.0")
+    lab(px(57) + 11, yp(6.74) - 7, "6.7", "start")
+    lab(px(100) - 2, yp(7.40) - 6, "7.40", "end")
+    lab(px(57) - 8, 216 + 14, "Normal shock", "end", VERM)
+    lab(px(16) - 9, ym(1) - 6, "1", "end")
+    lab(px(22) + 4, ym(4.34) - 5, "4.3", "start")
+    lab(px(57) - 6, ym(1.75) - 6, "1.75", "end")
+    lab(px(57) + 7, ym(0.62) + 15, "0.62", "start")
+    lab(px(0) + 4, yt(444) - 6, "444", "start")
+    lab(px(16), yt(381) - 6, "381")
+    lab(px(22) + 5, yt(100) + 15, "100", "start")
+    lab(px(57) + 7, yt(368) - 6, "368", "start")
+    lab(px(100) - 2, yt(390) - 6, "390", "end")
+    # Shock line through the strip and all three panels.
+    parts.append(f'<line x1="{px(SHOCK_X):.0f}" y1="70" x2="{px(SHOCK_X):.0f}" '
+                 f'y2="636" stroke="{VERM}" stroke-width="1.8" '
+                 'stroke-dasharray="5 4"/>')
+    # Shared axial axis.
     for x in (0, 20, 40, 60, 80, 100):
-        parts.append(f'<text x="{px(x):.0f}" y="{y1 + 20:.0f}" font-size="12" text-anchor="middle" fill="#1b1b1b">{x}</text>')
-    parts.append(f'<line x1="{px(SHOCK_X):.0f}" y1="{y0}" x2="{px(SHOCK_X):.0f}" y2="{y1}" stroke="#D55E00" stroke-width="2" stroke-dasharray="5 4"/>')
-    for key in ("P", "V", "T"):
-        pts = " ".join(f"{px(x):.0f},{py(v):.0f}" for x, v in PVT_CURVES[key])
-        parts.append(f'<polyline points="{pts}" fill="none" stroke="{PVT_COLORS[key]}" stroke-width="2.5"/>')
-    lx = x0
-    for key in ("P", "V", "T"):
-        parts.append(f'<line x1="{lx}" y1="{y0 - 14}" x2="{lx + 26}" y2="{y0 - 14}" stroke="{PVT_COLORS[key]}" stroke-width="2.5"/>')
-        parts.append(f'<text x="{lx + 32}" y="{y0 - 10}" font-size="13" fill="#1b1b1b">{PVT_LABELS[key]}</text>')
-        lx += 190
-    parts.append(f'<text x="{(x0 + x1) / 2:.0f}" y="436" font-size="13" text-anchor="middle" fill="#1b1b1b">Axial position along ejector (%)</text>')
-    parts.append(f'<text x="18" y="{(y0 + y1) / 2:.0f}" font-size="13" text-anchor="middle" fill="#1b1b1b" transform="rotate(-90 18 {(y0 + y1) / 2:.0f})">Normalized scale (%)</text>')
+        parts.append(f'<text x="{px(x):.0f}" y="656" font-size="11.5" '
+                     f'text-anchor="middle" fill="{INK}">{x}</text>')
+    parts.append(f'<text x="{(X0 + X1) / 2:.0f}" y="682" font-size="13" '
+                 f'text-anchor="middle" fill="{INK}">Axial position along '
+                 'ejector (%)</text>')
     parts.append("</svg>")
     return ("<figure>" + "".join(parts) +
-            "<figcaption>Fig. P10 | In double-choking (critical) mode the "
-            "pressure and temperature fall and the velocity rises through "
-            "the motive nozzle, the mixture stays supersonic through the "
-            "mixing section and throat, a shock wave at about 57% of the "
-            "length collapses the velocity and jumps the pressure and "
-            "temperature up, and the diffuser trades the remaining "
-            "velocity for pressure. Each curve is normalized: divided by "
-            "its own maximum value along the stage and multiplied by 100. "
-            "The curves are schematic in shape.</figcaption></figure>")
+            "<figcaption>Fig. P10 | Static pressure, Mach number, and "
+            "static temperature along the first stage in double-choking "
+            "(critical) mode, on the axial scale of Fig. P11, whose "
+            "section the top strip repeats. Both chokes are marked: the "
+            "motive nozzle is choked, with the Mach number M = 1 at its "
+            "throat, and the mixing section is choked, the suction gas "
+            "reaching the speed of sound around the jet, so neither mass "
+            "flow responds to the discharge pressure. The curves are "
+            "schematic in shape between anchor values computed from the "
+            "model and the relations of the Theory panel: pressure "
+            "800 kPa abs at the inlet, 432 kPa at the nozzle throat, "
+            "2.0 kPa through the mixing section, a shock jump to 6.7 kPa "
+            "at 57% of the length, and recovery in the diffuser to the "
+            "stage discharge pressure of 7.40 kPa abs; Mach number 4.3 "
+            "at the nozzle exit, falling to 1.75 before the shock and "
+            "0.62 after it; temperature 444 K at the inlet and 390 K at "
+            "the discharge, with the nozzle-exit value of 100 K the "
+            "ideal-gas limit of §T5. The pressure axis is logarithmic."
+            "</figcaption></figure>")
 
 
 def xsection_figure(id_suffix=""):

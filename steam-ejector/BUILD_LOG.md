@@ -1012,3 +1012,45 @@ both widths; SELFTEST pass on the local build
   SELFTEST not run in a browser: sandbox Chromium cannot
   reach the public internet; the verdict stands on the
   byte-identical local build.
+
+## v21 — Fig. P10 redesign: real-unit profiles, double choking marked (2026-11-22)
+
+The normalized P/V/T figure was replaced after the user's
+finding that it showed neither real values nor the
+double-choking mode. The new Fig. P10 repeats the Fig. P11
+cross-section as a geometry strip on the shared axial scale
+and stacks three real-unit panels below it: static pressure
+in kPa abs (logarithmic, 1–1000), Mach number (0–5, dashed
+M = 1 reference), static temperature in K (0–500). Curves
+are schematic between anchor values computed from the model
+and the Theory relations (anchor table and research record
+in progress-v21.md; anchor check 14 of 14 within
+tolerance): 800 kPa and 444 K at the inlet; 432 kPa, 381 K,
+M = 1 at the nozzle throat; 2.0 kPa, M = 4.34, 100 K
+(ideal-gas limit) at the nozzle exit; mixed M = 1.75 at
+260 K from the §T7 balances; normal-shock jump at 57% to
+6.7 kPa, 368 K, M = 0.62 (§T8 relations); recovery to the
+model's stage-1 discharge, 7.40 kPa at 390 K. Both chokes
+are marked with callouts above the strip — "Motive nozzle
+choked" and "Mixing section choked" — and the shock keeps
+its dashed line through the strip and all panels.
+
+Text: the Process walk of the figure now defines the Mach
+number at first use in the panel, walks both chokes, the
+computed shock jumps, and the diffuser recovery in real
+values; one sentence each added in Theory §T5 (throat state
+marked on Fig. P10) and §T12 (Fig. P10 draws the
+double-choked state). References gains [12] Eames,
+Aphornratana & Haider (1995), DOI verified, cited at the
+mixing-choke passage. Model unchanged.
+
+Verification: anchor check PASS (14 of 14); test_balance.py
+14 passed; build checks pass (625 KaTeX = 625); citation
+check passes ([12] cited and listed); consistency with
+Fig. P11 (same zones 0/22/51/65/100%, shock 57%, throat at
+16%); three-class audit (shots/v21-audit/) — desktop PASS
+on all classes; phone 390 px: labels whole, no collisions,
+document scroll width 375 px, lettering small at full-column
+width as recorded for Fig. P11, with every anchor value
+carried in the caption text; SELFTEST pass on the local
+build (635.18 kg/h, 523.56 kW), no page errors.

@@ -42,3 +42,8 @@ Information TI-P493-02, Issue 3, 2025.
 [11] Schutte & Koerting. Steam Jet Ejectors: Single and
 Multi-Stage Steam Jet Vacuum Pumps. Bulletin 5E-H. Schutte &
 Koerting, Trevose, PA.
+
+[12] Eames, I. W., Aphornratana, S., and Haider, H. A theoretical
+and experimental study of a small-scale steam jet refrigerator.
+International Journal of Refrigeration 18 (1995) 378–386.
+DOI: 10.1016/0140-7007(95)98160-M.

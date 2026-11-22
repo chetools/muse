@@ -315,15 +315,23 @@ separated gas from the top.
 
 The figure below follows the first stage from its inlet (0% of the
 axial length — axial means measured along the axis of the duct) to
-its discharge (100%). It shows three quantities: the static pressure
-$p$ in Pa (the pressure a gauge moving with the gas would read), the
-velocity $v$ in m/s, and the static temperature $T$ in K. Because
-the three quantities have different units and very different sizes,
-each curve is normalized: divided by its own maximum value along the
-stage and multiplied by 100, so every curve runs between 0 and 100
-on the same scale, labelled normalized scale (%). Read the shapes,
-not the absolute values; the absolute values at the design basis are
-in the stream table above and in §T14 of the Theory panel.
+its discharge (100%). It shows three quantities in three stacked
+panels that share the axial scale: the static pressure $p$ in kPa
+(the pressure a gauge moving with the gas would read), the Mach
+number $M$, which is the flow velocity divided by the local speed
+of sound, so that $M = 1$ is exactly the speed of sound (§T4 of the
+Theory panel), and the static temperature $T$ in K. Each panel
+carries its own axis in real units. The pressure axis is
+logarithmic, because the pressure falls from 800 kPa abs to 2 kPa
+abs inside the nozzle and no linear axis could show both ends of
+that fall. The strip at the top repeats the section of Fig. P11 on
+the same scale, so each panel reads against the part of the machine
+it belongs to. The curves are schematic in shape between anchor
+values, which are marked with dots; every anchor is computed from
+the model or from a relation in the Theory panel, and the caption
+lists them. The velocity at any point is the Mach number times the
+local speed of sound: at the nozzle exit, the Mach number of 4.3 is
+the 1,078 m/s jet of §T5 of the Theory panel.
 
 [[PVT_FIGURE]]
 
@@ -334,12 +342,17 @@ enthalpy into kinetic energy — the static pressure and the static
 temperature fall together. Temperature falls for the same reason
 pressure does: steam is spending its internal energy on speed. At
 the nozzle throat, the narrowest section, the steam reaches the
-local speed of sound. Beyond the throat the duct widens again, and
+local speed of sound: the Mach number is 1, the static pressure has
+fallen to 432 kPa abs, and the static temperature to 381 K. That is
+the first of the two chokes marked at the top of the figure — the
+motive nozzle is choked, in the sense stated at the end of this
+section. Beyond the throat the duct widens again, and
 for a supersonic stream — faster than sound — a widening duct makes
 the stream faster still (§T5 of the Theory panel), so the velocity
 keeps climbing to its peak while the pressure and temperature fall
-to their lowest values on the page. The jet leaves the nozzle at the
-order of 1,000 m/s, at a static pressure at or below the suction
+to their lowest values on the page. The jet leaves the nozzle at a
+Mach number of 4.3, at the order of 1,000 m/s, at a static pressure
+at or below the suction
 pressure of 2 kPa abs, and cold: an isentropic (frictionless,
 no-heat-transfer) expansion to 2 kPa would put the static
 temperature near 100 K, and §T5 states why the real two-phase jet
@@ -348,13 +361,22 @@ does not reach that limit.
 Suction and mixing, about 22 to 51%. The jet crosses the suction
 chamber and the suction gas is drawn in around it, then the two
 streams enter the mixing throat. Pressure stays low and nearly flat
-— nothing in this section is trying to raise it. Velocity, as the
-jet's velocity at the start of this section, falls steadily: the jet
+— nothing in this section is trying to raise it. The Mach number of
+the mixed stream falls steadily from the jet's 4.3: the jet
 is sharing its momentum with the slow gas it entrains, so the jet
 slows and the gas speeds up until the two move as one stream.
 Temperature rises as kinetic energy turns back into internal energy
 when the mixed stream's average speed falls from the jet's peak. At
-the end of mixing the stream is uniform, and still supersonic.
+the end of mixing the stream is uniform, and still supersonic: the
+momentum and energy balances of §T7 of the Theory panel put its
+Mach number at 1.75 where it meets the shock, at a static
+temperature of 260 K and still at 2.0 kPa abs. This section carries
+the second choke marked on the figure. The suction gas,
+accelerating in the narrowing space around the expanding jet,
+reaches the speed of sound there, so the mixing section passes the
+largest suction flow that its upstream conditions allow — the
+mixing section is choked [12], in the sense stated at the end of
+this section.
 
 Throat and shock wave, about 51 to 65%, shock at about 57%. The
 throat is the constant-area section where mixing finishes. A
@@ -362,11 +384,13 @@ supersonic stream cannot slow down gradually to the pressure the
 diffuser demands; instead it does so in a shock wave, a front only a
 few molecular mean free paths thick, drawn on the figure as the
 vertical dashed line at about 57% of the length. Crossing the shock,
-the velocity collapses — in the figure, from about 56% of its
-maximum to about 22% — and the pressure and temperature jump up in
-the same step, the temperature in the figure from about 38% to about
-59% of its maximum. Those percentages are schematic readings from
-the drawn curves, not computed values. The shock is where most of
+the Mach number collapses from 1.75 to 0.62, and the pressure and
+temperature jump up in the same step: the pressure from 2.0 to
+6.7 kPa abs, and the temperature from 260 to 368 K. Those jump
+values are computed, not drawn readings: they are the normal-shock
+relations of §T8 of the Theory panel applied at the Mach number of
+1.75 that the §T7 balances give for the mixed stream just before
+the shock. The shock is where most of
 the stage's pressure recovery happens, and it is irreversible:
 entropy, defined in §T4 of the Theory panel through the reversible
 heat transferred divided by the temperature at which it is
@@ -376,15 +400,17 @@ and adiabatically, §T3) falls. That loss is the price of mixing a
 1,000 m/s jet with a near-stationary gas in a short duct.
 
 Diffuser, about 65 to 100%. The stream is now subsonic — slower than
-sound — and a widening duct slows a subsonic stream down. Towards
-the discharge-pipe value, velocity falls away, pressure climbs
-gently to the discharge pressure of 7.40 kPa abs, and temperature
-climbs with it as the last of the kinetic energy turns back into
-internal energy. At the stage outlet, the mixture is slow, warmer,
+sound — and a widening duct slows a subsonic stream down. The Mach
+number falls away towards about 0.1, the pressure climbs gently
+from 6.7 kPa abs to the discharge pressure of 7.40 kPa abs, and the
+temperature climbs to 390 K, the mixed stagnation temperature of
+§T7 of the Theory panel, as the last of the kinetic energy turns
+back into internal energy. At the stage outlet, the mixture is slow, warmer,
 and at 3.70 times its inlet pressure.
 
 The operating mode drawn here is double-choking, also called the
-critical mode. Choking is derived in §T5 of the Theory panel. A duct
+critical mode, and both chokes are marked at the top of Fig. P10.
+Choking is derived in §T5 of the Theory panel. A duct
 section is choked when the gas there moves at the local speed of
 sound, so no pressure signal from downstream can travel upstream
 through it, and the mass flow through it is fixed by the upstream
