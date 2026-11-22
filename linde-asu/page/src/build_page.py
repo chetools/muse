@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v27"
+VERSION = "v28"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -330,9 +330,11 @@ assert _m, "Theory cost heading not found for Fig. T1 insertion"
 rendered["theory"] = rendered["theory"].replace(_m.group(1), _T1 + _m.group(1), 1)
 # Theory Fig. T0: the full sheet as the map of the plant, closing the
 # Introduction (after its tracing paragraph, before the Key points), in
-# the same .pfdbox treatment as the Process panel's Fig. P0. Numbered T0
-# so the saturation curves keep their Fig. T1 number and fragment.
-_T0 = (f'<figure class="subdiagram" id="theory-fig-t0"><div class="pfdbox">{pfd_svg}</div>'
+# the same whole-sheet treatment as the Process panel's Fig. P0 (v28:
+# .sheetbox, no sideways scroll, figure broken out to the full
+# reading-region width on wide screens). Numbered T0 so the saturation
+# curves keep their Fig. T1 number and fragment.
+_T0 = (f'<figure class="subdiagram sheetwide" id="theory-fig-t0"><div class="sheetbox">{pfd_svg}</div>'
        f'<figcaption>Fig. T0 | The whole plant on one diagram: compression, purification and cooling prepare the air, the coupled columns separate it, and the returning products give up their cold in the main heat exchanger. '
        f'The same sheet is the working diagram of the Process panel (Fig. P0), where each unit is taken in turn.</figcaption></figure>')
 _m = re.search(r'(<h2 id="theory-key-points">)', rendered["theory"])
