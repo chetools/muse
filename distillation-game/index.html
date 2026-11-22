@@ -388,15 +388,15 @@ vapour feed), the section balances are [3]:</p>
 <rect x="260" y="86" width="170" height="128" class="fbox"/>
 <rect x="262" y="168" width="166" height="44" class="fliq"/>
 <text x="345" y="196" text-anchor="middle">liquid on the tray, x<tspan dy="3" font-size="10">i</tspan><tspan dy="-3"></tspan></text>
-<circle cx="310" cy="150" r="5" class="fvap"/><circle cx="345" cy="132" r="6" class="fvap"/><circle cx="380" cy="152" r="5" class="fvap"/><circle cx="328" cy="112" r="4" class="fvap"/>
+
 <text x="345" y="66" text-anchor="middle">vapour out, y<tspan dy="3" font-size="10">i</tspan><tspan dy="-3"></tspan> — richer in pentane</text>
 <line x1="345" y1="84" x2="345" y2="74" class="fpipe" marker-end="url(#fah)"/>
 <text x="16" y="40">liquid in, from the tray above</text>
 <line x1="196" y1="64" x2="262" y2="96" class="fpipe" marker-end="url(#fah)"/>
 <text x="96" y="262">vapour in, from the tray below</text>
 <line x1="258" y1="236" x2="300" y2="214" class="fpipe" marker-end="url(#fah)"/>
-<text x="452" y="196">liquid out, to the tray below,</text>
-<text x="452" y="214">depleted in pentane</text>
+<text x="462" y="196">liquid out, to the tray below,</text>
+<text x="462" y="214">depleted in pentane</text>
 <line x1="432" y1="196" x2="452" y2="200" class="fpipe" marker-end="url(#fah)"/>
 <text x="452" y="104">the two leaving streams are in</text>
 <text x="452" y="122">equilibrium at the tray temperature:</text>
@@ -411,7 +411,7 @@ vapour feed), the section balances are [3]:</p>
 <text x="290" y="266" text-anchor="middle" class="flab">12 (top tray)</text>
 <text x="52" y="48" text-anchor="end" class="flab">1.0</text>
 <text x="52" y="148" text-anchor="end" class="flab">0.5</text>
-<text x="52" y="252" text-anchor="end" class="flab">0</text>
+<text x="52" y="249" text-anchor="end" class="flab">0</text>
 <polyline points="60.0,245.5 79.2,239.1 98.3,229.0 117.5,214.8 136.7,198.2 155.8,182.1 175.0,169.5 194.2,151.6 213.3,133.7 232.5,114.6 251.7,94.5 270.8,75.1 290.0,58.8" fill="none" stroke="#b3541e" stroke-width="2"/>
 <text x="470" y="24" text-anchor="middle">tray temperature, in K</text>
 <line x1="390" y1="40" x2="390" y2="250" class="fthin"/><line x1="390" y1="250" x2="620" y2="250" class="fthin"/>
@@ -420,7 +420,7 @@ vapour feed), the section balances are [3]:</p>
 <text x="620" y="266" text-anchor="middle" class="flab">12 (top tray)</text>
 <text x="382" y="48" text-anchor="end" class="flab">370</text>
 <text x="382" y="148" text-anchor="end" class="flab">345</text>
-<text x="382" y="252" text-anchor="end" class="flab">320</text>
+<text x="382" y="249" text-anchor="end" class="flab">320</text>
 <polyline points="390.0,56.3 409.2,79.3 428.3,97.7 447.5,115.5 466.7,133.0 485.8,147.9 505.0,158.7 524.2,178.9 543.3,193.7 562.5,206.0 581.7,217.2 600.8,227.0 620.0,234.6" fill="none" stroke="#16697a" stroke-width="2"/>
 <line x1="175" y1="40" x2="175" y2="250" class="fdim" stroke-dasharray="4 4"/>
 <line x1="505" y1="40" x2="505" y2="250" class="fdim" stroke-dasharray="4 4"/>
@@ -464,9 +464,9 @@ plain.</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 300" role="img" aria-label="One tray as a control volume with the four balance streams and the feed"><defs><marker id="fah3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <rect x="248" y="64" width="196" height="164" fill="none" stroke="#8a8578" stroke-width="1.2" stroke-dasharray="6 4"/>
 <rect x="250" y="176" width="192" height="50" class="fliq"/>
-<circle cx="300" cy="150" r="5" class="fvap"/><circle cx="346" cy="132" r="6" class="fvap"/><circle cx="390" cy="152" r="5" class="fvap"/>
-<text x="346" y="204" text-anchor="middle">tray j liquid: holdup M<tspan dy="3" font-size="10">j</tspan><tspan dy="-3">,</tspan></text>
-<text x="346" y="222" text-anchor="middle">composition x<tspan dy="3" font-size="10">i,j</tspan></text>
+
+<text x="346" y="199" text-anchor="middle">tray j liquid: holdup M<tspan dy="3" font-size="10">j</tspan><tspan dy="-3">,</tspan></text>
+<text x="346" y="220" text-anchor="middle">composition x<tspan dy="3" font-size="10">i,j</tspan></text>
 <text x="16" y="36">liquid in, from tray j+1:</text>
 <text x="16" y="54">L<tspan dy="3" font-size="10">j+1</tspan><tspan dy="-3"> x</tspan><tspan dy="3" font-size="10">i,j+1</tspan></text>
 <line x1="176" y1="60" x2="252" y2="88" class="fpipe" marker-end="url(#fah3)"/>
@@ -909,50 +909,78 @@ here is necessary but not sufficient on a real unit.</p>
 the game (the starting state; see the Theory panel on why the plant
 relaxes slowly from it). Symbols are as defined in the Theory panel.</p>
 
-<div class="figwrap"><svg class="fschem fit" viewBox="0 0 700 360" role="img" aria-label="Whole-plant flowsheet of the game plant"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
-<rect x="120" y="80" width="80" height="200" class="fbox"/>
-<text x="16" y="296">column, 12 trays</text>
-<text x="160" y="100" text-anchor="middle" class="flab">tray 12</text>
-<text x="160" y="262" text-anchor="middle" class="flab">tray 1</text>
-<text x="160" y="196" text-anchor="middle" class="flab">feed tray 6</text>
-<path d="M160 80 L160 55 L400 55 L400 66" class="fpipe"/><line x1="400" y1="62" x2="400" y2="80" class="fpipe" marker-end="url(#fah)"/>
-<path d="M287 42 L313 68 L313 42 L287 68 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="300" y1="42" x2="300" y2="33" class="fthin"/>
-<text x="300" y="40" text-anchor="middle" class="flab">inlet valve</text>
-<text x="205" y="78" text-anchor="middle" class="flab">overhead vapour 9 mol/s</text>
-<path d="M252 55 L252 26 L600 26 L600 62" class="fpipe" stroke-dasharray="5 4"/>
-<text x="420" y="18" text-anchor="middle" class="flab">hot vapour bypass 0.05 mol/s (dashed)</text>
-<rect x="330" y="70" width="140" height="50" class="fbox"/>
-<text x="400" y="92" text-anchor="middle">condenser</text>
-<text x="400" y="110" text-anchor="middle" class="flab">40 % flooded, 239.7 kW</text>
-<rect x="500" y="62" width="130" height="50" class="fbox"/>
-<text x="565" y="84" text-anchor="middle">reflux drum</text>
-<text x="565" y="102" text-anchor="middle" class="flab">140 kPa, 50 % level</text>
-<path d="M360 120 L360 138 L545 138 L545 116" class="fpipe"/>
-<line x1="545" y1="124" x2="545" y2="114" class="fpipe" marker-end="url(#fah)"/>
-<text x="452" y="156" text-anchor="middle" class="flab">condensate up the riser, lift 1.5 m</text>
-<path d="M600 112 L600 168 L90 168 L90 95 L116 95" class="fpipe"/>
-<line x1="104" y1="95" x2="118" y2="95" class="fpipe" marker-end="url(#fah)"/>
-<text x="386" y="184" text-anchor="middle" class="flab">reflux 5 mol/s to the top tray</text>
-<line x1="630" y1="87" x2="664" y2="87" class="fpipe" marker-end="url(#fah)"/>
-<text x="640" y="76" class="flab">distillate</text>
-<text x="640" y="104" class="flab">4 mol/s</text>
-<line x1="16" y1="208" x2="118" y2="208" class="fpipe" marker-end="url(#fah)"/>
-<text x="8" y="172">feed</text>
-<text x="8" y="190">10 mol/s</text>
-<path d="M53 195 L79 221 L79 195 L53 221 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="66" y1="195" x2="66" y2="186" class="fthin"/>
-<text x="66" y="234" text-anchor="middle" class="flab">feed valve</text>
-<path d="M148 280 L148 306" class="fpipe"/>
-<line x1="176" y1="306" x2="176" y2="284" class="fpipe" marker-end="url(#fah)"/>
-<rect x="96" y="306" width="150" height="44" class="fbox"/>
-<text x="171" y="326" text-anchor="middle">reboiler + steam chest</text>
-<text x="171" y="343" text-anchor="middle" class="flab">264.9 kW from steam</text>
-<text x="262" y="296" class="flab">boilup 9 mol/s up; liquid down</text>
-<line x1="246" y1="330" x2="330" y2="330" class="fpipe" marker-end="url(#fah)"/>
-<text x="300" y="318" class="flab">bottoms 6 mol/s</text>
-<text x="352" y="330" class="flab">cooling loop serves the condenser;</text>
-<text x="352" y="348" class="flab">steam header 900 kPa serves the chest</text>
+<div class="figwrap"><svg class="fschem fit" viewBox="0 0 800 436" role="img" aria-label="Whole-plant flowsheet of the game plant"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
+<rect x="110" y="110" width="80" height="220" class="fbox"/>
+<line x1="110" y1="180" x2="190" y2="180" class="fthin"/>
+<line x1="110" y1="245" x2="190" y2="245" class="fthin"/>
+<line x1="110" y1="315" x2="190" y2="315" class="fthin"/>
+<text x="150" y="130" text-anchor="middle">column</text>
+<text x="150" y="146" text-anchor="middle" class="flab">12 trays</text>
+<text x="182" y="172" text-anchor="end" class="flab">tray 12</text>
+<text x="150" y="237" text-anchor="middle" class="flab">feed tray 6</text>
+<text x="182" y="307" text-anchor="end" class="flab">tray 1</text>
+<rect x="95" y="364" width="185" height="44" class="fbox"/>
+<text x="187" y="385" text-anchor="middle">reboiler + steam chest</text>
+<text x="187" y="402" text-anchor="middle" class="flab">264.9 kW from steam</text>
+<rect x="450" y="255" width="200" height="60" class="fbox"/>
+<text x="550" y="281" text-anchor="middle">condenser</text>
+<text x="550" y="299" text-anchor="middle" class="flab">40 % flooded, 239.7 kW</text>
+<rect x="470" y="126" width="160" height="50" class="fbox"/>
+<text x="550" y="147" text-anchor="middle">reflux drum</text>
+<text x="550" y="165" text-anchor="middle" class="flab">140 kPa, 50 % level</text>
+<line x1="8" y1="220" x2="53" y2="220" class="fpipe" marker-end="url(#fah)"/>
+<path d="M53 207 L79 233 L79 207 L53 233 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="66" y1="207" x2="66" y2="198" class="fthin"/>
+<line x1="79" y1="220" x2="110" y2="220" class="fpipe" marker-end="url(#fah)"/>
+<text x="8" y="182">feed 10 mol/s</text>
+<text x="66" y="256" text-anchor="middle" class="flab">feed valve</text>
+<line x1="150" y1="110" x2="150" y2="78" class="fpipe" marker-end="url(#fah)"/>
+<line x1="150" y1="78" x2="417" y2="78" class="fpipe"/>
+<circle cx="400" cy="78" r="3.5" fill="#1a1a2e"/>
+<path d="M417 65 L443 91 L443 65 L417 91 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="430" y1="65" x2="430" y2="56" class="fthin"/>
+<line x1="443" y1="78" x2="462" y2="78" class="fpipe" marker-end="url(#fah)"/>
+<text x="255" y="66" text-anchor="middle" class="flab">overhead vapour 9 mol/s</text>
+<text x="448" y="114" text-anchor="end" class="flab">condenser inlet valve</text>
+<path d="M462 78 L462 230 L560 230" class="fpipe"/>
+<line x1="560" y1="230" x2="615" y2="230" class="fpipe" marker-end="url(#fah)"/>
+<line x1="615" y1="230" x2="615" y2="255" class="fpipe" marker-end="url(#fah)"/>
+<path d="M400 78 L400 36 L560 36 L560 100" class="fpipe" stroke-dasharray="5 4"/>
+<line x1="560" y1="100" x2="560" y2="126" class="fpipe" marker-end="url(#fah)"/>
+<text x="480" y="28" text-anchor="middle" class="flab">hot vapour bypass 0.05 mol/s</text>
+<line x1="520" y1="315" x2="520" y2="345" class="fpipe"/>
+<line x1="520" y1="345" x2="562" y2="345" class="fpipe"/>
+<path d="M562 332 L588 358 L588 332 L562 358 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="575" y1="332" x2="575" y2="323" class="fthin"/>
+<line x1="588" y1="345" x2="672" y2="345" class="fpipe"/>
+<line x1="672" y1="345" x2="672" y2="250" class="fpipe" marker-end="url(#fah)"/>
+<line x1="672" y1="250" x2="672" y2="151" class="fpipe"/>
+<line x1="672" y1="151" x2="630" y2="151" class="fpipe" marker-end="url(#fah)"/>
+<text x="680" y="232">condensate up</text>
+<text x="680" y="250">the riser,</text>
+<text x="680" y="268">lift 1.5 m</text>
+<text x="575" y="381" text-anchor="middle" class="flab">condenser outlet valve</text>
+<line x1="492" y1="176" x2="492" y2="190" class="fpipe" marker-end="url(#fah)"/>
+<line x1="492" y1="190" x2="205" y2="190" class="fpipe"/>
+<line x1="205" y1="190" x2="205" y2="125" class="fpipe"/>
+<line x1="205" y1="125" x2="190" y2="125" class="fpipe" marker-end="url(#fah)"/>
+<text x="340" y="206" text-anchor="middle" class="flab">reflux 5 mol/s to the top tray</text>
+<line x1="600" y1="126" x2="600" y2="96" class="fpipe"/>
+<line x1="600" y1="96" x2="712" y2="96" class="fpipe" marker-end="url(#fah)"/>
+<text x="656" y="88" text-anchor="middle" class="flab">distillate 4 mol/s</text>
+<line x1="135" y1="364" x2="135" y2="330" class="fpipe" marker-end="url(#fah)"/>
+<line x1="175" y1="330" x2="175" y2="364" class="fpipe" marker-end="url(#fah)"/>
+<text x="124" y="352" text-anchor="end" class="flab">boilup 9 mol/s</text>
+<text x="186" y="352" class="flab">liquid down, 15 mol/s</text>
+<line x1="280" y1="386" x2="368" y2="386" class="fpipe" marker-end="url(#fah)"/>
+<text x="288" y="378" class="flab">bottoms 6 mol/s</text>
+<line x1="30" y1="386" x2="95" y2="386" class="fpipe" marker-end="url(#fah)"/>
+<text x="8" y="374">steam in</text><text x="8" y="404">900 kPa</text>
+<line x1="240" y1="408" x2="240" y2="430" class="fpipe" marker-end="url(#fah)"/>
+<text x="248" y="431">steam condensate out</text>
+<line x1="408" y1="285" x2="450" y2="285" class="fpipe" marker-end="url(#fah)"/>
+<text x="442" y="274" text-anchor="end" class="flab">cooling water in</text>
+<line x1="455" y1="255" x2="455" y2="232" class="fpipe" marker-end="url(#fah)"/>
+<text x="447" y="224" text-anchor="end">cooling water out</text><line x1="290" y1="78" x2="320" y2="78" class="fpipe" marker-end="url(#fah)"/><line x1="330" y1="190" x2="300" y2="190" class="fpipe" marker-end="url(#fah)"/><line x1="520" y1="230" x2="550" y2="230" class="fpipe" marker-end="url(#fah)"/><text x="540" y="222" text-anchor="middle" class="flab">8.95 mol/s</text>
 </svg></div>
-<p class="figcap"><b>Fig. P1 | One pass through the plant, in flow order.</b> Feed enters at tray 6; overhead vapour is condensed, lifted up the riser to the drum, and split into reflux and distillate; liquid from tray 1 is boiled in the reboiler, whose vapour is the boilup and whose draw is the bottoms. Flows are the nominal point, in mol/s; duties are in kW. The drawing is in flow order, not to elevation — the drum sits above the condenser, as Fig. U6 shows — and only the feed and inlet valves are drawn; the other nine openings are on the drawing in the Game panel.</p>
+<p class="figcap"><b>Fig. P1 | One pass through the plant, in flow order.</b> Feed enters at the feed tray; overhead vapour is condensed in the condenser below the drum, lifted up the riser to the drum, and split into reflux and distillate; liquid from tray 1 is boiled in the reboiler, whose vapour is the boilup and whose draw is the bottoms. Flows are the nominal point, in mol/s; duties are in kW. The drum is drawn above the condenser, as built, and the reflux enters above the top tray. The feed, inlet, and condenser outlet valves are drawn; the other eight openings are on the drawing in the Game panel.</p>
 <section id="process-balance">
 <h3>Nominal balance</h3>
 <table class="dtab">
@@ -1213,11 +1241,11 @@ balances</a>).</p>
 <text x="16" y="52">steam header</text>
 <text x="16" y="84" class="flab">900 kPa</text>
 <line x1="16" y1="62" x2="108" y2="62" class="fpipe" marker-end="url(#fah)"/><path d="M109 49 L135 75 L135 49 L109 75 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="122" y1="49" x2="122" y2="40" class="fthin"/>
-<text x="122" y="94" text-anchor="middle" class="flab">regulator</text>
-<text x="122" y="110" text-anchor="middle" class="flab">set 400 kPa</text>
+<text x="122" y="97" text-anchor="middle" class="flab">regulator</text>
+<text x="122" y="113" text-anchor="middle" class="flab">set 400 kPa</text>
 <line x1="136" y1="62" x2="208" y2="62" class="fpipe" marker-end="url(#fah)"/><path d="M209 49 L235 75 L235 49 L209 75 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="222" y1="49" x2="222" y2="40" class="fthin"/>
-<text x="222" y="94" text-anchor="middle" class="flab">steam flow</text>
-<text x="222" y="110" text-anchor="middle" class="flab">valve</text>
+<text x="222" y="97" text-anchor="middle" class="flab">steam flow</text>
+<text x="222" y="113" text-anchor="middle" class="flab">valve</text>
 <text x="172" y="20" text-anchor="middle" class="flab">400 kPa</text>
 <line x1="236" y1="62" x2="268" y2="62" class="fpipe" marker-end="url(#fah)"/>
 <rect x="270" y="38" width="170" height="48" class="fsteam"/>
@@ -1227,28 +1255,28 @@ balances</a>).</p>
 <text x="452" y="66">steam condenses on the tubes</text>
 <text x="452" y="84">at its saturation temperature,</text>
 <text x="452" y="102">390.65 K</text>
-<text x="478" y="142" class="flab">condensate leaves as it forms</text>
+<text x="482" y="142" class="flab">condensate leaves as it forms</text>
 
 <rect x="240" y="128" width="230" height="160" class="fbox"/>
 <rect x="242" y="200" width="226" height="86" class="fliq"/>
 <path d="M258 226 L452 226 M258 248 L452 248 M258 270 L452 270" class="fpipe"/>
 <text x="355" y="188" text-anchor="middle">vapour space</text>
 <text x="355" y="242" text-anchor="middle" class="flab">heating tubes in the pool</text>
-<text x="355" y="306" text-anchor="middle">reboiler pool, 366.12 K, level 25 %</text>
+<text x="355" y="311" text-anchor="middle">reboiler pool, 366.12 K, level 25 %</text>
 <text x="250" y="150">boilup vapour,</text>
 <text x="250" y="168">9 mol/s, up to tray 1</text>
-<line x1="430" y1="128" x2="430" y2="104" class="fpipe" marker-end="url(#fah)"/>
+<line x1="430" y1="86" x2="430" y2="110" class="fpipe" marker-end="url(#fah)"/>
 <text x="16" y="150">liquid from tray 1,</text>
 <text x="16" y="168">15 mol/s</text>
 <line x1="120" y1="158" x2="238" y2="158" class="fpipe" marker-end="url(#fah)"/>
 <text x="590" y="252" text-anchor="middle">bottoms, 6 mol/s,</text>
-<text x="590" y="290" text-anchor="middle">via the bottoms valve</text>
+<text x="594" y="290" text-anchor="middle">via the bottoms valve</text>
 <path d="M470 270 L660 270" class="fpipe"/>
 <path d="M492 257 L518 283 L518 257 L492 283 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="505" y1="257" x2="505" y2="248" class="fthin"/>
 <line x1="640" y1="270" x2="662" y2="270" class="fpipe" marker-end="url(#fah)"/>
-<text x="16" y="322">the pressure falls in steps across the two throttles:</text>
-<text x="16" y="340">900, then 400, then 182.35 kPa; duty 264.9 kW</text>
-</svg></div>
+<text x="16" y="332">the pressure falls in steps across the two throttles:</text>
+<text x="16" y="350">900, then 400, then 182.35 kPa; duty 264.9 kW</text>
+<text x="372" y="112" class="flab">tubes</text></svg></div>
 <p class="figcap"><b>Fig. U1 | Two throttles in series set the chest pressure, and the chest pressure sets the duty.</b> Steam condenses on the heating tubes at the saturation temperature of the chest pressure; the pool boils at 366.12 K and its vapour is the boilup.</p>
 <figure class="photofig"><img src="img/tube-bundle.jpg" alt="Photograph of a real shell-and-tube heat exchanger tube bundle before assembly"><figcaption class="figcap"><b>Photo U1 | The heating surface is a bundle of tubes.</b> A real tube bundle of a shell-and-tube heat exchanger, before it is slid into its shell: the tubes carry one fluid and the space around them carries the other, as in the chest and the condenser of this plant. Credit: Harald the Bard, Wikimedia Commons, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0); image resized to 500 px width.</figcaption></figure>
 
@@ -1285,11 +1313,11 @@ valves</a>). All eleven openings are listed below in their live state.</p>
 <rect x="168" y="140" width="24" height="22" class="fbox"/>
 <line x1="180" y1="140" x2="180" y2="96" class="fwall"/>
 <rect x="158" y="76" width="44" height="20" class="fbox"/>
-<text x="180" y="66" text-anchor="middle" class="flab">actuator</text>
+<text x="180" y="62" text-anchor="middle" class="flab">actuator</text>
 <text x="216" y="120" class="flab">stem</text>
 <text x="216" y="152" class="flab">plug</text>
-<text x="146" y="182" text-anchor="end" class="flab">seat</text>
-<text x="66" y="248">body</text>
+<text x="146" y="175" text-anchor="end" class="flab">seat</text>
+<text x="66" y="250">body</text>
 <line x1="66" y1="208" x2="140" y2="208" class="fpipe" marker-end="url(#fah)"/><line x1="196" y1="196" x2="268" y2="196" class="fpipe" marker-end="url(#fah)"/>
 <text x="30" y="182">in, pressure P<tspan dy="3" font-size="10">1</tspan></text>
 <text x="238" y="182">out, P<tspan dy="3" font-size="10">2</tspan><tspan dy="-3"> lower</tspan></text>
@@ -1297,10 +1325,10 @@ valves</a>). All eleven openings are listed below in their live state.</p>
 <text x="30" y="308">the flow follows from the pressure difference P<tspan dy="3" font-size="10">1</tspan><tspan dy="-3"> minus P</tspan><tspan dy="3" font-size="10">2</tspan></text>
 <text x="400" y="90">the steam pair: in series, but the</text>
 <text x="400" y="108">drop is not shared:</text>
-<path d="M400 200 L470 200 L470 160 L540 160 L540 130 L640 130" fill="none" stroke="#b3541e" stroke-width="2"/>
-<text x="404" y="188" class="flab">900</text>
-<text x="474" y="148" class="flab">400, after the regulator</text>
-<text x="544" y="118" class="flab">182.35 kPa in the chest</text>
+<path d="M400 130 L470 130 L470 170 L540 170 L540 200 L640 200" fill="none" stroke="#b3541e" stroke-width="2"/>
+<text x="388" y="134" text-anchor="end" class="flab">900</text>
+<text x="460" y="174" text-anchor="end" class="flab">400</text><text x="460" y="192" text-anchor="end" class="flab">after the regulator</text>
+<text x="548" y="188" class="flab">182.35 kPa in the chest</text>
 <text x="400" y="240">the regulator holds the middle pressure</text>
 <text x="400" y="258">at its setpoint, and the chest pressure</text>
 <text x="400" y="276">follows the balance of steam admitted</text>
@@ -1331,28 +1359,28 @@ Process: <a href="#process-feedtray">Feed tray entry</a>).</p>
 <div class="figwrap"><svg class="fschem" viewBox="0 0 680 300" role="img" aria-label="Feed valve and feed entry flash"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs>
 <text x="16" y="136">feed supply, 250 kPa</text>
 <line x1="16" y1="150" x2="156" y2="150" class="fpipe" marker-end="url(#fah)"/><path d="M157 137 L183 163 L183 137 L157 163 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="170" y1="137" x2="170" y2="128" class="fthin"/>
-<text x="170" y="182" text-anchor="middle" class="flab">feed valve</text>
+<text x="170" y="188" text-anchor="middle" class="flab">feed valve</text>
 <text x="196" y="136" class="flab">drop 100 kPa at nominal</text>
 <line x1="184" y1="150" x2="300" y2="150" class="fpipe" marker-end="url(#fah)"/>
 <path d="M300 150 L392 150" class="fpipe"/>
 <rect x="394" y="40" width="106" height="230" class="fbox"/>
-<text x="447" y="292" text-anchor="middle">column at the feed tray (tray 6)</text>
-<line x1="394" y1="150" x2="514" y2="150" class="fwall"/>
-<text x="447" y="140" text-anchor="middle" class="flab">feed tray</text>
-<path d="M404 138 L404 84" class="fpipe"/>
-<line x1="404" y1="96" x2="404" y2="82" class="fpipe" marker-end="url(#fah)"/>
+<text x="447" y="295" text-anchor="middle">column at the feed tray (tray 6)</text>
+<line x1="394" y1="150" x2="500" y2="150" class="fwall"/>
+<text x="447" y="134" text-anchor="middle" class="flab">feed tray</text>
+<path d="M460 150 L460 84" class="fpipe"/>
+<line x1="460" y1="96" x2="460" y2="82" class="fpipe" marker-end="url(#fah)"/>
 <text x="510" y="64">vapour part, fraction &#968; of</text>
 <text x="510" y="82">the feed, joins the vapour</text>
 <text x="510" y="100">rising to tray 7</text>
-<path d="M486 162 L486 224" class="fpipe"/>
+<path d="M486 150 L486 224" class="fpipe"/>
 <line x1="486" y1="212" x2="486" y2="226" class="fpipe" marker-end="url(#fah)"/>
 <text x="510" y="196">liquid part, fraction (1 &#8722; &#968;),</text>
 <text x="510" y="214">joins the liquid falling</text>
 <text x="510" y="232">to tray 5</text>
-<text x="16" y="196">on entry the feed is let down to the column</text>
-<text x="16" y="214">pressure, 150 kPa, at constant enthalpy</text>
-<text x="16" y="232">(an isenthalpic flash); a feed above its bubble</text>
-<text x="16" y="250">point at 150 kPa partly vaporises</text>
+<text x="16" y="207">on entry the feed is let down to the column</text>
+<text x="16" y="225">pressure, 150 kPa, at constant enthalpy</text>
+<text x="16" y="243">(an isenthalpic flash); a feed above its bubble</text>
+<text x="16" y="261">point at 150 kPa partly vaporises</text>
 </svg></div>
 <p class="figcap"><b>Fig. U3 | The valve makes the flow; the flash at the tray splits it.</b> The vapour fraction at entry, &#968; (dimensionless), is 0 for the nominal saturated-liquid feed and rises when the feed is hotter.</p>
 
@@ -1393,9 +1421,9 @@ The balance each tray obeys is derived in the Theory panel
 <line x1="470" y1="86" x2="470" y2="120" class="fwall"/>
 <rect x="470" y="86" width="44" height="110" class="fbox"/>
 <circle cx="230" cy="104" r="4" class="fvap"/><circle cx="290" cy="98" r="5" class="fvap"/><circle cx="350" cy="105" r="4" class="fvap"/><circle cx="410" cy="99" r="5" class="fvap"/>
-<text x="240" y="66">vapour up through the liquid as bubbles:</text>
-<text x="240" y="84">contact in the froth on the tray</text>
-<line x1="250" y1="150" x2="250" y2="124" class="fpipe" marker-end="url(#fah)"/><line x1="330" y1="150" x2="330" y2="124" class="fpipe" marker-end="url(#fah)"/><line x1="410" y1="150" x2="410" y2="124" class="fpipe" marker-end="url(#fah)"/>
+<text x="240" y="60">vapour up through the liquid as bubbles:</text>
+<text x="240" y="78">contact in the froth on the tray</text>
+<line x1="250" y1="150" x2="250" y2="120" class="fpipe" marker-end="url(#fah)"/><line x1="330" y1="150" x2="330" y2="120" class="fpipe" marker-end="url(#fah)"/><line x1="410" y1="150" x2="410" y2="120" class="fpipe" marker-end="url(#fah)"/>
 <text x="16" y="80">liquid in, from the</text>
 <text x="16" y="98">downcomer above</text>
 <line x1="120" y1="104" x2="174" y2="104" class="fpipe" marker-end="url(#fah)"/>
@@ -1411,7 +1439,7 @@ The balance each tray obeys is derived in the Theory panel
 <text x="530" y="240">crosses the other way</text>
 <text x="16" y="36">vapour out, enriched</text>
 <text x="16" y="54">in pentane</text>
-<line x1="200" y1="88" x2="200" y2="60" class="fpipe" marker-end="url(#fah)"/>
+<line x1="200" y1="92" x2="200" y2="44" class="fpipe" marker-end="url(#fah)"/><line x1="200" y1="44" x2="120" y2="44" class="fpipe" marker-end="url(#fah)"/>
 
 <text x="8" y="286">liquid out, down the</text>
 <text x="8" y="304">downcomer, depleted</text>
@@ -1436,7 +1464,7 @@ The balance each tray obeys is derived in the Theory panel
 <section id="units-condenser">
 <h3>Condenser</h3>
 <p>The readings below are this unit's live state: condenser pressure, flooded fraction, condensation rate, duty, condensing temperature, and vapour in. The flooded fraction is the overhead's control variable, set by the outlet and bypass valves, and the pressure follows it (Theory: <a href="#theory-flooded">Flooded-condenser pressure control</a>; Process: <a href="#process-condenser">Condenser</a>).</p>
-<div class="figwrap"><svg class="fschem" viewBox="0 0 680 320" role="img" aria-label="Flooded condenser with exposed and submerged tubes"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs><rect x="170" y="80" width="340" height="150" class="fbox"/><rect x="172" y="166" width="336" height="62" class="fliq"/><circle cx="215" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="215" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="215" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><text x="340" y="66" text-anchor="middle">overhead vapour in, 8.95 mol/s</text><line x1="340" y1="70" x2="340" y2="80" class="fpipe" marker-end="url(#fah)"/><text x="8" y="118">exposed tubes:</text><text x="8" y="136">vapour condenses</text><text x="8" y="154">on them</text><text x="8" y="196">submerged tubes:</text><text x="8" y="214">they subcool</text><text x="8" y="232">the pool</text><text x="520" y="150" class="flab">pool level: 40 %</text><text x="520" y="168" class="flab">flooded at nominal</text><text x="520" y="206">condensate out,</text><text x="520" y="224">to the riser; pool</text><text x="520" y="242">318.39 K, condensing</text><text x="520" y="260">at 321.98 K; duty</text><text x="520" y="278">239.7 kW</text><text x="170" y="262">cooling water in, 307.00 K</text><line x1="230" y1="248" x2="262" y2="234" class="fpipe" marker-end="url(#fah)"/><text x="510" y="284" text-anchor="end">cooling water out, 309.86 K</text><line x1="450" y1="248" x2="424" y2="234" class="fpipe" marker-end="url(#fah)"/></svg></div>
+<div class="figwrap"><svg class="fschem" viewBox="0 0 680 320" role="img" aria-label="Flooded condenser with exposed and submerged tubes"><defs><marker id="fah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L7 3 L0 6 Z" fill="#1a1a2e"/></marker></defs><rect x="170" y="80" width="340" height="150" class="fbox"/><rect x="172" y="166" width="336" height="62" class="fliq"/><circle cx="215" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="112" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="215" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="148" r="11" fill="#fdfcf8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="215" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="277" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="339" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="401" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><circle cx="463" cy="184" r="11" fill="#e8e8e8" stroke="#1a1a2e" stroke-width="1.2"/><text x="340" y="56" text-anchor="middle">overhead vapour in, 8.95 mol/s</text><line x1="340" y1="70" x2="340" y2="80" class="fpipe" marker-end="url(#fah)"/><text x="8" y="118">exposed tubes:</text><text x="8" y="136">vapour condenses</text><text x="8" y="154">on them</text><text x="8" y="196">submerged tubes:</text><text x="8" y="214">they subcool</text><text x="8" y="232">the pool</text><text x="520" y="150" class="flab">pool level: 40 %</text><text x="520" y="168" class="flab">flooded at nominal</text><text x="520" y="206">condensate out,</text><text x="520" y="224">to the riser; pool</text><text x="520" y="242">318.39 K, condensing</text><text x="520" y="260">at 321.98 K; duty</text><text x="520" y="278">239.7 kW</text><text x="170" y="270">cooling water in, 307.00 K</text><line x1="230" y1="248" x2="260" y2="230" class="fpipe" marker-end="url(#fah)"/><text x="510" y="284" text-anchor="end">cooling water out, 309.86 K</text><line x1="420" y1="230" x2="450" y2="248" class="fpipe" marker-end="url(#fah)"/><line x1="510" y1="182" x2="548" y2="182" class="fpipe" marker-end="url(#fah)"/></svg></div>
 <p class="figcap"><b>Fig. U5 | Only the exposed tubes condense; the submerged tubes subcool.</b> Raising the pool covers more tubes, cuts the condensing area, and so raises the column pressure — the flooded-condenser control of the Theory panel.</p>
 <figure class="photofig"><img src="img/hx-cutopen.jpg" alt="Photograph of the tube ends inside a shell-and-tube heat exchanger cut open"><figcaption class="figcap"><b>Photo U5 | The tubes, seen end-on.</b> The open ends of the tubes inside a shell-and-tube exchanger that has been cut open: cooling water flows inside tubes of this kind while vapour condenses on their outside in the condenser of this plant. Credit: Bitjungle, Wikimedia Commons, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0); image resized to 500 px width.</figcaption></figure>
 
@@ -1471,23 +1499,23 @@ term that the tray form drops.</p>
 <text x="515" y="80" text-anchor="middle">vapour space, 140 kPa</text>
 <text x="515" y="120" text-anchor="middle">liquid, 50 % level</text>
 <text x="515" y="34" text-anchor="middle">reflux drum</text>
-<path d="M240 262 L515 262 L515 142" class="fpipe"/>
+<path d="M240 262 L530 262 L530 142" class="fpipe"/>
 <path d="M287 249 L313 275 L313 249 L287 275 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="300" y1="249" x2="300" y2="240" class="fthin"/>
-<text x="300" y="292" text-anchor="middle" class="flab">outlet valve</text>
-<line x1="515" y1="154" x2="515" y2="140" class="fpipe" marker-end="url(#fah)"/>
-<text x="250" y="168">riser: the liquid climbs 1.5 m;</text>
-<text x="250" y="186">the head is 8.53 kPa, paid from</text>
-<text x="250" y="204">the condenser-to-drum difference</text>
-<text x="250" y="222">of 8.0 kPa plus the pooled-liquid</text>
-<text x="250" y="240">head of 2.28 kPa: drive 1.74 kPa</text>
+<text x="300" y="297" text-anchor="middle" class="flab">outlet valve</text>
+<line x1="530" y1="154" x2="530" y2="140" class="fpipe" marker-end="url(#fah)"/>
+<text x="232" y="152">riser: the liquid climbs 1.5 m;</text>
+<text x="232" y="170">the head is 8.53 kPa, paid from</text>
+<text x="232" y="188">the condenser-to-drum difference</text>
+<text x="232" y="206">of 8.0 kPa plus the pooled-liquid</text>
+<text x="232" y="224">head of 2.28 kPa: drive 1.74 kPa</text>
 <path d="M200 88 L418 88" class="fpipe" stroke-dasharray="5 4"/>
 <line x1="404" y1="88" x2="420" y2="88" class="fpipe" marker-end="url(#fah)"/>
-<text x="200" y="40">hot vapour bypass (dashed),</text>
+<text x="200" y="37">hot vapour bypass (dashed),</text>
 <text x="200" y="56">from the column-top line,</text>
-<text x="200" y="72">into the vapour space</text>
+<text x="200" y="75">into the vapour space</text>
 <text x="60" y="330">if the pool is not subcooled at the drum pressure, liquid flashes in the riser and the lift surges</text>
 <line x1="452" y1="138" x2="452" y2="190" class="fpipe" marker-end="url(#fah)"/>
-<text x="462" y="168">reflux out</text>
+<text x="456" y="168">reflux out</text>
 <line x1="560" y1="138" x2="560" y2="190" class="fpipe" marker-end="url(#fah)"/>
 <text x="570" y="168">distillate out</text>
 </svg></div>
@@ -1519,7 +1547,7 @@ speed, which also sets the condenser water-side coefficient. Cold supply water e
 <path d="M210 180 L330 180" class="fpipe"/>
 <line x1="300" y1="180" x2="332" y2="180" class="fpipe" marker-end="url(#fah)"/>
 <circle cx="262" cy="180" r="17" class="fbox"/><text x="262" y="185" text-anchor="middle" class="flab">P</text>
-<text x="262" y="152" text-anchor="middle" class="flab">circulating pump</text>
+<text x="272" y="150" text-anchor="middle" class="flab">circulating pump</text>
 <rect x="334" y="130" width="180" height="100" class="fbox"/>
 <text x="424" y="156" text-anchor="middle">condenser, water side</text>
 <text x="424" y="176" text-anchor="middle" class="flab">in at the tank temperature,</text>
@@ -1527,11 +1555,11 @@ speed, which also sets the condenser water-side coefficient. Cold supply water e
 <path d="M424 130 L424 84 L135 84 L135 106" class="fpipe"/>
 <line x1="135" y1="94" x2="135" y2="108" class="fpipe" marker-end="url(#fah)"/>
 <text x="280" y="72" text-anchor="middle" class="flab">warm water back to the tank</text>
-<text x="16" y="294">cold makeup in, through the makeup valve</text>
-<path d="M16 262 L92 262 L102 216" class="fpipe"/><path d="M43 249 L69 275 L69 249 L43 275 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="56" y1="249" x2="56" y2="240" class="fthin"/><line x1="99" y1="226" x2="103" y2="212" class="fpipe" marker-end="url(#fah)"/>
-<text x="120" y="234">overflow out, at the tank top:</text>
-<text x="120" y="252">warm water leaves as makeup enters</text>
-<path d="M60 146 L36 146 L36 196" class="fpipe"/><line x1="36" y1="182" x2="36" y2="198" class="fpipe" marker-end="url(#fah)"/>
+<text x="16" y="300">cold makeup in, through the makeup valve</text>
+<path d="M16 262 L92 262 L102 210" class="fpipe" marker-end="url(#fah)"/><path d="M43 249 L69 275 L69 249 L43 275 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="56" y1="249" x2="56" y2="240" class="fthin"/>
+<text x="120" y="234">warm water leaves at the top</text>
+<text x="120" y="256">as makeup enters</text>
+<path d="M60 146 L36 146 L36 170" class="fpipe"/><line x1="36" y1="158" x2="36" y2="172" class="fpipe" marker-end="url(#fah)"/><text x="68" y="160">overflow out</text>
 
 </svg></div>
 <p class="figcap"><b>Fig. U7 | The loop recirculates; makeup is the slow lever on the whole loop's temperature.</b> Makeup enters the tank and displaces warm water over the overflow, so its cooling acts on all 2000 kg of loop water and is slow; the tank also loses a little heat to the surroundings.</p>
@@ -1565,26 +1593,26 @@ set the flooding, and the cooling sets the duty (Theory:
 <rect x="40" y="120" width="70" height="130" class="fbox"/>
 <text x="75" y="108" text-anchor="middle">column top</text>
 <text x="75" y="140" text-anchor="middle" class="flab">150 kPa</text>
-<path d="M110 150 L250 150" class="fpipe"/>
+<path d="M110 150 L250 150" class="fpipe" marker-end="url(#fah)"/><circle cx="125" cy="150" r="3.5" fill="#1a1a2e" stroke="none"/>
 <path d="M167 137 L193 163 L193 137 L167 163 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="180" y1="137" x2="180" y2="128" class="fthin"/>
-<text x="180" y="128" text-anchor="middle" class="flab">inlet valve</text>
-<text x="196" y="170" class="flab">main path</text>
+<text x="180" y="186" text-anchor="middle" class="flab">inlet valve</text>
+
 <rect x="252" y="126" width="130" height="48" class="fbox"/>
 <text x="317" y="154" text-anchor="middle">condenser</text>
-<path d="M150 150 L150 84 L470 84 L470 120" class="fpipe" stroke-dasharray="5 4"/>
+<path d="M150 150 L150 84 L470 84 L470 120" class="fpipe" stroke-dasharray="5 4"/><circle cx="150" cy="150" r="3.5" fill="#1a1a2e" stroke="none"/>
 <path d="M287 71 L313 97 L313 71 L287 97 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="300" y1="71" x2="300" y2="62" class="fthin"/>
 <line x1="470" y1="106" x2="470" y2="122" class="fpipe" marker-end="url(#fah)"/>
-<text x="310" y="106" text-anchor="middle" class="flab">bypass path (dashed) to the drum vapour space</text>
+<text x="478" y="88">bypass path (dashed)</text><text x="478" y="106">to the drum vapour space</text>
 <rect x="420" y="122" width="130" height="48" class="fbox"/>
 <text x="485" y="150" text-anchor="middle">reflux drum</text>
 <path d="M125 150 L125 292 L300 292" class="fpipe"/>
 <path d="M177 279 L203 305 L203 279 L177 305 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="190" y1="279" x2="190" y2="270" class="fthin"/>
-<text x="190" y="272" text-anchor="middle" class="flab">relief valve</text>
+<text x="190" y="258" text-anchor="middle" class="flab">relief valve</text>
 <line x1="268" y1="292" x2="302" y2="292" class="fpipe" marker-end="url(#fah)"/>
 <text x="310" y="288">to a safe location</text>
 <text x="310" y="306">set 400, design 500, rupture 600 kPa abs</text>
-<text x="40" y="40">pressure is controlled by the condensation rate, and protected</text>
-<text x="40" y="58">in sequence: alarm at 360 kPa, relief at 400 kPa, rupture at 600 kPa</text>
+<text x="40" y="30">pressure is controlled by the condensation rate, and protected</text>
+<text x="40" y="48">in sequence: alarm at 360 kPa, relief at 400 kPa, rupture at 600 kPa</text>
 </svg></div>
 <p class="figcap"><b>Fig. U8 | Two vapour paths control the pressure; a third path protects the vessel.</b> The relief branch leaves the overhead line on the column side of the inlet valve, so it protects the column even when that valve is shut.</p>
 
@@ -1626,9 +1654,9 @@ Process: <a href="#process-products">Reflux and distillate</a>,
 <rect x="430" y="196" width="170" height="70" class="fbox"/>
 <rect x="432" y="232" width="166" height="32" class="fliq"/>
 <text x="515" y="222" text-anchor="middle">reboiler pool, 25 % level</text>
-<path d="M515 266 L515 292" class="fpipe"/>
-<path d="M502 271 L528 297 L528 271 L502 297 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="515" y1="271" x2="515" y2="262" class="fthin"/>
-<text x="430" y="312" class="flab">bottoms valve: 6 mol/s out</text>
+<path d="M515 266 L515 271" class="fpipe"/>
+<path d="M502 271 L528 297 L528 271 L502 297 Z" fill="#fff" stroke="#1a1a2e" stroke-width="1.6"/><line x1="515" y1="271" x2="515" y2="262" class="fthin"/><line x1="515" y1="297" x2="515" y2="314" class="fpipe" marker-end="url(#fah)"/>
+<text x="490" y="312" text-anchor="end" class="flab">bottoms valve: 6 mol/s out</text>
 </svg></div>
 <p class="figcap"><b>Fig. U9 | One inventory, two valves: the sum holds the level, the split holds the separation.</b> The reboiler pool has the same structure with one valve: the bottoms draw against the boilup and the liquid arriving from tray 1.</p>
 
