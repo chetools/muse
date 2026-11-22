@@ -570,3 +570,8 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   desktop and 390 px, zero clipped fragments; phone
   scroll width 375 px; SELFTEST pass on the local build
   (635.18 kg/h, 523.56 kW).
+- Published: main aed5610 pushed e2bec12 -> 175490a
+  (steam-ejector scope only, 23 files, blob-verified);
+  gh-pages c44ff8c -> 8ed9495 (only steam-ejector/index.html).
+  Pages run completed/success; served bytes byte-identical
+  to the v14 build (SHA-256 e662a7a1...).

@@ -112,3 +112,21 @@ Checks: test_balance.py 14 passed; build checks pass
 (622 KaTeX = 622); phone document scroll width 375 px at
 390 px; selftest pass (635.18 kg/h, 523.56 kW) on the
 byte-identical local build.
+
+## Publication
+
+- Main: commit aed5610, scoped push e2bec12 -> 175490a;
+  compare view 23 files, all in steam-ejector/; remote
+  blob SHAs match local git hash-object for build_page.py,
+  BUILD_LOG.md, progress-v14.md.
+- gh-pages: c44ff8c -> 8ed9495, only steam-ejector/index.html
+  changed; walkthrough_molab.py untouched. Pages run for
+  8ed9495 completed/success. Served bytes at
+  https://chetools.github.io/muse/steam-ejector/ are
+  byte-identical to dist/steam-ejector-v14.html
+  (4,526,400 bytes, SHA-256 e662a7a1...).
+- Selftest ?selftest=1: PASS (635.18 kg/h, 523.56 kW) on
+  the byte-identical local build; sandbox Chromium cannot
+  reach the public internet (the standing v8/v11/v13
+  limitation).
+- MoLab link: https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py
