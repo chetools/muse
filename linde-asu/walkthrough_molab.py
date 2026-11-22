@@ -278,7 +278,7 @@ def _(make_fig, np, product_flows, u_inputs):
     _fig1 = make_fig([dict(type='bar', name='Nitrogen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][0]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),
             dict(type='bar', name='Oxygen', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][1]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')]),
             dict(type='bar', name='Argon', x=['Feed', 'Oxygen product', 'Nitrogen product', 'Crude argon', 'Waste'], y=[float(flows[s][2]) for s in ('feed', 'gox', 'gan', 'crude', 'waste')])],
-           title='Component flow rates by stream', barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))
+           barmode='stack', xaxis_title='Stream', yaxis_title='Flow rate (kmol/h)', legend=dict(x=1.02, y=1.0, xanchor='left', yanchor='top'))
     _fig1
     return (crude_comp, flows, gan_comp, gox_comp, totals,)
 
@@ -387,7 +387,7 @@ def _(capacity_sweep, make_fig, u_inputs):
     sweep_caps, sweep_units, sweep_specs = capacity_sweep(u_inputs, [200.0, 500.0, 1000.0, 2000.0, 4000.0])
     print('Unit costs (USD/t):', [round(x, 1) for x in sweep_units])
     _fig1 = make_fig([dict(type='scatter', mode='lines+markers', name='Unit cost', x=sweep_caps, y=sweep_units)],
-           title='Unit oxygen cost against capacity', xaxis_title='Contained oxygen capacity (t/d)', yaxis_title='Unit cost (USD/t)', showlegend=False)
+           xaxis_title='Contained oxygen capacity (t/d)', yaxis_title='Unit cost (USD/t)', showlegend=False)
     _fig1
     return (sweep_caps, sweep_specs, sweep_units,)
 
