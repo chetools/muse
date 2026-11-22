@@ -37,5 +37,12 @@ this delta ships as v12).
   390px scrollWidth 375, no sideways scroll
   (shots/v12-theory-desktop.png, v12-app-desktop.png,
   v12-theory-phone.png).
-- [ ] Published: main and gh-pages heads, served-byte
-  comparison — filled in after the push below.
+- [x] Published: main local commit 120acc8 pushed as remote
+  head d03126c (steam-ejector scope only, 7 blobs, 0 deleted;
+  remote blob SHA of text/theory.md verified equal to local);
+  gh-pages local commit fdba726 pushed as remote head
+  9b7d2df (1 file, steam-ejector/index.html). Served bytes
+  SHA-256 85b8e7d08b39a539b4de5d2de37bdc05ec98f9508f73e67b8
+  ad05f1b398ee87b, equal to dist/steam-ejector-v12.html; the
+  served hash was observed changing from the v11 hash after
+  the gh-pages push, confirming the Pages deployment ran.
