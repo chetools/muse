@@ -132,6 +132,17 @@ existing sentence false.
 
 ## Publication
 
-- Published: see BUILD_LOG.md v20 entry for commit
-  hashes, compare summaries, and the served-byte
-  result.
+- Main content commit 951ab2e, pushed 99708c3 ->
+  56f77ac. Compare view: one commit, 9 files, all in
+  steam-ejector/ (template.html, build_page.py,
+  text/process.md, progress-v20.md, BUILD_LOG.md, four
+  shots in shots/v20-audit/).
+- gh-pages commit 8f19eae, pushed 8e00db9 -> a6b0b51.
+  Compare view: only steam-ejector/index.html modified;
+  walkthrough untouched. Pages run for a6b0b51
+  completed (success).
+- Served bytes: fetched
+  https://chetools.github.io/muse/steam-ejector/ and
+  compared with cmp — byte-identical to
+  dist/steam-ejector-v20.html (4,573,907 bytes,
+  SHA-256 7440c733...).

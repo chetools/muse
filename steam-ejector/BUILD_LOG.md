@@ -1001,3 +1001,14 @@ Economics 5, Safety 10); phone scroll width 375 px at
 390 px; three-class audit (shots/v20-audit/) clean at
 both widths; SELFTEST pass on the local build
 (635.18 kg/h, 523.56 kW), no page errors.
+
+- Published: main 951ab2e pushed 99708c3 -> 56f77ac
+  (compare view: one commit, 9 files, all in
+  steam-ejector/); gh-pages 8e00db9 -> a6b0b51 (compare
+  view: only steam-ejector/index.html; walkthrough
+  untouched). Pages run for a6b0b51 completed (success);
+  served bytes byte-identical to the v20 build
+  (4,573,907 bytes, SHA-256 7440c733...). Published-page
+  SELFTEST not run in a browser: sandbox Chromium cannot
+  reach the public internet; the verdict stands on the
+  byte-identical local build.
