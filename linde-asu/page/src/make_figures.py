@@ -340,23 +340,34 @@ def fig_ts():
     ax.plot([sA], [102], "o", color="black", ms=6)
     ax.annotate("stream 8: 102 K, 568 kPa", xy=(sA, 102),
                 textcoords="offset points", xytext=(-158, 6), fontsize=9.5)
-    # isentropic expansion to 138 kPa: vertical to 91 K (stream 9)
-    ax.annotate("", xy=(sA, 91), xytext=(sA, 101),
+    # isentropic limit: vertical to 84 K, where the path reaches the
+    # vapour boundary (dew point at 138 kPa, 84.4 K by equation of
+    # state) and condensation would begin
+    ax.plot([sA, sA], [102, 84], color=GREY, lw=1.0, ls=":")
+    ax.plot([sA], [84], "o", color=GREY, ms=5, mfc="white")
+    ax.annotate("isentropic limit: 84 K\n(reversible path reaches\nthe vapour boundary)",
+                xy=(sA, 84), textcoords="offset points", xytext=(-158, -6),
+                fontsize=9.5, color=GREY)
+    # actual turbine path: entropy rises, outlet is stream 9 at 91 K
+    sB = sA + 0.35
+    ax.annotate("", xy=(sB, 91.6), xytext=(sA, 101.4),
                 arrowprops=dict(arrowstyle="->", lw=1.4, color=C_N2))
-    ax.plot([sA], [91], "o", color=C_N2, ms=6)
-    ax.annotate("stream 9: 91 K, 138 kPa\nturbine X-101 (isentropic):\nwork leaves with the shaft",
-                xy=(sA, 91), textcoords="offset points", xytext=(16, -38),
+    ax.plot([sB], [91], "o", color=C_N2, ms=6)
+    ax.annotate("stream 9: 91 K, 138 kPa\nturbine X-101:\nwork leaves with the shaft",
+                xy=(sB, 91), textcoords="offset points", xytext=(16, -38),
                 fontsize=9.5, color=C_N2)
-    # isenthalpic throttling: to ~101 K at larger s
+    # isenthalpic throttling: to 94 K at larger s (equation of state;
+    # at 102 K the Joule-Thomson effect is far stronger than at
+    # ordinary temperatures)
     sC = sA + 0.85
-    ax.plot([sA, sA + 0.3, sC], [102, 101.4, 101.0], color=C_O2, ls="--", lw=1.3)
-    ax.plot([sC], [101.0], "s", color=C_O2, ms=6)
-    ax.annotate("valve (isenthalpic): 101 K, 138 kPa\nJoule–Thomson cooling $\\approx$ 0.2 K/bar only",
-                xy=(sC, 101.0), textcoords="offset points", xytext=(12, -16),
+    ax.plot([sA, sA + 0.3, sC], [102, 97.5, 94.0], color=C_O2, ls="--", lw=1.3)
+    ax.plot([sC], [94.0], "s", color=C_O2, ms=6)
+    ax.annotate("valve (isenthalpic): 94 K, 138 kPa\nno work recovered",
+                xy=(sC, 94.0), textcoords="offset points", xytext=(12, -16),
                 fontsize=9.5, color=C_O2)
-    # work area between the paths
-    ax.fill([sA, sA, sC], [91, 102, 101.0], color=C_N2, alpha=0.10, lw=0)
-    ax.text(sA + 0.27, 95.5, "work\nrecovered", fontsize=8.8, color=C_N2, ha="center")
+    # work area between the turbine and valve paths
+    ax.fill([sA, sB, sC], [102, 91, 94.0], color=C_N2, alpha=0.10, lw=0)
+    ax.text(sA + 0.30, 98.5, "work\nrecovered", fontsize=8.8, color=C_N2, ha="center")
     ax.set_xlim(1.2, 8.6)
     ax.set_ylim(78, 142)
     ax.set_xticks([])

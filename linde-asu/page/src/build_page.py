@@ -23,7 +23,7 @@ SRC = pathlib.Path(__file__).parent
 ROOT = SRC.parent
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "v31"
+VERSION = "v32"
 OUT = DIST / f"linde-asu-{VERSION}.html"
 
 # ---------------- Python boot code for the Pyodide worker ----------------
@@ -346,7 +346,7 @@ _after_crop("process-main-heat-exchanger-e-102", _new_fig(
     "The warm end sets the loss: the products leave only about 3 K below the entering air, and every kelvin of that approach is refrigeration the turbine must produce again. Schematic profiles from the stream states of the diagram; the cold line is the flow-weighted composite of streams 18 to 20 entering and streams 21 to 23 leaving."))
 _after_heading("process", "process-expansion-turbine-x-101", _new_fig(
     "process-fig-p7", "fig-p7-ts",
-    "The turbine cools because the gas does work: from the same inlet state, the isentropic path falls 11 K and the isenthalpic path about 1 K. Schematic temperature–entropy diagram for air; the dome is drawn for orientation and the entropy scale is not to scale."))
+    "Three expansions from stream 8 (102 K, 568 kPa) to 138 kPa, computed with an equation of state: the reversible path reaches 84 K, where condensation would begin; the turbine delivers stream 9 at 91 K and recovers work; a valve reaches 94 K and recovers none. Schematic temperature–entropy diagram for air; the dome is drawn for orientation and the entropy scale is not to scale."))
 _after_crop("process-pressure-column-t-101", _new_fig(
     "process-fig-p9", "fig-p9-txy",
     "The width of the lens is the ease of the separation: one contact across the nitrogen–oxygen lens takes the vapour from 0.40 to 0.71 in nitrogen mole fraction, while the argon–oxygen lens is so narrow that one contact changes the composition by only a few hundredths. Both lenses at 130 kPa, computed for an ideal solution from the anchor data of the Theory section."))
