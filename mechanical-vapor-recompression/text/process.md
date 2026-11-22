@@ -95,8 +95,14 @@ basis.
 ## Falling-film evaporator and separator
 
 In the evaporator E-102 the preheated feed is distributed over
-the top of a bundle of vertical tubes and flows down their inner
-walls as a thin film, boiling as it falls. Compressed vapour, the heating medium, condenses on the outside of the tubes in the heating element. A falling film gives a high heat-transfer
+the top of a bundle of vertical tubes, and the arrangement
+across the tube wall is the whole mechanism: the feed liquid is
+inside the tubes, flowing down the inner walls as a thin film
+and boiling as it falls; the compressed vapour is outside the
+tubes, filling the heating element — the shell space around
+the bundle inside the vessel — and condensing on the outer
+tube walls; and the heat passes through the tube wall from the
+condensing vapour to the boiling film. A falling film gives a high heat-transfer
 coefficient at a small temperature difference, which is precisely
 what MVR needs: every kelvin of temperature difference between
 the condensing vapour and the boiling liquid must be bought from
@@ -117,20 +123,29 @@ form of the turndown and overload limits discussed below.
 
 [[CROP_EVAP]]
 
-Fig. P2 | Falling-film evaporator and separator. Feed enters at
-the top and boils as a film inside the tubes; the mixture leaves
+Fig. P2 | Falling-film evaporator and separator: the liquid is
+inside the tubes and the heating vapour outside them. Feed
+enters at the top and boils as a film on the inner walls of
+the tubes (cool tint); the bundle stands in the heating
+element, the warm-tinted shell space around the tubes inside
+the vessel, where the compressed vapour condenses on the
+outer tube walls and the heat passes through the wall into
+the boiling film. The mixture leaves
 the tube bottoms, the vapour disengages in the separator space
 at the bottom, crosses the demister pads and rises beside the
-bundle to the head, and leaves for the compressor;
+shell to the head, and leaves for the compressor;
 concentrate leaves at the bottom. The demister is the pair of
 hatched pads at the foot of the bundle, at the entrances of the
-riser channels; each tube is drawn as a channel whose
-tinted core is the film and vapour inside it, and the dashed
-blue arrows beside the bundle show the vapour rising from the
+riser channels, and the dashed
+blue arrows beside the shell show the vapour rising from the
 tube bottoms to the head. At the frame edges, the feed
 enters the body from the left, the vapour (stream 3) leaves
 along the top to the right, and the concentrate (stream 6)
-leaves at the bottom. Fig. P8 shows the heating element, drawn as the steam chest against the right face of the body.
+leaves at the bottom; at the right edge the compressed
+vapour (stream 4) enters the shell space and the condensate
+(stream 5) leaves it, both shown in Fig. P8, and the
+non-condensable vent leaves the top of the shell space,
+shown in Fig. P5.
 
 ### Film, vapour and demister inside the evaporator
 
@@ -148,8 +163,11 @@ disengages from the liquid, crosses the demister pads at the
 entrances of the riser channels beside the heating shell, and
 rises through those channels to the vapour head, and so to the
 compressor. On the shell side, compressed vapour enters the
-heating element (stream 4), condenses on the outer tube wall,
-and its condensate leaves as stream 5. Liquid reaching the
+heating element (stream 4), condenses on the outer tube
+walls, and its condensate leaves as stream 5: the liquid is
+inside the tubes, the heating vapour is outside them, and
+the heat crosses the wall between them, as the orange arrows
+in the figure show. Liquid reaching the
 bottom collects in the sump, and concentrate leaves at the
 bottom (stream 6). Figure P4 shows
 a single ferrule: the notches in its rim are the passages that
@@ -157,7 +175,7 @@ meter the liquid onto the tube sheet [15].
 
 [[FIG_P3]]
 
-Fig. P3 | Inside the evaporator: film and vapour fall together inside the tubes, and the vapour disengages at the bottom, crosses the demister and rises beside the shell to the head. Cutaway of E-102, drawn after the falling-film arrangement of refs [5] and [15]: distributor tray and notched ferrules at the top, five tubes at close pitch in an open shell space, separator space and sump at the bottom. Heating vapour condenses on the outer tube wall, and concentrate collects in the sump.
+Fig. P3 | Inside the evaporator: film and vapour fall together inside the tubes, and the vapour disengages at the bottom, crosses the demister and rises beside the shell to the head. Cutaway of E-102, drawn after the falling-film arrangement of refs [5] and [15]: distributor tray and notched ferrules at the top, five tubes at close pitch in an open shell space, separator space and sump at the bottom. The liquid is inside the tubes — cool tint, with the film as the stronger blue strip on the inner wall — and the compressed vapour is outside them, in the warm-tinted shell space, condensing on the outer tube walls; the orange arrows are the heat flow through one tube wall, from the condensing vapour to the boiling film. Concentrate collects in the sump.
 
 [[FIG_P4]]
 
@@ -202,8 +220,8 @@ compressor.
 
 Fig. P5 | MVR compressor. All vapour raised in the separator is compressed from 43.6 kPa to 64.9 kPa; the discharge is superheated at 129 °C. At the left is the evaporator head;
 the feed line enters the body at the left
-edge; the evaporator body and the steam chest of the
-heating element continue below the frame (Fig. P2 and Fig. P8), and the
+edge; the evaporator body and the heating element around
+its bundle continue below the frame (Fig. P2 and Fig. P8), and the
 discharge line also continues below the frame, to the
 heating element (Fig. P8).
 
@@ -292,13 +310,15 @@ fouled surface — that the compressor alone cannot cover.
 [[CROP_COND]]
 
 Fig. P8 | Heating element condensation and heat recovery. Compressed
-vapour condenses at 88 °C; condensate leaves through the feed
-preheat train; start-up steam (dashed) and the non-condensable
-vent serve the heating element, and the vent leaves at the top of
-the frame. The evaporator body is at the left
+vapour condenses at 88 °C on the outer tube walls; condensate leaves through the feed
+preheat train; start-up steam (dashed) serves the heating element, and the non-condensable
+vent leaves the top of the heating element above
+the frame (Fig. P2). The evaporator body is at the left
 and continues above the frame (Fig. P2); the compressed vapour
-(stream 4) enters from the right, with the start-up steam
-joining it at the junction dot; the condensate line leaves
+(stream 4) enters from the right and into the shell space
+around the bundle, with the start-up steam
+joining it at the junction dot; the condensate (stream 5)
+leaves the shell space below it and runs
 along the bottom lane to the left, for the preheater
 (Fig. P1), and the concentrate (stream 6) crosses the lower
 part of the frame on its way out.

@@ -274,7 +274,7 @@ def fig_t4_ts():
 
 # ---------------------------------------------------------- Fig. P3
 def fig_p3_cutaway():
-    """Falling-film evaporator cutaway (v11 redraw).
+    """Falling-film evaporator cutaway (v11 redraw; v13 sides fix).
 
     Arrangement after the GEA Wiegand falling-film section:
     distribution head and tray at the top, film and vapour in
@@ -283,6 +283,14 @@ def fig_p3_cutaway():
     the riser channels beside the heating shell, vapour out
     at the top. Five tubes at close pitch in an open shell
     space (one pale tint for the whole shell side, no blocks).
+    The two sides of the tube wall are colour-coded as on the
+    sheet: the shell side (heating vapour) in the warm tint,
+    the tube interiors in the cool tint with the liquid film
+    as a stronger blue strip on the INNER wall, and orange
+    arrows for the heat flow through one tube wall. (In v11
+    the film strips were drawn outside the walls and the
+    interiors carried the shell tint, so the figure invited
+    exactly the opposite reading; both are corrected here.)
     """
     fig, ax = plt.subplots(figsize=(5.6, 7.6))
     ax.set_xlim(0, 10)
@@ -349,14 +357,19 @@ def fig_p3_cutaway():
     ax.add_patch(Rectangle((2.5, 3.3), 5.0, 0.25, facecolor=WALLC,
                            edgecolor=INK, lw=0.9, zorder=2))
     ax.annotate("tube sheet", xy=(8.05, 9.32), fontsize=8.5)
-    # tubes: walls, film on the inner wall, vapour core; film and
-    # vapour both flow DOWN (co-current falling film)
+    # tubes: the interior is the process side (cool tint), the
+    # film a stronger blue strip on the INNER wall, the vapour
+    # core between the strips; film and vapour both flow DOWN
+    # (co-current falling film)
     for i, cx in enumerate(tubes):
+        ax.add_patch(Rectangle((cx - 0.30, 3.55), 0.60, 5.65,
+                               facecolor=FILM, edgecolor="none",
+                               zorder=1))
         for sgn in (-1, 1):
             ax.plot([cx + sgn * 0.30, cx + sgn * 0.30], [3.55, 9.2],
                     color=INK, lw=lw)
             ax.add_patch(Rectangle(
-                (cx + sgn * 0.30 - (0.15 if sgn < 0 else 0), 3.55),
+                (cx + sgn * 0.30 - (0.15 if sgn > 0 else 0), 3.55),
                 0.15, 5.65, facecolor="#7fb3dd", edgecolor="none",
                 zorder=1))
         if i in (0, 2, 4):
@@ -372,6 +385,17 @@ def fig_p3_cutaway():
                 arrowprops=dict(arrowstyle="-", lw=0.7))
     ax.annotate("vapour core: vapour formed\nflows down with the film",
                 xy=(3.32, 5.2), xytext=(0.1, 4.35), fontsize=8.5,
+                arrowprops=dict(arrowstyle="-", lw=0.7))
+    # heat flow: orange arrows (the heat style, distinct from
+    # the flow arrows) through the right wall of the last tube,
+    # from the condensing vapour in the shell space into the
+    # boiling film on the inner wall
+    for hy in (6.6, 7.5):
+        ax.annotate("", xy=(6.83, hy), xytext=(7.42, hy),
+                    arrowprops=dict(arrowstyle="->", color=ORANGE,
+                                    lw=1.4))
+    ax.annotate("heat flow through\nthe tube wall",
+                xy=(7.45, 6.95), xytext=(8.15, 6.62), fontsize=8.5,
                 arrowprops=dict(arrowstyle="-", lw=0.7))
     # shell-side nozzles (drawn through the riser channel wall)
     ax.add_patch(Rectangle((7.4, 8.4), 1.25, 0.3, facecolor="#ffffff",

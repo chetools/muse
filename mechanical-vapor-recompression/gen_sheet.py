@@ -84,52 +84,73 @@ tag(105, 525, "P-101 feed pump")
 E.append('<rect x="250" y="330" width="100" height="60" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>')
 E.append('<path d="M 262 342 L 338 378 M 262 378 L 338 342" stroke="#1b1b1b" stroke-width="1.2" fill="none"/>')
 tag(300, 305, "E-101 condensate preheater")
-# Evaporator E-102: body x 470-600, y 180-480, separator head above
+# Evaporator E-102: body x 470-600, y 180-480, separator head above.
+# Two colour families, used identically in the Fig. P3 cutaway:
+# the heating side (compressed vapour and its condensate) is the
+# warm tint #f6e3d3; the process side (feed liquid, film,
+# generated vapour, concentrate) is the cool tint #cfe3f2.
 E.append('<rect x="470" y="180" width="130" height="300" fill="#ffffff" stroke="#1b1b1b" stroke-width="2"/>')
 E.append('<path d="M 470 180 A 65 40 0 0 1 600 180" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
+# Separator/sump space at the foot of the vessel (process side,
+# cool tint): the mixture leaving the tube bottoms collects here
+# and the concentrate leaves from it.
+E.append('<rect x="470" y="430" width="130" height="50" fill="#cfe3f2" stroke="none"/>')
+seg(470, 430, 490, 430, 1.2)
+seg(580, 430, 600, 430, 1.2)
+# Heating element: the shell space AROUND the tube bundle, inside
+# the vessel (heating side, warm tint). Compressed vapour fills
+# this space and condenses on the OUTER tube walls; the feed
+# liquid is inside the tubes. The label sits in the shell's top
+# band, above the tube tops.
+E.append('<rect x="490" y="230" width="90" height="204" fill="#f6e3d3" stroke="#1b1b1b" stroke-width="1.5"/>')
+text(535, 246, "heating element", 11)
 for tx in (495, 520, 545, 570):
-    # Each tube drawn as a channel: two walls with the film and
-    # vapour core between them tinted, so the tube side (film
-    # inside) reads against the vapour space around the bundle.
-    E.append(f'<rect x="{tx - 3}" y="240" width="6" height="190" '
-             f'fill="#dbe7f0" stroke="none"/>')
-    seg(tx - 3, 240, tx - 3, 430, 1.2)
-    seg(tx + 3, 240, tx + 3, 430, 1.2)
+    # Each tube drawn as a channel: two walls with the process
+    # side between them in the cool tint (the film on the inner
+    # wall and the vapour core inside the tube), read against
+    # the warm shell space around the bundle.
+    E.append(f'<rect x="{tx - 3}" y="254" width="6" height="176" '
+             f'fill="#cfe3f2" stroke="none"/>')
+    seg(tx - 3, 254, tx - 3, 430, 1.2)
+    seg(tx + 3, 254, tx + 3, 430, 1.2)
 # Vapour path (annotation, dashed blue): vapour leaving the tube
-# bottoms rises beside the bundle to the separator head.
-for ax_ in (482, 588):
-    E.append(f'<line x1="{ax_}" y1="426" x2="{ax_}" y2="248" '
+# bottoms disengages in the separator space and rises beside the
+# heating shell to the separator head. The right-hand riser is
+# drawn in segments where the shell nozzles (stream 4 in,
+# stream 5 out) cross its channel.
+E.append('<line x1="482" y1="426" x2="482" y2="271" '
+         'stroke="#0072B2" stroke-width="1.5" '
+         'stroke-dasharray="5 4"/>')
+E.append('<path d="M 482 262 l -4.5 9 h 9 z" fill="#0072B2"/>')
+for ry1, ry2 in ((426, 406), (390, 348), (332, 271)):
+    E.append(f'<line x1="588" y1="{ry1}" x2="588" y2="{ry2}" '
              f'stroke="#0072B2" stroke-width="1.5" '
              f'stroke-dasharray="5 4"/>')
-    E.append(f'<path d="M {ax_} 240 l -4.5 9 h 9 z" fill="#0072B2"/>')
-E.append('<rect x="470" y="430" width="130" height="14" fill="#dbe7f0" stroke="#1b1b1b" stroke-width="1.2"/>')
+E.append('<path d="M 588 262 l -4.5 9 h 9 z" fill="#0072B2"/>')
 text(535, 208, "E-102 falling-film", 12, weight="bold")
 text(535, 224, "evaporator", 12, weight="bold")
 text(535, 170, "separator", 10)
-# Heating element (steam chest) on the right face of E-102: compressed
-# vapour in at (660,340), vent off the top, condensate out at (660,450)
-E.append('<rect x="600" y="306" width="60" height="159" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
-text(658, 490, "heating element", 11)  # centre clear of the Fig. P2 crop window (right edge x=600), whose earlier position let the first letters enter that crop as a sliced fragment
 # Demister: mesh pads across the two vapour riser channels at
 # their entrances, at the foot of the bundle (y 418-426, on the
-# dashed riser lines at x = 482 and x = 588). The vapour
-# disengages in the separator space at the bottom of the vessel
-# and crosses a pad as it leaves that space and starts to rise
-# beside the bundle to the head. Label inside the bottom
-# chamber, led to both pads.
-for px in (474, 580):
-    E.append(f'<rect x="{px}" y="418" width="16" height="8" '
+# dashed riser lines at x = 482 and x = 588, each pad spanning
+# its channel between the vessel wall and the heating shell).
+# The vapour disengages in the separator space at the bottom of
+# the vessel and crosses a pad as it leaves that space and
+# starts to rise beside the shell to the head. Label inside the
+# bottom chamber, led to both pads.
+for px in (472, 580):
+    E.append(f'<rect x="{px}" y="418" width="18" height="8" '
              'fill="#ffffff" stroke="#1b1b1b" stroke-width="1.2"/>')
-    for hx in range(px + 2, px + 14, 6):
+    for hx in range(px + 2, px + 16, 6):
         E.append(f'<line x1="{hx}" y1="426" x2="{hx + 4}" y2="418" '
                  f'stroke="#1b1b1b" stroke-width="0.7"/>')
         E.append(f'<line x1="{hx}" y1="418" x2="{hx + 4}" y2="426" '
                  f'stroke="#1b1b1b" stroke-width="0.7"/>')
-E.append('<line x1="518" y1="462" x2="488" y2="430" '
+E.append('<line x1="508" y1="464" x2="484" y2="430" '
          'stroke="#1b1b1b" stroke-width="1"/>')
-E.append('<line x1="552" y1="462" x2="584" y2="430" '
+E.append('<line x1="532" y1="464" x2="586" y2="430" '
          'stroke="#1b1b1b" stroke-width="1"/>')
-text(535, 472, "demister", 10)
+text(515, 472, "demister", 10)
 # Compressor K-101 (top right)
 E.append('<circle cx="820" cy="215" r="40" fill="#f4f6f8" stroke="#1b1b1b" stroke-width="2"/>')
 E.append('<path d="M 795 235 L 820 190 L 845 235" fill="none" stroke="#1b1b1b" stroke-width="1.5"/>')
@@ -153,18 +174,22 @@ stream(3, [(565, 144), (565, 110), (820, 110), (820, 175)])
 arrow(820, 165, 90)
 stream_no(680, 110, 3)
 text(750, 88, "Vapour 5,000 kg/h, 80 °C, 43.6 kPa", 12)
-# Stream 4: compressor discharge -> right -> down lane x=930 -> heating element
-stream(4, [(860, 215), (930, 215), (930, 340), (660, 340)])
-arrow(670, 340, 180)
+# Stream 4: compressor discharge -> right -> down lane x=930 ->
+# left through the vessel wall into the heating element shell
+# space, crossing the right riser channel as a nozzle
+stream(4, [(860, 215), (930, 215), (930, 340), (580, 340)])
+arrow(612, 340, 180)
 stream_no(930, 290, 4)
 text(950, 300, "5,000 kg/h,", 11, anchor="start")
 text(950, 316, "129 °C, 64.9 kPa", 11, anchor="start")
-# Stream 5: heating element condensate -> right -> down lane x=900 ->
-# bottom perimeter lane y=620 -> up into preheater hot side
-stream(5, [(660, 450), (900, 450), (900, 620), (330, 620), (330, 390)])
+# Stream 5: condensate from low in the heating element shell
+# space -> out through the vessel wall -> right -> down lane
+# x=900 -> bottom perimeter lane y=620 -> up into preheater
+# hot side
+stream(5, [(580, 398), (900, 398), (900, 620), (330, 620), (330, 390)])
 arrow(330, 400, -90)
-stream_no(750, 450, 5)
-text(750, 435, "Condensate 5,000 kg/h", 12)
+stream_no(750, 398, 5)
+text(750, 383, "Condensate 5,000 kg/h", 12)
 text(345, 430, "condensate in", 11, anchor="start")
 text(258, 520, "condensate out", 11, anchor="end")
 # Condensate out of preheater hot side -> down lane x=270 -> left terminal
@@ -176,11 +201,13 @@ stream(6, [(535, 480), (535, 580), (770, 580)])
 arrow(760, 580)
 stream_no(650, 580, 6)
 text(650, 606, "Concentrate 20,000 kg/h", 12)
-# Non-condensable vent: heating element top (630,306) -> up
-stream("vent", [(630, 306), (630, 240)])
-arrow(630, 248, -90)
-text(642, 278, "non-condensable", 11, anchor="start")
-text(642, 294, "vent", 11, anchor="start")
+# Non-condensable vent: off the top of the heating element
+# shell space (580,240) -> out through the vessel wall to the
+# right, crossing the riser channel as a nozzle
+stream("vent", [(580, 240), (636, 240)])
+arrow(628, 240, 0)
+text(642, 232, "non-condensable", 11, anchor="start")
+text(642, 248, "vent", 11, anchor="start")
 # Start-up steam (dashed): right terminal -> junction on stream 4 lane
 stream("steam", [(1190, 340), (930, 340)], ' stroke-dasharray="6 4"')
 junction(930, 340)
