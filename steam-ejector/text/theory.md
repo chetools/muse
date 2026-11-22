@@ -7,7 +7,8 @@ is then slowed in a diffuser that converts velocity back into
 pressure. The discharge leaves at a pressure above the suction
 pressure. Staging repeats that step, with a condenser between
 stages that removes most of the vapour before the next stage. This
-panel derives every relation the App panel computes, in the order
+panel derives every relation the App panel computes except the
+cost relations, which the Economics panel carries, in the order
 the fluid meets them: the energy balance, the compressible-flow
 relations, the nozzle, the mixing throat, the diffuser, the stage
 ratio, and the interstage condenser. Each derivation is shown in
@@ -35,14 +36,15 @@ compression ratio $C_r$, the discharge pressure of a stage
 divided by its suction pressure, is dimensionless, as is the
 entrainment ratio $R_a$, the motive steam mass flow divided by
 the entrained mass flow of one stage. Pressures in this opening
-are in kPa absolute and mass flows in kg/h, the units of the App
-panel.
+are in kPa absolute, except the motive steam pressure, which the
+App takes in MPa absolute, and mass flows are in kg/h, the units
+of the App panel.
 
 1. One stage bridges only a limited ratio. A single stage works at a compression ratio of at most about 6 (§T9); the design basis compresses from a suction pressure of 2 kPa to atmospheric pressure, an overall ratio of 50.7, so it needs three stages at $C_r = 3.70$ each. Guided experiment: in the App, set the number of stages from 3 to 2. The compression ratio per stage rises from 3.70 to 7.12, the total motive steam rises from 635.2 kg/h to 946.1 kg/h, and warnings appear, because a ratio of 7.12 is outside the range of the entrainment correlation of §T10.
 2. The entrainment ratio sets the steam bill. Each stage draws $R_a$ kg of motive steam per kg of gas and vapour it entrains (§T10), so the total motive steam is the sum over stages of $R_a$ times the load each stage actually sees. Guided experiment: in the App, lower the motive steam pressure from 0.8 MPa to 0.4 MPa. Every stage's entrainment ratio in the stage table rises (stage 1 from 1.86 to 2.20), and the total motive steam rises from 635.2 kg/h to 754.1 kg/h: a weaker jet entrains less per kg of steam.
 3. Interstage condensation unloads the later stages. A condenser after each stage removes most of the vapour, so a later stage entrains a much smaller flow than the stage before it (§T11). Guided experiment: in the App, raise the condensable vapour flow from 100 kg/h to 300 kg/h. Stage 1 motive steam rises from 278.3 kg/h to 649.4 kg/h and the first intercondenser duty rises from 231.3 kW to 623.2 kW, while stages 2 and 3 are unchanged: the first condenser condenses the extra vapour, and the vapour that survives it is set by the cooling water, not by the inlet flow.
-4. Cooling-water temperature caps what a condenser can remove. The vapour surviving a condenser is the vapour in equilibrium at the condenser outlet temperature, which is the cooling-water temperature plus 5 K (§T11), so warmer cooling water passes more vapour to every later stage. Guided experiment: in the App, raise the cooling-water temperature from 25 °C to 35 °C. The total motive steam rises from 635.2 kg/h to 1,406.9 kg/h and the total condenser duty rises from 523.6 kW to 1,059.8 kW.
-5. Suction pressure is the strongest cost lever. Lower suction pressure raises both the overall compression ratio and every stage's entrainment ratio, and the motive steam sweep in the App shows the combined effect as a curve. Guided experiment: in the App, raise the suction pressure from 2 kPa to 5 kPa. The total motive steam falls from 635.2 kg/h to 437.2 kg/h, and the diamond on the sweep chart moves along the curve to the new point.
+4. Cooling-water temperature caps what a condenser can remove. The vapour surviving a condenser is the entering vapour or the vapour in equilibrium at the condenser outlet temperature, whichever is smaller; the outlet temperature is the cooling-water temperature plus 5 K (§T11). Warmer cooling water raises that equilibrium amount, so more vapour can survive each condenser and pass to the later stages. Guided experiment: in the App, raise the cooling-water temperature from 25 °C to 35 °C. The total motive steam rises from 635.2 kg/h to 1,406.9 kg/h and the total condenser duty rises from 523.6 kW to 1,059.8 kW.
+5. Suction pressure is a major cost lever. Lower suction pressure raises both the overall compression ratio and every stage's entrainment ratio, and the motive steam sweep in the App shows the combined effect as a curve. Guided experiment: in the App, raise the suction pressure from 2 kPa to 5 kPa. The total motive steam falls from 635.2 kg/h to 437.2 kg/h, and the diamond on the sweep chart moves along the curve to the new point.
 
 ## How the demonstration is done
 
@@ -51,7 +53,7 @@ pressure, the dry gas flow, the condensable vapour flow, the
 motive steam pressure, the cooling-water temperature, the number
 of stages, and two economics assumptions, the steam price and
 the operating hours. Its outputs are the metric cards (total
-motive steam with its uncertainty band, compression ratio per
+motive steam, its uncertainty band, compression ratio per
 stage, total condenser duty, cooling-water flow, and annual
 operating cost), the chart of stage suction pressures through
 the train, the sweep chart of total motive steam against suction
@@ -1070,11 +1072,13 @@ atmosphere, divided into equal stage ratios, must keep each
 stage at a compression ratio the entrainment correlation covers.
 Key point 2 then prices each stage: its motive steam is its
 entrainment ratio times the load it sees. Key points 3 and 4 set
-that load: the interstage condensers remove the condensable part
-of it, down to the vapour pressure the cooling water allows, so
-the cooling-water temperature — a utility condition, not an
-ejector dimension — moves the steam bill as strongly as the
-suction pressure does in key point 5. A design that looks cheap
+that load: the interstage condensers remove vapour down to the
+amount in equilibrium at the outlet temperature where the
+entering vapour exceeds that amount, and remove none where it
+does not. The cooling-water temperature — a utility condition,
+not an ejector dimension — thus enters the steam bill through
+the load each later stage sees, alongside the suction pressure
+of key point 5. A design that looks cheap
 at 25 °C cooling water and dear at 35 °C is the same hardware;
 the model separates the two because the condenser limit of §T11
 is inside the stage calculation, not an afterthought.

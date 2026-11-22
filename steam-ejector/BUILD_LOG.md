@@ -493,6 +493,27 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   1280px (223.5 / 1041.5); 390px scrollWidth 375, no sideways
   scroll (shots/v11-*.png); live-run SELFTEST pass through
   the local CDN cache.
+
+## v12 — Theory framing wording fixes (2026-11-22)
+
+- Text only (text/theory.md), from an independent review of
+  the v9 Theory framing. No model, number, structure or
+  layout changes. Full record: progress-v12.md.
+- Key point 4 and the Conclusion now state the condenser
+  equilibrium cap correctly (surviving vapour is the entering
+  vapour or the equilibrium amount at the outlet temperature,
+  whichever is smaller); the Key points preamble now excepts
+  the motive steam pressure (MPa absolute, the App's unit)
+  from the kPa statement; Key point 5's heading drops the
+  "strongest" superlative; the Conclusion drops the
+  cooling-water/suction-pressure cross-comparison; the
+  uncertainty band is listed as its own metric card; the
+  opening derivation claim is qualified for the cost
+  relations (Economics panel).
+- Verification: test_balance.py 14 passed; build checks pass
+  (622 KaTeX expressions); live-run SELFTEST pass through
+  the local CDN cache; desktop and 390px layout spot-checks
+  unchanged (shots/v12-*.png).
 - Published: main 0038dad pushed as remote head 8e6a60b
   (steam-ejector scope only, blob-verified); gh-pages
   a7a5052 -> 5ebf257 (only steam-ejector/index.html). Pages
