@@ -474,3 +474,22 @@ v5–v7 dist files untouched (sha256 re-verified after the build).
   (622 KaTeX expressions); browser QA at 1440px, 2560px and
   390px (shots/v10-*.png); live-run SELFTEST pass through the
   local CDN cache.
+
+## v11 — header aligned with the full reading region (2026-11-22)
+
+- Layout only; no text, model, number, or panel-order changes.
+- Defect (user screenshot of v10): the header block (title,
+  intro, runtime status, tab bar) was capped at the reading
+  measure and lined up with the reading column alone, leaving
+  the side contents hanging off-center to the left. Per
+  AGENTS.md Hard Rule 13, header and tab bar now widen inside
+  the min-width:1100px block to var(--measure) + 240px — the
+  full reading region (contents column + gap + reading
+  column) as one centered block. Reading column unchanged at
+  546px. Full record: progress-v11.md.
+- Verification: test_balance.py 14 passed; build checks pass
+  (622 KaTeX expressions); measured header edges equal to the
+  reading-region edges exactly at 2560px (863.5 / 1681.5) and
+  1280px (223.5 / 1041.5); 390px scrollWidth 375, no sideways
+  scroll (shots/v11-*.png); live-run SELFTEST pass through
+  the local CDN cache.

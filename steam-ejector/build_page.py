@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model  # noqa: E402
 
-VERSION = "v10"
+VERSION = "v11"
 OUT = HERE / "dist" / f"steam-ejector-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
