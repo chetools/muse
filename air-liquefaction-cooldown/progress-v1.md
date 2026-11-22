@@ -102,6 +102,28 @@ boxes), not from the drawing code:
   endpoint moved to (815, 262) → endpoint failure. The checker
   fails on each planted defect and passes the clean figure.
 
+## Publication
+
+- Sources: chetools/muse main, scoped push 3d03595 → e0eea57
+  (46 files under air-liquefaction-cooldown/ only; build_page.py
+  blob 83e2a1dc… verified identical via the API).
+- Site: gh-pages scoped push 4c77638 → a34c4c4
+  (air-liquefaction-cooldown/index.html,
+  air-liquefaction-cooldown/walkthrough_molab.py, root index.html
+  entry). Notebook blob bf8a0229… verified identical via the API.
+- Pages build 1394022085: started on the push, finished with
+  status "built", no error.
+- Served bytes: https://chetools.github.io/muse/
+  air-liquefaction-cooldown/ fetched with curl — SHA-256
+  08fc07c6…, 3 718 087 bytes, byte-identical to the verified
+  build output.
+- A browser run against the live URL is not possible from this
+  sandbox: Chromium's tunnel to any external HTTPS host fails
+  through the egress proxy (ERR_TUNNEL_CONNECTION_FAILED for
+  chetools.github.io as for the CDN), while curl succeeds. The
+  published bytes are the bytes that passed the full battery
+  locally, selftest included.
+
 ## Deviations from the brief, recorded
 
 - Guided experiment 5 as briefed (reduce exchanger size until the
