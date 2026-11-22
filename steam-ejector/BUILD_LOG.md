@@ -944,3 +944,13 @@ after the marker-ID fix, every label whole and every
 leader traceable to one part; UNNECESSARY — none.
 Phone scroll width 375 px at 390 px; SELFTEST pass on
 the local build (635.18 kg/h, 523.56 kW), no page errors.
+
+- Published: main 30dcf17 pushed 0be55c3 -> 21a86e7
+  (steam-ejector scope only, 11 files in the compare
+  view, all in scope, blob-verified); gh-pages b30f9fb ->
+  6f0d57a (only steam-ejector/index.html). Pages run for
+  6f0d57a completed (success); served bytes byte-identical
+  to the v19 build (4,573,626 bytes, SHA-256 7e13def4...).
+  Published-page SELFTEST not run in a browser: sandbox
+  Chromium cannot reach the public internet; the verdict
+  stands on the byte-identical local build.

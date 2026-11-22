@@ -185,3 +185,31 @@ each placement now carries unique marker IDs.
 - Selftest ?selftest=1 on the byte-identical local build:
   see publication record below (sandbox Chromium cannot
   reach the public internet, as for v15–v18).
+
+## Publication record (v19)
+
+- Selftest ?selftest=1 on the local build (Pyodide CDN
+  mirrored from the local cache, per the review/qa_browser.py
+  technique): PASS — total motive steam 635.18 kg/h, total
+  condenser duty 523.56 kW, no page errors. Re-run at
+  publication time on the final dist file with the same
+  verdict. Published-page selftest stands on the
+  byte-identical local build: sandbox Chromium cannot
+  reach the public internet, as for v15–v18.
+- Pre-publication sanity check at publication time:
+  test_balance.py 14 passed; dist/steam-ejector-v19.html
+  present (4,573,626 bytes, SHA-256 7e13def4…), built by
+  build_page.py at VERSION = "v19"; both Fig. P11
+  placements present in the built file with their unique
+  marker-ID sets (ahMp/ahSp/ahXp and ahMt/ahSt/ahXt) and
+  four "Fig. P11" references.
+- Main: commit 30dcf17 pushed 0be55c3 -> 21a86e7 (compare
+  view: 11 files, all in steam-ejector/; remote blob SHAs
+  match local git hash-object for build_page.py,
+  progress-v19.md and BUILD_LOG.md).
+- gh-pages: b30f9fb -> 6f0d57a (compare view: only
+  steam-ejector/index.html modified; walkthrough
+  untouched). Pages run for 6f0d57a completed (success).
+  Served bytes byte-identical to dist/steam-ejector-v19.html
+  (4,573,626 bytes, SHA-256 7e13def4…).
+  MoLab link: https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py
