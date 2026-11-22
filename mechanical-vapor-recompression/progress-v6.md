@@ -60,3 +60,8 @@
   display replaced by the live run; screenshots inspected for
   every crop (all edges), the sheet, both fixed tables, the
   phone cost chart and all three phone Economics tables.
+- Publication: main 74af427 -> 585ca09 (25 in-scope files);
+  gh-pages c89ace1 -> 994e2b3 (index.html only). Served page
+  byte-identical to dist/mechanical-vapor-recompression-v6.html
+  (3,775,122 bytes, SHA-256
+  946074813e984a843d5c7028781e77ad7c2f5223fe28c66e51e990899ad54c55).
