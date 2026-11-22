@@ -767,3 +767,33 @@ pass (622 KaTeX = 622); SELFTEST pass on the local build
   Pages run for f680bc0 completed/success; served bytes
   byte-identical to the v16 build (4,528,020 bytes,
   SHA-256 27e49fdd...).
+
+## v17 — writing-skill prose rewrite (2026-11-22)
+
+Prose rewrite of the Process, Theory, Economics and Safety
+panels under the writing skill (rewrite programme). Model,
+numbers, sheet and design basis unchanged. A previous build
+run stopped on a formatting defect — the closing marker of
+the detail block at theory.md line 617 stood at the end of a
+paragraph line; fixed as formatting only (detail openings
+and standalone closings in theory.md count 24 and 24).
+
+- Verification: test_balance.py 14 passed; build checks pass
+  (624 KaTeX = 624); browser QA at 1280, 2560 and 390 px,
+  every panel screenshot-inspected (shots/v17-*.png), no
+  absurd, confusing or unnecessary elements; header edges
+  at 2560 px equal the reading-region edges exactly
+  (863.5 / 1681.5); phone scroll width 375 px on every
+  panel; precomputed display replaced in place by the first
+  live run; auto-run reproduces 437.2 kg/h at 5 kPa and
+  635.2 kg/h at the design basis; SELFTEST pass on the
+  local build (635.18 kg/h, 523.56 kW).
+- Published: main ccd64b7 pushed 13c241b -> 9402a3e
+  (steam-ejector scope only, 23 files, compare checked);
+  gh-pages 79c39ac pushed bcfd5eb -> 173cb0c (only
+  steam-ejector/index.html). Pages run completed/success;
+  served bytes byte-identical to the v17 build
+  (4,560,375 bytes, SHA-256 a070a869...). Published-page
+  SELFTEST not run in a browser: sandbox Chromium cannot
+  reach the public internet; the verdict stands on the
+  byte-identical local build.

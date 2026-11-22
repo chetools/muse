@@ -36,5 +36,16 @@ covers the build, verification and publication run.
   no absurd, confusing or unnecessary elements found;
   detail block opens and its displayed equations render
   numbered.
-- [ ] Publication: main and gh-pages scoped pushes and
-  served-bytes verification — recorded below on completion.
+- [x] Publication: main ccd64b7 pushed 13c241b -> 9402a3e
+  (23 files, steam-ejector scope only, compare view
+  checked, no out-of-scope files); gh-pages 79c39ac
+  pushed bcfd5eb -> 173cb0c (only steam-ejector/index.html,
+  compare view checked). Pages run for 173cb0c
+  completed/success; served bytes byte-identical to
+  dist/steam-ejector-v17.html (4,560,375 bytes, SHA-256
+  a070a869...). Published-page SELFTEST: headless
+  Chromium in the sandbox cannot reach the public
+  internet (ERR_TUNNEL_CONNECTION_FAILED), so the verdict
+  stands on the byte-identical local build, per skill
+  section 8 step 5.
+  MoLab link: https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py
