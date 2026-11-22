@@ -72,10 +72,14 @@ of the chemical-process page skill (measured crops).
   pass on the local build (635.18 kg/h, 523.56 kW), no
   page errors (Pyodide CDN mirrored from the local
   cache, per review/qa_browser.py technique).
-- [ ] Publication: main push (steam-ejector scope only,
-  compare view checked); gh-pages index.html replaced;
-  Pages run confirmed; served bytes byte-identical to
-  dist/steam-ejector-v18.html. Published-page SELFTEST
-  stands on the byte-identical local build: sandbox
-  Chromium cannot reach the public internet.
+- [x] Publication: main 0a7c112 pushed ed98372 ->
+  2e99274 (25 files in the compare view, all in
+  steam-ejector scope, key blobs verified against
+  git hash-object); gh-pages 6d743a8 -> 16c2fd3 (only
+  steam-ejector/index.html); Pages run for 16c2fd3
+  completed (built); served bytes byte-identical to
+  dist/steam-ejector-v18.html (4,560,375 bytes, SHA-256
+  20c87b6c...). Published-page SELFTEST stands on the
+  byte-identical local build: sandbox Chromium cannot
+  reach the public internet.
   MoLab link: https://molab.marimo.io/github/chetools/muse/blob/gh-pages/steam-ejector/walkthrough_molab.py

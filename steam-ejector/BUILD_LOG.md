@@ -870,3 +870,13 @@ Measured on the issued files (getBBox ink, Chromium):
 Verification: test_balance.py 14 passed; build checks
 pass (624 KaTeX = 624); SELFTEST pass on the local build
 (635.18 kg/h, 523.56 kW), no page errors.
+
+- Published: main 0a7c112 pushed ed98372 -> 2e99274
+  (steam-ejector scope only, 25 files in the compare
+  view, all in scope, blob-verified); gh-pages 6d743a8 ->
+  16c2fd3 (only steam-ejector/index.html). Pages run for
+  16c2fd3 completed (built); served bytes byte-identical
+  to the v18 build (4,560,375 bytes, SHA-256 20c87b6c...).
+  Published-page SELFTEST not run in a browser: sandbox
+  Chromium cannot reach the public internet; the verdict
+  stands on the byte-identical local build.
