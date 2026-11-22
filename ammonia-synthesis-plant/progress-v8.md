@@ -43,4 +43,13 @@ no console or page errors. Screenshots for every panel at desktop,
 Build: dist/ammonia-synthesis-plant-v8.html, 5,558,822 bytes,
 SHA-256 4e0470ad91a97399f8ae1e2d064f984c7067df3325762bc0c8e38700f0c147d2.
 
-Publication record appended after the pushes.
+Publication: main source push dbe439c -> 51e6ec3 (scoped to
+ammonia-synthesis-plant; compare view showed exactly the 22
+in-scope files, no out-of-scope files, no deletions). gh-pages push
+581212d -> f8b4758 (scoped; compare view showed exactly
+ammonia-synthesis-plant/index.html and
+ammonia-synthesis-plant/walkthrough_molab.py). The gh-pages root
+index already linked the page and was not changed. Served page
+bytes at https://chetools.github.io/muse/ammonia-synthesis-plant/
+are byte-identical to the v8 build (SHA-256 above), and the served
+walkthrough_molab.py is byte-identical to the regenerated notebook.
