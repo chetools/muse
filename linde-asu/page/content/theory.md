@@ -40,7 +40,19 @@ For each product, the recovered component is fixed by a recovery. The oxygen rec
 
 The waste component flow rates are then determined, not specified: for each component, the waste flow rate equals the feed flow rate minus the three product flow rates. The overall and per-component balances close exactly by construction, and the verification value of the construction is the feasibility test: a negative waste component shows that the specified recoveries and purities are jointly infeasible, because the products would withdraw more of that component than the feed contains.
 
-Worked example. Take a feed flow rate $F$ of 1000 kmol/h, an oxygen recovery $R_{O2}$ of 0.943 and an oxygen purity $x_{O2}$ of 99.0 mol percent. The feed oxygen flow rate is $1000 \times 0.2095 = 209.5$ kmol/h, renormalised in the model to 209.6 kmol/h. The oxygen component flow rate in the oxygen product is $0.943 \times 209.6 = 197.6$ kmol/h. Division by the purity as a fraction, $197.6 / 0.990$, gives an oxygen product flow rate of 199.6 kmol/h. The calculation gives the sample value of the diagram, 200 kmol/h, to the precision of the drawing; the difference is the rounding of the sample basis.
+Worked example. Take a feed flow rate $F$ of 1000 kmol/h, an oxygen recovery $R_{O2}$ of 0.943 and an oxygen purity $x_{O2}$ of 99.0 mol percent. The feed oxygen flow rate is
+
+$$1000 \times 0.2095 = 209.5$$
+
+in kmol/h, renormalised in the model to 209.6 kmol/h. The oxygen component flow rate in the oxygen product is
+
+$$0.943 \times 209.6 = 197.6$$
+
+in kmol/h. Division by the purity as a fraction,
+
+$$197.6 / 0.990$$
+
+gives an oxygen product flow rate of 199.6 kmol/h. The calculation gives the sample value of the diagram, 200 kmol/h, to the precision of the drawing; the difference is the rounding of the sample basis.
 
 ## Mass flow rates and production rates
 
@@ -52,15 +64,39 @@ The main air compressor power is derived from the work of compression per kilomo
 
 $$dw = -p \, dV$$
 
-For an ideal gas at constant temperature $T_1$ (K), the molar volume is $V = R \, T_1 / p$, where $R$ is the universal gas constant (8.314 kJ/(kmol K), where K denotes kelvin). Substitution gives $dV = -R \, T_1 \, dp / p^2$, and the work per kilomole becomes $dw = R \, T_1 \, dp / p$. Integration from the suction pressure $p_1$ (kPa) to the discharge pressure $p_2$ (kPa) gives the isothermal work per kilomole, $R \, T_1 \ln(p_2/p_1)$, where $\ln$ denotes the natural logarithm. The logarithm is the content of the derivation: work accumulates in equal increments of the logarithm of pressure, not of pressure, so doubling the pressure ratio adds a fixed increment of work rather than doubling the work.
+For an ideal gas at constant temperature $T_1$ (K), the molar volume is
+
+$$V = R \, T_1 / p$$
+
+where $R$ is the universal gas constant (8.314 kJ/(kmol K), where K denotes kelvin). Substitution gives
+
+$$dV = -R \, T_1 \, dp / p^2$$
+
+and the work per kilomole becomes
+
+$$dw = R \, T_1 \, dp / p$$
+
+Integration from the suction pressure $p_1$ (kPa) to the discharge pressure $p_2$ (kPa) gives the isothermal work per kilomole,
+
+$$R \, T_1 \ln(p_2/p_1)$$
+
+where $\ln$ denotes the natural logarithm. The logarithm is the content of the derivation: work accumulates in equal increments of the logarithm of pressure, not of pressure, so doubling the pressure ratio adds a fixed increment of work rather than doubling the work.
 
 Multiplication by the molar flow rate and division by the isothermal efficiency gives the main air compressor power, denoted $P_{MAC}$ (kW), where kW denotes kilowatt:
 
 $$P_{MAC} = \frac{\dot{n} \, R \, T_1 \, \ln(p_2/p_1)}{\eta_{iso}} \tag{1}$$
 
-where $\dot{n}$ is the molar flow rate (kmol/s) and $\eta_{iso}$ is the isothermal efficiency, defined as the isothermal ideal power divided by the actual power, which accounts for the departure of a real intercooled multi-stage machine from the isothermal ideal. The isothermal equation is the appropriate idealisation for an intercooled compressor, whose stage outlets are returned toward the suction temperature by the intercoolers. The molar flow rate $\dot{n}$ is the feed flow rate $F$ (kmol/h) divided by 3600 s/h, where s denotes second: at the default basis, $\dot{n} = 1000 / 3600 = 0.278$ kmol/s.
+where $\dot{n}$ is the molar flow rate (kmol/s) and $\eta_{iso}$ is the isothermal efficiency, defined as the isothermal ideal power divided by the actual power, which accounts for the departure of a real intercooled multi-stage machine from the isothermal ideal. The isothermal equation is the appropriate idealisation for an intercooled compressor, whose stage outlets are returned toward the suction temperature by the intercoolers. The molar flow rate $\dot{n}$ is the feed flow rate $F$ (kmol/h) divided by 3600 s/h, where s denotes second. At the default basis,
 
-Worked example. At the default inputs ($\dot{n} = 0.278$ kmol/s, $T_1 = 293$ K, $p_2 = 600$ kPa, $p_1 = 101$ kPa, $\eta_{iso} = 0.80$), Eq. (1) gives $P_{MAC} = 0.2778 \times 8.314 \times 293 \times \ln(600/101) / 0.80 = 1507$ kW. The calculation gives the value the App tab displays for the compressor power, before the corrections of the next paragraph.
+$$\dot{n} = 1000 / 3600 = 0.278$$
+
+in kmol/s.
+
+Worked example. At the default inputs ($\dot{n} = 0.278$ kmol/s, $T_1 = 293$ K, $p_2 = 600$ kPa, $p_1 = 101$ kPa, $\eta_{iso} = 0.80$), Eq. (1) gives
+
+$$P_{MAC} = 0.2778 \times 8.314 \times 293 \times \ln(600/101) / 0.80 = 1507$$
+
+in kW. The calculation gives the value the App tab displays for the compressor power, before the corrections of the next paragraph.
 
 The total plant power, denoted $P$ (kW), is the compressor power corrected by two stated fractions: an auxiliary fraction (default 0.10) for cooling-water circulation, purification regeneration heating and product handling, and an expansion turbine work credit (default 0.05) for the shaft work recovered at the turboexpander. Both fractions are empirical allowances of the model, stated as fractions of the compressor power; neither is computed from the expander stream of the diagram, and a change in either fraction moves the total power in direct proportion. The specific power (kWh/t), where kWh denotes kilowatt-hour, is the total power divided by the contained oxygen production rate (t/h). At the default inputs the total power is 1582 kW and the specific power is 250 kWh/t. Reported values for commercial cryogenic plants lie in the range of approximately 200 to 260 kWh per tonne of oxygen at purities of 95 to 99.5 mol percent [8][9][10] (Economics section); the default inputs give a value at the upper part of that range, because the isothermal efficiency and the pressure are set conservatively. The model computes no purity penalty: the compressor power depends on the feed flow rate alone, so a change of oxygen purity at fixed recovery leaves the specific power unchanged, against the penalty of approximately one fifth between 95 and 99.5 mol percent reported in the cited study [9]. The purity input is used only where the balance uses it, in the product flow rates.
 
@@ -78,7 +114,11 @@ The second-law efficiency, denoted $\eta_{II}$ (dimensionless), is the minimum w
 
 $$\eta_{II} = \frac{W_{min}}{P} \tag{3}$$
 
-At the default inputs, $\eta_{II} = 330 / 1582 = 0.21$. Across the reported commercial range of specific power, 200 to 260 kWh/t, the second-law efficiency of a cryogenic plant on this basis lies between approximately 0.20 and 0.26. The difference between the total power and the minimum work is the sum of the irreversibilities of the plant: compressor inefficiency, heat transfer across finite temperature differences in the main heat exchanger, throttling, pressure drop and heat leak into the cold box. The model does not apportion the difference among those terms.
+At the default inputs,
+
+$$\eta_{II} = 330 / 1582 = 0.21$$
+
+Across the reported commercial range of specific power, 200 to 260 kWh/t, the second-law efficiency of a cryogenic plant on this basis lies between approximately 0.20 and 0.26. The difference between the total power and the minimum work is the sum of the irreversibilities of the plant: compressor inefficiency, heat transfer across finite temperature differences in the main heat exchanger, throttling, pressure drop and heat leak into the cold box. The model does not apportion the difference among those terms.
 
 ## Saturation temperature at the condenser/reboiler pressures
 
@@ -95,15 +135,47 @@ The capital cost estimate, denoted $C$ (USD), where USD denotes United States do
 
 $$C = C_{ref} \left( \frac{Q}{Q_{ref}} \right)^{e} \tag{5}$$
 
-where $Q$ is the contained oxygen capacity (t/d) of the case, $Q_{ref}$ is the reference capacity (2470 t/d), $C_{ref}$ is the reference capital cost (118 million USD in 2018 dollars, the 2018 Lipetsk project of approximately 100 million euros at the 2018 average exchange rate of 1.18 USD per euro [39], for a plant of 72,000 normal cubic metres per hour (Nm3/h)) and $e$ is the capacity exponent (0.70). A normal cubic metre is the volume of a gas at 0 degrees Celsius and 101.325 kPa; at the density of oxygen under those conditions, 1.429 kg/Nm3, the reference capacity is $72{,}000 \times 1.429 \times 24 / 1000 = 2470$ t/d. The exponent expresses that cost grows more slowly than capacity, because vessel wall area, instrumentation, controls and site works do not double when throughput doubles [37][38]. Doubling capacity at an exponent of 0.70 multiplies cost by $2^{0.70} = 1.62$ and reduces capital cost per tonne of capacity by approximately 19 percent. The scaling relation is used only within a single-train configuration; a capacity that requires parallel trains does not follow the relation. The exponent is a modelling assumption of this page, taken from the general chemical-plant range of 0.6 to 0.7 [37][38]: the verified sources collected for the Economics section contain project cost points but no air-separation-specific scaling exponent, and the page states the assumption wherever the estimate is used. All capital costs of the model are in 2018 dollars; escalation to a later year multiplies a cost by the ratio of the Chemical Engineering Plant Cost Index of the later year to that of 2018, and no escalation is applied in the model.
+where $Q$ is the contained oxygen capacity (t/d) of the case, $Q_{ref}$ is the reference capacity (2470 t/d), $C_{ref}$ is the reference capital cost (118 million USD in 2018 dollars, the 2018 Lipetsk project of approximately 100 million euros at the 2018 average exchange rate of 1.18 USD per euro [39], for a plant of 72,000 normal cubic metres per hour (Nm3/h)) and $e$ is the capacity exponent (0.70). A normal cubic metre is the volume of a gas at 0 degrees Celsius and 101.325 kPa; at the density of oxygen under those conditions, 1.429 kg/Nm3, the reference capacity is
 
-Annual costs combine three terms. The electricity cost is the total power multiplied by the operating hours per year (default 8000 h/yr, an availability of 91.3 percent of the 8760 hours of a year) and the electricity price (USD/kWh). The non-electricity operating cost is taken as a fraction (default 0.04) of the capital cost per year; the fraction is anchored to a commercial report of maintenance at 2 to 4 percent of capital cost per year [17], and its use for maintenance, labour and consumables together is an assumption of the model, stated here and in the Economics section. The capital charge is the capital cost multiplied by the capital recovery factor, which annualises an investment at discount rate $i$ over a plant life of $n$ years (yr). The capital recovery factor, denoted $CRF$ (1/yr), follows from the annuity condition that $n$ equal annual charges $A$ (USD/yr), discounted at the rate $i$, repay the investment $C$: $C = A \sum_{k=1}^{n} (1+i)^{-k}$, where $k$ is the year index. The sum is a geometric series with the closed form $\left[1 - (1+i)^{-n}\right] / i$. Solving for the ratio $A / C$ gives
+$$72{,}000 \times 1.429 \times 24 / 1000 = 2470$$
+
+in t/d. The exponent expresses that cost grows more slowly than capacity, because vessel wall area, instrumentation, controls and site works do not double when throughput doubles [37][38]. Doubling capacity at an exponent of 0.70 multiplies cost by $2^{0.70} = 1.62$ and reduces capital cost per tonne of capacity by approximately 19 percent. The scaling relation is used only within a single-train configuration; a capacity that requires parallel trains does not follow the relation. The exponent is a modelling assumption of this page, taken from the general chemical-plant range of 0.6 to 0.7 [37][38]: the verified sources collected for the Economics section contain project cost points but no air-separation-specific scaling exponent, and the page states the assumption wherever the estimate is used. All capital costs of the model are in 2018 dollars; escalation to a later year multiplies a cost by the ratio of the Chemical Engineering Plant Cost Index of the later year to that of 2018, and no escalation is applied in the model.
+
+Annual costs combine three terms. The electricity cost is the total power multiplied by the operating hours per year (default 8000 h/yr, an availability of 91.3 percent of the 8760 hours of a year) and the electricity price (USD/kWh). The non-electricity operating cost is taken as a fraction (default 0.04) of the capital cost per year; the fraction is anchored to a commercial report of maintenance at 2 to 4 percent of capital cost per year [17], and its use for maintenance, labour and consumables together is an assumption of the model, stated here and in the Economics section. The capital charge is the capital cost multiplied by the capital recovery factor, which annualises an investment at discount rate $i$ over a plant life of $n$ years (yr). The capital recovery factor, denoted $CRF$ (1/yr), follows from the annuity condition that $n$ equal annual charges $A$ (USD/yr), discounted at the rate $i$, repay the investment $C$:
+
+$$C = A \sum_{k=1}^{n} (1+i)^{-k}$$
+
+where $k$ is the year index. The sum is a geometric series with the closed form
+
+$$\left[1 - (1+i)^{-n}\right] / i$$
+
+Solving for the ratio $A / C$ gives
 
 $$CRF = \frac{i \, (1+i)^{n}}{(1+i)^{n} - 1} \tag{6}$$
 
 At the default inputs ($i = 0.08$, $n = 25$ yr), $CRF = 0.0937$ per year: the annual charge is 9.37 percent of the capital cost, against 4.00 percent for interest-free spreading over the same life, which is the limit of Eq. (6) as $i$ approaches zero, $CRF \to 1/n$.
 
-Worked example. At the default inputs the contained oxygen capacity is 151.8 t/d, and Eq. (5) gives a capital cost of $118 \times (151.8/2470)^{0.70} = 16.7$ million USD. The annual terms are: capital charge $0.0937 \times 16.7 = 1.57$ million USD/yr; electricity $1582 \times 8000 \times 0.07 = 0.89$ million USD/yr; non-electricity operating cost $0.04 \times 16.7 = 0.67$ million USD/yr. Annual contained oxygen production is $151.8 \times 8000 / 24 = 50{,}589$ t/yr. Division of each annual term by the annual production gives the unit cost by term: capital charge 31.0 USD/t, electricity 17.5 USD/t and non-electricity operating cost 13.2 USD/t, a unit cost of 61.8 USD/t in 2018 dollars, with all cost allocated to the oxygen product and no credit for the nitrogen or argon products. The unit cost (USD/t) in general is the sum of the three annual terms divided by the annual contained oxygen production (t/yr). The capacity sweep of the App tab varies the feed flow rate so that the contained oxygen capacity takes each swept value, holding all other inputs fixed; the specific power is invariant along the sweep because the compressor equation is linear in flow rate, and the decline of the unit cost along the sweep is the dilution of the scaled capital cost. In a real plant the specific power also falls with size, because larger compressors and cold boxes are more efficient; the model does not compute that effect, and the sweep understates the benefit of scale on the energy term.
+Worked example. At the default inputs the contained oxygen capacity is 151.8 t/d, and Eq. (5) gives a capital cost of
+
+$$118 \times (151.8/2470)^{0.70} = 16.7$$
+
+in million USD. The annual terms are the capital charge,
+
+$$0.0937 \times 16.7 = 1.57$$
+
+in million USD/yr; the electricity cost,
+
+$$1582 \times 8000 \times 0.07 = 0.89$$
+
+in million USD/yr; and the non-electricity operating cost,
+
+$$0.04 \times 16.7 = 0.67$$
+
+in million USD/yr. The annual contained oxygen production is
+
+$$151.8 \times 8000 / 24 = 50{,}589$$
+
+in t/yr. Division of each annual term by the annual production gives the unit cost by term: capital charge 31.0 USD/t, electricity 17.5 USD/t and non-electricity operating cost 13.2 USD/t, a unit cost of 61.8 USD/t in 2018 dollars, with all cost allocated to the oxygen product and no credit for the nitrogen or argon products. The unit cost (USD/t) in general is the sum of the three annual terms divided by the annual contained oxygen production (t/yr). The capacity sweep of the App tab varies the feed flow rate so that the contained oxygen capacity takes each swept value, holding all other inputs fixed; the specific power is invariant along the sweep because the compressor equation is linear in flow rate, and the decline of the unit cost along the sweep is the dilution of the scaled capital cost. In a real plant the specific power also falls with size, because larger compressors and cold boxes are more efficient; the model does not compute that effect, and the sweep understates the benefit of scale on the energy term.
 
 ## Validation
 
