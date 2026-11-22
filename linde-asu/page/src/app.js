@@ -2,10 +2,10 @@
 // Python (Pyodide worker); this script only presents results.
 const BOOT_LINES = @@BOOT_LINES@@;
 const MODEL_B64 = @@MODEL_B64@@;
-const TABS = ["theory", "app", "process", "economics", "safety", "code", "references"];
+const TABS = ["process", "theory", "app", "economics", "safety", "code", "references"];
 
 function activateFromHash() {
-  let h = (location.hash || "#theory").slice(1);
+  let h = (location.hash || "#process").slice(1);
   let tab = TABS.includes(h) ? h : (TABS.find(t => h.startsWith(t + "-")) || "theory");
   document.querySelectorAll("section.tab").forEach(s => s.classList.toggle("active", s.id === "tab-" + tab));
   document.querySelectorAll("#tabnav a").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));

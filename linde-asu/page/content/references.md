@@ -79,3 +79,5 @@
 [39] European Central Bank. Euro foreign exchange reference rates, annual average 2018 (1.1810 US dollars per euro). https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html
 
 [40] National Institute of Standards and Technology. NIST Chemistry WebBook (vapour pressure, latent heat of vaporisation and boiling point data for nitrogen, oxygen and argon; saturation temperatures from the reference equations of state). https://webbook.nist.gov/chemistry/
+
+[41] Linde Engineering. Air Separation Plants: History and Technological Progress, 2019 (process description: rectification in plain terms, single-column and double-column principles, the combined condenser/reboiler, and the five process steps). https://assets.linde.com/-/media/global/engineering/engineering/home/products-and-services/process-plants/air-separation-plants/air-separation-plants-history-and-technological-progress-2019.pdf
