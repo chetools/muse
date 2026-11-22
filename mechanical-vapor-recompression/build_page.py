@@ -26,7 +26,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "python"))
 from balance import DESIGN, economics, run_model, sweep_lift  # noqa: E402
 
-VERSION = "v5"
+VERSION = "v6"
 OUT = HERE / "dist" / f"mechanical-vapor-recompression-{VERSION}.html"
 KATEX = Path.home() / ("workspace/ts-spaces/supersonic-flow-and-"
                        "speed-of-sound/assets/katex")
@@ -208,10 +208,13 @@ def md_to_html(md_text):
                 rows.append(cells)
                 i += 1
             thead = "".join(f"<th>{inline_md(c)}</th>" for c in rows[0])
+            # rows[1] is the |---| separator row: it is syntax, not a
+            # body row, and must never be emitted (v6 fix: it rendered
+            # as a literal "---" row under the header).
             tbody = "".join(
                 "<tr>" + "".join(f"<td>{inline_md(c)}</td>" for c in r)
-                + "</tr>" for r in rows[1:])
-            out.append(f"<div class=\"tablewrap\"><table><tr>{thead}</tr>{tbody}</table></div>")
+                + "</tr>" for r in rows[2:])
+            out.append(f"<div class=\"tablewrap\"><table class=\"mdtable\"><tr>{thead}</tr>{tbody}</table></div>")
             continue
         if re.match(r"^[-*]\s+", stripped):
             items = []
@@ -286,11 +289,24 @@ def design_table_html(result):
             "20,000 kg/h plus condensate 5,000 kg/h out, exactly.</p>")
 
 
+CROP_SCALE = 0.9  # px per sheet unit, identical for every crop (v6)
+
+
 def crop_svg(sheet_svg, viewbox, caption):
-    """Re-embed the sheet with a cropped viewBox as a figure."""
+    """Re-embed the sheet with a cropped viewBox as a figure.
+
+    The figure is displayed at CROP_SCALE px per sheet unit for
+    every crop, so the whole series shares one scale; on a narrower
+    screen than the figure, max-width scales that crop down.
+    """
     inner = sheet_svg
     inner = inner.replace(
         'viewBox="0 0 1200 660"', f'viewBox="{viewbox}"', 1)
+    vb_w = float(viewbox.split()[2])
+    px = round(vb_w * CROP_SCALE)
+    inner = inner.replace(
+        "<svg ", f'<svg style="width:{px}px;max-width:100%;height:auto" ',
+        1)
     cap = f"<figcaption>{caption}</figcaption>" if caption else ""
     return "<figure>" + inner + cap + "</figure>"
 
@@ -307,7 +323,7 @@ def econ_tables():
                 m=m, pel=r["p_el_kw"], esp=r["e_sp_kwh_t"],
                 cap=e["capital_usd"], ann=e["annual_mvr_usd"],
                 pb=e["payback_yr"]))
-    cap = ("<div class=\"tablewrap\"><table><tr><th>Evaporation "
+    cap = ("<div class=\"tablewrap\"><table class=\"econtable\"><tr><th>Evaporation "
            "(kg/h)</th><th>Electric power (kW)</th><th>Specific "
            "energy (kWh/t)</th><th>Installed capital (USD)</th>"
            "<th>Annual MVR cost (USD/yr)</th><th>Payback (yr)</th>"
@@ -323,7 +339,7 @@ def econ_tables():
             e = economics(r, elec_price_usd_per_kwh=price)
             cells.append(f"<td>{e['payback_yr']:.2f}</td>")
         sens_rows.append("<tr>" + "".join(cells) + "</tr>")
-    sens = ("<div class=\"tablewrap\"><table><tr><th>Temperature "
+    sens = ("<div class=\"tablewrap\"><table class=\"econtable\"><tr><th>Temperature "
             "lift (K)</th><th>Electricity 0.05 USD/kWh</th>"
             "<th>0.10 USD/kWh</th><th>0.20 USD/kWh</th></tr>"
             + "".join(sens_rows) + "</table></div>"
@@ -488,17 +504,22 @@ def main():
     sheet_svg = (HERE / "sheet.svg").read_text(encoding="utf-8")
     if "</svg>" not in sheet_svg:
         raise RuntimeError("sheet.svg is not a complete SVG document")
-    panels["process"] = panels["process"].replace("[[SHEET]]", sheet_svg)
+    panels["process"] = panels["process"].replace(
+        "[[SHEET]]", '<div class="sheetwrap">' + sheet_svg + "</div>")
     panels["process"] = panels["process"].replace(
         "[[STREAM_TABLE]]", design_table_html(result))
+    # v6 crop windows, measured against sheet.svg geometry: every
+    # label inside a window is whole, no neighbouring item intrudes
+    # as a fragment, and only stream lines cross an edge (named in
+    # the Fig. P1-P4 captions). One scale for the series: CROP_SCALE.
     crops = {
-        "[[CROP_FEED]]": ("30 250 360 290",
+        "[[CROP_FEED]]": ("30 262 376 344",
                           "Fig. P1 detail in the text below."),
-        "[[CROP_EVAP]]": ("430 60 220 500",
+        "[[CROP_EVAP]]": ("448 100 170 388",
                           "Fig. P2 detail in the text below."),
-        "[[CROP_COMP]]": ("520 60 640 295",
+        "[[CROP_COMP]]": ("448 72 582 246",
                           "Fig. P3 detail in the text below."),
-        "[[CROP_COND]]": ("430 240 740 300",
+        "[[CROP_COND]]": ("455 316 625 218",
                           "Fig. P4 detail in the text below."),
     }
     for token, (vb, _cap) in crops.items():
@@ -544,6 +565,20 @@ def main():
     for span in re.findall(r"\$[^$<>]+\$", panel_html):
         assert "\\" not in span, f"unrendered mathematics: {span!r}"
     html_out = fill_template(template, values)
+    # A markdown separator row emitted as a table cell is a build
+    # failure (v6 fix: it rendered as a literal "---" body row).
+    assert "<td>---</td>" not in html_out and "<th>---</th>" not in html_out, \
+        "markdown separator row rendered as a table cell"
+    # Every crop figure is displayed at CROP_SCALE px per sheet unit.
+    crop_matches = list(re.finditer(
+        r'style="width:(\d+)px[^>]*viewBox="[\d.]+ [\d.]+ ([\d.]+) ',
+        html_out))
+    assert len(crop_matches) == 4, \
+        f"expected 4 crop figures, found {len(crop_matches)}"
+    for m in crop_matches:
+        px, vb_w = float(m.group(1)), float(m.group(2))
+        assert abs(px / vb_w - CROP_SCALE) < 0.01, \
+            f"crop scale {px / vb_w} != {CROP_SCALE}"
     katex_count = html_out.count('class="katex"')
     assert katex_count >= len(tex_all), (katex_count, len(tex_all))
     assert html_mod.escape(balance_src) in html_out, \

@@ -53,6 +53,11 @@ button.help{font:600 13px/1 system-ui,sans-serif;background:var(--tint);border:1
 figure{margin:20px 0;min-width:0}
 figcaption{font:14px/1.4 system-ui,sans-serif;color:var(--ink2);margin-top:8px}
 figure svg{max-width:100%;height:auto}
+.sheetwrap{overflow:auto;border:1px solid var(--rule);margin:20px 0;scrollbar-width:thin;scrollbar-color:#999 #e4e4e4}
+.sheetwrap svg{width:1200px;max-width:none;height:auto;display:block}
+.sheetwrap::-webkit-scrollbar{height:10px;width:10px}
+.sheetwrap::-webkit-scrollbar-track{background:#e4e4e4}
+.sheetwrap::-webkit-scrollbar-thumb{background:#999;border-radius:5px}
 table{border-collapse:collapse;width:100%;font:15px/1.45 system-ui,sans-serif;margin:12px 0;font-variant-numeric:tabular-nums}
 th,td{border:1px solid var(--rule);padding:6px 8px;text-align:right;min-width:0}
 th:first-child,td:first-child{text-align:left}
@@ -64,7 +69,11 @@ details p,details table{margin:8px 0}
 aside.sidenote{border-left:3px solid var(--accent);background:var(--tint);padding:10px 14px;margin:12px 0;font-size:15px}
 aside.sidenote strong{font-family:system-ui,sans-serif}
 code{font:14px/1.4 ui-monospace,monospace;background:var(--tint);padding:1px 4px}
-pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow:auto;font:13px/1.5 ui-monospace,monospace}
+pre{background:var(--tint);border:1px solid var(--rule);padding:12px;overflow:auto;font:13px/1.5 ui-monospace,monospace;scrollbar-width:thin;scrollbar-color:#999 #e4e4e4;box-shadow:inset -18px 0 18px -18px rgba(0,0,0,.45),inset 18px 0 18px -18px rgba(0,0,0,.18)}
+pre::-webkit-scrollbar{height:10px}
+pre::-webkit-scrollbar-track{background:#e4e4e4}
+pre::-webkit-scrollbar-thumb{background:#999;border-radius:5px}
+.mdtable th,.mdtable td{text-align:left}
 pre code{background:none;padding:0}
 .inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
 .inputs label{font:600 14px/1.4 system-ui,sans-serif;display:block}
@@ -92,7 +101,27 @@ section.long h2,section.long h3{content-visibility:auto;contain-intrinsic-size:a
 .skip{position:absolute;left:-9999px}
 .skip:focus{position:static;left:0}
 footer{max-width:var(--measure);margin:40px auto 0;padding:16px;border-top:1px solid var(--rule);font:14px/1.5 system-ui,sans-serif;color:var(--ink2)}
-@media(max-width:480px){body{font-size:16px}h1{font-size:24px}nav.tabs button{padding:10px 7px;font-size:14px}}
+@media(max-width:480px){body{font-size:16px}h1{font-size:24px}nav.tabs button{padding:10px 7px;font-size:14px}
+table{font-size:12.5px}
+th,td{padding:4px 5px}
+.mdtable{table-layout:fixed;width:100%}
+.mdtable th,.mdtable td{overflow-wrap:break-word}
+#panel-theory .mdtable th:first-child{width:30%}
+#panel-economics .mdtable,#panel-economics .mdtable tbody,#panel-economics .mdtable tr,#panel-economics .mdtable td{display:block;width:100%}
+#panel-economics .mdtable tr{border-bottom:2px solid var(--rule);padding:4px 0}
+#panel-economics .mdtable tr:first-child{display:none}
+#panel-economics .mdtable td{border:none;padding:2px 5px}
+#panel-economics .mdtable td:first-child{font-weight:600}
+table.econtable{font-size:11.5px;table-layout:fixed;width:100%}
+.econtable th,.econtable td{padding:3px 4px}
+.econtable th{font-size:9px;font-weight:600;overflow-wrap:anywhere}
+.econtable td{overflow-wrap:break-word}
+.econtable th:nth-child(1){width:20%}
+.econtable th:nth-child(2){width:16%}
+.econtable th:nth-child(3){width:16%}
+.econtable th:nth-child(4){width:18%}
+.econtable th:nth-child(5){width:16%}
+.econtable th:nth-child(6){width:14%}}
 </style>
 </head>
 <body>
@@ -208,7 +237,7 @@ opening. The notebook file is
 @@REFERENCES_HTML@@
 </section>
 </main>
-<footer>
+<footer id="pagenote">
 <p>Pressures are absolute unless stated. Flows are mass flow rates.
 Costs are in 2026 USD and follow the relations of the Economics
 panel.</p>
@@ -226,6 +255,7 @@ function showPanel(name){
     document.getElementById("panel-"+p).hidden=(p!==name);
     document.getElementById("tab-"+p).setAttribute("aria-selected", p===name?"true":"false");
   });
+  document.getElementById("pagenote").style.display=(name==="code"||name==="references")?"none":"";
   if(history.replaceState){history.replaceState(null,"","#"+name);}
   refitCharts();
 }
@@ -267,7 +297,10 @@ function renderPayload(d,precomputed){
   var lx=d.sweep.map(function(p){return p.lift;});
   var ly=d.sweep.map(function(p){return p.e_sp;});
   Plotly.react("chart-lift",[{x:lx,y:ly,mode:"lines+markers",name:"Specific energy"+suffix,line:{color:"#0072B2"},marker:{symbol:"circle"}},{x:[d.dt_lift_k],y:[d.e_sp_kwh_t],mode:"markers",name:"Current point"+suffix,marker:{symbol:"diamond",size:12,color:"#D55E00"}}],{margin:{l:70,r:120,t:10,b:50},xaxis:{title:"Temperature lift (K)"},yaxis:{title:"Specific energy (kWh/t)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
-  Plotly.react("chart-cost",[{x:["MVR (electricity)","Steam single-effect"],y:[d.annual_mvr_usd,d.annual_steam_usd],type:"bar",name:"Annual operating cost"+suffix,marker:{color:["#0072B2","#D55E00"]}}],{margin:{l:80,r:120,t:10,b:50},yaxis:{title:"Annual cost (USD/yr)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}});
+  var narrow=window.innerWidth<700;
+  var costCats=narrow?["MVR<br>(electricity)","Steam<br>single-effect"]:["MVR (electricity)","Steam single-effect"];
+  var costLayout=narrow?{margin:{l:70,r:16,t:10,b:70},yaxis:{title:"Annual cost (USD/yr)"},xaxis:{tickfont:{size:12}},legend:{orientation:"h",x:0,y:-0.18,yanchor:"top"}}:{margin:{l:80,r:120,t:10,b:50},yaxis:{title:"Annual cost (USD/yr)"},legend:{x:1.02,y:1,xanchor:"left",yanchor:"top"}};
+  Plotly.react("chart-cost",[{x:costCats,y:[d.annual_mvr_usd,d.annual_steam_usd],type:"bar",name:"Annual operating cost"+suffix,marker:{color:["#0072B2","#D55E00"]}}],costLayout);
   var rows=[["Suction pressure (kPa)",fmt(d.p1_kpa,1)],["Discharge pressure (kPa)",fmt(d.p2_kpa,1)],["Condensing temperature (°C)",fmt(d.t_cond_c,1)],["Transfer temperature difference (K)",fmt(d.dt_tr_k,1)],["Isentropic work (kJ/kg)",fmt(d.w_s_kj_kg,1)],["Actual work (kJ/kg)",fmt(d.w_kj_kg,1)],["Discharge temperature (°C)",fmt(d.t_discharge_c,1)],["Shaft power (kW)",fmt(d.shaft_kw,1)],["Heat-transfer area (m2)",fmt(d.area_m2,1)],["Condensing-side duty (kW)",fmt(d.q_cond_kw,0)],["Feed (kg/h)",fmt(d.feed_kg_h,0)],["Concentrate (kg/h)",fmt(d.concentrate_kg_h,0)],["Condensate (kg/h)",fmt(d.condensate_kg_h,0)],["Live steam, single-effect (kg/h)",fmt(d.steam_single_kg_h,0)]];
   document.getElementById("resulttable").innerHTML="<h3>Derived quantities"+suffix+"</h3><div class=\"tablewrap\"><table><tr><th>Quantity</th><th>Value</th></tr>"+rows.map(function(r){return "<tr><td>"+r[0]+"</td><td>"+r[1]+"</td></tr>";}).join("")+"</table></div>";
   document.getElementById("warnings").innerHTML="";
