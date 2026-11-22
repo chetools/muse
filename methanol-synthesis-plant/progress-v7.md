@@ -107,9 +107,16 @@ References step.
 Build: dist/methanol-synthesis-plant-v7.html, 6,003,097 bytes,
 SHA-256 544f640e3defd27e771a1f13e6246cedb1951cfe4c68b6ef5dbc5d9d0e2c3707.
 
-Publication: main source push PENDING (scoped to
-methanol-synthesis-plant; compare view to be checked). gh-pages
-push PENDING (scoped to methanol-synthesis-plant/index.html and
-methanol-synthesis-plant/walkthrough_molab.py). The gh-pages root
-index already links the page and is not changed. Served-bytes
-verification follows the pushes.
+Publication: main source push 28d552f -> deea783 (scoped to
+methanol-synthesis-plant; the pushed commit contains exactly the
+23 in-scope files, no out-of-scope files, no deletions). gh-pages
+push 2f42591 -> 8ee6602 (scoped; the pushed commit contains exactly
+methanol-synthesis-plant/index.html and
+methanol-synthesis-plant/walkthrough_molab.py, with
+walkthrough.html inherited unchanged). The gh-pages root index
+already links the page and was not changed. Served page bytes at
+https://chetools.github.io/muse/methanol-synthesis-plant/ are
+byte-identical to the v7 build (6,003,097 bytes, SHA-256 above),
+and the served walkthrough_molab.py is byte-identical to the
+regenerated notebook (14,807 bytes, SHA-256
+068176b19a4e27f5dfbd29924fc5ddacac2ebee37414e9a0133c923db9f46f6a).
