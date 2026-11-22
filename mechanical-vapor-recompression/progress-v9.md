@@ -36,4 +36,11 @@ notebook is unchanged (its sources did not change), SHA-256
 f4b4567e57011a5a762a3f1090729866cd1b2d3dfbf5f634a9997223ea4f2550,
 byte-identical to the copy already published on gh-pages.
 
-Publication record appended after the pushes.
+Publication: main scoped push 37c96c2 -> 3d7f62c (compare view:
+29 files, all in scope); gh-pages scoped push 173cb0c -> 261cb87
+(compare view: mechanical-vapor-recompression/index.html only;
+the root index already linked the page and the notebook was
+unchanged). Served page fetched after the Pages build started:
+byte-identical to dist/mechanical-vapor-recompression-v9.html
+(3,796,207 bytes, SHA-256
+043b1b8af9846c4a584a02ed4fcf5dd691a4c5b000d2ec6f2a6e6f4e01303cb1).
