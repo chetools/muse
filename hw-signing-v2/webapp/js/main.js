@@ -116,7 +116,7 @@ function clearYtCheck() {
   ytDur = null;
   $('ytConfirmChk').checked = false;
   $('ytStatus').textContent =
-    'The recording changed, so the earlier link check no longer stands. Check the link again.';
+    'Recording changed: the earlier link check no longer stands. Check the link again.';
   refreshYtDurationUi();
   updateJobEnabled();
 }
@@ -167,11 +167,9 @@ function renderConfig() {
   if (cfg.course) parts.push('Course: ' + cfg.course);
   if (cfg.asg) parts.push('Assignment: ' + cfg.asg);
   if (cfg.pkg) parts.push('Prompt package: ' + cfg.pkg);
-  if (cfg.ph) parts.push('Package content hash: ' + cfg.ph.slice(0, 12) + '…');
-  if (cfg.worker) parts.push('Grading Worker: ' + cfg.worker);
   $('cfgLine').textContent = parts.length
     ? 'Configuration — ' + parts.join(' · ')
-    : 'Configuration: none in this link. The teacher’s configured link sets the course, the prompt package, and the grading Worker.';
+    : 'Configuration: none in this link. The teacher’s configured link sets the course, the prompt package, and the grading service.';
   if (cfg.setup) {
     $('setupSection').hidden = false;
     $('suWorker').value = cfg.worker || '';
@@ -221,7 +219,7 @@ $('loadBtn').addEventListener('click', async () => {
   } catch (err) {
     $('loadProg').hidden = true;
     $('loadStatus').textContent = 'Model did not load.';
-    showError('The model could not be loaded. Check the connection and try again.', err, $('loadBtn'));
+    showError('Model loading failed. Check the connection and try again.', err, $('loadBtn'));
     $('loadBtn').disabled = false;
   }
 });
@@ -235,7 +233,7 @@ function setAudioMeta() {
     (sourceName ? 'Source file: ' + scrubMetadata(sourceName, scrubWords()) + ' · ' : '') +
     'duration ' + durationS.toFixed(1) + ' s' +
     ' · extracted audio: ' + AUDIO_FILE_NAME +
-    ' · SHA-256 ' + audioSha;
+    ' · recording hash (SHA-256) ' + audioSha;
 }
 
 // Compute the Chromaprint (2.6.0) once from the normalised WAV's own
@@ -328,7 +326,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
     refreshFingerprint();
   } catch (err) {
     $('mediaStatus').textContent = 'That file could not be decoded.';
-    showError('The chosen file could not be decoded as audio or video by this browser.', err, $('mediaFile'));
+    showError('This browser could not decode the chosen file as audio or video.', err, $('mediaFile'));
   }
 });
 
@@ -358,7 +356,7 @@ async function renderCacheList() {
       namePart + when + ' · ' + formatDuration(entry.duration_s) + ' · ' +
       (entry.size_bytes / 1048576).toFixed(1) + ' MB · ' +
       (entry.complete ? 'transcribed' : 'partly transcribed (' + entry.chunks + ' pieces)') +
-      ' · fingerprint ' + entry.audio_sha256.slice(0, 12) + '…' + wordsPart;
+      ' · recording hash ' + entry.audio_sha256.slice(0, 12) + '…' + wordsPart;
     row.append(meta);
     const restoreBtn = document.createElement('button');
     restoreBtn.textContent = 'Restore';
@@ -375,7 +373,7 @@ async function renderCacheList() {
         updateRunEnabled();
         await adoptCacheRecord(record, 'Recording restored from this computer.');
         refreshFingerprint();
-      } catch (err) { showError('The saved recording could not be restored.', err, restoreBtn); }
+      } catch (err) { showError('That saved recording could not be restored.', err, restoreBtn); }
     });
     const delBtn = document.createElement('button');
     delBtn.textContent = 'Delete';
@@ -416,7 +414,7 @@ $('runBtn').addEventListener('click', async () => {
   const timer = setInterval(() => {
     $('runStatus').textContent = 'Transcribing… ' + lastPct +
       ' % of the audio · ' + Math.round((performance.now() - t0) / 1000) +
-      ' s elapsed. The page may appear to pause while a piece is processed.';
+      ' s elapsed; the page may appear to pause while a piece is processed.';
   }, 1000);
   try {
     await transcribePcm(model, pcm, durationS, {
@@ -451,7 +449,7 @@ $('runBtn').addEventListener('click', async () => {
     }
     $('runStatus').textContent = chunks.length
       ? 'Done — ' + chunks.length + ' piece(s).'
-      : 'The model returned no text for this recording.';
+      : 'No text came back from the model for this recording.';
   } catch (err) {
     showError('Transcription failed or stopped partway. Pieces already shown are kept and saved; choosing the same file again resumes.', err, $('runBtn'));
     $('runStatus').textContent = '';
@@ -475,7 +473,7 @@ function refreshDerived() {
       ? 'Removal list active: ' + words.length + ' entr' + (words.length === 1 ? 'y' : 'ies') + '.'
       : '';
   } else {
-    $('transcriptBox').textContent = 'The transcript will appear here.';
+    $('transcriptBox').textContent = 'Your transcript will appear here.';
   }
   renderSuspects(sc);
   updateJobEnabled();
@@ -526,20 +524,20 @@ function refreshYtDurationUi() {
       ytDur.diffS.toFixed(1) + ' s).';
     row.hidden = true;
   } else if (band === 'confirm') {
-    el.textContent = 'The video runs ' + ytDur.videoS.toFixed(1) +
-      ' s and the audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
+    el.textContent = 'Video ' + ytDur.videoS.toFixed(1) +
+      ' s, audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
       ytDur.diffS.toFixed(1) + ' s. Play the preview above; if it is this ' +
       'recording, tick the confirmation below.';
     row.hidden = false;
   } else if (band === 'block') {
-    el.textContent = 'The video runs ' + ytDur.videoS.toFixed(1) +
-      ' s but the audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
+    el.textContent = 'Video ' + ytDur.videoS.toFixed(1) +
+      ' s, audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
       ytDur.diffS.toFixed(1) + ' s, beyond the allowed ' + ytDur.tolS.toFixed(1) +
       ' s. This link cannot be used for this recording: enter the link for ' +
-      'this recording, or clear the link to send for practice grading only.';
+      'this recording, or clear the link and send without it.';
     row.hidden = true;
   } else {
-    el.textContent = 'The preview has not reported the video’s length, so ' +
+    el.textContent = 'No length has been reported by the preview, so ' +
       'the lengths could not be compared. Play the preview above; if it is ' +
       'this recording, tick the confirmation below.';
     row.hidden = false;
@@ -559,20 +557,20 @@ function refreshFinDurationUi() {
       finDur.diffS.toFixed(1) + ' s).';
     row.hidden = true;
   } else if (band === 'confirm') {
-    el.textContent = 'The video runs ' + finDur.videoS.toFixed(1) +
-      ' s and the selected job’s audio ' + finDur.audioS.toFixed(1) +
+    el.textContent = 'Video ' + finDur.videoS.toFixed(1) +
+      ' s, selected job’s audio ' + finDur.audioS.toFixed(1) +
       ' s — a difference of ' + finDur.diffS.toFixed(1) + ' s. Play the ' +
       'preview above; if it is that job’s recording, tick the confirmation below.';
     row.hidden = false;
   } else if (band === 'block') {
-    el.textContent = 'The video runs ' + finDur.videoS.toFixed(1) +
-      ' s but the selected job’s audio ' + finDur.audioS.toFixed(1) +
+    el.textContent = 'Video ' + finDur.videoS.toFixed(1) +
+      ' s, selected job’s audio ' + finDur.audioS.toFixed(1) +
       ' s — a difference of ' + finDur.diffS.toFixed(1) + ' s, beyond the ' +
       'allowed ' + finDur.tolS.toFixed(1) + ' s. This link cannot be used ' +
       'for this job.';
     row.hidden = true;
   } else {
-    el.textContent = 'The preview has not reported the video’s length, so ' +
+    el.textContent = 'No length has been reported by the preview, so ' +
       'the lengths could not be compared. Play the preview above; if it is ' +
       'the selected job’s recording, tick the confirmation below.';
     row.hidden = false;
@@ -678,7 +676,7 @@ $('ytCheckBtn').addEventListener('click', async () => {
     return;
   }
   if (!cfg.worker) {
-    $('ytStatus').textContent = 'The teacher’s configured link is needed to check the link.';
+    $('ytStatus').textContent = 'A configured link from your teacher is needed to check the link.';
     return;
   }
   $('ytStatus').textContent = 'Checking…';
@@ -703,7 +701,7 @@ $('ytCheckBtn').addEventListener('click', async () => {
         'YouTube reports this video as private or missing. Set it to Unlisted or Public and check again.';
     }
   } catch (err) {
-    $('ytStatus').textContent = 'The check could not be completed. Try again.';
+    $('ytStatus').textContent = 'Could not complete the check. Try again.';
     console.error(err);
   }
   refreshYtDurationUi();
@@ -751,7 +749,7 @@ $('submitJobBtn').addEventListener('click', async () => {
     }
     if (ytCheck && !durationGateOk(ytDur, $('ytConfirmChk'))) {
       throw new Error(ytDur && ytDur.band === 'block'
-        ? 'the checked video’s length differs from this recording’s by more than the allowed tolerance. Enter the link for this recording, or clear the link to send for practice grading only.'
+        ? 'the checked video’s length differs from this recording’s by more than the allowed tolerance. Enter the link for this recording, or clear the link and send without it.'
         : 'play the preview and tick the confirmation that the checked video is this recording, or clear the link to send without it.');
     }
     const transcript = canonical();
@@ -811,7 +809,7 @@ $('submitJobBtn').addEventListener('click', async () => {
         const key = jobKey(cfg.pkg, payload.retrieval_code);
         jobStates.set(key, { status: res.status, queue_ahead: res.queue_ahead });
         if (res.result) readyBundles.set(key, res.result);
-        $('jobStatus').textContent = sentText;
+        $('jobStatus').textContent = duplicateStatusText(res);
       } else {
         $('jobStatus').textContent = duplicateStatusText(res);
       }
@@ -906,17 +904,17 @@ async function verifySubmissionParts(entry, bundle, anchor) {
     .catch(() => null);
   const wav = await wavBytesForBundle(bundle);
   if (!wav || !record) {
-    showError('The audio for this job is not on this computer. The job’s ' +
-      'recording has fingerprint ' + bundle.audio_sha256.slice(0, 12) + '… — ' +
+    showError('This job’s audio is not on this computer. Its recording ' +
+      'hash is ' + bundle.audio_sha256.slice(0, 12) + '… — ' +
       'choose that recording’s file in step 2, or restore it from the saved ' +
       'recordings list there, then try again.', null, anchor);
     return null;
   }
   if (!record.chunks || !record.chunks.length) {
-    showError('The transcript pieces for this job’s recording are not on ' +
-      'this computer, so the packaged transcript cannot be verified against ' +
-      'the graded one. Restore the recording in step 2 (fingerprint ' +
-      bundle.audio_sha256.slice(0, 12) + '…) and try again.', null, anchor);
+    showError('This computer does not hold the transcript pieces for ' +
+      'this job’s recording, so the packaged transcript cannot be verified ' +
+      'against the graded one. Restore the recording in step 2 (recording ' +
+      'hash ' + bundle.audio_sha256.slice(0, 12) + '…) and try again.', null, anchor);
     return null;
   }
   const scrubbedChunks = scrubChunks(
@@ -938,22 +936,23 @@ async function verifySubmissionParts(entry, bundle, anchor) {
     critiqueSha256: critiqueSha,
   });
   if (failures.includes('audio')) {
-    showError('The audio on this computer does not match the audio this ' +
-      'job was graded on (fingerprint mismatch). Restore the recording ' +
-      'with fingerprint ' + bundle.audio_sha256.slice(0, 12) + '… in step 2 ' +
+    showError('Audio on this computer does not match the audio this ' +
+      'job was graded on (recording hash mismatch). Restore the recording ' +
+      'with recording hash ' + bundle.audio_sha256.slice(0, 12) + '… in step 2 ' +
       'and try again.', null, anchor);
     return null;
   }
   if (failures.includes('transcript')) {
-    showError('The transcript that would be packaged does not match the ' +
+    showError('Packaging would use a transcript that does not match the ' +
       'transcript that was graded (checksum mismatch). The usual cause is ' +
       'the removal list in step 3: re-enter the same names and words you ' +
       'used when you sent this job, then try again.', null, anchor);
     return null;
   }
   if (failures.includes('critique')) {
-    showError('The critique in the grade record does not match its signed ' +
-      'checksum, so nothing was packaged. Retrieve the job again and retry.',
+    showError('Critique check failed: the critique in the grade record ' +
+      'does not match its signed checksum, so nothing was packaged. ' +
+      'Retrieve the job again and retry.',
     null, anchor);
     return null;
   }
@@ -968,12 +967,12 @@ async function verifySubmissionParts(entry, bundle, anchor) {
   const link = entry.youtube_link || $('ytLink').value.trim() || '';
   const videoId = parseYouTubeVideoId(link);
   if (!videoId) {
-    showError('The YouTube link kept on this browser is missing. Re-enter it in step 6 and download again from the job list after re-checking.', null, anchor);
+    showError('No YouTube link is kept on this browser. Re-enter it in step 6 and download again from the job list after re-checking.', null, anchor);
     return null;
   }
   const videoIdSha = await sha256Hex(videoId);
   if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== videoIdSha) {
-    showError('The YouTube link kept on this browser is not the video that was checked for this job.', null, anchor);
+    showError('A different video is kept on this browser from the one that was checked for this job.', null, anchor);
     return null;
   }
   if (!entry.youtube_link) {
@@ -1033,10 +1032,10 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
     'Grades: Completeness ' + bundle.completeness + '/5 · Accuracy ' +
       bundle.accuracy + '/5',
     'Recording: ' + recName + formatDuration(parts.record.duration_s) +
-      ' · fingerprint ' + bundle.audio_sha256.slice(0, 12) + '…' +
+      ' · recording hash ' + bundle.audio_sha256.slice(0, 12) + '…' +
       (firstWords
         ? ' · starts “' + scrubMetadata(firstWords, words) + '…”' : ''),
-    'Audio: matches the fingerprint signed with the grade ✓',
+    'Audio: matches the recording hash signed with the grade ✓',
     'Transcript: matches the checksum signed with the grade ✓',
     'YouTube: ' + (entry.youtube_title ? '“' + entry.youtube_title + '” · ' : '') +
       canonicalWatchUrl(parts.videoId) +
@@ -1111,7 +1110,8 @@ function renderJobRow(container, entry, statusInfo) {
       : 'waiting';
   } else statusText = statusInfo.status;
   row.append(document.createTextNode(
-    label + ' (' + entry.kind + '): ' + statusText + ' '));
+    label + (entry.kind === 'final' ? ' (sent with a checked link): '
+      : ' (sent without a link): ') + statusText + ' '));
   if (statusInfo && statusInfo.status === 'ready') {
     const bundle = readyBundles.get(jobKey(entry.pkg, entry.retrieval_code));
     const key = jobKey(entry.pkg, entry.retrieval_code);
@@ -1125,7 +1125,7 @@ function renderJobRow(container, entry, statusInfo) {
       p.textContent = 'Completeness: ' + bundle.completeness + '/5 · Accuracy: ' +
         bundle.accuracy + '/5';
       const rec = document.createElement('p');
-      rec.textContent = 'Recording fingerprint: ' +
+      rec.textContent = 'Recording hash: ' +
         (bundle.audio_sha256 || '').slice(0, 12) + '…' +
         (entry.youtube_title ? ' · YouTube: “' + entry.youtube_title + '”' : '');
 
@@ -1247,7 +1247,7 @@ async function renderJobsOnce() {
     survivors.push(entry);
     if (res) {
       // The Worker reports the job's current expiry (7 days while
-      // ungraded, 48 hours after grading); keep the stored entry in
+      // ungraded, 180 days after grading); keep the stored entry in
       // step with it.
       if (res.data && res.data.expires_at &&
           entry.expires_at !== res.data.expires_at) {
@@ -1344,7 +1344,7 @@ function refreshFinPanel(preferKey) {
     const label = [c.entry.course, c.entry.asg].filter(Boolean).join(' · ') || c.entry.pkg;
     opt.textContent = label +
       ' — Completeness ' + c.bundle.completeness + '/5, Accuracy ' +
-      c.bundle.accuracy + '/5 · recording ' +
+      c.bundle.accuracy + '/5 · recording hash ' +
       (c.bundle.audio_sha256 || '').slice(0, 8) + '…' +
       (c.bundle.t ? ' — graded ' + new Date(c.bundle.t).toLocaleString() : '');
     sel.append(opt);
@@ -1405,7 +1405,7 @@ $('finCheckBtn').addEventListener('click', async () => {
     return;
   }
   if (!cfg.worker) {
-    $('finStatus').textContent = 'The teacher’s configured link is needed to check the link.';
+    $('finStatus').textContent = 'A configured link from your teacher is needed to check the link.';
     return;
   }
   $('finStatus').textContent = 'Checking…';
@@ -1428,7 +1428,7 @@ $('finCheckBtn').addEventListener('click', async () => {
         'YouTube reports this video as private or missing. Set it to Unlisted or Public and check again.';
     }
   } catch (err) {
-    $('finStatus').textContent = 'The check could not be completed. Try again.';
+    $('finStatus').textContent = 'Could not complete the check. Try again.';
     console.error(err);
   }
   refreshFinDurationUi();
@@ -1455,12 +1455,12 @@ $('finConfirmBtn').addEventListener('click', async () => {
   const cand = finSelected();
   if (!cand || !finCheck) return;
   if (finCheck.jobKey !== jobKey(cand.entry.pkg, cand.entry.retrieval_code)) {
-    $('finDone').textContent = 'The link check was made for a different job. Check the link again.';
+    $('finDone').textContent = 'Link check mismatch: it was made for a different job. Check the link again.';
     return;
   }
   if (!durationGateOk(finDur, $('finConfirmChk'))) {
     $('finDone').textContent = finDur && finDur.band === 'block'
-      ? 'The checked video’s length differs from this job’s audio by more than the allowed tolerance. Enter the link for this job’s recording.'
+      ? 'Checked video and this job’s audio differ in length by more than the allowed tolerance. Enter the link for this job’s recording.'
       : 'Play the preview and tick the confirmation that the checked video is this job’s recording.';
     return;
   }
@@ -1575,13 +1575,13 @@ $('manualBtn').addEventListener('click', async () => {
       const note = document.createElement('p');
       note.className = 'note';
       note.textContent = entry.kind === 'final'
-        ? 'Final job. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
-        : 'Practice job.';
+        ? 'This job was sent with a checked link. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
+        : 'This job was sent without a link. To make the Canvas submission, add the YouTube link in the conversion panel above (Turn a graded job into your Canvas submission).';
       box.append(note);
       renderJobRow(box, entry, { status: 'ready' });
     }
   } catch (err) {
-    $('manualStatus').textContent = 'The check could not be completed. Try again.';
+    $('manualStatus').textContent = 'Could not complete the check. Try again.';
     console.error(err);
   }
 });

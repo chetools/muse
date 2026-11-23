@@ -379,7 +379,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.1');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.2');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -813,9 +813,9 @@ await test('wiring: the section-7 critique keeps its line breaks', () => {
   assert.ok(main.includes("crit.style.whiteSpace = 'pre-line'"),
     'numbered critique points appear on separate lines in the job list');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(index.includes('<title>Practice and Get Feedback on Audio/Video Recordings for Canvas submission</title>'),
+  assert.ok(index.includes('<title>Graded feedback on practice recordings for Canvas submission</title>'),
     'page title is the current one');
-  assert.ok(index.includes('Submit your audio or video for transcription and anonymized graded'),
+  assert.ok(index.includes('Transcription runs in this browser: the recording itself never'),
     'page description is the current one');
 });
 
@@ -827,7 +827,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.1');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.2');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
