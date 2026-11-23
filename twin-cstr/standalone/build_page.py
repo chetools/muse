@@ -57,10 +57,10 @@ PYODIDE_URL = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/pyodide
 
 # --- MHE panel (MHE track): v3 output names (additive change) ---
 # v1/v2 files are untouched; v2 remains published.
-OUT_NAME = "twin-cstr-standalone-v6.html"
-STUB_NAME = "twin-cstr-standalone-v6-stub.html"
+OUT_NAME = "twin-cstr-standalone-v7.html"
+STUB_NAME = "twin-cstr-standalone-v7-stub.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
-             "twin-cstr/walkthrough_molab_v4.py")
+             "twin-cstr/walkthrough_molab_v5.py")
 
 # --- MHE panel (MHE track): WASM locations (v3) ---
 WASM_DIR = os.path.abspath(os.path.join(HERE, os.pardir, "solver", "wasm"))
@@ -261,6 +261,11 @@ section.tpanel,section.cpanel{scroll-margin-top:64px}
 .toc-list a:hover{text-decoration:underline}
 .toc-list a.active{color:var(--st-red);font-weight:600}
 @media (max-width:860px){
+  /* Phone fit (v7, audit F15): the parameter and nomenclature tables
+     fit the viewport; the symbol column wraps instead of forcing the
+     table (and the page) sideways. */
+  .theory table{font-size:.85rem}
+  .theory td:first-child{white-space:normal}
   .toc-layout:not([hidden]){display:block}
   .toc-col{position:static;max-height:none;overflow:visible;margin-bottom:1rem;
     border:1px solid var(--card-border);border-radius:.4rem;padding:.5rem .8rem}
@@ -984,7 +989,7 @@ async function runMheLive(){
     mhePrestartActive = false;
     displayedMheParams = JSON.stringify(readMheScenario());
     $('mhe-stale-note').hidden = true;
-    mheSetBackend('<b>WebAssembly (Rust RTI)</b>, H = ' + H + ' samples');
+    mheSetBackend('<b>WebAssembly (Rust RTI)</b>, H = ' + H + ' intervals');
     mhePerfRow('live run', 'WebAssembly (Rust RTI)', H, totalSteps, msPerStep);
     document.querySelector('#scene-tabs-mhe button[data-scene="m1"]').click();
     mheShowScene('m1');
@@ -1213,26 +1218,39 @@ __BUILD_KATEX_CSS__
     <div class="side-cap" id="runbar-msg"></div></div>
   <div id="stale-note" class="side-cap" hidden>Inputs changed &mdash; press Run
   scenario to update the display.</div>
-  <div class="side-foot">The plant publishes T, T<sub>j</sub>, F, T<sub>0</sub>
-  every 10 s with noise; C<sub>A</sub> arrives as delayed lab samples. The twin
-  never sees the plant's parameters or true state.</div>
+  <div class="side-foot">Every 10 s the plant publishes T, T<sub>j</sub>, F,
+  T<sub>0</sub> with noise; C<sub>A</sub> arrives as delayed lab samples. No
+  plant parameter or true state ever reaches the twin.</div>
 </aside>
 <main class="main">
   <div id="boot">
     <h2>Digital twin of a jacketed CSTR</h2>
     <p id="bootmsg">Starting&hellip;</p>
     <div class="bar"><div></div></div>
-    <p class="caption">The App tab opens with the default scenario precomputed.
+    <p class="caption">The page opens on the Theory tab; the App tab's default scenario is precomputed.
     Pressing Run scenario recomputes live in Python (Pyodide) once the
     runtime loads.</p>
   </div>
   <div id="fatal" class="err" hidden></div>
   <div id="app" hidden>
     <h1>Digital twin of a jacketed exothermic CSTR</h1>
-    <p class="intro">A simulator with hidden parameters, noise and faults plays
-    the plant; an extended Kalman filter that sees only the sensor stream plays
-    the twin. Six scenes show the twin staying synchronized with a fouling
-    jacket &mdash; and what that synchronization is good for.</p>
+    <p class="intro">An exothermic reactor's key state &mdash; the reactant
+    concentration &mdash; is not measured online, and its cooling capacity
+    fades as the jacket fouls. What reaches the operator is a published
+    sensor stream: reactor and jacket temperatures, feed conditions, and
+    occasional laboratory analyses that arrive late. A digital twin
+    reconstructs the hidden states from that stream alone, and control
+    changes and fault alarms act on the reconstruction rather than on
+    measurements. Reconstructing well is not straightforward: the
+    temperature dynamics are nonlinear and admit more than one steady
+    state, the plant's kinetic parameters are hidden, fouling drifts the
+    conductance, and a biased sensor can masquerade as faster fouling.
+    Three estimators are compared on the same plant &mdash; an extended
+    Kalman filter, a particle filter, and a moving-horizon estimator. The
+    Theory panel derives the plant model and the three estimators; the App
+    panel runs them in scenes (fouling tracking, forecasting, what-if
+    testing, fault detection, and a closed-loop case); the Code panel gives
+    the walkthrough and the full listings.</p>
     <!-- Particle-filter panel (PF track): estimator selector (v2, additive) -->
     <div class="estbar" role="radiogroup" aria-label="Estimator">
       <span class="estbar-label">Estimator</span>
@@ -1246,11 +1264,11 @@ __BUILD_KATEX_CSS__
     <div class="metrics" id="metrics"></div>
     <div class="scene-note" id="scene-note" hidden></div>
     <nav class="tabs" data-panels="tpanel">
-      <button data-tab="panel-app" class="active">App</button>
-      <button data-tab="panel-theory">Theory</button>
+      <button data-tab="panel-theory" class="active">Theory</button>
+      <button data-tab="panel-app">App</button>
       <button data-tab="panel-code">Code</button>
     </nav>
-    <section id="panel-app" class="tpanel">
+    <section id="panel-app" class="tpanel" hidden>
       <nav class="tabs" id="scene-tabs" data-panels="scenepanel">
         <button data-scene="s1" class="active">1 &middot; Model vs twin</button>
         <button data-scene="s2">2 &middot; Soft sensor</button>
@@ -1333,7 +1351,7 @@ __BUILD_KATEX_CSS__
           <div class="field"><span class="estbar-label">Scenario</span><br>
             <button id="btn-pf-nominal" class="pf-scen active">Nominal fouling</button>
             <button id="btn-pf-fault" class="pf-scen">Sensor-bias fault</button>
-            <div class="side-cap">The fault injects a +5 K T-sensor bias at 35% of the run; the sidebar seed still applies.</div></div>
+            <div class="side-cap">A +5 K T-sensor bias is injected at 35% of the run; the sidebar seed still applies.</div></div>
         </div>
         <button id="btn-run-pf" disabled>Run particle filter</button>
         <div id="pf-note" class="scene-note" hidden></div>
@@ -1366,11 +1384,13 @@ __BUILD_KATEX_CSS__
         augmented state as the EKF &mdash; concentration C<sub>A</sub>,
         temperatures T and T<sub>j</sub>, and the fouling conductance
         UA &mdash; from the same published stream, by re-optimizing a window
-        of the last H samples (H the horizon length, in samples) subject to
-        box bounds at every step. Here the estimator runs live as Rust
-        compiled to WebAssembly: each measurement triggers one Gauss&ndash;Newton
-        SQP iteration (SQP: sequential quadratic programming) on the shifted
-        warm-start iterate. The sidebar duration, seed, and lab interval
+        of the last H sampling intervals (H the horizon length, in
+        intervals) subject to box bounds at every step. Here the estimator
+        runs live as Rust compiled to WebAssembly (WASM): each measurement
+        triggers one Gauss&ndash;Newton iteration of sequential quadratic
+        programming (SQP) on the shifted warm-start iterate &mdash; the
+        real-time iteration (RTI) scheme. The sidebar duration, seed, and
+        lab interval
         apply; each M scene defines its own fault (M1: 2.5&times; fouling with
         a +5 K T-sensor bias at t = 4 h; M2: a feed shutoff at
         t = 2 h (pump trip; the published feed flow F drops to zero, the
@@ -1379,19 +1399,21 @@ __BUILD_KATEX_CSS__
         of the run).</p>
         <div><span id="mhe-backend">Backend: <b>not initialized</b></span></div>
         <div class="mhe-controls">
-          <div class="field"><label for="in-mhe-h">Horizon H [samples]</label>
+          <div class="field"><label for="in-mhe-h">Horizon H [intervals]</label>
             <select id="in-mhe-h">
               <option value="30" selected>30</option>
               <option value="60">60</option>
               <option value="90">90</option>
               <option value="120">120</option>
             </select>
-            <div class="side-cap">H = 30 covers 300 s; with the 600 s lab
-            delay the newest lab sample is carried by the arrival cost.</div></div>
+            <div class="side-cap">H = 30 covers 300 s. With the 600 s lab
+            delay, the newest lab sample predates the window and reaches the
+            estimate through the arrival cost &mdash; the term that
+            summarizes all pre-window data (Theory: MHE).</div></div>
           <div class="field"><span class="estbar-label">Bounds (read-only)</span>
-            <div class="side-cap">C<sub>A</sub> &ge; 0 mol L<sup>-1</sup>;
-            UA &ge; 1.0 J s<sup>-1</sup> K<sup>-1</sup>; T in [300, 500] K;
-            T<sub>j</sub> in [290, 400] K.</div></div>
+            <div class="side-cap">C<sub>A</sub> in [0, 8] mol L<sup>-1</sup>;
+            T in [300, 500] K; T<sub>j</sub> in [290, 400] K;
+            UA in [1, 30] J s<sup>-1</sup> K<sup>-1</sup>.</div></div>
         </div>
         <button id="btn-run-mhe" disabled>Run MHE (WebAssembly)</button>
         <div><button id="btn-mhe-py-toggle" class="linklike" type="button">Use
@@ -1432,7 +1454,7 @@ __BUILD_KATEX_CSS__
         <section id="tab-mhe-compare" class="mhepanel" hidden>
           <p class="intro">Click-to-run check: the WebAssembly RTI estimator
           and the Python TwinMHE reference run the identical 40-step scenario
-          (H = 8 samples, seed 7) sample-for-sample. The tolerances are the
+          (H = 8 intervals, seed 7) sample-for-sample. The tolerances are the
           measured parity tolerances &mdash; C<sub>A</sub> 2&times;10<sup>-2</sup>
           mol L<sup>-1</sup>, T/T<sub>j</sub> 1&times;10<sup>-1</sup> K,
           UA 5&times;10<sup>-1</sup> J s<sup>-1</sup> K<sup>-1</sup>.</p>
@@ -1453,7 +1475,7 @@ __BUILD_KATEX_CSS__
         </section>
       </section>
     </section>
-    <section id="panel-theory" class="tpanel" hidden>
+    <section id="panel-theory" class="tpanel">
       <div class="theory">__BUILD_THEORY_HTML__
         <!-- Particle-filter panel (PF track): theory sub-panel (v2, additive,
              single-sourced from drafts/theory_particle_filter.md) -->
@@ -1462,7 +1484,53 @@ __BUILD_KATEX_CSS__
         <!-- MHE panel (MHE track): theory sub-panel (v3, additive,
              single-sourced from drafts/theory_mhe.md) -->
         <h2>Theory: MHE (moving horizon estimation)</h2>
-        __BUILD_MHE_THEORY_HTML__</div>
+        __BUILD_MHE_THEORY_HTML__
+        <h2>References</h2>
+        <p>[1] Kritzinger, W., Karner, M., Traar, G., Henjes, J., and Sihn, W.
+        (2018). Digital Twin in manufacturing: A categorical literature review
+        and classification. <i>IFAC-PapersOnLine</i>, 51(11),
+        1016&ndash;1022. https://doi.org/10.1016/j.ifacol.2018.08.474</p>
+        <p>[2] Doucet, A., and Johansen, A. M. (2009). A tutorial on particle
+        filtering and smoothing: Fifteen years later. In D. Crisan and
+        B. Rozovskii (Eds.), <i>Handbook of Nonlinear Filtering</i>
+        (pp. 656&ndash;704). Oxford University Press.</p>
+        <p>[3] Douc, R., Capp&eacute;, O., and Moulines, E. (2005). Comparison
+        of resampling schemes for particle filters. In <i>Proceedings of the
+        4th International Symposium on Image and Signal Processing and
+        Analysis</i> (pp. 64&ndash;69). IEEE.</p>
+        <p>[4] Gordon, N. J., Salmond, D. J., and Smith, A. F. M. (1993). Novel
+        approach to nonlinear/non-Gaussian Bayesian state estimation. <i>IEE
+        Proceedings F: Radar and Signal Processing</i>, 140(2),
+        107&ndash;113. https://doi.org/10.1049/ip-f-2.1993.0015</p>
+        <p>[5] Liu, J., and West, M. (2001). Combined parameter and state
+        estimation in simulation-based filtering. In A. Doucet, N. de Freitas,
+        and N. Gordon (Eds.), <i>Sequential Monte Carlo Methods in
+        Practice</i> (pp. 197&ndash;223). Springer.</p>
+        <p>[6] Robertson, D. G., Lee, J. H., and Rawlings, J. B. (1996). A
+        moving horizon-based approach for least-squares estimation. <i>AIChE
+        Journal</i>, 42(8), 2209&ndash;2224.</p>
+        <p>[7] Rao, C. V. (2000). <i>Moving Horizon Strategies for the
+        Constrained Monitoring and Control of Nonlinear Discrete-Time
+        Systems</i>. Ph.D. dissertation, University of
+        Wisconsin&ndash;Madison.</p>
+        <p>[8] Haseltine, E. L. and Rawlings, J. B. (2005). Critical evaluation
+        of extended Kalman filtering and moving-horizon estimation.
+        <i>Industrial &amp; Engineering Chemistry Research</i>, 44(8),
+        2451&ndash;2460.</p>
+        <p>[9] Rao, C. V., Rawlings, J. B., and Mayne, D. Q. (2003). Constrained
+        state estimation for nonlinear discrete-time systems: stability and
+        moving horizon approximations. <i>IEEE Transactions on Automatic
+        Control</i>, 48(2), 246&ndash;258.</p>
+        <p>[10] K&uuml;hl, P., Diehl, M., Kraus, T., Schl&ouml;der, J. P., and
+        Bock, H. G. (2011). A real-time algorithm for moving horizon state
+        and parameter estimation. <i>Computers &amp; Chemical
+        Engineering</i>, 35(1), 71&ndash;83.</p>
+        <p>[11] Rao, C. V., Rawlings, J. B., and Lee, J. H. (2001). Constrained
+        linear state estimation &mdash; a moving horizon approach.
+        <i>Automatica</i>, 37(10), 1619&ndash;1628.</p>
+        <p>[12] Rao, C. V. and Rawlings, J. B. (2002). Constrained process
+        monitoring: Moving-horizon approach. <i>AIChE Journal</i>, 48(1),
+        97&ndash;109.</p></div>
     </section>
     <section id="panel-code" class="tpanel" hidden>
       <nav class="tabs" data-panels="cpanel">
@@ -1470,9 +1538,10 @@ __BUILD_KATEX_CSS__
         <button data-tab="sub-listings">Listings</button>
       </nav>
       <section id="sub-walkthrough" class="cpanel">
-        <p>The steps below were executed when this page was built; every value
-        shown is the computed result. To explore different input values, use
-        the editable notebook in MoLab.</p>
+        <p>The walkthrough runs the plant, the three twins, and the analysis
+        steps in order, with each step's computed output shown under it. To
+        explore different input values, use the editable notebook in
+        MoLab.</p>
         __BUILD_WALKTHROUGH_HTML__
         <h3>Editable notebook</h3>
         <ul><li><a href="__BUILD_MOLAB_URL__">Open the editable notebook in MoLab (signed in)</a></li></ul>

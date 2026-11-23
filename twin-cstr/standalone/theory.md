@@ -20,8 +20,6 @@
 | $\Delta H$ | J mol$^{-1}$ | Heat of reaction (negative: exothermic) |
 | $\rho c_p$ | J L$^{-1}$ K$^{-1}$ | Volumetric heat capacity, process side |
 | $(\rho c_p)_j$ | J L$^{-1}$ K$^{-1}$ | Volumetric heat capacity, jacket side |
-| $U$ | J s$^{-1}$ K$^{-1}$ m$^{-2}$ | Overall heat-transfer coefficient |
-| $A$ | m$^{2}$ | Heat-transfer area |
 | $UA$ | J s$^{-1}$ K$^{-1}$ | Overall cooling conductance; fouling reduces it |
 | $V_j$ | L | Jacket volume |
 | $F_j$ | L s$^{-1}$ | Coolant flow rate (manipulated variable) |
@@ -39,14 +37,14 @@ feed rate $F$. Reaction $A \to B$ is first order in $C_A$ with Arrhenius
 temperature dependence
 
 $$
-k(T) = k_0 \exp\left(-\frac{E_a}{R_g T}\right).
+k(T) = k_0 \exp\left(-\frac{E_a}{R_g T}\right). \tag{1}
 $$
 
 A mole balance on $A$ over the reactor gives the rate of change of $C_A$ as
 inflow minus outflow minus consumption by reaction:
 
 $$
-\frac{dC_A}{dt} = \frac{F}{V}\,(C_{A0} - C_A) - k(T)\,C_A.
+\frac{dC_A}{dt} = \frac{F}{V}\,(C_{A0} - C_A) - k(T)\,C_A. \tag{2}
 $$
 
 An energy balance over the reactor gives the rate of change of $T$ as
@@ -56,7 +54,7 @@ removed through the wall to the jacket:
 $$
 \frac{dT}{dt} = \frac{F}{V}\,(T_0 - T)
   + \frac{(-\Delta H)}{\rho c_p}\,k(T)\,C_A
-  - \frac{UA}{V\,\rho c_p}\,(T - T_j).
+  - \frac{UA}{V\,\rho c_p}\,(T - T_j). \tag{3}
 $$
 
 An energy balance over the jacket, with coolant flow $F_j$ and inlet
@@ -64,13 +62,13 @@ temperature $T_{jin}$, gives
 
 $$
 \frac{dT_j}{dt} = \frac{F_j}{V_j}\,(T_{jin} - T_j)
-  + \frac{UA}{V_j\,(\rho c_p)_j}\,(T - T_j).
+  + \frac{UA}{V_j\,(\rho c_p)_j}\,(T - T_j). \tag{4}
 $$
 
 Jacket fouling is modelled as an exponential decay of the conductance,
 
 $$
-UA(t) = UA_0 \exp(-t/\tau_f),
+UA(t) = UA_0 \exp(-t/\tau_f), \tag{5}
 $$
 
 with clean value $UA_0$ (in J s$^{-1}$ K$^{-1}$) and fouling time constant
@@ -85,10 +83,12 @@ error is $e = T_m - T_{sp}$ (positive when the reactor is too hot) and
 
 $$
 F_j = \mathrm{sat}\left(F_{j,bias} + K_c\left(e + \frac{I}{\tau_I}\right)\right),
-\qquad \frac{dI}{dt} = e,
+\qquad \frac{dI}{dt} = e, \tag{6}
 $$
 
-where $\mathrm{sat}(\cdot)$ clips to $[F_{j,min},\,F_{j,max}]$ and the
+where $F_{j,bias}$ is the bias coolant flow (the constant term of the
+controller output, about which the proportional-integral correction acts),
+$\mathrm{sat}(\cdot)$ clips to $[F_{j,min},\,F_{j,max}]$, and the
 integrator freezes while the output is saturated against the error direction
 (anti-windup). The controller settings are published plant documentation and
 are therefore known to the twin.
@@ -100,7 +100,7 @@ vector augments the three process states with the drifting conductance:
 
 $$
 x = \begin{bmatrix} C_A & T & T_j & UA \end{bmatrix}^{\mathsf{T}},
-\qquad \frac{dUA}{dt} = 0 + w_{UA},
+\qquad \frac{dUA}{dt} = 0 + w_{UA}, \tag{7}
 $$
 
 where $w_{UA}$ is a fictitious process noise whose variance is the tuning
@@ -112,27 +112,29 @@ $$
 \begin{aligned}
 \hat{x}_{k|k-1} &= f(\hat{x}_{k-1|k-1}, u_k), \\
 P_{k|k-1} &= \Phi_k P_{k-1|k-1} \Phi_k^{\mathsf{T}} + Q, \\
-K_k &= P_{k|k-1} H^{\mathsf{T}} (H P_{k|k-1} H^{\mathsf{T}} + R_m)^{-1}, \\
-\hat{x}_{k|k} &= \hat{x}_{k|k-1} + K_k\,(y_k - H\hat{x}_{k|k-1}), \\
-P_{k|k} &= (I - K_k H)\,P_{k|k-1},
-\end{aligned}
+K_k &= P_{k|k-1} C^{\mathsf{T}} (C P_{k|k-1} C^{\mathsf{T}} + R_m)^{-1}, \\
+\hat{x}_{k|k} &= \hat{x}_{k|k-1} + K_k\,(y_k - C\hat{x}_{k|k-1}), \\
+P_{k|k} &= (I - K_k C)\,P_{k|k-1},
+\end{aligned} \tag{8}
 $$
 
-with state-transition matrix $\Phi_k = I + J_k\,\Delta t$ from the model
-Jacobian $J_k$ at the prediction, measurement matrix $H$ selecting $T$ and
-$T_j$, process-noise covariance $Q$, and measurement-noise covariance $R_m$.
+with error covariance $P$, Kalman gain $K_k$, state-transition matrix
+$\Phi_k = I + J_k\,\Delta t$ from the model Jacobian $J_k$ at the prediction
+over the sampling interval $\Delta t = 10$ s, measurement matrix $C$
+selecting $T$ and $T_j$, process-noise covariance $Q$, and measurement-noise
+covariance $R_m$.
 The input $u_k = [F_j\;\; F\;\; T_0]_k$ collects the coolant flow computed by
 the twin's copy of the published controller together with the measured feed
 conditions.
 
 Laboratory analyses of $C_A$ arrive sparsely and delayed. When a result
 sampled at $t_s$ is delivered, the twin applies it at $t_s$ in its stored
-history and re-runs the predict--update sequence forward to the present
-(exact fixed-lag reprocessing). The page documents this reprocessing openly;
-it is part of the twin's stated algorithm, not a look at the plant's
-internals.
+history and re-runs the predict–update sequence forward to the present
+(exact fixed-lag reprocessing). This reprocessing is part of the twin's
+stated algorithm; it replays the twin's own stored history, not a look at
+the plant's internals.
 
-## Observability and the $UA$--$k_0$ trade-off
+## Observability and the $UA$–$k_0$ trade-off
 
 At the operating point the linearised augmented system with outputs $T$ and
 $T_j$ has a full-rank observability matrix (rank 4 of 4, conditioning
@@ -150,27 +152,27 @@ each time a lab result arrives.
 
 The twin fits the recent $UA$ estimates to an exponential decay, projects
 $UA(t)$ forward, and simulates its own model forward under the published
-controller. The forecast records the earliest time at which the required
-coolant flow reaches $F_{j,max}$ (the controller saturates) and the reactor
-temperature can no longer be held at $T_{sp}$. That date is reported as the
-maintenance recommendation: the latest day on which the jacket should be
-cleaned.
+controller. From the projection the twin records the earliest time at which
+the required coolant flow reaches $F_{j,max}$ (the controller saturates) and
+the reactor temperature can no longer be held at $T_{sp}$. That date is the
+maintenance recommendation: the jacket should be cleaned before it.
 
 ## What-if testing
 
 A proposed operating change (higher feed rate, higher setpoint) is first
 applied to a clone of the twin initialised at the current estimate,
 including the current $UA$ estimate. Only if the clone's forward simulation
-remains controllable is the change offered to the plant. The plant itself is
-never used as the first test of an untested setpoint.
+remains controllable is the change offered to the plant; the plant itself is
+never the first test of an untested setpoint.
 
 ## Fault detection
 
 A temperature-sensor bias is a difficult fault for a Kalman filter: the
 filter can explain the biased readings away by mis-estimating $UA$ and
-$C_A$, so the fast temperature innovations stay deceptively quiet and naive
-residual gating misses the fault entirely. The delayed laboratory analyses
-of $C_A$ are an independent measurement the filter cannot explain away.
+$C_A$, so the fast temperature innovations (each measurement minus the
+filter's prediction of it) stay deceptively quiet and naive residual gating
+misses the fault entirely. Delayed laboratory analyses of $C_A$ are an
+independent measurement the filter cannot explain away.
 When two consecutive lab samples disagree with the twin's physics-based
 $C_A$ prediction by more than three standard deviations each, the twin
 flags a sensor fault instead of mis-attributing the bias to faster
@@ -179,15 +181,12 @@ model's manifold and leaves the lab innovations white.
 
 ## From shadow to twin
 
-In the taxonomy of Kritzinger et al. (2018), a *digital model* exchanges no
+In the taxonomy of Kritzinger et al. [1], a *digital model* exchanges no
 data with the physical system, a *digital shadow* receives data in one
 direction only, and a *digital twin* exchanges data in both directions.
-Scenes 1--5 of this demo are a digital shadow: the plant streams data to
+Scenes 1–5 of this demo are a digital shadow: the plant streams data to
 the twin and the twin never acts on the plant. Scene 6 closes the loop and
 becomes a twin in this taxonomy's sense. The taxonomy is widely cited but
 not universally adopted; the page uses its terms as defined here.
 
-> Kritzinger, W., Karner, M., Traar, G., Henjes, J., and Sihn, W. (2018).
-> Digital Twin in manufacturing: A categorical literature review and
-> classification. *IFAC-PapersOnLine*, 51(11), 1016--1022.
-> https://doi.org/10.1016/j.ifacol.2018.08.474
+

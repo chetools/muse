@@ -170,7 +170,8 @@ def _scene1_payload(rec):
     return dict(metrics=m, charts=charts,
                 note="The open-loop model copy uses nominal parameters with UA "
                      "frozen at its clean value and receives no measurement "
-                     "feedback. The twin sees only the published data stream.")
+                     "feedback. Only the published data stream reaches the "
+                     "twin.")
 
 
 def _scene2_payload(rec):
@@ -193,8 +194,9 @@ def _scene2_payload(rec):
                            "Cₐ [mol L⁻¹]", rmargin=180)),
     }
     return dict(metrics=m, charts=charts,
-                note="The twin reports Cₐ continuously; the delayed lab "
-                     "samples both validate it and sharpen its UA estimate.")
+                note="Between lab samples the twin reports Cₐ continuously; "
+                     "each delayed sample both validates the estimate and "
+                     "sharpens UA.")
 
 
 def _forecast_ua(twin_hist, twin_x, twin_I, ctrl, horizon_s=24 * 3600.0):
@@ -295,7 +297,7 @@ def what_if(params_json):
         T_cl.append(xa[1])
     Tmax = float(np.max(T_cl))
     if Tmax > 450.0:
-        verdict = (f"REJECT: clone reaches {Tmax:.0f} K -- thermal runaway "
+        verdict = (f"REJECT: clone reaches {Tmax:.0f} K — thermal runaway "
                    f"with today's fouled UA. Do not apply to the plant.")
     elif sat_at is not None:
         verdict = (f"CAUTION: coolant saturates after {sat_at:.1f} h; "
@@ -312,9 +314,10 @@ def what_if(params_json):
             layout=_layout("What-if: cloned twin", "time [h]", "T [K]")),
     }
     return json.dumps(dict(metrics=m, charts=charts,
-                           note="The clone starts from the twin's current "
-                                "estimate, including its UA estimate. The "
-                                "plant is never the first test."))
+                           note="Starting from the twin's current estimate, "
+                                "including its UA estimate, the clone runs the "
+                                "proposed settings first; the plant is never "
+                                "the first test."))
 
 
 def _scene5_payload(rec):
@@ -354,15 +357,13 @@ def _scene5_payload(rec):
                            "time [h]", "innovation [mol L⁻¹]")),
     }
     return dict(metrics=m, charts=charts,
-                note="A sensor bias is absorbed by the filter into biased "
-                     "UA and Cₐ estimates, so the fast innovations stay "
-                     "quiet -- naive residual gating misses it. The delayed "
-                     "lab analyses are an independent measurement the filter "
-                     "cannot explain away: when two consecutive lab samples "
-                     "disagree with the physics-based prediction, the twin "
-                     "flags a sensor fault instead of mis-attributing the "
-                     "bias to faster fouling. Inject a bias with the sidebar "
-                     "control, then re-run.")
+                note="The verdict above comes from the lower chart, not the "
+                     "upper one: the fast temperature innovations stay quiet "
+                     "under a sensor bias, and the twin flags the fault only "
+                     "when the lab Cₐ innovations — an independent "
+                     "measurement — cross the ±3σ band on two consecutive "
+                     "samples. Inject a bias with the sidebar control, then "
+                     "re-run.")
 
 
 def render_scene(name):
@@ -440,8 +441,8 @@ def finish_closed():
     return json.dumps(dict(metrics=m, charts=charts,
                            note="Data now flows both ways: measurements to the "
                                 "twin, setpoint adjustments back to the plant. "
-                                "In the Kritzinger et al. (2018) taxonomy this "
-                                "is what promotes the shadow to a twin."))
+                                "In the Kritzinger et al. [1] taxonomy this is "
+                                "what promotes the shadow to a twin."))
 # ======================================================================
 # --- Particle-filter panel (PF track): additive section (v2) ---
 # Chunked PF API: start_pf / step_pf / finish_pf, plus render_pf_scene
@@ -679,9 +680,8 @@ def _pf_b1_payload(rec):
                      "identical seed; differences are attributable to the "
                      "estimators. PF bands are 5–95% weighted particle "
                      "quantiles; the EKF band is ±2σ from its covariance. "
-                     "N_eff is the effective sample size (contract "
-                     "diagnostic): values near N mean a healthy particle "
-                     "cloud.")
+                     "N_eff is the effective sample size: values near N "
+                     "mean a healthy particle cloud.")
 
 
 def _b2_snapshots(rec):
@@ -769,7 +769,7 @@ def _pf_b2_payload(rec):
                 note="Histograms are weighted particle densities (40 bins); "
                      "dashed verticals mark the EKF point estimate at the "
                      "same instants. A biased temperature reading admits two "
-                     "explanations -- sensor bias or faster fouling -- and "
+                     "explanations — sensor bias or faster fouling — and "
                      "the cloud sustains both until the delayed lab sample "
                      "discriminates between them.")
 
@@ -865,10 +865,10 @@ def _pf_b3_payload(rec):
     }
     return dict(metrics=m, charts=charts,
                 note="Forecast uses only the twin's UA estimates and its "
-                     "nominal model under the published controller. The PF "
-                     "band is double-encoded (band plus median line); it "
-                     "widens with lead time as the level uncertainty "
-                     "compounds with the fouling trend.")
+                     "nominal model under the published controller; in "
+                     "side-by-side mode the EKF's ±2σ band is projected from "
+                     "the same trend for comparison. The metric above "
+                     "converts the forecast into a cleaning verdict.")
 
 
 def render_pf_scene(name):
@@ -1135,11 +1135,10 @@ def _mhe_m1_payload(vrec, est, params, ms_per_step):
                      "One plant drives both estimators with the identical "
                      "samples and seed. The accelerated fouling drives the "
                      "true UA below the twin's admissible minimum; the MHE "
-                     "pins at the bound (516 steps) while the EKF, which has "
-                     "no bounds, dives below it and its Cₐ estimate goes "
-                     "negative. The lab-innovation flag uses the shared "
-                     "arrival-cost recursion, so its gating matches the "
-                     "EKF's.")
+                     "pins at the bound while the EKF, which has no bounds, "
+                     "dives below it and its Cₐ estimate goes negative. Its "
+                     "lab-innovation flag uses the shared arrival-cost "
+                     "recursion, so the gating matches the EKF's.")
 
 
 def _mhe_m2_payload(vrec, est, params, shadow):
@@ -1174,7 +1173,7 @@ def _mhe_m2_payload(vrec, est, params, shadow):
     charts = {
         "cM2-CA": dict(
             data=data,
-            layout=_layout("Constraint activation: Cₐ after a feed-T step",
+            layout=_layout("Constraint activation: Cₐ after a feed shutoff",
                            "time [h]", "Cₐ [mol L⁻¹]", rmargin=210)),
         "cM2-ACT": dict(
             data=[_trace(np.array(t)[ds].tolist(), nab[ds].tolist(),
@@ -1183,11 +1182,15 @@ def _mhe_m2_payload(vrec, est, params, shadow):
                            "time [h]", "pinned components [-]",
                            rmargin=210)),
     }
-    note = ("A +15 K feed-temperature step at t = 2 h drives the reaction "
-            "faster; the unconstrained optimizer would push Cₐ negative, "
-            "while the constrained MHE pins it at the bound. The shadow "
-            "run relaxes the bounds in the Python TwinMHE at build time, "
-            "on the same samples and seed.")
+    note = ("At t = 2 h the feed is shut off (pump trip; the published "
+            "feed flow F drops to zero). With no inflow, the reaction "
+            "consumes the remaining reactant inventory and the true Cₐ "
+            "decays toward zero; the unconstrained shadow optimizer follows "
+            "the decay without crossing zero (its minimum over the run is "
+            "0.0311 mol L⁻¹), while the constrained MHE pins its Cₐ "
+            "estimate at the bound. The shadow run relaxes the "
+            "bounds in the Python TwinMHE at build time, on the same "
+            "samples and seed.")
     if shadow is None:
         note += (" This is a live re-run: the shadow shown is the "
                  "build-time default-scenario trace.")
@@ -1351,9 +1354,10 @@ def finish_mhe_py():
     return json.dumps(dict(metrics=m, charts=charts,
                            note="Labeled fallback: the WebAssembly estimator "
                                 "was unavailable, so this run used the "
-                                "Python TwinMHE reference (SLSQP) on a "
-                                "reduced 1 h scenario. No JavaScript "
-                                "numerics are involved."))
+                                "Python TwinMHE reference (SLSQP: sequential "
+                                "least squares programming) on a reduced 1 h "
+                                "scenario. No JavaScript numerics are "
+                                "involved."))
 
 
 # --- Comparison tab: WASM RTI vs Python TwinMHE on the parity scenario ---

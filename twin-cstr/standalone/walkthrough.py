@@ -15,15 +15,15 @@ CELLS = [
     dict(
         title="The plant: a jacketed exothermic CSTR",
         md=r"""
-The plant is a jacketed continuous stirred-tank reactor. Reactant $A$
-(concentration $C_A$, in mol L$^{-1}$) converts to $B$ by a first-order
-reaction with Arrhenius kinetics; the heat released warms the reactor
-(temperature $T$, in K) and is removed through the wall to a cooling jacket
-(temperature $T_j$, in K). A published proportional-integral controller
-holds $T$ at its setpoint $T_{sp}$ by manipulating the coolant flow $F_j$.
-The jacket slowly fouls: the overall conductance $UA$ (in J s$^{-1}$ K$^{-1}$)
-decays exponentially with time constant $\tau_f$. The true kinetic
-parameters are hidden from the twin.
+Reactant $A$ (concentration $C_A$, in mol L$^{-1}$) converts to $B$ in a
+jacketed continuous stirred-tank reactor by a first-order reaction with
+Arrhenius kinetics; the heat released warms the reactor (temperature $T$,
+in K) and is removed through the wall to a cooling jacket (temperature
+$T_j$, in K). A published proportional-integral controller holds $T$ at its
+setpoint $T_{sp}$ by manipulating the coolant flow $F_j$. Slowly, the
+jacket fouls: the overall conductance $UA$ (in J s$^{-1}$ K$^{-1}$) decays
+exponentially with time constant $\tau_f$. The true kinetic parameters are
+hidden from the twin.
 """,
         code=r"""
 import numpy as np
@@ -79,12 +79,12 @@ print(f"multiplicity (3 branches) for UA in "
     dict(
         title="The data stream",
         md=r"""
-The plant publishes reactor temperature $T$, jacket temperature $T_j$,
-feed flow $F$, and feed temperature $T_0$ every $\Delta t = 10$ s with
-measurement noise. Concentration $C_A$ arrives only as an occasional
+Every $\Delta t = 10$ s the plant publishes reactor temperature $T$,
+jacket temperature $T_j$, feed flow $F$, and feed temperature $T_0$, each
+with measurement noise. Concentration $C_A$ arrives only as an occasional
 delayed laboratory sample (every 20 min, 10 min late), mirroring plant
-practice. The twin receives this stream and nothing else: the driver
-deletes the hidden-truth channel before each sample reaches the twin.
+practice. Nothing else reaches the twin: the driver deletes the
+hidden-truth channel before each sample reaches the twin.
 """,
         code=r"""
 plant = M.Plant(seed=7)
@@ -99,13 +99,14 @@ print("keys withheld from the twin:", [k for k in s if k.startswith("_")])
     dict(
         title="The twin: extended Kalman filter",
         md=r"""
-The twin's state vector is $x = [C_A\;\; T\;\; T_j\;\; UA]^{\mathsf{T}}$:
-the three process states plus the drifting conductance, modelled as a
-random walk. Each step predicts by integrating the nominal model, then
-corrects with the $T$ and $T_j$ measurements. Delayed lab samples are
-applied at their sample time with exact fixed-lag reprocessing of the
-stored history. The twin's copy of the published controller supplies the
-coolant flow from the measured temperature, exactly as the plant does.
+Augmenting the three process states with the drifting conductance,
+modelled as a random walk, gives the twin's state vector
+$x = [C_A\;\; T\;\; T_j\;\; UA]^{\mathsf{T}}$. Each step predicts by
+integrating the nominal model, then corrects with the $T$ and $T_j$
+measurements. Delayed lab samples are applied at their sample time with
+exact fixed-lag reprocessing of the stored history. The twin's copy of the
+published controller supplies the coolant flow from the measured
+temperature, exactly as the plant does.
 """,
         code=r"""
 twin = M.TwinEKF(dt=10.0)
@@ -190,8 +191,8 @@ are hard to separate: their steady-state sensitivity vectors in the
 $[T\;\; T_j]$ measurement space point in nearly opposite, nearly
 collinear directions (cosine $-0.86$). A laboratory $C_A$ sample breaks
 the symmetry, because $C_A$ responds to the two parameters with a
-markedly different sensitivity ratio. The twin therefore sharpens its
-$UA$ estimate each time a lab result arrives.
+markedly different sensitivity ratio. That separation is why the twin's
+$UA$ estimate sharpens each time a lab result arrives.
 """,
         code=r"""
 UA0, Fj_rep = 12.0, 0.2 / 60.0
@@ -224,11 +225,12 @@ print("-> opposite signs and different ratios: the lab sample separates them")
     dict(
         title="Forecast: when cooling capacity runs out",
         md=r"""
-The twin fits its recent $UA$ estimates to an exponential decay, projects
-$UA(t)$ forward, and simulates its own model under the published controller.
-The forecast time is the first instant at which the required coolant flow
-reaches $F_{j,max}$: beyond it the setpoint can no longer be held. The
-page reports this as the latest recommended jacket-cleaning date.
+Fitting its recent $UA$ estimates to an exponential decay, the twin
+projects $UA(t)$ forward and simulates its own model under the published
+controller. First saturation of the coolant defines the forecast time: the
+first instant at which the required coolant flow reaches $F_{j,max}$,
+beyond which the setpoint can no longer be held. Cleaning is recommended
+before that time.
 """,
         code=r"""
 # reuse the Scene-1 run would be ideal; here a compact 4 h run suffices
@@ -288,13 +290,14 @@ figure(
     dict(
         title="Fault detection: the filter hides the fault; the lab catches it",
         md=r"""
-A temperature-sensor bias of $+5$ K is injected halfway through a 6 h run.
-The filter absorbs the bias into biased $UA$ and $C_A$ estimates, so the
-fast temperature innovations stay deceptively quiet -- naive residual
-gating misses the fault. The delayed lab analyses are independent: when
-two consecutive lab samples disagree with the physics-based $C_A$
-prediction by more than three standard deviations each, the twin flags a
-sensor fault instead of mis-attributing the bias to faster fouling.
+One third of the way through a 6 h run — at $t = 2.0$ h — a
+temperature-sensor bias of $+5$ K is injected. The filter absorbs the bias
+into biased $UA$ and $C_A$ estimates, so the fast temperature innovations
+stay deceptively quiet — naive residual gating misses the fault. Delayed
+lab analyses are independent of the biased sensor: when two consecutive
+lab samples disagree with the physics-based $C_A$ prediction by more than
+three standard deviations each, the twin flags a sensor fault instead of
+mis-attributing the bias to faster fouling.
 """,
         code=r"""
 DT = 10.0
@@ -339,16 +342,16 @@ figure(
     dict(
         title="What the twin may and may not see",
         md=r"""
-The honesty architecture is enforced in code, not by convention. The plant
-object owns the hidden parameters and the true state; its `step` method
+Code, not convention, enforces the honesty architecture. Owning the
+hidden parameters and the true state, the plant object's `step` method
 returns a published sample plus a `_true` channel used only for scoring.
-The driver strips every key starting with `_` before the twin's `step`
-sees the sample, and a static test asserts that the twin's source contains
-no reference to the plant's parameter dictionary, its fouling function, or
-the truth channel. Scenes 1--5 are therefore a digital shadow in the sense
-of Kritzinger et al. (2018): data flows from the plant to the twin only.
-Scene 6 closes the loop -- the twin writes an adjusted setpoint back --
-which is what makes it a twin in that taxonomy.
+Every key starting with `_` is stripped by the driver before the twin's
+`step` sees the sample, and a static test asserts that the twin's source
+contains no reference to the plant's parameter dictionary, its fouling
+function, or the truth channel. Scenes 1–5 are therefore a digital shadow
+in the sense of Kritzinger et al. [1]: data flows from the plant to the
+twin only. Scene 6 closes the loop — the twin writes an adjusted setpoint
+back — which is what makes it a twin in that taxonomy.
 """,
         code=r"""
 src = open(MODEL_PATH).read()
@@ -374,12 +377,12 @@ weighted ensemble of $N$ particles ($N = 200$ by default): each step
 propagates every particle through the nominal twin model with process
 noise, reweights the ensemble by the $T$/$T_j$ measurement likelihood,
 and resamples systematically when the effective sample size $N_{\mathrm{eff}}$
-falls below the threshold $N_{\mathrm{thr}} = N/2$. The drifting
-conductance is tracked with Liu--West kernel smoothing (discount factor
-$\gamma = 0.97$). The point estimate is the weighted particle mean, and
-uncertainty is reported as weighted particle quantiles. The `step`
-interface is identical to the EKF twin's, so the driver feeds both
-twins the same published samples.
+falls below the threshold $N_{\mathrm{thr}} = N/2$. Liu–West kernel
+smoothing (discount factor $\gamma = 0.97$) tracks the drifting
+conductance. The point estimate is the weighted particle mean, and
+uncertainty is reported as weighted particle quantiles. An identical
+`step` interface to the EKF twin's lets the driver feed both twins the
+same published samples.
 """,
         code=r"""
 import twin_pf as PF
@@ -404,11 +407,9 @@ print("diagnostics():", sorted(twin.diagnostics().keys()))
         md=r"""
 One plant drives both twins with the identical seed and the identical
 published samples, so differences in the outputs are attributable to the
-estimators. The comparison-scene convention of the estimator panel
-contract is honored exactly: the seed is shared, the samples are shared,
-and only the estimators differ. The numbers below come from a 2 h
-nominal-fouling run with $N = 100$ particles; the App tab reproduces the
-comparison live at $N = 200$.
+estimators. Seed and samples are shared; only the estimators differ. A 2 h
+nominal-fouling run with $N = 100$ particles produced the numbers below;
+the App tab reproduces the comparison live at $N = 200$.
 """,
         code=r"""
 import twin_pf as PF
@@ -457,14 +458,14 @@ figure(
         title="Scene B2: sensor-bias fault and the particle cloud",
         md=r"""
 A temperature-sensor bias of $+5$ K is injected at $t = 1.1$ h of a 3 h
-run. A biased temperature reading admits two explanations -- sensor bias
-or accelerated fouling -- and the particle cloud sustains both
-hypotheses: the three histograms below show the $UA$ particle density
-(40 bins) at the last lab delivery before the fault, the first delivery
-after it (whose sample still predates the fault), and the second
-delivery after it (whose sample postdates the fault and discriminates
-between the hypotheses). The delayed lab innovations are the independent
-check: they stay small until a post-fault lab sample arrives.
+run. Two explanations — sensor bias or accelerated fouling — fit a biased
+temperature reading, and the particle cloud sustains both hypotheses: the
+three histograms below show the $UA$ particle density (40 bins) at the
+last lab delivery before the fault, the first delivery after it (whose
+sample still predates the fault), and the second delivery after it (whose
+sample postdates the fault and discriminates between the hypotheses). As
+the independent check, the delayed lab innovations stay small until a
+post-fault lab sample arrives.
 """,
         code=r"""
 import twin_pf as PF
@@ -521,13 +522,13 @@ figure(
         title="Scene B3: UA forecast with uncertainty bands",
         md=r"""
 The fouling trend is fitted to the particle-filter weighted-mean $UA$
-trajectory, exactly as for the EKF twin. The credible band at each lead
-time comes from the particle cloud itself: every final particle is
-projected forward with the shared fitted trend, and weighted quantiles
-of the projected cloud give the 5--95% band and the median. The band is
+trajectory, exactly as for the EKF twin. Credible bands at each lead time
+come from the particle cloud itself: every final particle is projected
+forward with the shared fitted trend, and weighted quantiles of the
+projected cloud give the 5–95% band and the median. The band is
 double-encoded (band plus median line) and widens with lead time as the
-level uncertainty compounds with the fouling trend. The numbers below
-come from a 2 h run with $N = 100$ particles.
+level uncertainty compounds with the fouling trend. A 2 h run with
+$N = 100$ particles produced the numbers below.
 """,
         code=r"""
 import twin_pf as PF
@@ -596,27 +597,29 @@ figure(
     dict(
         title="The twin: moving-horizon estimation", mhe=True,
         md=r"""
-The moving-horizon-estimation twin reconstructs the same augmented state
-vector $x = [C_A\;\; T\;\; T_j\;\; UA]^{\mathsf{T}}$ as the EKF twin, where
-$C_A$ is the reactant concentration (mol L$^{-1}$), $T$ the reactor
-temperature (K), $T_j$ the jacket temperature (K), and $UA$ the fouling
-conductance (J s$^{-1}$ K$^{-1}$). Each step it solves a small nonlinear
-program over a moving window of the last $H$ samples ($H = 30$ below):
+Moving-horizon estimation reconstructs the same augmented state vector
+$x = [C_A\;\; T\;\; T_j\;\; UA]^{\mathsf{T}}$ as the EKF twin, where $C_A$
+is the reactant concentration (mol L$^{-1}$), $T$ the reactor temperature
+(K), $T_j$ the jacket temperature (K), and $UA$ the fouling conductance
+(J s$^{-1}$ K$^{-1}$). Each step solves a small nonlinear program over a
+moving window of the last $H$ sampling intervals ($H = 30$ below):
 minimize the arrival cost on the window's initial state plus
 process-noise, temperature-measurement, and lab-sample stage costs,
-subject to box bounds ($C_A \ge 0$, $UA \ge UA_{\min} = 1.0$
-J s$^{-1}$ K$^{-1}$). The bounds are the structural difference from the
-EKF: they are enforced inside the optimization, not projected afterwards.
-The App tab runs this estimator live as Rust compiled to WebAssembly
-(one Gauss--Newton SQP iteration per measurement); the cell below uses
-the Python reference implementation with a converged SLSQP solve.
+subject to the box bounds of `STATE_BOUNDS` ($C_A$ in $[0, 8]$
+mol L$^{-1}$, $T$ in $[300, 500]$ K, $T_j$ in $[290, 400]$ K, $UA$ in
+$[1, 30]$ J s$^{-1}$ K$^{-1}$). Enforced inside the optimization rather
+than projected afterwards, the bounds are the structural difference from
+the EKF. Live, the App tab runs this estimator as Rust compiled to
+WebAssembly (one Gauss–Newton SQP iteration per measurement); the cell
+below uses the Python reference implementation with a converged sequential
+least squares programming (SLSQP) solve.
 """,
         code=r"""
 import twin_mhe as MHE
 
 twin = MHE.TwinMHE(dt=60.0, H=30, n_iter=25)
 print("twin state: [C_A, T, T_j, UA] over a moving window")
-print(f"H = {twin.H} samples, dt = {twin.dt} s, "
+print(f"H = {twin.H} intervals, dt = {twin.dt} s, "
       f"solver iterations per step <= {twin.n_iter}")
 print("box bounds (C_A, T, T_j, UA):", MHE.STATE_BOUNDS)
 print("step() returns:", ["C_A", "T", "T_j", "UA", "resid_T", "resid_Tj",
