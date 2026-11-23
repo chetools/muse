@@ -201,6 +201,28 @@ fraction of its own length (one video width of travel =
 the whole take), the position bar follows, and the
 right-click menu is suppressed on the video area. The
 left button and the other zoom controls are untouched.
+
+v42: returning from the zoom view to the wall is robust.
+Three faults combined. The v40 deferred seek lands after
+Back has already called play() on the followed student's
+tile, and a seek that lands while a play() request is
+still pending cancels that request, so the tile came back
+paused (and, at a mid-file position nothing was playing
+to pull its frame in, some tiles stayed black; a click
+then opened the zoom view paused, because no tile was
+playing). The wall's own playing set — Play all, a
+hover — was discarded by the zoom view, so every other
+video came back stopped too. And opening the zoom view
+marks the student examined, render() sorts unexamined
+students first, so on Back the followed student rotated
+off the screen and a different, paused tile rotated in.
+Now the zoom view records the playing set when it opens
+(WALLPLAY), tile plays go through playTile (a play asked
+for while a deferred seek is pending is honoured by the
+metadata listener after the seek lands), Back restores
+the recorded set alongside the followed student's
+resume, and Back first lands on the screen that holds
+the followed student.
 """
 
 import argparse
@@ -4454,6 +4476,10 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 <script>
 const $=id=>document.getElementById(id);
 let STUDENTS=[], page=0, zoomId=null, raf=null, MARKS={}, SCRUB=null, ZSCRUB=null;
+// WALLPLAY (v42): the ids of the wall tiles that were playing
+// when the zoom view opened; Back restores exactly that set,
+// so the wall comes back as it was.
+let WALLPLAY=new Set();
 // ---- Shared submission view (v29): select / sort / filter /
 // group by course, student, date, homework, examined and graded.
 // The same stored view drives the dashboard's submissions table;
@@ -4618,10 +4644,13 @@ function bindTiles(){
     v.addEventListener("mouseenter",()=>{ if(SCRUB) return;
       claimAudio(v); v.muted=false;
       markExamined(v.closest(".tile").dataset.id,"hover");
-      if(v.paused){ v.dataset.hoverplay="1"; const p=v.play(); if(p) p.catch(()=>{}); } });
+      // A tile already slated to play (a deferred play from
+      // the Back restore) is not claimed as a hover play, so
+      // the pointer leaving it again does not stop it.
+      if(v.paused && !v._autoplay){ v.dataset.hoverplay="1"; playTile(v); } });
     v.addEventListener("mouseleave",()=>{ if(SCRUB && SCRUB.v===v) return;
       v.muted=true;
-      if(v.dataset.hoverplay){ v.pause(); delete v.dataset.hoverplay; } });
+      if(v.dataset.hoverplay){ v._autoplay=false; v.pause(); delete v.dataset.hoverplay; } });
     v.addEventListener("mousedown",e=>{
       // Right-button drag scrubs: horizontal motion moves every
       // showing video to the same fraction of its own length
@@ -4891,7 +4920,34 @@ function seekFrac(v,f){
   v._fracHook=true;
   v.addEventListener("loadedmetadata",()=>{
     if(v._wantFrac!==undefined && v.duration){
-      v.currentTime=v._wantFrac*v.duration; v._wantFrac=undefined; } });
+      v.currentTime=v._wantFrac*v.duration; v._wantFrac=undefined; }
+    // A play requested while the seek was still pending is
+    // honoured only now, after the seek has landed: a seek
+    // that lands while a play() request is still pending
+    // cancels that request and leaves the video paused
+    // (v42 — this is why the followed student's tile, and
+    // the wall's other playing tiles, came back stopped
+    // after Back from the zoom view, some of them black at
+    // a frame that then had no reason to load).
+    if(v._autoplay){ v._autoplay=false;
+      const p=v.play(); if(p) p.catch(()=>{}); } });
+}
+function playTile(v){
+  // Play a wall tile without racing a pending deferred
+  // seek (see seekFrac): if the seek has not landed yet,
+  // record the intent and let the metadata listener play
+  // once it has; otherwise play at once.
+  if(v._wantFrac!==undefined){ v._autoplay=true; return; }
+  const p=v.play(); if(p) p.catch(()=>{});
+}
+function tileVideo(id){
+  // The video element of one student's tile, found by id:
+  // position in vids() does NOT match position in the tile
+  // list, because a tile whose take is not downloaded yet
+  // has no <video> element at all (v42 review).
+  const t=[...document.querySelectorAll(".tile")]
+    .find(x=>x.dataset.id===id);
+  return t? t.querySelector("video") : null;
 }
 function setFracAll(f){
   vids().forEach(v=>seekFrac(v,f));
@@ -4940,8 +4996,8 @@ $("zv").addEventListener("mousedown",e=>{
   document.body.style.cursor="ew-resize";
 });
 $("zvwrap").addEventListener("contextmenu",e=>e.preventDefault());
-$("playall").onclick=()=>{ vids().forEach(v=>v.play()); };
-$("pauseall").onclick=()=>{ vids().forEach(v=>v.pause()); };
+$("playall").onclick=()=>{ vids().forEach(v=>playTile(v)); };
+$("pauseall").onclick=()=>{ vids().forEach(v=>{ v._autoplay=false; v.pause(); }); };
 $("speed").onchange=setSpeed;
 function refit(){
   const first=page*CAP, nc=capacity();
@@ -4973,7 +5029,8 @@ $("grid").addEventListener("contextmenu",e=>e.preventDefault());
 function toggleAll(){
   const vs=vids(); if(!vs.length) return;
   const anyPlaying=vs.some(v=>!v.paused);
-  vs.forEach(v=>{ if(anyPlaying) v.pause(); else v.play(); });
+  vs.forEach(v=>{ if(anyPlaying){ v._autoplay=false; v.pause(); }
+    else playTile(v); });
 }
 function stepFrac(d){
   const vs=vids(); if(!vs.length) return;
@@ -4986,7 +5043,7 @@ function stepFrame(d){
   // frame - 1/30 s, the nominal frame interval of the student
   // recordings. (The wall's scrub keys used to jump 5%.)
   const vs=vids(); if(!vs.length) return;
-  vs.forEach(v=>{ v.pause();
+  vs.forEach(v=>{ v._autoplay=false; v.pause();
     if(v.duration) v.currentTime=Math.min(v.duration,Math.max(0,v.currentTime+d/30)); });
 }
 document.addEventListener("keydown",e=>{
@@ -5035,10 +5092,12 @@ function openZoom(id, opts){
   let f, playing;
   if(opts.frac!==undefined){ f=opts.frac; playing=!!opts.playing; }
   else{
-    const i=showing().findIndex(x=>x.id===id); const tv=vids()[i];
+    const tv=tileVideo(id);
     f=tv? frac(tv):0;
     playing=(tv?!tv.paused:false) || vids().some(v=>!v.paused);
-    vids().forEach(v=>v.pause());
+    WALLPLAY=new Set(vids().filter(v=>!v.paused)
+      .map(v=>v.closest(".tile").dataset.id));
+    vids().forEach(v=>{ v._autoplay=false; v.pause(); });
   }
   zoomId=id;
   $("wall").style.display="none"; $("master").style.display="none"; $("zoom").style.display="block";
@@ -5293,14 +5352,34 @@ $("backbtn").onclick=()=>{
   const wasPlaying=!zv.paused, id=zoomId;
   zv.pause(); zv.removeAttribute("src"); zv.load();
   zoomId=null; $("zoom").style.display="none"; $("wall").style.display="block"; $("master").style.display="block";
-  render(); setFracAll(f);
+  render();
+  // Opening the zoom view marked the followed student
+  // examined, and render() sorts unexamined students
+  // first, so the followed student can rotate off this
+  // screen and a different, paused tile rotate in (v42).
+  // Land on the screen that holds the followed student.
+  if(!ATT.on && id){
+    const vi=VIEWLIST.findIndex(x=>x.id===id);
+    if(vi>=0 && Math.floor(vi/pageSize())!==page){
+      page=Math.floor(vi/pageSize()); render(); }
+  }
+  setFracAll(f);
   // The speaker keeps speaking back on the wall: the followed
   // student's tile resumes, with its audio, at the same fraction;
-  // every other tile stays muted (the single-audio rule).
+  // every other tile stays muted (the single-audio rule). The
+  // wall's own playing set (Play all, a hover) is restored too
+  // (v42): the wall comes back as it was before the zoom opened.
+  // Resumes go through playTile, which waits for the deferred
+  // seek to land before playing — a direct play() here was
+  // cancelled by that seek and the tiles came back stopped.
   if(wasPlaying){
-    const i=showing().findIndex(x=>x.id===id); const tv=vids()[i];
-    if(tv){ claimAudio(tv); tv.muted=false; const p=tv.play(); if(p) p.catch(()=>{}); }
+    const tv=tileVideo(id);
+    if(tv){ claimAudio(tv); tv.muted=false; playTile(tv); }
   }
+  WALLPLAY.forEach(id2=>{ if(id2===id) return;
+    const wv=tileVideo(id2);
+    if(wv) playTile(wv); });
+  WALLPLAY=new Set();
 };
 // ---- Focus deep link (v33): /wall?focus=<unit key> opens the
 // zoom view on that unit once its data has loaded (the table's

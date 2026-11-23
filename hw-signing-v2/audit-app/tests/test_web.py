@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/41.0",
-          "user agent bumped to 41.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/42.0",
+          "user agent bumped to 42.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3268,7 +3268,10 @@ def main():
           "v40: the wall seek defers to loadedmetadata for a "
           "tile whose metadata has not loaded yet, instead of "
           "dropping the seek")
-    check(b"render(); setFracAll(f);" in wall40,
+    _back = wall40[wall40.find(b'$("backbtn").onclick'):
+                    wall40.find(b'$("backbtn").onclick') + 3000]
+    check(b"setFracAll(f);" in _back
+          and b"playTile(tv)" in _back,
           "v40: Back from the zoom view rebuilds the tiles "
           "and seeks them all to the zoom player's fraction")
 
@@ -3292,6 +3295,30 @@ def main():
           in wall40,
           "v41: the zoom view carries the right-button drag "
           "scrub, mirroring the wall, with its hint")
+
+    # ---------------------------------------------------------
+    # 21. v42: Back from the zoom view restores playback.
+    # Tile plays must go through playTile (a play asked for
+    # while a v40 deferred seek is pending is honoured by
+    # the metadata listener after the seek lands, via
+    # _autoplay), and the wall's playing set must be
+    # recorded when the zoom opens (WALLPLAY) and restored
+    # by the Back handler.
+    check(b"function playTile" in wall40
+          and b"function tileVideo" in wall40
+          and b"const tv=tileVideo(id);" in wall40
+          and b"const wv=tileVideo(id2);" in wall40
+          and b"if(v._autoplay){ v._autoplay=false;" in wall40
+          and b"let WALLPLAY=new Set();" in wall40
+          and b"WALLPLAY=new Set(vids().filter(v=>!v.paused)"
+          in wall40
+          and b"WALLPLAY.forEach(id2=>{ if(id2===id) return;"
+          in wall40
+          and b"vids().forEach(v=>playTile(v))" in wall40
+          and b"Math.floor(vi/pageSize())!==page" in wall40,
+          "v42: tile plays defer safely past a pending seek, "
+          "Back restores the wall's playing set, and Back "
+          "lands on the followed student's screen")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
