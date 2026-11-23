@@ -256,6 +256,30 @@ after. The wall panel's transcript now follows the
 selected tile while it plays, as the zoom view's does:
 the chunk being spoken is marked and kept visible in
 the transcript section.
+
+v45: a Privacy toggle on the dashboard and the video
+wall hides student names, student IDs and grades for
+sharing the screen. Every rendering of a name, an ID
+or a grade carries the priv class; while privacy is on
+(a class on the root element, applied before first
+paint from the stored choice), those elements show as
+grey bars — the text is transparent, unselectable and
+the grade fields are disabled, so nothing can be read,
+copied from the selection, or edited blind. The toggle
+acts at once on everything already rendered, and later
+renders inherit it from the root class. The choice is
+kept in this browser (ta-privacy-v1) and shared by both
+pages, and a change in another tab applies through the
+storage event. Covered: the submissions table (name,
+ID, signed grade, final-grade field and its signed
+note, previous-attempt grades), the Gradebook preview
+(student, ID, score), the wall tiles and attempt tiles
+(name, grade badge), the wall side panel (name, grade
+line) and the zoom view (title, student grade, final-
+grade field). Transcripts, critiques, course and
+homework names are not student identifiers and stay
+visible; the Cleanup page and file downloads (marks,
+Gradebook CSV) are outside the toggle.
 """
 
 import argparse
@@ -3537,6 +3561,7 @@ PAGE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Teacher Audit — HW Signing</title>
+<script>try{if(localStorage.getItem("ta-privacy-v1")==="1")document.documentElement.classList.add("privacy-on")}catch(e){}</script>
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#f6f6f4;color:#1c1c1a}
 header{background:#243b53;color:#fff;padding:14px 20px}
@@ -3580,9 +3605,16 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 #spinner{display:none;color:#243b53;font-weight:600}
 #activitylog{background:#14181d;color:#d7e0d7;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55;height:190px;overflow-y:auto;padding:8px 10px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
 #activitylog .k-download{color:#9ecbff}#activitylog .k-check{color:#ffd98a}#activitylog .k-video{color:#c3a6ff}#activitylog .k-auto{color:#8fd0a0}
+#privbtn{background:#e8e8e4;color:#1c1c1a;border:1px solid #bbb;margin:8px 0 0}
+#privbtn[aria-pressed="true"]{background:#f7ecd2;border-color:#8f2d2d;color:#8f2d2d;font-weight:600}
+html.privacy-on .priv{color:transparent!important;background:#8b939b!important;border-radius:3px;user-select:none!important;-webkit-user-select:none!important;text-shadow:none!important}
+html.privacy-on .priv *{color:transparent!important;background:transparent!important;text-shadow:none!important}
+html.privacy-on input.priv{pointer-events:none}
+html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
 </style></head><body>
 <header><h1>Teacher Audit — HW Signing</h1>
-<p>Runs on this computer only (127.0.0.1). Canvas is read-only here; grades go back as a Gradebook CSV you upload.</p></header>
+<p>Runs on this computer only (127.0.0.1). Canvas is read-only here; grades go back as a Gradebook CSV you upload.</p>
+<button id="privbtn" aria-pressed="false">Hide names &amp; grades</button></header>
 <main>
 <p id="spinner">Working…</p><p id="globalerr" class="err"></p>
 
@@ -3683,6 +3715,25 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <script>
 const $=id=>document.getElementById(id);
 let STATUS=null, SUBS=[];
+// ---- Privacy toggle (v45): hides student names, IDs and
+// grades behind grey bars while the screen is shared. The
+// root element's privacy-on class does the hiding in CSS,
+// so the toggle acts on everything already rendered and
+// on every later render; the choice is stored in this
+// browser and shared with the video wall.
+const PRIVKEY="ta-privacy-v1";
+let PRIV=false;
+try{ PRIV=localStorage.getItem(PRIVKEY)==="1"; }catch(e){}
+function applyPrivacy(){
+  document.documentElement.classList.toggle("privacy-on",PRIV);
+  const b=$("privbtn");
+  if(b){ b.setAttribute("aria-pressed",PRIV?"true":"false");
+    b.textContent=PRIV? "Privacy on — names & grades hidden · Show them"
+                      : "Hide names & grades"; }
+  document.querySelectorAll("input.fin").forEach(i=>{ i.disabled=PRIV; });
+}
+window.addEventListener("storage",e=>{
+  if(e.key===PRIVKEY){ PRIV=e.newValue==="1"; applyPrivacy(); } });
 async function api(path, body){
   $("spinner").style.display="block"; $("globalerr").textContent="";
   try{
@@ -3833,14 +3884,14 @@ window.gbPreview=async i=>{
   b.rows.forEach(r=>{
     if(secs.length>1 && r.Section!==lastSec){ lastSec=r.Section;
       body+="<tr><td colspan='5' style='background:#f0f0ec'><strong>Section "+esc(lastSec||"—")+"</strong></td></tr>"; }
-    body+="<tr><td>"+esc(r.Student)+"</td><td>"+esc(r.ID)+"</td><td>"+esc(r.Section)+"</td>"+
-      (r.grade_differs? "<td class=\"diff\" style=\"background:#f7ecd2\">"+esc(r.score)+"</td><td>"+esc(r.source)+" (signed grade "+esc(r.student_score)+")</td>"
-                      : "<td>"+esc(r.score)+"</td><td>"+esc(r.source)+"</td>")+"</tr>";
+    body+="<tr><td><span class=\"priv\">"+esc(r.Student)+"</span></td><td><span class=\"priv\">"+esc(r.ID)+"</span></td><td>"+esc(r.Section)+"</td>"+
+      (r.grade_differs? "<td class=\"diff\" style=\"background:#f7ecd2\"><span class=\"priv\">"+esc(r.score)+"</span></td><td>"+esc(r.source)+" <span class=\"priv\">(signed grade "+esc(r.student_score)+")</span></td>"
+                      : "<td><span class=\"priv\">"+esc(r.score)+"</span></td><td>"+esc(r.source)+"</td>")+"</tr>";
   });
   $("gb").innerHTML="<p class='mut'>Course: "+esc(t.course_name)+" · Assignment column: "+esc(b.header[5])+" · Points Possible: "+esc(b.points_possible)+"</p>"+
    "<table><thead><tr><th>Student</th><th>ID</th><th>Section</th><th>Score</th><th>Source</th></tr></thead><tbody>"+
    body+
-   "</tbody></table>"+(b.warnings.length?"<p class='err'>"+b.warnings.map(esc).join("<br>")+"</p>":"");
+   "</tbody></table>"+(b.warnings.length?"<p class='err'><span class='priv'>"+b.warnings.map(esc).join("<br>")+"</span></p>":"");
 };
 window.gbDownload=i=>{
   const t=window.GBTARGETS[i];
@@ -4109,14 +4160,14 @@ function renderSubs(){
         ghead='<tr class="grouprow"><td colspan="9">'+esc(g)+' <span class="mut">· '+gcounts[g]+" shown</span></td></tr>"; } }
     let out=ghead+"<tr>"+
     '<td><input type="checkbox" class="selbox" style="width:auto" data-key="'+esc(s.id)+'"'+(SEL.has(s.id)?" checked":"")+"></td>"+
-    '<td><a class="stuname" href="/wall?focus='+encodeURIComponent(s.id)+'">'+esc(nameOfS(s))+'</a><br><span class="mut">'+esc(s.user_id)+"</span>"+ctx+"</td>"+
+    '<td><a class="stuname priv" href="/wall?focus='+encodeURIComponent(s.id)+'">'+esc(nameOfS(s))+'</a><br><span class="mut priv">'+esc(s.user_id)+"</span>"+ctx+"</td>"+
     "<td>"+fmtDateS(s.submitted_at)+"</td>"+
     "<td>"+esc(s.workflow_state||"")+"<br><span class='mut'>attempt "+esc(s.attempt??"")+"</span></td>"+
     "<td>"+(s.downloaded?badge(true,"yes",""):'<span class="badge">no</span>')+"</td>"+
     "<td>"+integCell(c,s.downloaded)+"</td>"+
-    "<td>"+(s.student_score==null?"—":s.student_score+" / 10")+"</td>"+
-    '<td class="fincell"><input class="fin" type="number" min="0" max="10" id="fc_'+s.id+'" data-uid="'+esc(s.id)+'" data-signed="'+(s.student_score??"")+'" value="'+(fin??"")+'"> '+
-    '<span class="mut finsign" id="fs_'+s.id+'" style="display:none">signed '+(s.student_score??"")+'</span> '+
+    "<td>"+(s.student_score==null?"—":'<span class="priv">'+s.student_score+" / 10</span>")+"</td>"+
+    '<td class="fincell"><input class="fin priv" type="number" min="0" max="10" id="fc_'+s.id+'" data-uid="'+esc(s.id)+'" data-signed="'+(s.student_score??"")+'" value="'+(fin??"")+'"> '+
+    '<span class="mut finsign priv" id="fs_'+s.id+'" style="display:none">signed '+(s.student_score??"")+'</span> '+
     '<span class="mut finmsg" id="fm_'+s.id+'"></span></td>'+
     '<td><input type="checkbox" style="width:auto" '+(s.examined?"checked":"")+
     ' onchange="toggleExamined(\''+s.id+'\',this.checked)">'+
@@ -4135,7 +4186,7 @@ function renderSubs(){
         '<td><span class="mut">attempt '+esc(a.attempt_no)+"</span></td>"+
         "<td>"+badge(true,"yes","")+"</td>"+
         "<td>"+integCell(a.check,true)+"</td>"+
-        "<td>"+(a.score==null?"—":a.score+" / 10")+"</td>"+
+        "<td>"+(a.score==null?"—":'<span class="priv">'+a.score+" / 10</span>")+"</td>"+
         '<td><span class="mut">—</span></td>'+
         '<td><a href="/wall?focus='+encodeURIComponent(s.id)+'&attempt='+esc(a.attempt_no)+'">View →</a></td></tr>').join("");
       // The not-on-disk note (v33), split by cause where the
@@ -4164,6 +4215,7 @@ function renderSubs(){
     bindFin(inp);
   });
   renderSelBar(); syncSelAll();
+  applyPrivacy();
   $("fcount").textContent = SUBS.length
     ? "Showing "+VIEWLIST.length+" of "+SUBS.length+" submission(s)"+
       (VIEW.group!=="none"? " · grouped by "+VIEW.group : "")
@@ -4249,7 +4301,7 @@ async function rdEstimate(){
     $("rdestimate").textContent="Selection: "+e.packages+" package(s) — "+e.to_fetch+" to fetch ("+mb+" MB), "+e.present+" already present. Estimated time: "+t+
       (e.calibrated? " (rate measured on this computer)" : " (uncalibrated — assumed rate "+(e.assumed_rate_bps/1000000).toFixed(1)+" MB/s; the first run calibrates it)")+"."+
       ((e.not_in_format&&e.not_in_format.length)? " Not in package format (not downloaded): "+
-        e.not_in_format.map(n=>esc(n.user_name||"")+" attempt "+esc(n.attempt)+" ("+esc(n.holds||"")+")").join(", ")+"." : "")+
+        e.not_in_format.map(n=>esc(PRIV? "a student" : (n.user_name||""))+" attempt "+esc(n.attempt)+" ("+esc(n.holds||"")+")").join(", ")+"." : "")+
       (e.rejected? " "+e.rejected+" previous attempt(s) already rejected (ZIP on record) — not fetched." : "");
   }catch(err){ $("rdestimate").textContent="Estimate unavailable: "+String(err.message||err); }
 }
@@ -4351,6 +4403,10 @@ function restoreSnapshots(){
     $("subshint").textContent="Showing the submissions list as it was when you last saw this page — refreshing…"; }
 }
 bindViewS();
+$("privbtn").onclick=()=>{ PRIV=!PRIV;
+  try{ localStorage.setItem(PRIVKEY,PRIV?"1":"0"); }catch(e){}
+  applyPrivacy(); };
+applyPrivacy();
 restoreSnapshots();
 window.addEventListener("pageshow",e=>{
   if(e.persisted){ refreshSubs(); loadTargets(); updateCourseBadges(); }
@@ -4364,6 +4420,7 @@ WALL_PAGE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Video Wall — Teacher Audit</title>
+<script>try{if(localStorage.getItem("ta-privacy-v1")==="1")document.documentElement.classList.add("privacy-on")}catch(e){}</script>
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#14181d;color:#eceff1}
 header{background:#243b53;color:#fff;padding:12px 18px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
@@ -4424,8 +4481,15 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 #selbar{background:#243b53;color:#fff;border-radius:8px;padding:9px 14px;margin:0 0 10px}
 #selbar button{margin-left:10px}
 @media (max-width:900px){#wallwrap{flex-direction:column}#hoverpanel{flex:none;width:100%;position:static;height:auto;max-height:none}#hoverpanel .hpanel{flex:none}#hoverpanel .panel-body{max-height:40vh}}
+#privbtn{background:#39424e;color:#fff}
+#privbtn[aria-pressed="true"]{background:#f7ecd2;color:#8f2d2d;font-weight:600}
+html.privacy-on .priv{color:transparent!important;background:#8b939b!important;border-radius:3px;user-select:none!important;-webkit-user-select:none!important;text-shadow:none!important}
+html.privacy-on .priv *{color:transparent!important;background:transparent!important;text-shadow:none!important}
+html.privacy-on input.priv{pointer-events:none}
+html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
 </style></head><body>
 <header><h1>Video Wall</h1><a href="/">← back to audit</a>
+<button id="privbtn" aria-pressed="false">Hide names &amp; grades</button>
 <span class="mut">A screenful of students at a time. All showing videos scrub together; tiles are muted — hover a tile to hear it, zoom into one to listen and mark times. To scrub with the mouse: hold the <strong>right</strong> mouse button on a video and drag left/right — every showing video moves together and the hovered one keeps the sound (one tile width of travel = the whole take). The right-click menu is off on the wall for this.</span></header>
 <main>
 <p id="werr" class="err"></p>
@@ -4509,6 +4573,23 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 <script>
 const $=id=>document.getElementById(id);
 let STUDENTS=[], page=0, zoomId=null, raf=null, MARKS={}, SCRUB=null, ZSCRUB=null;
+// ---- Privacy toggle (v45): same stored choice and root
+// class as the dashboard (see there). Hides student names
+// and grades behind grey bars on the tiles, in the side
+// panel and in the zoom view, at once and on later renders.
+const PRIVKEY="ta-privacy-v1";
+let PRIV=false;
+try{ PRIV=localStorage.getItem(PRIVKEY)==="1"; }catch(e){}
+function applyPrivacy(){
+  document.documentElement.classList.toggle("privacy-on",PRIV);
+  const b=$("privbtn");
+  if(b){ b.setAttribute("aria-pressed",PRIV?"true":"false");
+    b.textContent=PRIV? "Privacy on — names & grades hidden · Show them"
+                      : "Hide names & grades"; }
+  document.querySelectorAll("input.fin2").forEach(i=>{ i.disabled=PRIV; });
+}
+window.addEventListener("storage",e=>{
+  if(e.key===PRIVKEY){ PRIV=e.newValue==="1"; applyPrivacy(); } });
 // WALLPLAY (v42): the ids of the wall tiles that were playing
 // when the zoom view opened; Back restores exactly that set,
 // so the wall comes back as it was.
@@ -4747,7 +4828,7 @@ function renderHoverPanel(){
   if(!HOVER.cache[s.id]) HOVER.cache[s.id]=s;
   const d=HOVER.cache[s.id];
   $("hpcard").innerHTML=
-    '<p style="margin:2px 0"><strong>'+esc(d.name)+'</strong></p>'+
+    '<p style="margin:2px 0"><strong class="priv">'+esc(d.name)+'</strong></p>'+
     (d.context? '<p class="mut" style="margin:2px 0">'+esc(d.context)+'</p>':"")+
     (d.submitted_at? '<p class="mut" style="margin:2px 0">submitted '+esc(dayLabelW(d.submitted_at))+'</p>':"")+
     (d.attempt!=null && !d.attempt_label? '<p class="mut" style="margin:2px 0">attempt '+esc(d.attempt)+'</p>':"")+
@@ -4755,9 +4836,9 @@ function renderHoverPanel(){
     '<p style="margin:4px 0"><span class="badge '+(d.source==="demo"?"demo":"")+'">'+esc(d.source==="demo"?"DEMO":d.source)+'</span>'+
     '<span class="badge '+(d.integrity==="clean"?"ok":d.integrity==="not checked"?"":"bad")+'">'+esc(d.integrity)+'</span>'+
     (d.examined? '<span class="badge ok">examined ✓</span>':"")+"</p>"+
-    "<p style='margin:4px 0'><strong>Grade:</strong> "+(d.score==null?"—":esc(d.score)+" / 10")+
+    "<p style='margin:4px 0'><strong>Grade:</strong> <span class='priv'>"+(d.score==null?"—":esc(d.score)+" / 10")+
     (d.completeness!=null? ' <span class="mut">(completeness '+esc(d.completeness)+", accuracy "+esc(d.accuracy)+")</span>":"")+
-    (d.final_score!=null? ' · <strong>final '+esc(d.final_score)+" / 10</strong>":"")+"</p>"+
+    (d.final_score!=null? ' · <strong>final '+esc(d.final_score)+" / 10</strong>":"")+"</span></p>"+
     (d.youtube? '<p style="margin:2px 0"><a href="'+esc(d.youtube)+'" target="_blank" rel="noopener" style="color:#9fc3e8">Open on YouTube ↗</a></p>':"");
   const marks=(MARKS[d.id]&&MARKS[d.id].marks)||[];
   $("hpmarks").innerHTML= marks.length
@@ -4929,12 +5010,12 @@ function render(){
     return ghead+'<div class="tile" data-id="'+esc(s.id)+'">'+
     (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_url)+'"></video>'
       : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
-    '<div class="nm">'+esc(s.name)+'</div>'+
+    '<div class="nm"><span class="priv">'+esc(s.name)+'</span></div>'+
     (s.context? '<div class="mut">'+esc(s.context)+'</div>':"")+
     (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
     '<span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
-    '<span class="badge">grade '+g+fin+'</span>'+
+    '<span class="badge priv">grade '+g+fin+'</span>'+
     '<span data-exam="'+esc(s.id)+'">'+(s.examined? '<span class="badge ok">examined ✓</span>' : '')+'</span>'+
     '<span class="badge pct" id="pct_'+esc(s.id)+'">0% · '+fmt(s.duration_s)+'</span>'+
     (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
@@ -4946,6 +5027,7 @@ function render(){
   $("prevp").disabled=page<=0; $("nextp").disabled=page>=pages()-1;
   setSpeed(); updateMaster();
   syncHoverSelection();
+  applyPrivacy();
 }
 function renderAttemptTiles(){
   const g=$("grid");
@@ -4955,19 +5037,20 @@ function renderAttemptTiles(){
     return '<div class="tile" data-id="'+esc(s.id)+'">'+
     (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_url)+'"></video>'
       : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
-    '<div class="nm">'+esc(s.name)+'</div>'+
+    '<div class="nm"><span class="priv">'+esc(s.name)+'</span></div>'+
     '<div><span class="badge '+(s.is_current?"ok":"warn")+'">'+esc(s.attempt_label)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
-    '<span class="badge">grade '+gr+'</span></div>'+
+    '<span class="badge priv">grade '+gr+'</span></div>'+
     (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
     (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
     '</div>';}).join("");
   bindTiles();
   $("pageinfo").textContent="Attempts view";
   const nm=ATT.rows.length? ATT.rows[0].name : "";
-  $("wallcount").textContent=ATT.rows.length+" attempt(s) of "+nm+" for this homework";
+  $("wallcount").innerHTML=ATT.rows.length+' attempt(s) of <span class="priv">'+esc(nm)+"</span> for this homework";
   $("fcount").textContent="";
   syncHoverSelection();
+  applyPrivacy();
 }
 function seekFrac(v,f){
   // A freshly rendered tile has no metadata yet (duration 0),
@@ -5240,7 +5323,7 @@ function openZoom(id, opts){
   }
   zoomId=id;
   $("wall").style.display="none"; $("master").style.display="none"; $("zoom").style.display="block";
-  $("zoomtitle").innerHTML="<strong>"+esc(s.name)+"</strong>"+(s.attempt_label? ' <span class="mut">'+esc(s.attempt_label)+"</span>":"");
+  $("zoomtitle").innerHTML="<strong class='priv'>"+esc(s.name)+"</strong>"+(s.attempt_label? ' <span class="mut">'+esc(s.attempt_label)+"</span>":"");
   const zv=$("zv");
   const hasVid=!!s.video_url;
   $("zvwrap").style.display=hasVid? "":"none";
@@ -5284,12 +5367,13 @@ function openZoom(id, opts){
     '<p style="margin:2px 0"><span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
     (s.youtube? ' <a href="'+esc(s.youtube)+'" target="_blank" rel="noopener" style="color:#9fc3e8">Open on YouTube ↗</a>':"")+"</p>"+
-    "<p style='margin:6px 0'><strong>Student grade:</strong> "+(s.score==null?"—":esc(s.score)+" / 10")+"</p>"+
+    "<p style='margin:6px 0'><strong>Student grade:</strong> <span class='priv'>"+(s.score==null?"—":esc(s.score)+" / 10")+"</span></p>"+
     (s.is_current===false
       ? '<p class="mut" style="margin:6px 0">'+esc(s.attempt_label||"Previous attempt")+" — the grade of record stays with the current attempt; this view is read-only.</p>"
       : '<p style="margin:6px 0"><label><strong>Teacher final grade:</strong> '+
-        '<input class="fin2" type="number" min="0" max="10" step="1" id="zgrade" value="'+(s.final_score!=null? esc(s.final_score):"")+'" placeholder="'+(s.score!=null? esc(s.score):"0–10")+'"></label> '+
+        '<input class="fin2 priv" type="number" min="0" max="10" step="1" id="zgrade" value="'+(s.final_score!=null? esc(s.final_score):"")+'" placeholder="'+(s.score!=null? esc(s.score):"0–10")+'"></label> '+
         '<span class="mut" id="zgrademsg"></span></p>');
+  applyPrivacy();
   if($("zgrade")){
     // Auto-save (v35): a changed field saves when it is left,
     // as it already did on student switching; the field is
@@ -5566,6 +5650,10 @@ async function load(){
   maybeFocus();
 }
 bindViewW();
+$("privbtn").onclick=()=>{ PRIV=!PRIV;
+  try{ localStorage.setItem(PRIVKEY,PRIV?"1":"0"); }catch(e){}
+  applyPrivacy(); };
+applyPrivacy();
 load(); loop();
 </script></body></html>
 """

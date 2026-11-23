@@ -3369,6 +3369,30 @@ def main():
           "capacity rebuild restores each tile, and the "
           "panel transcript follows the playing tile")
 
+    # ---------------------------------------------------------
+    # 24. v45: the Privacy toggle. Both pages carry the
+    # button, the stored shared key, the pre-paint root
+    # class and the grey-bar CSS; every name, ID and grade
+    # rendering carries the priv class; the toggle disables
+    # the grade fields while it is on.
+    status, dash45 = call("GET", "/", raw=True)
+    status, wall45 = call("GET", "/wall", raw=True)
+    check(b'id="privbtn"' in dash45 and b'id="privbtn"' in wall45
+          and b"ta-privacy-v1" in dash45 and b"ta-privacy-v1" in wall45
+          and b"html.privacy-on .priv" in dash45
+          and b"html.privacy-on .priv" in wall45
+          and b"function applyPrivacy" in dash45
+          and b"function applyPrivacy" in wall45
+          and b'class="stuname priv"' in dash45
+          and b'class="mut priv">' in dash45
+          and b'class="fin priv"' in dash45
+          and b"badge priv" in wall45
+          and b"fin2 priv" in wall45
+          and b"<strong class='priv'>" in wall45,
+          "v45: dashboard and wall carry the privacy toggle, "
+          "the shared stored choice and priv-tagged names, "
+          "IDs and grades")
+
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
      web.fetch_roster_maps) = _keep35
