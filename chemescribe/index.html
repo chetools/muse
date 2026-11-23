@@ -59,10 +59,58 @@
 <body>
 <div class="wrap">
   <h1>ChemEScribe</h1>
-  <p class="sub">Transcription informed by chemical-engineering background knowledge: a
-  glossary of 756 chemical-engineering terms, its correction pairs and its context rules
-  correct the transcript as it is produced. The recogniser runs entirely in this browser —
-  no server takes part, and your audio never leaves this device.</p>
+  <p class="sub">Transcription of spoken material, corrected with chemical-engineering
+  background knowledge: a glossary of 756 chemical-engineering terms, its correction pairs
+  and its context rules correct the transcript as it is produced. Anyone with a recording
+  to transcribe can use this page; the correction data is aimed at chemical-engineering
+  speech. Work through four steps: load the model (a download of about 670 MB, first time
+  only), choose an audio file or record one, transcribe, then copy or download the
+  transcript and check the list of corrections below it. The recogniser runs entirely in
+  this browser — no server takes part in the transcription, and your audio never leaves
+  this device. Pressing “Load model” downloads the model files themselves from Hugging
+  Face.</p>
+
+  <h2>1. The model</h2>
+  <div class="row">
+    <button id="loadBtn" class="primary">Load model (about 670 MB, first time only)</button>
+    <span class="status" id="loadStatus">Model not loaded.</span>
+  </div>
+  <progress id="loadProg" value="0" max="1" hidden></progress>
+  <div class="err" id="loadErr"></div>
+  <p class="note">Nothing is downloaded until you press the button. The first load takes a
+  few minutes; the model then needs roughly 2 GB of memory while transcribing.</p>
+
+  <h2>2. Options, audio file and recording</h2>
+  <div class="row">
+    <label class="check"><input type="checkbox" id="tsCheck"> Include timestamps — prefix each
+    piece of the transcript with its start time in the audio, like [01:05], or [1:02:05]
+    once the start time is an hour or more</label>
+  </div>
+  <div class="row">
+    <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg">
+    <span class="status" id="audioStatus">No file chosen.</span>
+  </div>
+  <div class="err" id="fileErr"></div>
+  <p class="note">Any recording your browser can play back works. Long recordings are cut into
+  windows of about 25 s inside the page before transcription.</p>
+  <div class="row">
+    <button id="recBtn" disabled>Start recording</button>
+    <button id="recStopBtn" disabled>Stop recording</button>
+    <span class="status" id="recStatus">Recording needs the model loaded (step 1).</span>
+  </div>
+  <div class="err" id="recErr"></div>
+  <p class="note">Recording runs from the microphone on this device.
+  While you record, the audio is transcribed in pieces of about 12 s as it arrives, and the
+  transcript below grows piece by piece. The corrections described below are applied as each
+  piece lands, and to a transcribed file in the same way.</p>
+
+  <h2>3. Transcription of a chosen file</h2>
+  <div class="row">
+    <button id="runBtn" class="primary" disabled>Transcribe</button>
+    <span class="status" id="runStatus"></span>
+  </div>
+  <progress id="runProg" hidden></progress>
+  <div class="err" id="errBox"></div>
 
   <h2>Corrections</h2>
   <p>The correction map loaded in this page has <span id="pairCount">209</span> pairs.
@@ -83,47 +131,9 @@
   tense. After every transcription, the page lists each correction it applied and marks
   the uncertain ones, so any correction can be checked against the recording.</p>
 
-  <h2>1. Load the model</h2>
-  <div class="row">
-    <button id="loadBtn" class="primary">Load model (about 670 MB, first time only)</button>
-    <span class="status" id="loadStatus">Model not loaded.</span>
-  </div>
-  <progress id="loadProg" value="0" max="1" hidden></progress>
-  <p class="note">Nothing is downloaded until you press the button. The first load takes a
-  few minutes; the model then needs roughly 2 GB of memory while transcribing.</p>
-
-  <h2>2. Options, then choose an audio file or record one</h2>
-  <div class="row">
-    <label class="check"><input type="checkbox" id="tsCheck"> Include timestamps — prefix each
-    piece of the transcript with its start time in the audio, like [01:05]</label>
-  </div>
-  <div class="row">
-    <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg">
-    <span class="status" id="audioStatus">No file chosen.</span>
-  </div>
-  <p class="note">Any recording your browser can play back works. Long recordings are cut into
-  windows inside the page before transcription.</p>
-  <div class="row">
-    <button id="recBtn" disabled>Start recording</button>
-    <button id="recStopBtn" disabled>Stop recording</button>
-    <span class="status" id="recStatus">Recording needs the model loaded (step 1).</span>
-  </div>
-  <p class="note">Recording runs from the microphone on this device; nothing is uploaded.
-  While you record, the audio is transcribed in pieces of about 12 s as it arrives, and the
-  transcript below grows piece by piece. The corrections described above are applied as each
-  piece lands, and to a transcribed file in the same way.</p>
-
-  <h2>3. Transcribe a chosen file</h2>
-  <div class="row">
-    <button id="runBtn" class="primary" disabled>Transcribe</button>
-    <span class="status" id="runStatus"></span>
-  </div>
-  <progress id="runProg" hidden></progress>
-  <div class="err" id="errBox"></div>
-
   <h2>Live progress</h2>
   <p class="note">Transcription does not wait for the whole recording. As each piece is
-  transcribed — about 12 s pieces while recording, about 25 s windows from a file — its words
+  transcribed — pieces and windows of the sizes stated in step 2 — its words
   appear here at once: first as transcribed, then after the glossary correction, with corrected
   words marked (green: a confident correction; yellow: an uncertain one, shown in slash form;
   blue: chosen by the words around it; purple: found by the dictionary check). The result
@@ -143,6 +153,7 @@
     <button id="copyBtn" disabled>Copy transcript</button>
     <button id="downloadBtn" disabled>Download transcript</button>
     <span class="status" id="metrics"></span>
+    <span class="status" id="copyStatus"></span>
   </div>
   <h2>Corrections applied</h2>
   <div class="box" id="corrections">No transcription yet.</div>
@@ -165,10 +176,11 @@
     <summary>Technical details</summary>
 
     <h3>Recogniser</h3>
-    <p>The recogniser is NVIDIA Parakeet TDT 0.6B v2 (English, int8). Pressing “Load model”
+    <p>The recogniser is NVIDIA Parakeet TDT 0.6B v2 (English, int8 — the model in a
+    compact form whose numbers are stored as 8-bit integers). Pressing “Load model”
     downloads its files (about 670 MB in total) from the Hugging Face repository
     <i>ysdede/parakeet-tdt-0.6b-v2-onnx</i>; the browser caches them on this device for later
-    visits. Your audio is read on this device only and is never uploaded.</p>
+    visits.</p>
 
     <h3>Runtime</h3>
     <p>The recogniser runs on WebAssembly (WASM), the browser’s sandboxed code format, through
@@ -197,10 +209,13 @@
     loads 209 of them — 149 confident and 60 uncertain — and 3 pairs are not used on this
     page.</p>
     <p>The dictionary check uses a bundled English wordlist (SCOWL, the Spell Checker
-    Oriented Word Lists, 116,349 words at the levels ordinary academic writing needs,
-    permissively licensed) together with the glossary’s terms. A word in neither list is
-    compared with the glossary terms on sound (Soundex) first and spelling (edit distance)
-    second; it is replaced only when the sound codes are equal, the distance is at most 2
+    Oriented Word Lists, 116,349 words at the levels ordinary academic writing needs)
+    together with the glossary’s terms. A word in neither list is
+    compared with the glossary terms first on sound, by Soundex (a code that groups words
+    by how their consonants sound, so words pronounced alike share a code), and then on
+    spelling, by edit distance (the number of single-letter insertions, deletions and
+    substitutions that turns one spelling into the other); it is replaced only when the
+    sound codes are equal, the distance is at most 2
     and the margin over the next candidate is clear — a bar measured to make no false
     replacement on test corpora of ordinary and textbook sentences. A real English word
     that merely sounds technical is never replaced by this check, only slashed or left.
