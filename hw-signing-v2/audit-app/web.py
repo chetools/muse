@@ -181,6 +181,18 @@ recorded tag is not the current one — which covers every
 video downloaded before v39, none of which has an entry —
 and the replacement earns the acoustic cross-check again
 through the ordinary changed-video rule.
+
+v40: Back from the zoom (single-video) view preserves the
+time position on the wall. The Back handler already carried
+the zoom player's fraction back and sought every tile to
+it, but it rebuilt the tiles first (render()), and a fresh
+tile has no metadata — duration 0 — so the seek was
+silently dropped and every tile landed at 0. setFracAll
+now goes through seekFrac: a seek aimed at a tile whose
+metadata has not loaded yet is remembered on the element
+and applied when loadedmetadata fires. The followed
+student's tile likewise resumes playing at that fraction
+once its metadata arrives, instead of from the start.
 """
 
 import argparse
@@ -4857,8 +4869,24 @@ function renderAttemptTiles(){
   $("fcount").textContent="";
   syncHoverSelection();
 }
+function seekFrac(v,f){
+  // A freshly rendered tile has no metadata yet (duration 0),
+  // so a seek aimed at it is remembered on the element and
+  // applied when loadedmetadata fires, instead of being
+  // dropped (v40: Back from the zoom view rebuilds the tiles
+  // with render() and then seeks — every tile used to land
+  // back at 0 because the seek ran before any duration
+  // existed).
+  if(v.duration){ v.currentTime=f*v.duration; return; }
+  v._wantFrac=f;
+  if(v._fracHook) return;
+  v._fracHook=true;
+  v.addEventListener("loadedmetadata",()=>{
+    if(v._wantFrac!==undefined && v.duration){
+      v.currentTime=v._wantFrac*v.duration; v._wantFrac=undefined; } });
+}
 function setFracAll(f){
-  vids().forEach(v=>{ if(v.duration) v.currentTime=f*v.duration; });
+  vids().forEach(v=>seekFrac(v,f));
   $("scrub").value=Math.round(f*1000); $("pctlabel").textContent=Math.round(f*100)+"%";
 }
 function updateMaster(){

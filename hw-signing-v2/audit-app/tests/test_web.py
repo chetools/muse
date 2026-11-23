@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/39.0",
-          "user agent bumped to 39.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/40.0",
+          "user agent bumped to 40.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3251,6 +3251,26 @@ def main():
           not in web._video_format_store(cfg36),
           "v39: cleanup removes a deleted video's format "
           "record with the file")
+
+    # ---------------------------------------------------------
+    # 19. v40: Back from the zoom view preserves the time
+    # position. The wall page's seek path must defer a seek
+    # aimed at a tile whose metadata has not loaded yet
+    # (a freshly rendered tile has duration 0, and a direct
+    # seek is dropped), applying it on loadedmetadata; the
+    # Back handler must still carry the zoom fraction into
+    # that seek after rebuilding the tiles.
+    status, wall40 = call("GET", "/wall", raw=True)
+    check(status == 200 and b"function seekFrac" in wall40
+          and b"_wantFrac" in wall40
+          and b"loadedmetadata" in wall40
+          and b"vids().forEach(v=>seekFrac(v,f))" in wall40,
+          "v40: the wall seek defers to loadedmetadata for a "
+          "tile whose metadata has not loaded yet, instead of "
+          "dropping the seek")
+    check(b"render(); setFracAll(f);" in wall40,
+          "v40: Back from the zoom view rebuilds the tiles "
+          "and seeks them all to the zoom player's fraction")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
