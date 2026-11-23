@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/42.0",
-          "user agent bumped to 42.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/43.0",
+          "user agent bumped to 43.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3285,7 +3285,7 @@ def main():
     check(b"function seekZoomFrac" in wall40
           and b"Math.min(1,Math.max(0,f))*zv.duration" in wall40
           and b"ZSCRUB={x0:e.clientX, f0:frac(zv)," in wall40
-          and b"if(ZSCRUB){ seekZoomFrac(" in wall40
+          and b"ZSEEK.push(ZSCRUB.f0+" in wall40
           and b"if(ZSCRUB && e.button===2){" in wall40
           and b'ZSCRUB=null; document.body.style.cursor="";'
           in wall40
@@ -3319,6 +3319,32 @@ def main():
           "v42: tile plays defer safely past a pending seek, "
           "Back restores the wall's playing set, and Back "
           "lands on the followed student's screen")
+
+    # ---------------------------------------------------------
+    # 22. v43: drag seeks are gated (at most one per
+    # interval, latest position delivered, flush on
+    # release), a drag released outside the window is
+    # ended by a button-free movement, and the media
+    # server carries keep-alive and a real listen backlog.
+    check(b"function seekGate" in wall40
+          and b"const WALLSEEK=seekGate(" in wall40
+          and b"const ZSEEK=seekGate(" in wall40
+          and b"ZSEEK.push(ZSCRUB.f0+" in wall40
+          and b"WALLSEEK.push(Math.min(1, Math.max(0," in wall40
+          and b"if(!(e.buttons&2)){ ZSEEK.flush();" in wall40
+          and b"if(!(e.buttons&2)){ WALLSEEK.flush();" in wall40
+          and b'window.addEventListener("blur"' in wall40
+          and b'$("scrub").oninput=e=>WALLSEEK.push(' in wall40
+          and b"ZSEEK.push(e.target.value/1000)" in wall40
+          and b"WALLSEEK.flush(); e.target.blur()" in wall40
+          and b"ZSEEK.flush(); e.target.blur()" in wall40,
+          "v43: scrub and seek-bar seeks pass through the "
+          "seek gate, and a lost drag cannot seek forever")
+    check(web.Handler.protocol_version == "HTTP/1.1"
+          and web.QuietServer.request_queue_size >= 64,
+          "v43: the server keeps connections alive and "
+          "queues connection bursts instead of dropping "
+          "them")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,

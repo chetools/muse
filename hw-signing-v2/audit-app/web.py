@@ -223,6 +223,23 @@ metadata listener after the seek lands), Back restores
 the recorded set alongside the followed student's
 resume, and Back first lands on the screen that holds
 the followed student.
+
+v43: seeking is made storm-proof. A scrub drag (either
+view) or a seek-bar drag issued one seek per pointer
+movement; each seek to an unbuffered position aborted
+the fetch the previous one had started, so under load
+no seek completed and playback hung in the seeking
+state, in the zoom view and again on the wall after
+Back. Drag seeks now pass through a gate (seekGate) that
+issues at most one seek per 200 ms, always delivers the
+latest position, and flushes on release. A drag whose
+button was released outside the window is ended by the
+next button-free mouse movement or by the window losing
+focus, instead of seeking on every later movement. The
+media server supports the load better: HTTP/1.1
+keep-alive (every response carries a content-length),
+a listen backlog of 128 instead of 5, and 1 MB stream
+chunks instead of 256 KB.
 """
 
 import argparse
@@ -4973,11 +4990,11 @@ function syncZBar(){
   $("zmute").textContent=zv.muted? "🔇":"🔊";
 }
 function setSpeed(){ const r=parseFloat($("speed").value); vids().forEach(v=>v.playbackRate=r); $("zv").playbackRate=r; }
-$("scrub").oninput=e=>setFracAll(e.target.value/1000);
+$("scrub").oninput=e=>WALLSEEK.push(e.target.value/1000);
 // After a drag, focus leaves the seek bars, so the keyboard
 // belongs to playback again without a further click.
-$("scrub").addEventListener("change",e=>e.target.blur());
-$("zseek").addEventListener("change",e=>e.target.blur());
+$("scrub").addEventListener("change",e=>{ WALLSEEK.flush(); e.target.blur(); });
+$("zseek").addEventListener("change",e=>{ ZSEEK.flush(); e.target.blur(); });
 // Right-button drag on the zoom video scrubs it, like a tile
 // on the wall (v41): horizontal motion moves the video to
 // that fraction of its own length (one video width of travel
@@ -4987,6 +5004,31 @@ function seekZoomFrac(f){
   const zv=$("zv"); if(!zv.duration) return;
   zv.currentTime=Math.min(1,Math.max(0,f))*zv.duration;
 }
+function seekGate(apply){
+  // Coalesce a stream of seek requests (v43). A scrub drag
+  // produces a seek per pointer movement — far more than
+  // the media pipeline can service: each seek to an
+  // unbuffered position aborts the fetch the previous one
+  // started, so on a loaded machine no seek ever completes
+  // and the video hangs in the seeking state, and the same
+  // churn meets the wall's tiles on return. The gate issues
+  // at most one seek per interval, always delivers the
+  // latest position, and flush() delivers it at once.
+  let last=0, timer=null, pending=null;
+  const issue=f=>{ last=Date.now(); apply(f); };
+  return {
+    push(f){ pending=f;
+      const wait=200-(Date.now()-last);
+      if(wait<=0){ issue(f); pending=null; }
+      else if(!timer){ timer=setTimeout(()=>{
+        timer=null;
+        if(pending!==null){ issue(pending); pending=null; } }, wait); } },
+    flush(){ if(timer){ clearTimeout(timer); timer=null; }
+      if(pending!==null){ issue(pending); pending=null; } }
+  };
+}
+const WALLSEEK=seekGate(f=>setFracAll(f));
+const ZSEEK=seekGate(f=>seekZoomFrac(f));
 $("zv").addEventListener("mousedown",e=>{
   if(e.button!==2) return;
   e.preventDefault();
@@ -5009,19 +5051,33 @@ let resizeT=null;
 window.addEventListener("resize",()=>{ if(zoomId){ layoutPanels(); return; }
   clearTimeout(resizeT); resizeT=setTimeout(refit,200); });
 document.addEventListener("mousemove",e=>{
-  if(ZSCRUB){ seekZoomFrac(ZSCRUB.f0+(e.clientX-ZSCRUB.x0)/ZSCRUB.w); return; }
+  // A drag whose button was released outside the window
+  // never saw its mouseup: the next movement with no
+  // button held ends it, instead of seeking on every
+  // later mouse movement (v43).
+  if(ZSCRUB){
+    if(!(e.buttons&2)){ ZSEEK.flush(); ZSCRUB=null;
+      document.body.style.cursor=""; return; }
+    ZSEEK.push(ZSCRUB.f0+(e.clientX-ZSCRUB.x0)/ZSCRUB.w); return; }
   if(!SCRUB) return;
-  const f=Math.min(1, Math.max(0, SCRUB.f0+(e.clientX-SCRUB.x0)/SCRUB.w));
-  setFracAll(f);
+  if(!(e.buttons&2)){ WALLSEEK.flush(); SCRUB=null;
+    document.body.style.cursor=""; return; }
+  WALLSEEK.push(Math.min(1, Math.max(0,
+    SCRUB.f0+(e.clientX-SCRUB.x0)/SCRUB.w)));
 });
 document.addEventListener("mouseup",e=>{
   if(ZSCRUB && e.button===2){
-    seekZoomFrac(ZSCRUB.f0+(e.clientX-ZSCRUB.x0)/ZSCRUB.w);
+    ZSEEK.push(ZSCRUB.f0+(e.clientX-ZSCRUB.x0)/ZSCRUB.w); ZSEEK.flush();
     ZSCRUB=null; document.body.style.cursor=""; return; }
   if(!SCRUB || e.button!==2) return;
-  const f=Math.min(1, Math.max(0, SCRUB.f0+(e.clientX-SCRUB.x0)/SCRUB.w));
-  setFracAll(f);
+  WALLSEEK.push(Math.min(1, Math.max(0,
+    SCRUB.f0+(e.clientX-SCRUB.x0)/SCRUB.w))); WALLSEEK.flush();
   SCRUB=null; document.body.style.cursor="";
+});
+window.addEventListener("blur",()=>{
+  // Leaving the window mid-drag ends any scrub (v43).
+  if(ZSCRUB){ ZSEEK.flush(); ZSCRUB=null; document.body.style.cursor=""; }
+  if(SCRUB){ WALLSEEK.flush(); SCRUB=null; document.body.style.cursor=""; }
 });
 // The right button is a scrub control on the wall, so its menu is
 // suppressed there (it still works everywhere else in the app).
@@ -5335,7 +5391,7 @@ $("prevstu").onclick=()=>switchStudent(-1);
 $("nextstu").onclick=()=>switchStudent(1);
 $("zplay").onclick=()=>{ const zv=$("zv"); if(zv.paused){ claimAudio(zv); zv.muted=false; zv.play(); } else zv.pause(); };
 $("zv").addEventListener("click",()=>{ const zv=$("zv"); if(zv.paused){ claimAudio(zv); zv.muted=false; zv.play(); } else zv.pause(); });
-$("zseek").addEventListener("input",e=>{ const zv=$("zv"); if(zv.duration) zv.currentTime=e.target.value/1000*zv.duration; });
+$("zseek").addEventListener("input",e=>{ ZSEEK.push(e.target.value/1000); });
 $("zmute").onclick=()=>{ const zv=$("zv"); zv.muted=!zv.muted; if(!zv.muted) claimAudio(zv); syncZBar(); };
 $("zfull").onclick=()=>{ const el=$("zoomvid"); if(el.requestFullscreen) el.requestFullscreen(); };
 document.querySelectorAll(".panel").forEach(p=>{
@@ -5857,6 +5913,11 @@ class QuietServer(ThreadingHTTPServer):
     window. Keep those quiet and report everything else."""
 
     daemon_threads = True
+    # The default listen backlog (5) drops connection bursts
+    # — a wall of tiles fetching at once, a scrub's range
+    # requests — and a dropped media connection leaves the
+    # video waiting on a retry (v43).
+    request_queue_size = 128
 
     def handle_error(self, request, client_address):
         if isinstance(sys.exc_info()[1], CLIENT_GONE):
@@ -5866,6 +5927,13 @@ class QuietServer(ThreadingHTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "TeacherAuditWeb/1.0"
+    # Keep-alive (v43): every response this handler sends
+    # carries a content-length, so connections can be reused
+    # instead of one TCP connection per range fetch — a
+    # scrubbing session issues hundreds of media requests,
+    # and connection churn under a burst left videos waiting
+    # on fresh connections while earlier ones were torn down.
+    protocol_version = "HTTP/1.1"
 
     def log_message(self, *a):
         pass
@@ -5905,6 +5973,12 @@ class Handler(BaseHTTPRequestHandler):
                 start = max(0, size - int(m.group(2)))
             status = 206
         length = max(0, end - start + 1)
+        # Open BEFORE the headers go out (v43 review): with
+        # keep-alive, a failure after the headers are sent
+        # leaves the declared body undelivered and corrupts
+        # the connection for its next request; a failure
+        # before them lets the caller's error reply stand.
+        stream = open(path, "rb")
         self.send_response(status)
         self.send_header("content-type", "video/mp4")
         self.send_header("accept-ranges", "bytes")
@@ -5916,13 +5990,20 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
         except (BrokenPipeError, ConnectionResetError,
                 ConnectionAbortedError):
+            stream.close()
+            self.close_connection = True
             return
-        with open(path, "rb") as f:
+        with stream as f:
             f.seek(start)
             remaining = length
             while remaining > 0:
-                chunk = f.read(min(1 << 18, remaining))
+                chunk = f.read(min(1 << 20, remaining))
                 if not chunk:
+                    # The file shrank mid-serve (a re-download
+                    # replaced it): the promised body cannot be
+                    # delivered, so this connection must not be
+                    # reused for another request.
+                    self.close_connection = True
                     break
                 try:
                     self.wfile.write(chunk)
@@ -5933,6 +6014,7 @@ class Handler(BaseHTTPRequestHandler):
                     # That is normal, not an error: stop quietly
                     # instead of printing a traceback in the console
                     # window (the teacher's report, 2026-11-08).
+                    self.close_connection = True
                     return
                 remaining -= len(chunk)
 
