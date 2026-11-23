@@ -13,6 +13,15 @@ function resizeCharts() {
     }
   });
 }
+// Explicit refit of one panel's charts on activation: charts drawn
+// while their panel was hidden carry the hidden size, so showing a
+// panel resizes its charts to the panel's full width directly.
+function refitPanel(name) {
+  document.querySelectorAll("#panel-" + name + " .chart, #panel-" +
+    name + " .walkfig").forEach((el) => {
+    if (el.data) Plotly.Plots.resize(el);
+  });
+}
 function plot(el, traces, layout) {
   el.data = true;
   const lay = Object.assign({ margin: { l: 55, r: 130, t: 30, b: 45 },
@@ -105,7 +114,7 @@ function makeAutoRunner(fn, debounceMs) {
 }
 
 // ------------------------------------------------------------- tabs
-const PANELS = ["model", "app", "sweep", "theory", "code"];
+const PANELS = ["theory", "model", "app", "sweep", "code"];
 function showPanel(name, push) {
   PANELS.forEach((p) => { $("panel-" + p).hidden = p !== name; });
   document.querySelectorAll(".tabbtn").forEach((b) =>
@@ -115,7 +124,7 @@ function showPanel(name, push) {
   // next shown and the runtime is ready.
   if (name === "sweep" && sweepStale && runtimeReady && !runtimeFailed)
     sweepAuto.schedule();
-  requestAnimationFrame(resizeCharts);
+  requestAnimationFrame(() => { resizeCharts(); refitPanel(name); });
 }
 document.querySelectorAll(".tabbtn").forEach((b) =>
   b.addEventListener("click", () => showPanel(b.dataset.tab, true)));

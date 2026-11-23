@@ -8,12 +8,14 @@ time constant in s. Signals in % of span, times in s."""
 CELLS = [
     {"md": """## Step 1: The first-order plus dead time model
 
-The process gain is $K_p$ (dimensionless, (% of span)/(% of span)),
-the time constant is $\\tau$ (s) and the dead time is $\\theta$ (s).
-The open-loop step response to an input step of size $\\Delta u$
-(% of span) at time $t = 0$ s is zero until $t = \\theta$, then rises
-exponentially toward $K_p \\Delta u$. The cell evaluates that
-analytic response for the default model and computes the same
+$K_p$ is the process gain (dimensionless, (% of span)/(% of span)),
+$\\tau$ (s) is the time constant and $\\theta$ (s) is the dead time.
+To an input step of size $\\Delta u$
+(% of span) at time $t = 0$ s, the open-loop step response is zero
+until $t = \\theta$, then rises
+exponentially toward $K_p \\Delta u$. For the default model, the
+cell evaluates that
+analytic response and computes the same
 response from the simulation states (the equivalent single-lag
 state model, integrated numerically), then prints the maximum
 absolute difference between the two responses, in % of span, over
@@ -21,7 +23,12 @@ the horizon from $t = 0$ s to $t = 60$ s, beside the analytic
 final value and the expected steady value. The analytic final
 value at the horizon is 9.970 %, below the steady value
 $K_p \\Delta u$ of 10 %, because the response has not finished
-settling at the horizon.""",
+settling at the horizon.
+
+Figure: the analytic and state-simulated open-loop step responses
+of the default model to a 10 % input step over 60 s. The two
+curves agree to within 5 × 10⁻⁹ % of span, the maximum difference
+printed by the cell.""",
      "code": """import numpy as np
 import pid_core as pc
 
@@ -44,12 +51,13 @@ figure([{"x": t_step.tolist(), "y": y_step.tolist(), "mode": "lines",
 
     {"md": """## Step 2: Smith and Corripio tuning
 
-The dead-time ratio is $r = \\theta/\\tau$ (dimensionless). The
+$r = \\theta/\\tau$ (dimensionless) is the dead-time ratio. The
 integral of time-weighted absolute error (ITAE) correlations give
 the controller gain $K_c$ (dimensionless), the integral time $T_i$
-(s) and the derivative time $T_d$ (s). The cell evaluates the
-proportional-integral-derivative (PID) set-point tuning at the
-default model and the Ziegler and Nichols open-loop tuning used
+(s) and the derivative time $T_d$ (s). At the default model, the
+cell evaluates the
+proportional-integral-derivative (PID) set-point tuning and the
+Ziegler and Nichols open-loop tuning used
 as the comparison overlay.""",
      "code": """Kc_sc, Ti_sc, Td_sc = pc.smith_corripio(1.0, 10.0, 2.0, "PID", "setpoint")
 Kc_zn, Ti_zn, Td_zn = pc.ziegler_nichols(1.0, 10.0, 2.0, "PID")
@@ -60,11 +68,16 @@ print("Ziegler-Nichols:    Kc =", round(Kc_zn, 4), " Ti (s) =", round(Ti_zn, 4),
 
     {"md": """## Step 3: Closed-loop run with a derivative filter
 
-The derivative filter time constant is $T_f$ (s), here the filter
-ratio $T_f/T_d = 0.10$ (dimensionless) times $T_d$. The cell runs
-the default set-point step of 10 % of span with the Smith and
-Corripio tuning and reports the integral of absolute error (IAE)
-in % s.""",
+$T_f$ (s) is the derivative filter time constant, here the filter
+ratio $T_f/T_d = 0.10$ (dimensionless) times $T_d$. In the cell, a
+default set-point step of 10 % of span runs with the Smith and
+Corripio tuning; the run's integral of absolute error (IAE) is
+reported in % s.
+
+Figure: the closed-loop controlled variable and controller output
+for the default 10 % set-point step under the Smith and Corripio
+tuning, with $T_f/T_d = 0.10$. For this run the cell prints an
+IAE of 34.603 % s and an overshoot of 0.522 %.""",
      "code": """Tf_default = 0.10 * Td_sc
 sim_default = pc.simulate(plant_default, Kc_sc, Ti_sc, Td_sc, Tf=Tf_default)
 m_default = sim_default["metrics"]
@@ -81,13 +94,18 @@ figure([{"x": sim_default["t"].tolist(), "y": sim_default["y"].tolist(),
     {"md": """## Step 4: Reducing three lags to a first-order plus dead time model
 
 Three equal lags of 5 s in series, with an inherent dead time
-$\\theta_0$ (s) of 1 s, produce an S-shaped step response. The half
-rule keeps the largest lag, adds half of the second lag to the
-effective time constant $\\tau_{\\mathrm{eff}}$ (s), and assigns
+$\\theta_0$ (s) of 1 s, produce an S-shaped step response. Keeping
+the largest lag, the half
+rule adds half of the second lag to the
+effective time constant $\\tau_{\\mathrm{eff}}$ (s) and assigns
 the remainder to the effective dead time $\\theta_{\\mathrm{eff}}$
 (s). The least-squares fit adjusts $\\tau$ and $\\theta$ to
 minimise the integral of squared error between the two step
-responses.""",
+responses.
+
+Figure: the step response of the three-lag plant and of its
+half-rule FOPTD approximation ($\\tau_{\\mathrm{eff}}$ = 7.5 s,
+$\\theta_{\\mathrm{eff}}$ = 8.5 s) to a 10 % step over 80 s.""",
      "code": """taus_demo = [5.0, 5.0, 5.0]
 tau_half, theta_half = pc.half_rule(taus_demo, 1.0)
 plant_lags = {"kind": "lags", "Kp": 1.0, "taus": taus_demo, "theta": 1.0}
@@ -108,14 +126,20 @@ figure([{"x": t_fit.tolist(), "y": y_lags.tolist(), "mode": "lines",
 
     {"md": """## Step 5: Output limits and integral windup
 
-The controller output $u$ (%) is limited to the range from
+At the controller output, $u$ (%) is limited to the range from
 $u_{\\min}$ (%) to $u_{\\max}$ (%). With no anti-windup, the
 integral term keeps accumulating while the output is limited, and
 the response overshoots on recovery. Clamping stops the integral
 update while the error drives the output further into the limit;
 back-calculation feeds the difference between the limited and the
 requested output back to the integral term through the tracking
-time constant $T_t$ (s).""",
+time constant $T_t$ (s).
+
+Figure: the closed-loop response to a 25 % set-point step with
+the output limited to the range from 0 % to 80 %, without
+anti-windup and with clamping. Overshoot is 17.54 % without
+anti-windup and 0.0 % with clamping, the values printed by the
+cell.""",
      "code": """windup_kw = {"sp_step": 25.0, "u_min": 0.0, "u_max": 80.0, "Tf": Tf_default}
 sim_none = pc.simulate(plant_default, Kc_sc, Ti_sc, Td_sc,
                        anti_windup="none", **windup_kw)
@@ -134,12 +158,17 @@ figure([{"x": sim_none["t"].tolist(), "y": sim_none["y"].tolist(),
 
     {"md": """## Step 6: A one-dimensional sweep of the controller gain
 
-The sweep multiplies the Smith and Corripio controller gain by
-factors from 0.25 to 4 (logarithmic spacing, 25 points), holding
+Factors from 0.25 to 4 (logarithmic spacing, 25 points) multiply
+the Smith and Corripio controller gain in the sweep, holding
 the integral time and the derivative time at their tuned values,
 with the same limited controller code path as the App tab. The
 minimum IAE on the slice need not sit at the factor 1.0, because
-the ITAE correlations were fitted to a different criterion.""",
+the ITAE correlations were fitted to a different criterion.
+
+Figure: IAE against the controller-gain factor on a logarithmic
+factor axis. On the slice, the minimum sits at a factor of 1.122
+(IAE 34.341 % s), below the value at factor 1 (34.637 % s), the
+values printed by the cell.""",
      "code": """factors_sweep = list(np.geomspace(0.25, 4.0, 25))
 slice_kc = pc.sweep_1d(plant_default, (Kc_sc, Ti_sc, Td_sc), "Kc",
                        factors_sweep, Tf=Tf_default)

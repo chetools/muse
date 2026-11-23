@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Smith and Corripio PID tuning for first-order plus dead time models</title>
+<style>
+@@BASE_CSS@@
+@@KATEX_CSS@@
+</style>
+<script>@@PLOTLY_JS@@</script>
+</head>
+<body>
+<div class="col">
+<header class="head">
+<h1>Smith and Corripio PID tuning</h1>
+<p class="intro">Tuning of a proportional-integral-derivative (PID)
+controller for a first-order plus dead time (FOPTD) model, starting
+from the Smith and Corripio integral of time-weighted absolute
+error (ITAE) correlations, with parameter sweeps, output limits,
+slew limiting and anti-windup. The page is written for chemical
+engineering students who have met Laplace transforms and the
+basics of feedback control. At the default model — process gain 1,
+time constant 10 s, dead time 2 s — the Smith and Corripio PID
+set-point tuning is a controller gain of 3.790, an integral time
+of 13.04 s and a derivative time of 0.691 s. Times are in seconds
+(s) and signals in % of span.</p>
+<p class="status" id="boot-status">Loading the Python runtime…</p>
+</header>
+
+<nav class="tabs" id="tabbar">
+<button data-tab="theory" class="tabbtn active">Theory</button>
+<button data-tab="model" class="tabbtn">Model</button>
+<button data-tab="app" class="tabbtn">App</button>
+<button data-tab="sweep" class="tabbtn">Sweep</button>
+<button data-tab="code" class="tabbtn">Code</button>
+</nav>
+
+<!-- ======================= MODEL ======================= -->
+<section class="panel" id="panel-model" hidden>
+<div class="layout">
+<aside class="side">
+<h2>Higher-order plant</h2>
+<p class="note">The Model tab sets a higher-order plant — a chain
+of lags or an underdamped second-order plant — and tests the
+three FOPTD approximations of the Theory tab against its step
+response: manual, the half rule and least squares. A dual-plant
+test below then applies the tuning from a fitted model to the
+true plant.</p>
+<label>Plant family
+<select id="m-family">
+<option value="lags_equal">n equal lags in series</option>
+<option value="lags_two">Two unequal lags in series</option>
+<option value="underdamped">Second-order underdamped</option>
+</select></label>
+<label>Process gain Kp (dimensionless)
+<input type="number" id="m-Kp" value="1.0" step="0.1" min="0.1" max="5"></label>
+<div id="m-fam-equal">
+<label>Number of lags n (dimensionless)
+<input type="number" id="m-n" value="3" step="1" min="1" max="10"></label>
+<label>Lag time constant, each (s)
+<input type="number" id="m-tau-each" value="5" step="0.5" min="0.2"></label>
+</div>
+<div id="m-fam-two" hidden>
+<label>First lag time constant τ1 (s)
+<input type="number" id="m-tau1" value="10" step="0.5" min="0.2"></label>
+<label>Second lag time constant τ2 (s)
+<input type="number" id="m-tau2" value="3" step="0.5" min="0.2"></label>
+</div>
+<div id="m-fam-under" hidden>
+<label>Natural time constant (s)
+<input type="number" id="m-tau-n" value="6" step="0.5" min="0.5"></label>
+<label>Damping ratio (dimensionless)
+<input type="number" id="m-zeta" value="0.35" step="0.05" min="0.05" max="0.99"></label>
+</div>
+<label>Inherent dead time θ0 (s)
+<input type="number" id="m-theta0" value="1" step="0.5" min="0"></label>
+<h3>Presets</h3>
+<p>
+<button class="preset" data-preset="mild">Two similar lags</button>
+<button class="preset" data-preset="severe">Five lags</button>
+<button class="preset" data-preset="deadtime">Dead time plus lags</button>
+</p>
+<h3>Manual approximation</h3>
+<label>Effective time constant (s)
+<input type="number" id="m-man-tau" value="8" step="0.5" min="0.2"></label>
+<label>Effective dead time (s)
+<input type="number" id="m-man-theta" value="4" step="0.5" min="0"></label>
+<h3>Step-test data</h3>
+<label class="chk"><input type="checkbox" id="m-noise-on">
+Noise and sampling (off by default)</label>
+<label>Noise standard deviation (%)
+<input type="number" id="m-noise-level" value="0.2" step="0.1" min="0"></label>
+<label>Sampling interval (s)
+<input type="number" id="m-sample-dt" value="1" step="0.5" min="0.2"></label>
+<p><button id="m-run" class="run" disabled>Run model</button></p>
+<p class="note" id="m-note"></p>
+<h3>Dual-plant test</h3>
+<p class="note">Apply the Smith and Corripio tuning computed from
+one approximation to both the fitted FOPTD model and the true
+higher-order plant, using the App tab settings.</p>
+<p>
+<button id="m-dual-manual" disabled>Tuning from Manual fit</button>
+<button id="m-dual-half" disabled>Tuning from Half-rule fit</button>
+<button id="m-dual-ls" disabled>Tuning from Least-squares fit</button>
+</p>
+<h3>Use an approximation in the App tab</h3>
+<p>
+<button id="m-use-manual">Use Manual fit for tuning</button>
+<button id="m-use-half">Use Half-rule fit for tuning</button>
+<button id="m-use-ls">Use Least-squares fit for tuning</button>
+</p>
+</aside>
+<div class="main">
+<h2 id="model-fit-h">Step response and its FOPTD approximations</h2>
+<div class="chart" id="m-chart-fit"></div>
+<h3>Residuals (true − approximation, %)</h3>
+<div class="chart" id="m-chart-resid"></div>
+<h3>Fitted parameters</h3>
+<div id="m-table"></div>
+<h3 id="model-dual-h">Dual-plant closed-loop test</h3>
+<div class="chart" id="m-chart-dual"></div>
+<div id="m-dual-table"></div>
+</div>
+</div>
+</section>
+
+<!-- ======================= APP ======================= -->
+<section class="panel" id="panel-app" hidden>
+<div class="layout">
+<aside class="side">
+<h2>FOPTD model</h2>
+<p class="note">For the FOPTD model set here, the App tab computes
+the Smith and Corripio tuning (or the Ziegler–Nichols tuning) and
+runs the closed loop with the chosen test moves, limits and
+anti-windup. The default case is the model as first set —
+process gain 1, time constant 10 s, dead time 2 s — with PID
+set-point tuning and a 10 % set-point step.</p>
+<label>Process gain Kp (dimensionless)
+<input type="number" id="a-Kp" value="1.0" step="0.1" min="0.1" max="5"></label>
+<label>Time constant τ (s)
+<input type="number" id="a-tau" value="10" step="1" min="1" max="100"></label>
+<label>Dead time θ (s)
+<input type="number" id="a-theta" value="2" step="0.5" min="0" max="50"></label>
+<label>Dead-time ratio preset θ/τ (dimensionless)
+<select id="a-preset">
+<option value="">Custom</option>
+<option value="0.1">0.1</option>
+<option value="0.25">0.25</option>
+<option value="0.2" selected>0.2 (default model)</option>
+<option value="0.5">0.5</option>
+<option value="1.0">1.0</option>
+<option value="2.0">2.0</option>
+</select></label>
+<h2>Tuning</h2>
+<label>Mode
+<select id="a-mode"><option>PID</option><option>PI</option></select></label>
+<label>Correlation version
+<select id="a-input-type">
+<option value="setpoint">Set point</option>
+<option value="disturbance">Load disturbance</option>
+</select></label>
+<label>Controller form
+<select id="a-form">
+<option value="ideal">Ideal (ISA standard)</option>
+<option value="series">Series (interacting)</option>
+</select></label>
+<label>Controller gain Kc (dimensionless)
+<input type="number" id="a-Kc" step="0.05"></label>
+<label>Integral time Ti (s)
+<input type="number" id="a-Ti" step="0.5"></label>
+<label>Derivative time Td (s)
+<input type="number" id="a-Td" step="0.05"></label>
+<p>
+<button id="a-use-sc">Smith and Corripio</button>
+<button id="a-use-zn">Ziegler–Nichols</button>
+</p>
+<label>Set-point weight b (dimensionless)
+<input type="number" id="a-b" value="1.0" step="0.1" min="0" max="1"></label>
+<h2>Derivative filter and noise</h2>
+<label>Filter ratio Tf/Td (dimensionless)
+<input type="number" id="a-tf-ratio" value="0.10" step="0.02" min="0.02" max="0.50"></label>
+<label class="chk"><input type="checkbox" id="a-tf-off"> Filter off (no filter)</label>
+<label class="chk"><input type="checkbox" id="a-noise-on"> Measurement noise on</label>
+<label>Noise standard deviation (%)
+<input type="number" id="a-noise-level" value="0.3" step="0.1" min="0"></label>
+<h2>Test moves</h2>
+<label>Set-point step (% of span)
+<input type="number" id="a-sp-step" value="10" step="1"></label>
+<label>Load step at process input (% of span)
+<input type="number" id="a-load-step" value="0" step="1"></label>
+<h2>Limits and anti-windup</h2>
+<label>Minimum output umin (%)
+<input type="number" id="a-u-min" value="0" step="1"></label>
+<label>Maximum output umax (%)
+<input type="number" id="a-u-max" value="100" step="1"></label>
+<label>Steady output u0 (%)
+<input type="number" id="a-bias" value="50" step="1"></label>
+<label>Slew limit S (%/s)
+<input type="number" id="a-slew" value="20" step="1" min="0.1"></label>
+<label class="chk"><input type="checkbox" id="a-slew-off" checked> Slew limit off</label>
+<label>Anti-windup
+<select id="a-aw">
+<option value="none">None (demonstrates windup)</option>
+<option value="clamping">Clamping (conditional integration)</option>
+<option value="backcalc">Back-calculation (tracking)</option>
+</select></label>
+<label>Tracking time constant Tt (s)
+<input type="number" id="a-Tt" step="0.5" placeholder="sqrt(Ti Td)"></label>
+<p><button class="preset" id="a-windup-preset">Windup demonstration preset</button></p>
+<h2>Display</h2>
+<label class="chk"><input type="checkbox" id="a-show-pv" checked> Controlled variable</label>
+<label class="chk"><input type="checkbox" id="a-show-mv" checked> Manipulated variable</label>
+<label class="chk"><input type="checkbox" id="a-show-e"> Error</label>
+<label class="chk"><input type="checkbox" id="a-show-pid"> P / I / D contributions</label>
+<p><button id="a-run" class="run" disabled>Run</button>
+<button id="a-clear">Clear overlays</button></p>
+<p class="note" id="a-note"></p>
+<p class="stale" id="a-stale" hidden>Inputs differ from the displayed run.</p>
+</aside>
+<div class="main">
+<h2 id="app-resp-h">Closed-loop response</h2>
+<div class="chart" id="a-chart-pv"></div>
+<div class="chart" id="a-chart-mv"></div>
+<h3>Metrics</h3>
+<div id="a-table"></div>
+</div>
+</div>
+</section>
+
+<!-- ======================= SWEEP ======================= -->
+<section class="panel" id="panel-sweep" hidden>
+<div class="layout">
+<aside class="side">
+<h2>Sweep</h2>
+<p class="note">Sweeps start from the App tab tuning (Smith and
+Corripio by default) and use the App plant, limits, slew and
+anti-windup settings. Every run reports two criteria: the integral
+of absolute error (IAE, % s) and the integral of time-weighted
+absolute error (ITAE, % s²). The criterion selector in the main
+column chooses which one the slices, the heat map and the optimum
+display; IAE is the default. One-dimensional slices vary one of the
+controller gain Kc (dimensionless), the integral time Ti (s) and
+the derivative time Td (s) by factors from 0.25 to 4 (logarithmic,
+25 points). Kc and Ti vary over the heat map (15 × 15), with Td
+held at the starting value.</p>
+<p><button id="s-run" class="run" disabled>Run sweeps</button></p>
+<progress id="s-progress" value="0" max="1" hidden></progress>
+<p class="note" id="s-note"></p>
+<h3>Heat-map optimum</h3>
+<div id="s-opt"></div>
+<p><button id="s-load-opt" disabled>Load optimum into App</button></p>
+<h3>Clicked point</h3>
+<div id="s-click"></div>
+<p><button id="s-load-click" disabled>Load clicked point into App</button></p>
+</aside>
+<div class="main">
+<p><label>Sweep criterion <select id="s-crit">
+<option value="IAE" selected>IAE (% s)</option>
+<option value="ITAE">ITAE (% s²)</option>
+</select></label></p>
+<h2 id="sweep-slices-h">One-dimensional slices — IAE (% s) against factor</h2>
+<div class="chart" id="s-chart-Kc"></div>
+<div class="chart" id="s-chart-Ti"></div>
+<div class="chart" id="s-chart-Td"></div>
+<h2 id="sweep-heat-h">Heat map — IAE (% s) over Kc and Ti factors</h2>
+<div class="chart" id="s-chart-heat"></div>
+</div>
+</div>
+</section>
+
+<!-- ======================= THEORY ======================= -->
+<section class="panel" id="panel-theory">
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav id="theory-toc">
+@@THEORY_TOC@@
+</nav></aside>
+<div class="main prose" id="theory-body">
+@@THEORY_HTML@@
+</div>
+</div>
+</section>
+
+<!-- ======================= CODE ======================= -->
+<section class="panel" id="panel-code" hidden>
+<nav class="subtabs">
+<button data-subtab="listings" class="subbtn active">Listings</button>
+<button data-subtab="walkthrough" class="subbtn">Walkthrough</button>
+</nav>
+<div class="subpanel" id="sub-listings">
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav>
+<a href="#code-core">pid_core.py — model, tuning, simulation, sweeps</a>
+<a href="#code-driver">driver.py — page payloads</a>
+<a href="#code-notebook">Editable notebook</a>
+</nav></aside>
+<div class="main">
+<h2 id="code-core">pid_core.py</h2>
+@@LISTING_CORE@@
+<h2 id="code-driver">driver.py</h2>
+@@LISTING_DRIVER@@
+<h2 id="code-notebook">Editable notebook</h2>
+<p>The walkthrough is also an editable marimo notebook on MoLab:
+every value can be changed and the cells re-run there. The
+in-page walkthrough (next sub-tab) is read-only.</p>
+<p>MoLab link: <a href="@@MOLAB_URL@@">@@MOLAB_URL@@</a></p>
+<p>Download: <a href="walkthrough_molab.py" download>walkthrough_molab.py</a>
+(the notebook file published beside this page).</p>
+</div>
+</div>
+</div>
+<div class="subpanel" id="sub-walkthrough" hidden>
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav id="walk-toc">
+@@WALK_TOC@@
+</nav></aside>
+<div class="main">
+<p class="note">Read-only walkthrough (WASM page panel). For the
+editable version, use the MoLab notebook linked under
+Listings.</p>
+@@WALK_HTML@@
+</div>
+</div>
+</div>
+</section>
+
+<footer>
+<p>Smith and Corripio PID tuning page. Computations in Python
+(Pyodide) in the browser, computed live once the runtime is
+ready.</p>
+</footer>
+</div>
+
+<script>@@WORKER_JS@@</script>
+<script>@@APP_JS@@</script>
+</body>
+</html>
