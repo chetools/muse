@@ -605,7 +605,7 @@ def main():
     check(b"sib.classList.contains(\"err\")" in wall
           and b"sib.scrollIntoView" in wall,
           "wall download errors appear beside the tile's button")
-    check(b'id="zcritique" style="font-size:13.5px;line-height:1.5;'
+    check(b'id="zcritique" class="privblock" style="font-size:13.5px;line-height:1.5;'
           b'margin-top:0;white-space:pre-line"' in wall,
           "wall zoom critique keeps its line breaks, so numbered "
           "points appear on separate lines")
@@ -3392,6 +3392,19 @@ def main():
           "v45: dashboard and wall carry the privacy toggle, "
           "the shared stored choice and priv-tagged names, "
           "IDs and grades")
+
+    # ---------------------------------------------------------
+    # 25. v46: the critique panels and the Activity log are
+    # whole-block private (privblock): the critique is free
+    # text that can state the grades, and Activity lines
+    # name students.
+    check(b'id="activitylog" class="privblock"' in dash45
+          and b"html.privacy-on .privblock" in dash45
+          and b'id="zcritique" class="privblock"' in wall45
+          and b'id="hpcritique" class="privblock"' in wall45
+          and b"html.privacy-on .privblock" in wall45,
+          "v46: the Activity log and both critique panels "
+          "are whole-block private while privacy is on")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,

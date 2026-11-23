@@ -276,10 +276,22 @@ note, previous-attempt grades), the Gradebook preview
 (student, ID, score), the wall tiles and attempt tiles
 (name, grade badge), the wall side panel (name, grade
 line) and the zoom view (title, student grade, final-
-grade field). Transcripts, critiques, course and
-homework names are not student identifiers and stay
-visible; the Cleanup page and file downloads (marks,
-Gradebook CSV) are outside the toggle.
+grade field). Transcripts, course and homework names
+are not student identifiers and stay visible; the
+Cleanup page and file downloads (marks, Gradebook
+CSV) are outside the toggle.
+
+v46: two leaks reported against v45 are closed. The
+critique text is free text and can itself state the
+grades, and the dashboard's Activity log lines name
+students (downloads, checks, video downloads). Neither
+can be redacted word by word on the client, so both
+are treated as whole blocks: the critique panels (wall
+side panel and zoom view) and the Activity log carry
+the privblock class, and while privacy is on the whole
+block shows as a grey surface — every line of its text
+transparent and unselectable — and returns when
+privacy is turned off.
 """
 
 import argparse
@@ -3611,6 +3623,8 @@ html.privacy-on .priv{color:transparent!important;background:#8b939b!important;b
 html.privacy-on .priv *{color:transparent!important;background:transparent!important;text-shadow:none!important}
 html.privacy-on input.priv{pointer-events:none}
 html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
+html.privacy-on .privblock{color:transparent!important;background:#8b939b!important;user-select:none!important;-webkit-user-select:none!important;text-shadow:none!important}
+html.privacy-on .privblock *{color:transparent!important;background:transparent!important;text-shadow:none!important;border-color:transparent!important}
 </style></head><body>
 <header><h1>Teacher Audit — HW Signing</h1>
 <p>Runs on this computer only (127.0.0.1). Canvas is read-only here; grades go back as a Gradebook CSV you upload.</p>
@@ -3627,7 +3641,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 </div><div class="col">
 <label>YouTube acoustic similarity threshold (0–1)</label><input type="number" id="acoustic_threshold" step="0.01" min="0" max="1">
 <h3>Activity</h3>
-<div id="activitylog" aria-live="off"></div>
+<div id="activitylog" class="privblock" aria-live="off"></div>
 <p class="mut">Package downloads, integrity checks and YouTube video downloads run in the background, in parallel, and are logged here as they happen. The automatic work starts as soon as a Canvas token is saved, then repeats every 10 minutes. Closing this page does not stop the work; if the app itself is closed, anything left incomplete is picked up again by the next pass after it restarts.</p>
 </div></div>
 <p><button id="savecfg">Save settings</button>
@@ -4487,6 +4501,8 @@ html.privacy-on .priv{color:transparent!important;background:#8b939b!important;b
 html.privacy-on .priv *{color:transparent!important;background:transparent!important;text-shadow:none!important}
 html.privacy-on input.priv{pointer-events:none}
 html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
+html.privacy-on .privblock{color:transparent!important;background:#8b939b!important;user-select:none!important;-webkit-user-select:none!important;text-shadow:none!important}
+html.privacy-on .privblock *{color:transparent!important;background:transparent!important;text-shadow:none!important;border-color:transparent!important}
 </style></head><body>
 <header><h1>Video Wall</h1><a href="/">← back to audit</a>
 <button id="privbtn" aria-pressed="false">Hide names &amp; grades</button>
@@ -4517,7 +4533,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
       </section>
       <section class="panel" data-panel="critique" data-state="normal">
         <div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-expand title="expand / restore this panel">⤢</button><button class="pbtn" data-collapse title="collapse / expand this panel">▾</button></span></div>
-        <div class="panel-body"><p id="zcritique" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div>
+        <div class="panel-body"><p id="zcritique" class="privblock" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div>
       </section>
       <section class="panel" data-panel="transcript" data-state="normal">
         <div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-expand title="expand / restore this panel">⤢</button><button class="pbtn" data-collapse title="collapse / expand this panel">▾</button></span></div>
@@ -4553,7 +4569,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
   <aside id="hoverpanel" aria-label="Selected take details">
     <div id="hpcard"></div>
     <section class="hpanel" data-hpanel="marks"><div class="panel-head"><h3>Time marks</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hpmarks"></div></div></section>
-    <section class="hpanel" data-hpanel="critique"><div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><p id="hpcritique" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div></section>
+    <section class="hpanel" data-hpanel="critique"><div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><p id="hpcritique" class="privblock" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div></section>
     <section class="hpanel" data-hpanel="transcript"><div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hptrans"></div></div></section>
   </aside>
   </div>
