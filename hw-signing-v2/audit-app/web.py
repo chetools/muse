@@ -240,6 +240,22 @@ media server supports the load better: HTTP/1.1
 keep-alive (every response carries a content-length),
 a listen backlog of 128 instead of 5, and 1 MB stream
 chunks instead of 256 KB.
+
+v44: the Zoom (tile-size) slider no longer rebuilds the
+wall per input step. refit() rebuilt every tile on every
+slider movement, discarding each video element and with
+it every position and playing state — the wall came back
+black, stopped and reset to 0 (the teacher's screenshot,
+2026-11-23: ten tiles black at 0%). The slider now
+resizes the tiles live through the grid's column width
+alone, and refit runs once the drag settles: with the
+per-screen count unchanged it touches nothing else, and
+when the count changes it captures each tile's position
+and playing state before the rebuild and restores them
+after. The wall panel's transcript now follows the
+selected tile while it plays, as the zoom view's does:
+the chunk being spoken is marked and kept visible in
+the transcript section.
 """
 
 import argparse
@@ -3618,10 +3634,7 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <p class="mut" id="rdestimate"></p>
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
-<p class="mut">The grade shown here is one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the signed grade.</p>
-<p class="mut">The YouTube acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows \"YouTube passed · similarity …\" or \"YouTube FLAGGED\" under Integrity; a flagged submission's final grade stays blank until you enter one.</p>
-<p class="mut">Re-checks are partial by default: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full.</p>
-<p class="mut">Examined is ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
+<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
 <div id="viewctl">
 <label>Course <select id="fcourse"><option value="">All courses</option></select></label>
@@ -3644,7 +3657,7 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <table><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
 <th>Integrity</th><th>Grade</th>
 <th>Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
-<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade.</p>
+<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean (audit v2). It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade.</p>
 </section>
 
 <section><h2>3. Grades back to Canvas</h2>
@@ -4751,9 +4764,39 @@ function renderHoverPanel(){
     ? marks.map(m=>'<div class="chunk"><span class="t">'+fmt(m.t)+'</span>'+esc(m.note||"")+"</div>").join("")
     : '<p class="mut" style="margin:0">No time marks.</p>';
   $("hpcritique").textContent=d.critique||"—";
+  HOVER.lastAct=-1;
   $("hptrans").innerHTML=(d.transcript&&d.transcript.length)
-    ? d.transcript.map(c=>'<div class="chunk"><span class="t">'+fmt(c.t)+'</span>'+esc(c.text)+"</div>").join("")
+    ? d.transcript.map((c,i)=>'<div class="chunk" data-i="'+i+'"><span class="t">'+fmt(c.t)+'</span>'+esc(c.text)+"</div>").join("")
     : '<p class="mut" style="margin:0">No transcript.</p>';
+}
+function syncHoverTranscript(){
+  // The wall panel's transcript follows the selected tile
+  // while it plays (v44), as the zoom view's transcript
+  // follows its video: the chunk being spoken is marked
+  // and kept visible inside the transcript section.
+  const id=HOVER.id; if(!id) return;
+  const v=tileVideo(id); if(!v || v.paused) return;
+  const s=findTile(id);
+  if(!s || !s.transcript || !s.transcript.length) return;
+  const t=v.currentTime; let act=-1;
+  s.transcript.forEach((c,i)=>{ if(c.t<=t) act=i; });
+  if(act<0 || act===HOVER.lastAct) return;
+  const body=document.querySelector(
+    '[data-hpanel="transcript"] .panel-body');
+  // A collapsed section's body is display:none: nothing can
+  // be scrolled into view, and recording the chunk as seen
+  // would leave it off-screen when the section is expanded
+  // again — wait for a later frame instead.
+  if(body && body.clientHeight===0) return;
+  HOVER.lastAct=act;
+  const chunks=document.querySelectorAll("#hptrans .chunk");
+  chunks.forEach((el,i)=>el.classList.toggle("active", i===act));
+  const el=chunks[act]; if(!el || !body) return;
+  const br=body.getBoundingClientRect(),
+        er=el.getBoundingClientRect();
+  if(er.top<br.top || er.bottom>br.bottom)
+    body.scrollTop=Math.max(0,
+      body.scrollTop+(er.top-br.top)-body.clientHeight/2);
 }
 function syncHoverSelection(){
   const tiles=currentTiles();
@@ -4982,7 +5025,7 @@ function updateMaster(){
   showing().forEach((s,i)=>{ const el=$("pct_"+s.id); if(el&&vs[i]) el.textContent=Math.round(frac(vs[i])*100)+"% · "+fmt(vs[i].currentTime)+" / "+fmt(vs[i].duration||s.duration_s); });
   $("syncinfo").textContent=vs.length+" videos · lengths "+vs.map(v=>fmt(v.duration||0)).join(", ");
 }
-function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); } raf=requestAnimationFrame(loop); }
+function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); } else syncHoverTranscript(); raf=requestAnimationFrame(loop); }
 function syncZBar(){
   // The zoom position bar lives in the page layout under the video
   // (not as a video overlay), so it never fades or disappears.
@@ -5045,11 +5088,48 @@ $("playall").onclick=()=>{ vids().forEach(v=>playTile(v)); };
 $("pauseall").onclick=()=>{ vids().forEach(v=>{ v._autoplay=false; v.pause(); }); };
 $("speed").onchange=setSpeed;
 function refit(){
+  // Rebuilding the wall destroys every tile's video element,
+  // so a rebuild happens only when the per-screen count
+  // actually changes (v44): a tile-size change with the same
+  // count is just the grid's column width, applied in place
+  // by the slider handler with the videos untouched. When
+  // the count does change, each tile's position and playing
+  // state are captured first and restored onto the rebuilt
+  // tiles — before this, one drag of the Zoom slider
+  // rebuilt the wall per input step and every video came
+  // back black, stopped and reset to 0.
   const first=page*CAP, nc=capacity();
-  if(nc!==CAP){ CAP=nc; page=Math.floor(first/Math.max(1,CAP)); }
+  if(nc===CAP){
+    $("grid").style.gridTemplateColumns=
+      "repeat(auto-fill,minmax("+parseInt($("tilesize").value||"340")+"px,1fr))";
+    return;
+  }
+  const keep={};
+  currentTiles().forEach(s=>{ const v=tileVideo(s.id);
+    // A tile still waiting for its metadata carries its
+    // position and play intent in the v42 fields, not in
+    // currentTime/paused — capture those too, or a tile a
+    // Back restore has just set up reads as 0 and stopped.
+    if(v) keep[s.id]={f:v._wantFrac!==undefined ? v._wantFrac : frac(v),
+                      playing:!v.paused || !!v._autoplay,
+                      audible:!v.muted}; });
+  CAP=nc; page=Math.floor(first/Math.max(1,CAP));
   render();
+  Object.keys(keep).forEach(id=>{ const v=tileVideo(id); if(!v) return;
+    const k=keep[id];
+    if(k.f>0) seekFrac(v,k.f);
+    if(k.playing){ if(k.audible){ claimAudio(v); v.muted=false; }
+      playTile(v); } });
 }
-$("tilesize").oninput=()=>refit();
+let tilesizeT=null;
+$("tilesize").oninput=()=>{
+  // The tiles resize live through the grid's column width
+  // alone; the capacity check (and any rebuild) runs once
+  // the drag settles (v44).
+  $("grid").style.gridTemplateColumns=
+    "repeat(auto-fill,minmax("+parseInt($("tilesize").value||"340")+"px,1fr))";
+  clearTimeout(tilesizeT); tilesizeT=setTimeout(refit,200);
+};
 let resizeT=null;
 window.addEventListener("resize",()=>{ if(zoomId){ layoutPanels(); return; }
   clearTimeout(resizeT); resizeT=setTimeout(refit,200); });

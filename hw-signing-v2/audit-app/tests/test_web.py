@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/43.0",
-          "user agent bumped to 43.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/44.0",
+          "user agent bumped to 44.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3345,6 +3345,29 @@ def main():
           "v43: the server keeps connections alive and "
           "queues connection bursts instead of dropping "
           "them")
+
+    # ---------------------------------------------------------
+    # 23. v44: the Zoom slider resizes tiles through the
+    # grid alone and refit rebuilds only on a capacity
+    # change, restoring positions and playing state; the
+    # wall panel's transcript follows the playing tile.
+    check(b"tilesizeT=setTimeout(refit,200)" in wall40
+          and b"if(nc===CAP){" in wall40
+          and b"f:v._wantFrac!==undefined ? v._wantFrac : frac(v),"
+          in wall40
+          and b"playing:!v.paused || !!v._autoplay,"
+          in wall40
+          and b"if(k.f>0) seekFrac(v,k.f);" in wall40
+          and b"if(k.playing){ if(k.audible){ claimAudio(v);"
+          in wall40
+          and b"function syncHoverTranscript" in wall40
+          and b"else syncHoverTranscript();" in wall40
+          and b"if(body && body.clientHeight===0) return;"
+          in wall40
+          and b'HOVER.lastAct=-1;' in wall40,
+          "v44: a tile-size drag cannot reset the wall, a "
+          "capacity rebuild restores each tile, and the "
+          "panel transcript follows the playing tile")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
