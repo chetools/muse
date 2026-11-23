@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Explain the page</title>
+<title>Keypoints — explain the page</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -82,8 +82,8 @@ img,svg,canvas{max-width:100%}
 <body>
 <div class="wrap">
 <header class="top">
-<h1 id="examTitle">Explain the page</h1>
-<p class="purpose">Explain the assignment page aloud, in one recording.</p>
+<h1 id="examTitle">Keypoints — explain the page</h1>
+<p class="purpose">Explain the assignment page aloud, in one recording. This page serves a student recording an explanation for grading, and the teacher recording the model take on the same page. On a signed-in take, the take&rsquo;s audio is sent to the course server at the end of the take and sealed there, for transcription and comparison against the standard for the assignment (the teacher&rsquo;s model explanation and its key points).</p>
 <div>
 <fieldset><legend>Response</legend>
 <label class="choice"><input type="radio" name="response" value="Speak" checked> Speak (camera recording)</label>
@@ -98,7 +98,17 @@ img,svg,canvas{max-width:100%}
 <video id="preview" autoplay muted playsinline></video>
 <p id="camStatus">The camera switches on when you press Record. Audio only mode works without it.</p>
 </div>
-<p style="font-size:.92rem;color:#444">The recording stays on this device until you download it.</p>
+<p style="font-size:.92rem;color:#444">Nothing of the video leaves this device: the recording stays here until you download it. A signed-in take&rsquo;s audio is the exception &mdash; at the end of the take, the audio is sent to the course server and sealed there.</p>
+</section>
+
+<section class="panel" id="sealPanel">
+<h2 style="margin-top:0;font-size:1.15rem">Sign-in and transcript sealing</h2>
+<p style="font-size:.95rem;color:#444">For a graded take, sign in first: fill in the course server and the assignment code from your course page, enter your school email, and open the sign-in link that is emailed to you (on this device). Then record as usual. Sealing sends your audio &mdash; not the video &mdash; to the course server at the end of the take, as a single recording of the whole explanation. The server seals the audio and holds it: it cannot be changed afterwards, and nothing is transcribed on the server. Keep the sealed session code from your summary; the block on the end screen passes it to your Muse, which transcribes the sealed audio and compares your explanation against the standard for the assignment.</p>
+<p><label>Course server<br><input type="text" id="sealServer" placeholder="https://your-course-server.example" style="width:min(520px,100%);font-size:1rem;padding:8px"></label></p>
+<p><label>Assignment code<br><input type="text" id="sealExam" placeholder="from your course page" style="width:min(520px,100%);font-size:1rem;padding:8px"></label></p>
+<p><label>School email<br><input type="text" id="sealEmail" placeholder="you@school.edu" style="width:min(520px,100%);font-size:1rem;padding:8px"></label>
+<button type="button" id="sealLoginBtn" style="font-size:1rem;padding:8px 14px;margin-left:8px">Email me a sign-in link</button></p>
+<p id="sealStatus" style="font-size:.95rem;color:#444">Not signed in. This take will not be sealed until you sign in.</p>
 </section>
 
 <section class="panel" id="recordPanel">
@@ -108,23 +118,13 @@ img,svg,canvas{max-width:100%}
 <button id="stopTake" type="button" disabled>Stop</button>
 <span class="recind" id="recInd">&#9679; RECORDING</span>
 </p>
-<p id="takeStatus" style="font-size:.95rem;color:#444">Press Record to start. Explain the whole assignment page below in one recording, scrolling as you go; press End take under the page when you finish.</p>
+<p id="takeStatus" style="font-size:.95rem;color:#444">Record is disabled until the assignment page has loaded, and the page loads after you sign in (see Sign-in and transcript sealing, above). Sign in first; then press Record and explain the whole assignment page below in one recording, scrolling as you go, and press End take under the page when you finish.</p>
 <p id="assignNote" style="font-size:.95rem;color:#8b1a1a;font-weight:bold"></p>
-</section>
-
-<section class="panel" id="sealPanel">
-<h2 style="margin-top:0;font-size:1.15rem">Sign in and transcript sealing</h2>
-<p style="font-size:.95rem;color:#444">For a graded take, sign in first: fill in the course server and the assignment code from your course page, enter your school email, and open the sign-in link that is emailed to you (on this device). Then record as usual. Sealing sends your audio &mdash; not the video &mdash; to the course server at the end of the take, as a single recording of the whole explanation. The server seals the audio and holds it: it cannot be changed afterwards, and nothing is transcribed on the server. Keep the sealed session code from your summary; the block on the end screen carries it to your Muse, which transcribes the sealed audio and compares your explanation against the standard for the assignment.</p>
-<p><label>Course server<br><input type="text" id="sealServer" placeholder="https://your-course-server.example" style="width:min(520px,100%);font-size:1rem;padding:8px"></label></p>
-<p><label>Exam code<br><input type="text" id="sealExam" placeholder="from your course page" style="width:min(520px,100%);font-size:1rem;padding:8px"></label></p>
-<p><label>School email<br><input type="text" id="sealEmail" placeholder="you@school.edu" style="width:min(520px,100%);font-size:1rem;padding:8px"></label>
-<button type="button" id="sealLoginBtn" style="font-size:1rem;padding:8px 14px;margin-left:8px">Email me a sign-in link</button></p>
-<p id="sealStatus" style="font-size:.95rem;color:#444">Not signed in. This take will not be sealed until you sign in.</p>
 </section>
 
 <section class="panel" id="recordingsPanel">
 <h2>Recordings</h2>
-<p class="small" id="recEmpty">No recordings yet. A recording exists only in this page&rsquo;s memory while the page stays open &mdash; nothing is uploaded and nothing is written to disk. Closing or reloading the page discards every recording.</p>
+<p class="small" id="recEmpty">No recordings yet. A recording exists only in this page&rsquo;s memory while the page stays open, and nothing is written to disk. A signed-in take&rsquo;s audio does leave the device: at the end of the take it is sent to the course server and sealed there, and the sealed copy stays on the server. Closing or reloading the page discards every recording held in this page.</p>
 <div id="recList"></div>
 </section>
 
@@ -147,19 +147,19 @@ img,svg,canvas{max-width:100%}
 <h3>Your recording</h3>
 <video id="playback" controls playsinline></video>
 <p><a class="dl" id="dlRecording" download="explanation-recording.webm">Download recording</a></p>
-<p><a class="dl hidden" id="dlAudio" download="explanation-audio.wav">Download audio only (WAV)</a></p>
+<p><a class="dl hidden" id="dlAudio" download="explanation-audio.wav">Download audio only (WAV — Waveform Audio File Format)</a></p>
 </div>
 <p id="noRecording">No recording was made in this session.</p>
 <h3>Sealed take</h3>
 <pre id="sealInfo" style="white-space:pre-wrap">Not sealed. Sign in before recording to seal a take.</pre>
-<h3>Hand this take to your Muse</h3>
+<h3>Handover to your Muse</h3>
 <pre id="pasteBlock" style="white-space:pre-wrap;word-wrap:break-word;background:#faf8f2;border:1px solid #ddd6c6;border-radius:6px;padding:12px;font-size:.92rem"></pre>
 <p><button id="copyPaste" type="button">Copy the block</button> <span id="copyNote" style="font-size:.95rem;color:#444"></span></p>
-<p style="font-size:.95rem;color:#444">Your Muse picks this up within about a minute if your watch is set up — or open Muse and say 'check now'.</p>
+<p style="font-size:.95rem;color:#444">Give the block above to your Muse: it holds the session code. Your Muse transcribes the sealed audio and compares your explanation against the standard for the assignment.</p>
 <h3>Take audio</h3>
 <p><button id="audioUploadRun" type="button" class="hidden">Send this take&rsquo;s audio to the course server</button> <span id="segStatus" style="font-size:.95rem;color:#444"></span></p>
 <progress id="segProgress" max="100" value="0" style="width:100%" class="hidden"></progress>
-<p style="font-size:.92rem;color:#444">On a signed-in take the audio is sent automatically at the end of the take and sealed on the course server. No transcript is made on the server: your Muse transcribes the sealed audio &mdash; use the block above.</p>
+<p style="font-size:.92rem;color:#444">On a signed-in take the audio is sent automatically at the end of the take and sealed on the course server. Transcription follows in your Muse, from the block above.</p>
 <pre id="endTranscript" style="white-space:pre-wrap"></pre>
 <h3>Session summary</h3>
 <pre id="summary"></pre>
@@ -294,12 +294,12 @@ function beginTake(){
         };
         recorder.start(1000);
       } else {
-        camError("MediaRecorder could not be started in this browser.");
+        camError("MediaRecorder could not be started in this browser, so this take is recorded without video. The audio is still captured and can be sealed as usual.");
       }
     } else if (!stream){
       camError("the camera could not be switched on. Allow camera access, or switch Response to Audio only and restart the take.");
     } else {
-      camError("MediaRecorder is unavailable in this browser.");
+      camError("MediaRecorder is unavailable in this browser, so this take is recorded without video. The audio is still captured and can be sealed as usual.");
     }
   }
   el("startTake").disabled = true; el("stopTake").disabled = false;
@@ -410,7 +410,7 @@ async function sealVerifyLogin(token){
   }
 }
 el("sealLoginBtn").addEventListener("click", async function(){
-  if (!sealUrl() || !sealExamId()){ sealNote("Fill in the course server and the exam code first."); return; }
+  if (!sealUrl() || !sealExamId()){ sealNote("Fill in the course server and the assignment code first."); return; }
   var email = el("sealEmail").value.trim();
   if (!email){ sealNote("Enter your school email first."); return; }
   sealNote("Sending a sign-in link\u2026");
@@ -433,7 +433,7 @@ el("sealLoginBtn").addEventListener("click", async function(){
     if (saved && saved.value && saved.examId === el("sealExam").value) sealState.auth = saved;
   } catch(e){}
   if (q.get("login")){
-    if (!sealUrl() || !sealExamId()){ sealNote("This sign-in link is missing the server or exam code. Open the full link from your course page."); return; }
+    if (!sealUrl() || !sealExamId()){ sealNote("This sign-in link is missing the server or assignment code. Open the full link from your course page."); return; }
     sealVerifyLogin(q.get("login"));
     try { history.replaceState(null, "", location.pathname); } catch(e){}
   } else if (sealState.auth){
@@ -482,9 +482,9 @@ function fillPasteBlock(){
   if (!code){
     t = "This take was not sealed, so there is no session code. Sign in before recording to seal a take.";
   } else if (kpRole === "model"){
-    t = "Build the answer key from my model take.\nCourse server: " + sealUrl() + "\nAssignment: " + sealExamId() + "\nModel session code: " + code + "\nSkill: https://github.com/chetools/muse/tree/main/keypoints-teacher-skill\nIf that skill is not installed, install it from the link, then continue.";
+    t = "Build the answer key from my model take.\nCourse server: " + sealUrl() + "\nAssignment code: " + sealExamId() + "\nModel session code: " + code + "\nSkill: https://github.com/chetools/muse/tree/main/keypoints-teacher-skill\nIf that skill is not installed, install it from the link, then continue.";
   } else {
-    t = "Grade my sealed explanation.\nCourse server: " + sealUrl() + "\nAssignment: " + sealExamId() + "\nSession code: " + code + "\nSkill: https://github.com/chetools/muse/tree/main/keypoints-grading-skill\nIf that skill is not installed, install it from the link, then continue.";
+    t = "Grade my sealed explanation.\nCourse server: " + sealUrl() + "\nAssignment code: " + sealExamId() + "\nSession code: " + code + "\nSkill: https://github.com/chetools/muse/tree/main/keypoints-grading-skill\nIf that skill is not installed, install it from the link, then continue.";
   }
   el("pasteBlock").textContent = t;
 }
@@ -492,13 +492,13 @@ function fillPasteBlock(){
 async function openSealSession(){
   sealState.sessionCode = null; sealState.sent = {}; sealState.result = null; sealState.sealed = false; sealState.inflight = []; sealState.audioSent = {}; sealState.audioBusy = false;
   if (!sealOn()){
-    sealNote("Sealing is off: you are not signed in for this exam. This take will not be sealed.");
+    sealNote("Sealing is off: you are not signed in for this assignment. This take will not be sealed.");
     return;
   }
   try {
     var d = await sealPost("/t/session", { examId: sealExamId() }, true);
     sealState.sessionCode = d.sessionCode;
-    sealNote("Sealing on. A session is open on the server. At the end of the take your audio is sent to the server and sealed there; your Muse transcribes the sealed audio afterwards.");
+    sealNote("Sealing on. A session is open on the server. At the end of the take your audio is sent to the server and sealed there.");
   } catch(e){
     sealNote("Sealing could not start (" + e.message + "). This take will not be sealed.");
   }
@@ -540,12 +540,13 @@ async function audioUploadAndSeal(){
       done++;
       segProgressShow(true, Math.round(100 * done / Math.max(1, total)));
       segStatus("Sent the take's audio to the course server (" + done + " of " + total + " parts).");
-      sealNote("Sealing: audio for slide " + seg.step + " is held by the server.");
+      sealNote("Sealing: audio for part " + done + " of " + total + " is held by the server.");
     }
     segProgressShow(false);
     var sd = await sealPost("/t/seal", { examId: sealExamId() }, true);
     sealState.result = sd; sealState.sealed = true;
-    el("endTranscript").textContent = "Your audio is sealed on the course server. No transcript is made on the server; your Muse transcribes the sealed audio \u2014 use the block above. The session code is " + sd.sessionCode + ".";
+    segStatus("Audio sealed on the course server.");
+    el("endTranscript").textContent = "Your audio is sealed on the course server. Your Muse transcribes the sealed audio from the block above. The session code is " + sd.sessionCode + ".";
     fillPasteBlock();
     el("sealInfo").textContent = "Session: " + sd.sessionCode + "\nSealed at: " + sd.sealedAt + "\nAudio fingerprint: " + sd.audioFingerprint + "\nTranscript fingerprint: " + (sd.transcriptFingerprint || "none (this take is sealed by its audio fingerprint)") + "\nReceipt: " + sd.receipt;
     sealNote("Sealed. The server holds the sealed audio; the session code is in your summary and in the block above.");
