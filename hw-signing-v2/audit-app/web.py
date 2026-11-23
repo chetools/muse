@@ -163,6 +163,24 @@ package's content hashes (ZIP watermark, HTML) still match,
 earning at most the acoustic re-check. (4) A check run writes
 the results file at checkpoints and once at the end, not once
 per finished package.
+
+v39: wall videos are downloaded in standard dynamic range
+(SDR). The old selector (bv*[height<=480]) ranks HDR formats
+first, so a take a student recorded in HDR on a phone came
+down as the HDR encode; YouTube's own player tone-maps that
+encode for an ordinary display, but a browser playing the
+downloaded MP4 file directly does not, and the picture on
+the wall was excessively bright, with the whiteboard blown
+out to white. The selector now filters to SDR formats,
+keeping the old selector only as a last-resort fallback so
+a video that exists in no SDR format still downloads. A
+registry (video-format.json in the data folder's state
+files) records the format tag of each downloaded video;
+the automatic pass re-downloads, once, any video whose
+recorded tag is not the current one — which covers every
+video downloaded before v39, none of which has an entry —
+and the replacement earns the acoustic cross-check again
+through the ordinary changed-video rule.
 """
 
 import argparse
@@ -2531,12 +2549,19 @@ def pending_work(cfg):
             n_chk += 1
     n_vid = 0
     try:
+        # v39: a downloaded video recorded under an old format
+        # tag (or with no record) is owed a re-download too.
         n_vid = sum(1 for st in wall_students(cfg)
-                    if st["source"] != "demo" and not st.get("downloaded")
-                    and st.get("youtube"))
+                    if st["source"] != "demo" and st.get("youtube")
+                    and (not st.get("downloaded")
+                         or not _video_format_current(
+                             cfg, youtube_video_file(
+                                 cfg, st["id"], st["user_id"]))))
         for p in att_pkgs:
-            if attempt_video_path(cfg, p["key"],
-                                  p["attempt_no"]).exists():
+            _att_vid = attempt_video_path(cfg, p["key"],
+                                          p["attempt_no"])
+            if _att_vid.exists() and _video_format_current(cfg,
+                                                           _att_vid):
                 continue
             try:
                 parsed = audit.parse_package(
@@ -2621,13 +2646,20 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
                                       f"{type(e).__name__}: {e}")
                 return
             for st in students:
-                if st["source"] == "demo" or st.get("downloaded") \
-                        or not st.get("youtube"):
+                if st["source"] == "demo" or not st.get("youtube"):
+                    continue
+                if st.get("downloaded") and not _refresh_stale_video(
+                        cfg, youtube_video_file(cfg, st["id"],
+                                                st["user_id"])):
                     continue
                 log_activity("video", "video download started — "
                                       f"{st['name']}")
                 try:
                     video_fn(cfg, st["id"], st["youtube"])
+                    _dl_file = audit.data_dir(cfg) / "videos" \
+                        / f"{st['id']}.mp4"
+                    if _dl_file.exists():
+                        _record_video_format(cfg, _dl_file)
                     outcome["got"] += 1
                     log_activity("video", "video downloaded — "
                                           f"{st['name']}")
@@ -2648,7 +2680,11 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
                 log_activity("video", "attempt video list unavailable: "
                                       f"{type(e).__name__}: {e}")
             for r in att_rows:
-                if r.get("downloaded") or not r.get("youtube"):
+                if not r.get("youtube"):
+                    continue
+                if r.get("downloaded") and not _refresh_stale_video(
+                        cfg, attempt_video_path(cfg, r["unit_key"],
+                                                r["attempt_no"])):
                     continue
                 stem = f"{r['unit_key']}-attempt-{r['attempt_no']}"
                 log_activity("video", "video download started — "
@@ -2656,6 +2692,10 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
                                       f"(attempt {r['attempt_no']})")
                 try:
                     video_fn(cfg, stem, r["youtube"])
+                    _dl_file = audit.data_dir(cfg) / "videos" \
+                        / f"{stem}.mp4"
+                    if _dl_file.exists():
+                        _record_video_format(cfg, _dl_file)
                     outcome["got"] += 1
                     log_activity("video", "video downloaded — "
                                           f"{r['name']} "
@@ -3014,6 +3054,10 @@ def selective_cleanup(cfg, keys, include_exports=False,
                 freed += vf.stat().st_size
                 removed_files += 1
                 vf.unlink()
+                # v39: the format record goes with the file, so
+                # a same-named file that appears later without
+                # the app's download cannot inherit its tag.
+                _forget_video_format(cfg, vf)
         sole = uid_counts.get(uid, 0) <= 1
         for store_name, store in stores:
             changed = False
@@ -3050,6 +3094,7 @@ def selective_cleanup(cfg, keys, include_exports=False,
                     freed += vf.stat().st_size
                     removed_files += 1
                     vf.unlink()
+                    _forget_video_format(cfg, vf)
         if sole and uid in state:
             del state[uid]
             state_dirty = True
@@ -3084,6 +3129,7 @@ def selective_cleanup(cfg, keys, include_exports=False,
             freed += f.stat().st_size
             removed_files += 1
             f.unlink()
+            _forget_video_format(cfg, f)
     log_activity("system", f"cleanup: deleted {units} submission(s), "
                            f"{removed_files} file(s), "
                            f"{freed} byte(s) freed")
@@ -3318,11 +3364,72 @@ def find_ytdlp():
     return None
 
 
+# The format tag of the wall videos the app downloads now
+# (v39). It is recorded per file in video-format.json; a file
+# whose recorded tag differs — or which has no entry, as every
+# pre-v39 download has not — is re-downloaded once by the
+# automatic pass. Bump the tag whenever the download format
+# changes in a way that makes existing files wrong.
+VIDEO_FORMAT_TAG = "sdr1"
+
+# SDR first (v39): bv* alone ranks HDR formats first, and a
+# browser playing the downloaded file does not tone-map HDR
+# the way YouTube's player does — the picture came out
+# excessively bright. The unfiltered selector remains as the
+# last resort, so a video with no SDR format still downloads.
+YTDLP_FORMAT = (
+    "bv*[height<=480][dynamic_range='SDR']+ba"
+    "/b[height<=480][dynamic_range='SDR']"
+    "/bv*[height<=480]+ba/b[height<=480]/b")
+
+
+def _video_format_store(cfg):
+    return read_json_file(_state_file(cfg, "video-format.json"), {})
+
+
+def _video_format_current(cfg, path):
+    """True when the video file at path is recorded as downloaded
+    under the current format tag (v39)."""
+    return _video_format_store(cfg).get(Path(path).name) \
+        == VIDEO_FORMAT_TAG
+
+
+def _record_video_format(cfg, path):
+    store = _video_format_store(cfg)
+    if store.get(Path(path).name) != VIDEO_FORMAT_TAG:
+        store[Path(path).name] = VIDEO_FORMAT_TAG
+        write_json_atomic(_state_file(cfg, "video-format.json"), store)
+
+
+def _forget_video_format(cfg, path):
+    store = _video_format_store(cfg)
+    if Path(path).name in store:
+        del store[Path(path).name]
+        write_json_atomic(_state_file(cfg, "video-format.json"), store)
+
+
+def _refresh_stale_video(cfg, path):
+    """Delete a downloaded video whose recorded format tag is not
+    the current one (v39) and report whether a re-download is
+    owed. A file with no registry entry — every pre-v39
+    download — is stale. A failed delete is left alone: the
+    file stays and the next pass tries again."""
+    try:
+        if path.exists() and not _video_format_current(cfg, path):
+            path.unlink()
+            _forget_video_format(cfg, path)
+            return True
+    except OSError:
+        pass
+    return False
+
+
 def download_youtube_medium(cfg, user_id, youtube_url):
     """Download one YouTube video at medium resolution (at most 480 px
-    high, merged to MP4) into the data folder's videos/ directory.
-    Tries the visionos client first, then android (the order verified
-    on this network: visionos returns the full format list)."""
+    high, SDR, merged to MP4) into the data folder's videos/
+    directory. Tries the visionos client first, then android (the
+    order verified on this network: visionos returns the full
+    format list)."""
     import subprocess
     ytdlp = find_ytdlp()
     if not ytdlp:
@@ -3337,11 +3444,12 @@ def download_youtube_medium(cfg, user_id, youtube_url):
     for client in ("visionos", "android"):
         cmd = [ytdlp, "--no-playlist", "--no-warnings",
                "--extractor-args", f"youtube:player_client={client}",
-               "-f", "bv*[height<=480]+ba/b[height<=480]/b",
+               "-f", YTDLP_FORMAT,
                "--merge-output-format", "mp4", "-o", out_tmpl, youtube_url]
         proc = subprocess.run(cmd, capture_output=True, text=True,
                               timeout=1200)
         if proc.returncode == 0 and target.exists():
+            _record_video_format(cfg, target)
             return {"file": str(target), "bytes": target.stat().st_size,
                     "client": client}
         errors.append(f"{client}: {(proc.stderr or proc.stdout)[-300:]}")

@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/38.0",
-          "user agent bumped to 38.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/39.0",
+          "user agent bumped to 39.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2422,6 +2422,12 @@ def main():
     vids35.mkdir(exist_ok=True)
     (vids35 / f"{KEY888}.mp4").write_bytes(b"canonical-video")
     (vids35 / f"{KEY888}-attempt-1.mp4").write_bytes(b"attempt-video")
+    # v39: the fixture's videos are current-format downloads, so
+    # the format registry records them; without the records the
+    # v39 re-download rule would owe them in every count below.
+    web._record_video_format(cfg35, vids35 / f"{KEY888}.mp4")
+    web._record_video_format(cfg35,
+                             vids35 / f"{KEY888}-attempt-1.mp4")
 
     _keep35 = (web.fetch_courses, web.fetch_assignments,
                web.fetch_submissions_for, web.fetch_assignment_for,
@@ -3149,6 +3155,102 @@ def main():
         audit.check_package = _orig_cp38
         audit.youtube_cross_check = _orig_yt38
         audit.worker_verify_grade = _orig_wv38
+
+    # ---------------------------------------------------------
+    # 18. v39: wall videos download in SDR, and a video
+    # downloaded under an older format is replaced once.
+    # (a) The yt-dlp selector filters to SDR formats first and
+    # keeps the unfiltered selector only as the last resort.
+    # (b) The format registry: a file with no entry, or an old
+    # entry, is stale and is deleted for re-download; a file
+    # recorded under the current tag is kept. (c) An automatic
+    # pass re-downloads Wren's pre-v39 videos (seeded in
+    # section 15 with no registry entries) and, once the
+    # replacements are on disk and recorded, does not
+    # download them again.
+    check("[dynamic_range='SDR']" in web.YTDLP_FORMAT
+          and web.YTDLP_FORMAT.index("[dynamic_range='SDR']")
+          < web.YTDLP_FORMAT.index("/bv*[height<=480]+ba"),
+          "v39: the download selector takes SDR formats first, "
+          "with the unfiltered selector as the last resort")
+    _vf39 = data_dir / "videos" / "fmt39.mp4"
+    _vf39.write_bytes(b"video")
+    check(not web._video_format_current(cfg36, _vf39)
+          and web._refresh_stale_video(cfg36, _vf39)
+          and not _vf39.exists(),
+          "v39: a video with no format record is stale and is "
+          "removed for re-download")
+    _vf39.write_bytes(b"video")
+    web._record_video_format(cfg36, _vf39)
+    check(web._video_format_current(cfg36, _vf39)
+          and not web._refresh_stale_video(cfg36, _vf39)
+          and _vf39.exists(),
+          "v39: a video recorded under the current format tag "
+          "is kept")
+    _vf39.unlink()
+    web._forget_video_format(cfg36, _vf39)
+
+    got39 = []
+
+    def fake_video39(c, uid, url):
+        got39.append(uid)
+        (data_dir / "videos" / f"{uid}.mp4").write_bytes(
+            b"sdr-video")
+
+    web.auto_pipeline(
+        cfg36, download_fn=lambda: [], checks_fn=lambda: None,
+        video_fn=fake_video39)
+    check(KEY999 in got39
+          and f"{KEY999}-attempt-1" in got39,
+          "v39: an automatic pass re-downloads videos "
+          "downloaded before v39 (no format record)")
+    got39.clear()
+    web.auto_pipeline(
+        cfg36, download_fn=lambda: [], checks_fn=lambda: None,
+        video_fn=fake_video39)
+    check(KEY999 not in got39
+          and f"{KEY999}-attempt-1" not in got39,
+          "v39: the replacement videos, recorded under the "
+          "current tag, are not downloaded again")
+
+    # (d) The resume scan counts a stale-but-present video as
+    # owed; (e) a failed re-download of a stale video leaves
+    # it absent and unrecorded, and the next pass completes
+    # it; (f) cleanup removes a deleted video's format record
+    # with the file.
+    _wren_vid39 = data_dir / "videos" / f"{KEY999}.mp4"
+    _pend1_39 = web.pending_work(cfg36)["videos"]
+    web._forget_video_format(cfg36, _wren_vid39)
+    check(web.pending_work(cfg36)["videos"] == _pend1_39 + 1,
+          "v39: pending_work counts a downloaded video with "
+          "no current format record as owed a re-download")
+
+    def failing_video39(c, uid, url):
+        if uid == KEY999:
+            raise RuntimeError("simulated download failure")
+        (data_dir / "videos" / f"{uid}.mp4").write_bytes(
+            b"sdr-video")
+
+    web.auto_pipeline(
+        cfg36, download_fn=lambda: [], checks_fn=lambda: None,
+        video_fn=failing_video39)
+    check(not _wren_vid39.exists()
+          and not web._video_format_current(cfg36, _wren_vid39),
+          "v39: a failed re-download of a stale video leaves "
+          "it absent and unrecorded, owed on the next pass")
+    web.auto_pipeline(
+        cfg36, download_fn=lambda: [], checks_fn=lambda: None,
+        video_fn=fake_video39)
+    check(_wren_vid39.exists()
+          and web._video_format_current(cfg36, _wren_vid39),
+          "v39: the next pass completes the owed re-download "
+          "and records it")
+    web.selective_cleanup(cfg36, [KEY999])
+    check(f"{KEY999}.mp4" not in web._video_format_store(cfg36)
+          and f"{KEY999}-attempt-1.mp4"
+          not in web._video_format_store(cfg36),
+          "v39: cleanup removes a deleted video's format "
+          "record with the file")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
