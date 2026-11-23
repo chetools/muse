@@ -53,25 +53,28 @@
 <div class="wrap">
   <h1>ChemEScribe Record</h1>
   <p class="sub">This page records and transcribes only; correction is done in Muse with
-  the prompt below. The recogniser runs entirely in this browser — no server takes part, and
-  your audio never leaves this device.</p>
+  the prompt below. The recogniser runs entirely in this browser — no server takes part in
+  the transcription, and your audio never leaves this device. Pressing “Load model”
+  downloads the model files themselves from Hugging Face.</p>
 
-  <h2>1. Load the model</h2>
+  <h2>1. The model</h2>
   <div class="row">
     <button id="loadBtn" class="primary">Load model (about 670 MB, first time only)</button>
     <span class="status" id="loadStatus">Model not loaded.</span>
   </div>
   <progress id="loadProg" value="0" max="1" hidden></progress>
+  <div class="err" id="loadErr"></div>
   <p class="note">Nothing is downloaded until you press the button. The first load takes a
   few minutes; the model then needs roughly 2 GB of memory while transcribing.</p>
 
-  <h2>2. Choose an audio file or record one</h2>
+  <h2>2. Audio file and recording</h2>
   <div class="row">
     <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.m4a,.webm,.ogg">
     <span class="status" id="audioStatus">No file chosen.</span>
   </div>
+  <div class="err" id="fileErr"></div>
   <p class="note">Any recording your browser can play back works. Long recordings are cut into
-  windows inside the page before transcription.</p>
+  windows of about 25 s inside the page before transcription.</p>
   <div class="row">
     <button id="recBtn" disabled>Start recording</button>
     <button id="recStopBtn" disabled>Stop recording</button>
@@ -79,11 +82,12 @@
     <progress class="level" id="recLevel" max="1" value="0"></progress>
     <span class="status" id="recStatus">Recording needs the model loaded (step 1).</span>
   </div>
-  <p class="note">Recording runs from the microphone on this device; nothing is uploaded.
+  <div class="err" id="recErr"></div>
+  <p class="note">Recording runs from the microphone on this device.
   While you record, the audio is transcribed in pieces of about 12 s as it arrives, and the
   raw transcript below grows piece by piece.</p>
 
-  <h2>3. Transcribe a chosen file</h2>
+  <h2>3. Transcription of a chosen file</h2>
   <div class="row">
     <button id="runBtn" class="primary" disabled>Transcribe</button>
     <span class="status" id="runStatus"></span>
@@ -93,7 +97,7 @@
 
   <h2>Live progress</h2>
   <p class="note">Transcription does not wait for the whole recording. As each piece is
-  transcribed — about 12 s pieces while recording, about 25 s windows from a file — its words
+  transcribed — pieces and windows of the sizes stated in step 2 — its words
   appear here at once, exactly as the recogniser produced them. Nothing is corrected on this
   page.</p>
   <progress id="liveProg" value="0" max="1" hidden></progress>
@@ -124,7 +128,7 @@
     <span class="status" id="saveStatus">Autosave: in-browser save only.</span>
   </div>
 
-  <h2>Correct it in Muse</h2>
+  <h2>Correction in Muse</h2>
   <p>Correction happens in Muse, not on this page. Copy the prompt — on its own, or with the
   raw transcript above already attached — paste it into a Muse and send; the
   ChemEScribe skill named in the prompt does the correction with its glossary.</p>
@@ -142,10 +146,11 @@ Transcript:
     <summary>Technical details</summary>
 
     <h3>Recogniser</h3>
-    <p>The recogniser is NVIDIA Parakeet TDT 0.6B v2 (English, int8). Pressing “Load model”
+    <p>The recogniser is NVIDIA Parakeet TDT 0.6B v2 (English, int8 — the model in a
+    compact form whose numbers are stored as 8-bit integers). Pressing “Load model”
     downloads its files (about 670 MB in total) from the Hugging Face repository
     <i>ysdede/parakeet-tdt-0.6b-v2-onnx</i>; the browser caches them on this device for later
-    visits. Your audio is read on this device only and is never uploaded.</p>
+    visits.</p>
 
     <h3>Runtime</h3>
     <p>The recogniser runs on WebAssembly (WASM), the browser’s sandboxed code format, through
