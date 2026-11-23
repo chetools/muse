@@ -12,8 +12,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/sequential-design-lab-v6.html
-  python3 build_page.py --stub   -> dist/sequential-design-lab-v6-stub.html
+  python3 build_page.py          -> dist/sequential-design-lab-v7.html
+  python3 build_page.py --stub   -> dist/sequential-design-lab-v7-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -34,9 +34,40 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "sequential-design-lab/walkthrough_molab.py")
-OUT_NAME = "sequential-design-lab-v6.html"
-STUB_NAME = "sequential-design-lab-v6-stub.html"
+OUT_NAME = "sequential-design-lab-v7.html"
+STUB_NAME = "sequential-design-lab-v7-stub.html"
 PYODIDE_MODULES = ["engine.py"]  # registered in the worker boot (build_page)
+
+# Captions for the walkthrough figures, one per cell, in cell order.
+# Each states only what its figure shows (figures.md F3).
+WALK_CAPTIONS = [
+    "Fig. W1 | Noiseless true value of the first response over the first two "
+    "variables, with the remaining variables held at 0.5, for the "
+    "walkthrough scenario (d = 4, seed 11). The colour scale, titled f, is "
+    "the true value in standardised response units.",
+    "Fig. W2 | The initial design of the walkthrough scenario in the first "
+    "two variables: 14 runs at 12 distinct settings. Scaled inputs are "
+    "dimensionless.",
+    "Fig. W3 | Fitted relevance and true importance of the four variables "
+    "for the first response of the walkthrough scenario. Both are "
+    "dimensionless shares; fitted relevance is the normalised inverse "
+    "fitted length scale.",
+    "Fig. W4 | Predictive standard deviation of the first response over "
+    "the first two variables, with the remaining variables held at 0.5, "
+    "and the batch selected by integrated variance reduction marked. The "
+    "colour scale, titled std, is the predictive standard deviation in "
+    "standardised response units.",
+    "Fig. W5 | Learning curve of the walkthrough session after the first "
+    "sequential batch: leave-one-out (LOO) error and integrated predictive "
+    "standard deviation (integrated std) at each recorded round, against "
+    "experiments completed. Both series are weighted combinations over "
+    "responses, in standardised response units.",
+    "Fig. W6 | The same learning curve with the true score revealed at "
+    "completion, as a third series. The true score is the combined "
+    "normalised true error defined in the Theory panel; it is "
+    "dimensionless, and the error series are in standardised response "
+    "units.",
+]
 
 
 def log(msg):
@@ -233,21 +264,33 @@ def _slugify(text, seen):
 
 
 def add_heading_ids(html_text):
-    """Give every h2/h3 a fragment id and a visible self-link anchor."""
+    """Give every h2/h3 a fragment id and a visible self-link anchor.
+
+    Returns (html, ids, pairs): pairs holds (slug, plain heading text)
+    in document order, for the panel's table of contents."""
     seen = set()
     ids = []
+    pairs = []
 
     def repl(mo):
         tag, inner = mo.group(1), mo.group(2)
         plain = re.sub(r"<[^>]+>", "", inner)
         slug = _slugify(plain, seen)
         ids.append(slug)
+        pairs.append((slug, plain))
         return (f'<{tag} id="{slug}">{inner}'
                 f'<a class="self-link" href="#{slug}" '
                 f'aria-label="Link to this section">#</a></{tag}>')
 
     out = re.sub(r"<(h[23])>(.*?)</\1>", repl, html_text, flags=re.S)
-    return out, ids
+    return out, ids, pairs
+
+
+def toc_html(pairs):
+    items = "".join(
+        f'<li><a href="#{i}">{html_mod.escape(t)}</a></li>'
+        for i, t in pairs)
+    return f"<ul>{items}</ul>"
 
 
 def katex_render(items):
@@ -335,13 +378,16 @@ def build(stub=False):
     assert sep, "theory.md is missing the [[BIBLIOGRAPHY]] marker"
     theory_body, _cite_counts = check_citations(theory_body)
     theory_html = md_to_html(theory_body)
-    theory_html, theory_ids = add_heading_ids(theory_html)
+    theory_html, theory_ids, theory_pairs = add_heading_ids(theory_html)
     theory_html += bibliography_html()
+    assert theory_pairs, "Theory has no headings for its contents"
     log(f"theory section fragment ids: {theory_ids}")
 
     walk_html, walk_figs = [], {}
+    walk_pairs = [("editable-notebook", "Editable notebook")]
     for i, (c, r) in enumerate(zip(CELLS, results)):
         wid = "walkthrough-" + _slugify(c["title"], set())
+        walk_pairs.append((wid, f"Step {i + 1}: {c['title']}"))
         walk_html.append(
             f'<h3 id="{wid}">Step {i + 1}: {html_mod.escape(c["title"])}'
             f'<a class="self-link" href="#{wid}" '
@@ -354,18 +400,33 @@ def build(stub=False):
         for k, fig in enumerate(r["figs"]):
             fid = f"walkfig-{i}-{k}"
             walk_figs[fid] = fig
-            walk_html.append(f"<figure><div class='figbox' id='{fid}'></div></figure>")
+            cap = (f"<figcaption>{html_mod.escape(WALK_CAPTIONS[i])}"
+                   f"</figcaption>" if k == 0 else "")
+            walk_html.append(
+                f"<figure><div class='figbox' id='{fid}'></div>{cap}</figure>")
+    assert len(walk_pairs) > 1, "walkthrough has no steps for its contents"
 
-    listings = []
+    listings, listing_pairs = [], []
     for name in ["engine.py", "walkthrough.py", "runner.py",
                  "make_molab.py", "test_engine.py"]:
         src = open(os.path.join(PYDIR, name)).read()
-        listings.append(f"<details><summary>{name}</summary><pre><code>"
-                        + html_mod.escape(src) + "</code></pre></details>")
+        lid = "listing-" + _slugify(name, set())
+        listing_pairs.append((lid, name))
+        listings.append(
+            f'<h3 id="{lid}">{name}'
+            f'<a class="self-link" href="#{lid}" '
+            f'aria-label="Link to this section">#</a></h3>'
+            "<pre><code>" + html_mod.escape(src) + "</code></pre>")
+    lid = "listing-build-page-py"
+    listing_pairs.append((lid, "build_page.py"))
     listings.append(
-        "<details><summary>build_page.py</summary><pre><code>"
+        f'<h3 id="{lid}">build_page.py'
+        f'<a class="self-link" href="#{lid}" '
+        f'aria-label="Link to this section">#</a></h3>'
+        "<pre><code>"
         + html_mod.escape(open(os.path.abspath(__file__)).read())
-        + "</code></pre></details>")
+        + "</code></pre>")
+    assert listing_pairs, "Code listings have no headings for contents"
 
     engine_b64 = base64.b64encode(
         open(os.path.join(PYDIR, "engine.py"), "rb").read()).decode("ascii")
@@ -384,6 +445,9 @@ def build(stub=False):
         "@@PLOTLY_JS@@": plotly_js,
         "@@KATEX_JS@@": katex_js,
         "@@THEORY_HTML@@": theory_html,
+        "@@TOC_THEORY@@": toc_html(theory_pairs),
+        "@@TOC_LISTINGS@@": toc_html(listing_pairs),
+        "@@TOC_WALK@@": toc_html(walk_pairs),
         "@@LISTINGS_HTML@@": "\n".join(listings),
         "@@WALKTHROUGH_HTML@@": "\n".join(walk_html),
         "@@PRESTART_JSON@@": json.dumps(prestart),

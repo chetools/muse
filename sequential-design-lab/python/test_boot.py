@@ -1,7 +1,7 @@
 """BOOT-level regression tests for the standalone page worker handler.
 
 The BOOT Python is extracted from the built page
-(dist/sequential-design-lab-v6.html) exactly as build_page.py's compile
+(dist/sequential-design-lab-v7.html) exactly as build_page.py's compile
 guard extracts it (both JavaScript template-literal layers simulated),
 executed in CPython with the page's embedded engine, and driven through
 handle(): the no-session sweep, tournament state errors, invalid
@@ -25,7 +25,7 @@ import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-PAGE = os.path.join(ROOT, "dist", "sequential-design-lab-v6.html")
+PAGE = os.path.join(ROOT, "dist", "sequential-design-lab-v7.html")
 
 SMALL_CFG = dict(seed=7, d=2, m=1, n_total=20, batch=4,
                  weights=[100.0], active_count=None, n_cat=0,

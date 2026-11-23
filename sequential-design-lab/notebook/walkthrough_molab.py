@@ -41,13 +41,13 @@ def _(mo):
     mo.md(r"""
     ## Step 1: Scenario and true model generation
 
-    A scenario is fixed by the following quantities. The symbol $d$ denotes the number of input variables. The symbol $n$ denotes the total number of experiments in the budget. The symbol $m$ denotes the number of responses per experiment. The symbol $x_i$ denotes the $i$-th scaled input variable, dimensionless, with $0 \le x_i \le 1$. The symbol $\mathbf{x}$ denotes the vector of all $d$ scaled inputs at one experiment. A seed, an integer, determines the true model, the noise sequence, and all random designs, so a repeated seed reproduces identical data.
+    A scenario is fixed by the following quantities. $d$ denotes the number of input variables. The symbol $n$ denotes the total number of experiments in the budget. $m$ denotes the number of responses per experiment. The symbol $x_i$ denotes the $i$-th scaled input variable, dimensionless, with $0 \le x_i \le 1$. $\mathbf{x}$ denotes the vector of all $d$ scaled inputs at one experiment. A seed, an integer, determines the true model, the noise sequence, and all random designs, so a repeated seed reproduces identical data.
 
     For response $j$, the unstandardised true response $T_j(\mathbf{x})$, in arbitrary generator units, is a sparse sum over an active set $A_j$ of variables:
 
-    $$T_j(\mathbf{x}) = \sum_{i \in A_j} a_{ji} g_{ji}(x_i) + \sum_{(i,k) \in P_j} b_{jik} h_{jik}(x_i, x_k) + 8\, c_j (x_{p} - \tfrac{1}{2})(x_{q} - \tfrac{1}{2})(x_{r} - \tfrac{1}{2})$$
+    $$T_j(\mathbf{x}) = \sum_{i \in A_j} a_{ji} g_{ji}(x_i) + \sum_{(i,k) \in P_j} b_{jik} h_{jik}(x_i, x_k) + c_j \cdot 8 (x_{p} - \tfrac{1}{2})(x_{q} - \tfrac{1}{2})(x_{r} - \tfrac{1}{2}) \tag{9}$$
 
-    The symbol $a_{ji}$ denotes a main-effect coefficient, $g_{ji}$ a nonlinear basis function drawn from sine, quadratic, exponential, logistic, and tent forms, $P_j$ a set of at most three variable pairs, $b_{jik}$ a pair coefficient, $h_{jik}$ a pair basis, and $c_j$ the coefficient of at most one three-variable product over variables indexed $p$, $q$, $r$, with the factor $8$ making the product range over $[-1, 1]$. The standardised true response, the quantity all errors are computed against, is $f_j(\mathbf{x}) = (T_j(\mathbf{x}) - \bar{f}_j) / s_j$, where $\bar{f}_j$ denotes the mean of $T_j$ over a fixed reference grid and $s_j$ denotes its standard deviation over the same grid, so each response is standardised to unit variance over the region and its values are in standardised response units. Responses share part of the active set and differ in the remainder. The heatmap shows the first response over the first two variables, with the remaining variables held at $0.5$. The colour scale, titled $f$, is the noiseless true response value in standardised response units (the response is standardised to unit variance over the region, as defined in the preceding paragraph).
+    $a_{ji}$ denotes a main-effect coefficient, $g_{ji}$ a nonlinear basis function drawn from sine, quadratic, exponential, logistic, and tent forms, $P_j$ a set of at most three variable pairs, $b_{jik}$ a pair coefficient, $h_{jik}$ a pair basis, and $c_j$ the coefficient of at most one three-variable product over variables indexed $p$, $q$, $r$, with the factor $8$ making the product range over $[-1, 1]$. The standardised true response, the quantity all errors are computed against, is given by $f_j(\mathbf{x}) = (T_j(\mathbf{x}) - \bar{f}_j) / s_j$, where $\bar{f}_j$ denotes the mean of $T_j$ over the standardisation grid of 4,096 scrambled Sobol points and $s_j$ denotes its standard deviation over the same grid, so each response is standardised to unit variance over the region and its values are in standardised response units. Responses share part of the active set and differ in the remainder. Over the first two variables, the heatmap shows the first response, with the remaining variables held at $0.5$. Titled $f$, the colour scale is the noiseless true response value in standardised response units (the response is standardised to unit variance over the region, as defined in the preceding paragraph).
     """)
 
 
@@ -79,9 +79,9 @@ def _(mo):
 
     A Latin hypercube design places exactly one point in each of $n_0$ equal strata of every variable, where $n_0$ denotes the number of initial experiments. Among Latin hypercube designs, the maximum projection criterion is minimised:
 
-    $$\Phi = \frac{1}{\binom{n_0}{2}} \sum_{s < t} \prod_{i=1}^{d} \frac{1}{(x_{si} - x_{ti})^2}$$
+    $$\Phi = \left[ \frac{1}{\binom{n_0}{2}} \sum_{s < t} \prod_{i=1}^{d} \frac{1}{(x_{si} - x_{ti})^2} \right] \tag{10}$$
 
-    The symbol $\Phi$ denotes the criterion value, $x_{si}$ denotes the value of variable $i$ at design point $s$, and the product over all variables rewards designs that remain well separated in every low-dimensional projection. The published criterion raises the mean to the power $1/(2d)$, a monotone transformation that does not change the minimising design, so the implementation minimises the unraised mean. The design is improved by within-stratum coordinate swaps, which preserve the Latin hypercube property. The centre point, all variables at $0.5$, is run three times in total to estimate measurement noise. Execution order is randomised.
+    $\Phi$ denotes the criterion value, $x_{si}$ denotes the value of variable $i$ at design point $s$, and the product over all variables rewards designs that remain well separated in every low-dimensional projection. As published, the criterion raises the mean to the power $1/(2d)$, a monotone transformation that does not change the minimising design, so the implementation minimises the unraised mean. Improvement of the design proceeds by within-stratum coordinate swaps, which preserve the Latin hypercube property. The centre point, all variables at $0.5$, is run three times in total to estimate measurement noise. Execution order is randomised.
     """)
 
 
@@ -103,11 +103,11 @@ def _(mo):
     mo.md(r"""
     ## Step 3: Gaussian process fit and variable relevance
 
-    The fitted model for one response is a Gaussian process, a probability distribution over functions that supplies a predicted mean and a predictive variance at each point. The covariance between points $\mathbf{x}$ and $\mathbf{x}'$ is the Matern covariance with smoothness parameter five halves:
+    For one response, the fitted model is a Gaussian process, a probability distribution over functions that supplies a predicted mean and a predictive variance at each point. Between points $\mathbf{x}$ and $\mathbf{x}'$, the covariance is the Matérn covariance with smoothness parameter five halves:
 
-    $$k(\mathbf{x}, \mathbf{x}') = \sigma_f^2 \left(1 + \sqrt{5} r + \tfrac{5}{3} r^2\right) \exp(-\sqrt{5} r), \qquad r = \sqrt{\sum_{i=1}^{d} \frac{(x_i - x_i')^2}{\ell_i^2}}$$
+    $$k(\mathbf{x}, \mathbf{x}') = \sigma_f^2 \left(1 + \sqrt{5} r + \tfrac{5}{3} r^2\right) \exp(-\sqrt{5} r), \qquad r = \sqrt{\sum_{i=1}^{d} \frac{(x_i - x_i')^2}{\ell_i^2}} \tag{11}$$
 
-    The symbol $\sigma_f^2$ denotes the signal variance, in squared response units; $\ell_i$ denotes the length scale of variable $i$, dimensionless; and $r$ denotes the scaled distance, dimensionless. A short length scale marks an active variable. Observation noise variance is denoted $\sigma_n^2$. Hyperparameters are fitted by maximising the marginal likelihood. Leave-one-out error, the prediction error at each observed point under a model fitted without that point, is computed in closed form. The bar chart compares fitted relevance, the normalised inverse length scale, with true importance.
+    $\sigma_f^2$ denotes the signal variance, in squared standardised response units; $\ell_i$ denotes the length scale of variable $i$, dimensionless; and $r$ denotes the scaled distance, dimensionless. A short length scale marks an active variable. Observation noise variance is denoted $\sigma_n^2$. Hyperparameters are fitted by maximising the marginal likelihood. Leave-one-out error, the prediction error at each observed point under a model fitted without that point, is computed in closed form. The bar chart compares fitted relevance, the normalised inverse length scale, with true importance.
     """)
 
 
@@ -135,11 +135,11 @@ def _(mo):
     mo.md(r"""
     ## Step 4: Sequential batch by integrated variance reduction
 
-    A session holds all executed points and refits the model after each batch. The next batch is selected greedily by integrated variance reduction. For a candidate point $\mathbf{x}$ and response $j$, the gain $G_j(\mathbf{x})$, dimensionless after normalisation, is:
+    A session holds all executed points and refits the model after each batch. Greedy selection by integrated variance reduction chooses the next batch. For a candidate point $\mathbf{x}$ and response $j$, the gain $G_j(\mathbf{x})$, dimensionless after normalisation, is:
 
-    $$G_j(\mathbf{x}) = \frac{1}{V_{j0}} \int \frac{\mathrm{cov}_j(\mathbf{z}, \mathbf{x})^2}{\mathrm{var}_j(\mathbf{x}) + \sigma_{nj}^2} \, d\mathbf{z}$$
+    $$G_j(\mathbf{x}) = \frac{1}{V_{j0}} \int \frac{\mathrm{cov}_j(\mathbf{z}, \mathbf{x})^2}{\mathrm{var}_j(\mathbf{x}) + \sigma_{nj}^2} \, d\mathbf{z} \tag{12}$$
 
-    The symbol $\mathbf{z}$ denotes a point of the reference set representing the region of use, $\mathrm{cov}_j$ the posterior covariance of the fitted model for response $j$, $\mathrm{var}_j$ its predictive variance, and $V_{j0}$ the integrated predictive variance of response $j$ after the initial batch. Gains are combined with the response weights, percentages divided by 100. Within a batch, pending points are provisionally added at their predicted means (the Kriging believer update) so later selections avoid near-duplicates, and the final quarter of the batch serves the worst-served response alone. The map shows predictive standard deviation for the first response, with the selected batch marked. The colour scale, titled std, is that predictive standard deviation in standardised response units, where std denotes standard deviation.
+    $\mathbf{z}$ denotes a point of the reference set representing the region of use, $\mathrm{cov}_j$ the posterior covariance of the fitted model for response $j$, $\mathrm{var}_j$ its predictive variance, and $V_{j0}$ the integrated predictive variance of response $j$ after the initial batch. Gains are combined with the response weights, percentages divided by 100. Within a batch, pending points are provisionally added at their predicted means (the Kriging believer update) so later selections avoid near-duplicates, and the final quarter of the batch serves the worst-served response alone. The map shows predictive standard deviation for the first response, with the selected batch marked. Titled std, the colour scale is that predictive standard deviation in standardised response units, where std denotes standard deviation.
     """)
 
 
@@ -168,7 +168,7 @@ def _(mo):
     mo.md(r"""
     ## Step 5: Batch execution and the learning curve
 
-    Execution evaluates the true model at the batch points and adds measurement noise. The noise model is selected per scenario; the default is additive Gaussian noise with constant variance set by the signal-to-noise ratio, defined as the variance of the noiseless response divided by the noise variance. After execution the model is refitted and two estimated quantities are recorded for every round: leave-one-out error, and integrated predictive standard deviation, the square root of the integrated predictive variance over the reference set. Neither quantity uses the hidden truth.
+    Execution evaluates the true model at the batch points and adds measurement noise. Selected per scenario, the noise model defaults to additive Gaussian noise with constant variance set by the signal-to-noise ratio, defined as the variance of the noiseless response divided by the noise variance. After execution the model is refitted and two estimated quantities are recorded for every round: leave-one-out error, and integrated predictive standard deviation, the square root of the integrated predictive variance over the reference set. Neither quantity uses the hidden truth.
     """)
 
 
@@ -186,9 +186,9 @@ def _(mo):
     mo.md(r"""
     ## Step 6: Scoring against the truth and anchor checks
 
-    At completion the true score is revealed. For response $j$, the true root mean squared error $R_j$, in standardised response units, is computed against the noiseless truth over the reference set. The session score $S$, dimensionless, combines the responses with their weights $w_j$, the percentage for response $j$ divided by 100:
+    At completion the true score is revealed. For response $j$, the true root mean squared error $R_j$, in standardised response units, is computed against the noiseless truth over the reference set. $S$, the session score, dimensionless, combines the responses with their weights $w_j$, the percentage for response $j$ divided by 100:
 
-    $$S = \sqrt{\sum_{j=1}^{m} w_j \frac{R_j^2}{V_{j0}}}$$
+    $$S = \sqrt{\sum_{j=1}^{m} w_j \frac{R_j^2}{V_{j0}}} \tag{13}$$
 
     A calibration ratio per response, the true error divided by the root mean predictive variance, near 1 indicates that predictive uncertainty matches realised error. The anchor checks assert seed reproducibility of the true model, a decreasing or stable score relative to the initial model within a tolerance, and finite leave-one-out errors. A failed assertion indicates drift between the engine and this walkthrough.
     """)
