@@ -3,7 +3,7 @@ distillation column, following Seader, Henley & Roper, Separation Process
 Principles, 4th ed. (2016), Chapter 9, Examples 9.2-9.6 (debutanizer).
 
 Symbols, defined at first use in the walkthrough and Theory text:
-  f_i    molar flow rate of component i in the feed, in kmol/h
+  F_i    molar flow rate of component i in the feed, in kmol/h
          (kilomoles per hour)
   d_i    molar flow rate of component i in the distillate, in kmol/h
   b_i    molar flow rate of component i in the bottoms, in kmol/h

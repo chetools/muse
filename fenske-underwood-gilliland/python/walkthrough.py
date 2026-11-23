@@ -13,11 +13,11 @@ import fug as F
 CELLS = [
     dict(
         title="Feed, key components and specified splits",
-        md=r"""The column separates a feed of eight hydrocarbon components, listed in order of decreasing volatility. The symbol $f_i$ denotes the molar flow rate of component $i$ in the feed, in kmol/h (kilomoles per hour). The symbol $F$ denotes the total feed rate, the sum of the $f_i$, in kmol/h. The symbol $z_i$ denotes the mole fraction of component $i$ in the feed, $z_i = f_i / F$, dimensionless.
+        md=r"""Eight hydrocarbon components make up the feed, listed in order of decreasing volatility. $F_i$ denotes the molar flow rate of component $i$ in the feed, in kmol/h (kilomoles per hour). The total feed rate is $F$, the sum of the $F_i$, in kmol/h. $z_i$ denotes the mole fraction of component $i$ in the feed, $z_i = F_i / F$, dimensionless.
 
-Two adjacent components are chosen as the key components, whose split between the products is specified. The light key (LK) is n-butane: it is the heaviest component that must pass mainly into the distillate. The heavy key (HK) is isopentane: it is the lightest component that must pass mainly into the bottoms. The symbol $d_i$ denotes the molar flow rate of component $i$ in the distillate and $b_i$ its molar flow rate in the bottoms, both in kmol/h, with $f_i = d_i + b_i$ for every component. The specified splits are $d = 200.488$ and $b = 2.722$ kmol/h for the light key, and $d = 5.897$ and $b = 10.433$ kmol/h for the heavy key.
+Two adjacent components are chosen as the key components, whose split between the products is specified. N-butane is the light key (LK): it is the heaviest component that must pass mainly into the distillate. Isopentane is the heavy key (HK): it is the lightest component that must pass mainly into the bottoms. For the products, $d_i$ denotes the molar flow rate of component $i$ in the distillate and $b_i$ its molar flow rate in the bottoms, both in kmol/h, with $F_i = d_i + b_i$ for every component. The specified splits are $d = 200.488$ and $b = 2.722$ kmol/h for the light key, and $d = 5.897$ and $b = 10.433$ kmol/h for the heavy key.
 
-The symbol $\alpha_i$ denotes the mean relative volatility of component $i$ with respect to the heavy key, dimensionless: the ratio of the distribution coefficients (the equilibrium vapour-to-liquid mole-fraction ratios) of component $i$ and the heavy key, geometrically averaged between the distillate and bottoms conditions of Seader's Example 9.1. By this definition $\alpha = 1$ for the heavy key itself. One volatility set is used in every step of this walkthrough. The column has a total condenser, which is not counted as an equilibrium stage, and a partial reboiler, which is counted as one equilibrium stage.""",
+$\alpha_i$ denotes the mean relative volatility of component $i$ with respect to the heavy key, dimensionless: the ratio of the distribution coefficients (the equilibrium vapour-to-liquid mole-fraction ratios) of component $i$ and the heavy key, geometrically averaged between the distillate and bottoms conditions of Seader's Example 9.1. By this definition $\alpha = 1$ for the heavy key itself. One volatility set is used in every step of this walkthrough. The column's total condenser is not counted as an equilibrium stage; its partial reboiler is counted as one equilibrium stage.""",
         code=r"""
 import numpy as np
 import fug as F
@@ -37,11 +37,11 @@ figure([dict(type="bar", x=inp["names"],
     ),
     dict(
         title="Fenske equation: minimum stages at total reflux",
-        md=r"""The minimum number of equilibrium stages, $N_{min}$ (dimensionless, with the stage counting stated in Step 1), is reached at total reflux, when all condensed vapour is returned to the column and no products are withdrawn. The Fenske equation {{cite:fenske-1932}} gives $N_{min}$ from the key splits and the relative volatility of the light key with respect to the heavy key, $\alpha_{LK,HK}$ (dimensionless), here equal to the tabulated $\alpha$ of the light key because the heavy key is the reference component:
+        md=r"""At total reflux, when all condensed vapour is returned to the column and no products are withdrawn, the minimum number of equilibrium stages, $N_{min}$ (dimensionless, with the stage counting stated in Step 1), is reached. The Fenske equation {{cite:fenske-1932}} gives $N_{min}$ from the key splits and the relative volatility of the light key with respect to the heavy key, $\alpha_{LK,HK}$ (dimensionless), here equal to the tabulated $\alpha$ of the light key because the heavy key is the reference component:
 
 $$N_{min} = \frac{\log_{10}\left[\left(d_{LK}/b_{LK}\right)\left(b_{HK}/d_{HK}\right)\right]}{\log_{10} \alpha_{LK,HK}}$$
 
-Each bracket is the split ratio of one key between the two products. A sharper specified separation, or a smaller $\alpha_{LK,HK}$, requires more stages. The equation is exact only when the relative volatility is constant through the column; the mean volatility of Step 1 is the approximation used here.""",
+Each bracket is the split ratio of one key between the two products. A sharper specified separation, or a smaller $\alpha_{LK,HK}$, requires more stages. Exactness holds only when the relative volatility is constant through the column; the mean volatility of Step 1 is the approximation used here.""",
         code=r"""
 dist = F.fenske(inp)
 n_min = dist["n_min"]
@@ -51,11 +51,11 @@ print("minimum stages Nmin =", round(n_min, 4), " (Seader: 7.82)")
     ),
     dict(
         title="Distribution of the non-key components",
-        md=r"""The Fenske equation is not restricted to the keys. For any component $i$, applied against the heavy key as reference, it gives the split ratio $d_i / b_i$ at total reflux:
+        md=r"""For any component $i$, applied against the heavy key as reference, the Fenske equation gives the split ratio $d_i / b_i$ at total reflux:
 
 $$\frac{d_i}{b_i} = \frac{d_{HK}}{b_{HK}} \; \alpha_i^{\,N_{min}}$$
 
-Combined with $f_i = d_i + b_i$, this fixes every non-key flow. Following Seader's guidance, the smaller of $d_i$ and $b_i$ is computed from the equation first and the larger by difference, which keeps the small flows accurate; several distillate flows are below $10^{-6}$ kmol/h. The chart uses a logarithmic scale because the flows span twelve orders of magnitude; colour and pattern both encode the product, so the chart reads in greyscale. These total-reflux flows are the product distribution used by the rest of the method.""",
+Combined with $F_i = d_i + b_i$, this fixes every non-key flow. Following Seader's guidance, the smaller of $d_i$ and $b_i$ is computed from the equation first and the larger by difference, which keeps the small flows accurate; several distillate flows are below $10^{-6}$ kmol/h. A logarithmic scale is used in the chart because the flows span twelve orders of magnitude; colour and pattern both encode the product, so the chart reads in greyscale. These total-reflux flows are the product distribution used by the rest of the method.""",
         code=r"""
 darr3 = dist["d"]
 barr3 = dist["b"]
@@ -79,15 +79,15 @@ figure([dict(type="bar", x=inp["names"],
         title="Underwood Class 1: minimum reflux and its check",
         md=r"""The minimum reflux ratio, $R_{min}$ (dimensionless), is the reflux ratio $R = L/D$ at which the stage count becomes unbounded, where $L$ denotes the liquid reflux flow rate and $D$ the distillate flow rate, both in kmol/h. Underwood's method {{cite:underwood-1948}} distinguishes two classes of separation. In a Class 1 separation every component appears in both products; in a Class 2 separation at least one component appears in only one product. This page carries out the Class 1 calculation only, following Seader's Example 9.4.
 
-The Class 1 shortcut works from the feed liquid left by the feed flash of Example 9.1. The symbol $F_L$ denotes that feed liquid rate, $344.277$ kmol/h, and the symbols $f^L_{LK}$ and $f^L_{HK}$ denote the feed-liquid rates of the two keys, $156.675$ and $14.188$ kmol/h. The symbol $\alpha_f$ denotes the relative volatility of the light key with respect to the heavy key at feed conditions, $1.967$, dimensionless; it is distinct from the mean volatility $1.864$ of Step 1, which the Fenske equation uses. With $L_{min}$ denoting the minimum internal reflux rate, in kmol/h, the Class 1 result is
+From the feed liquid left by the feed flash of Example 9.1, the Class 1 shortcut works. $F_L$ denotes that feed liquid rate, $344.277$ kmol/h, and $f^L_{LK}$ and $f^L_{HK}$ denote the feed-liquid rates of the two keys, $156.675$ and $14.188$ kmol/h. At feed conditions, the relative volatility of the light key with respect to the heavy key is denoted by $\alpha_f$, $1.967$, dimensionless; it is distinct from the mean volatility $1.864$ of Step 1, which the Fenske equation uses. With $L_{min}$ denoting the minimum internal reflux rate, in kmol/h, the Class 1 result is
 
 $$\frac{L_{min}}{F} = \frac{F_L}{F} \, \frac{\left(d_{LK}/f^L_{LK}\right) - \alpha_f \left(d_{HK}/f^L_{HK}\right)}{\alpha_f - 1}$$
 
 which gives $L_{min}/F = 0.414$ per unit feed, and the headline minimum reflux ratio is per unit distillate: $R_{min} = L_{min}/D$ at the Fenske distillate rate of Step 3. As derivation and check material, this cell also evaluates the root of the Underwood feed equation in the interval between the key volatilities, $1.0443$; the Theory panel derives that equation. No second root is used and no Class 2 solve is carried out.
 
-The validity check on the Class 1 assumption then fails, and the failure is stated plainly. Seader's Example 9.4 applies the Class 1 relations to the non-key components and obtains negative distillate flow rates for the heavy non-keys and an isobutane distillate flow rate above its feed rate. The debutanizer separation is therefore not in fact Class 1: most non-keys appear in one product only. The Class 1 minimum reflux ratio, and the Gilliland stage count that follows from it in Step 5, are the formal Class 1 results, reported as such.
+A validity check on the Class 1 assumption then fails, and the failure is stated plainly. Seader's Example 9.4 applies the Class 1 relations to the non-key components and obtains negative distillate flow rates for the heavy non-keys and an isobutane distillate flow rate above its feed rate. In fact, the debutanizer separation is not Class 1: most non-keys appear in one product only. Both the Class 1 minimum reflux ratio and the Gilliland stage count that follows from it in Step 5 are formal Class 1 results, reported as such.
 
-One further point is recorded in this cell's output. Seader prints the Class 1 ratio as $0.864$ per unit distillate. Converted at the distillate rate of Step 3, his per-feed value of $0.414$ gives $0.774$ per unit distillate, not $0.864$; the printed $0.864$ would follow from a feed rate of $444.0$ kmol/h in place of $397.5$ kmol/h. The page reports both values; its headline result is the recomputed $0.774$.""",
+One further point is recorded in this cell's output. Seader prints the Class 1 ratio as $0.864$ per unit distillate. Converted at the distillate rate of Step 3, his per-feed value of $0.414$ gives $0.774$ per unit distillate, not $0.864$; the printed $0.864$ would follow from a feed rate of $444.0$ kmol/h in place of $397.5$ kmol/h. Both values are reported on the page; its headline result is the recomputed $0.774$.""",
         code=r"""
 und = F.underwood_class1(inp, dist)
 print("Class 1 minimum internal reflux per unit feed:",
@@ -103,11 +103,11 @@ print("feed rate implied by the printed 0.864:",
     ),
     dict(
         title="Gilliland correlation: stages at the operating reflux",
-        md=r"""The operating reflux ratio $R$ is chosen as a multiple of the minimum: $R = 1.3 \, R_{min}$, the multiplier of Seader's Example 9.6, where $1.3$ is the reflux multiplier (dimensionless). Example 9.6 tabulates the correlation for both of his minimum-reflux rows; this page follows the Class 1 row, at the recomputed Class 1 minimum reflux ratio of Step 4. The Gilliland correlation {{cite:gilliland-1940}} relates the stage count at finite reflux to the two limits, total reflux and minimum reflux, through the dimensionless variables $X = (R - R_{min}) / (R + 1)$ and $Y = (N - N_{min}) / (N + 1)$, where $N$ denotes the number of equilibrium stages at $R$, with the stage counting of Step 1. The page evaluates the correlation with the explicit equation of Eduljee {{cite:eduljee-1975}}, Seader's Eq. (9-33):
+        md=r"""The operating reflux ratio $R$ is chosen as a multiple of the minimum: $R = 1.3 \, R_{min}$, the multiplier of Seader's Example 9.6, where $1.3$ is the reflux multiplier (dimensionless). Example 9.6 tabulates the correlation for both of his minimum-reflux rows; this page follows the Class 1 row, at the recomputed Class 1 minimum reflux ratio of Step 4. Through the dimensionless variables $X = (R - R_{min}) / (R + 1)$ and $Y = (N - N_{min}) / (N + 1)$, the Gilliland correlation {{cite:gilliland-1940}} relates the stage count at finite reflux to the two limits, total reflux and minimum reflux, where $N$ denotes the number of equilibrium stages at $R$, with the stage counting of Step 1. Evaluation on the page uses the explicit equation of Eduljee {{cite:eduljee-1975}}, Seader's Eq. (9-33):
 
 $$Y = 1 - \exp\left(\frac{(1 + 54.4 X)(X - 1)}{(11 + 117.2 X)\sqrt{X}}\right)$$
 
-Solving $Y = (N - N_{min})/(N + 1)$ for $N$ gives the stage requirement. As $R$ approaches $R_{min}$, $X$ approaches $0$ and $N$ grows without bound; as $R$ grows without bound, $N$ approaches $N_{min}$. The correlation carries no feed-condition parameter, a known limitation Seader records: it is conservative for feeds of low $q$. The chart plots the curve for reflux multipliers from 1.001 to 4, not only the operating point.""",
+Solving $Y = (N - N_{min})/(N + 1)$ for $N$ gives the stage requirement. As $R$ approaches $R_{min}$, $X$ approaches $0$ and $N$ grows without bound; as $R$ grows without bound, $N$ approaches $N_{min}$. No feed-condition parameter appears in the correlation, a known limitation Seader records: it is conservative for feeds of low $q$. In the chart, the curve is plotted for reflux multipliers from 1.001 to 4, not only the operating point.""",
         code=r"""
 gil = F.gilliland(und["r_min"], n_min, inp["mult"])
 print("R =", round(gil["R"], 3), " X =", round(gil["X"], 4),
@@ -134,13 +134,13 @@ figure([dict(type="scatter", x=xs6, y=ys6, mode="lines",
     ),
     dict(
         title="Feed-stage location and anchor checks",
-        md=r"""The stage count is split between the rectifying section, above the feed, and the stripping section, below it. The symbol $N_R$ denotes the number of equilibrium stages in the rectifying section and $N_S$ the number in the stripping section, the partial reboiler counted in the stripping section. Kirkbride's empirical equation {{cite:kirkbride-1944}} gives the ratio
+        md=r"""The stage count is split between the rectifying section, above the feed, and the stripping section, below it. $N_R$ denotes the number of equilibrium stages in the rectifying section and $N_S$ the number in the stripping section, the partial reboiler counted in the stripping section. Kirkbride's empirical equation {{cite:kirkbride-1944}} gives the ratio
 
-$$\frac{N_R}{N_S} = \left[ \frac{z_{HK}}{z_{LK}} \left(\frac{x_{LK,B}}{x_{HK,D}}\right)^{2} \frac{B}{D} \right]^{0.206}$$
+$$\frac{N_R}{N_S} = \left[ \frac{z_{HK}}{z_{LK}} \left(\frac{x_{B,LK}}{x_{D,HK}}\right)^{2} \frac{B}{D} \right]^{0.206}$$
 
-where $x_{LK,B}$ denotes the mole fraction of the light key in the bottoms, $x_{HK,D}$ the mole fraction of the heavy key in the distillate, $B$ the total bottoms rate and $D$ the total distillate rate, both in kmol/h. The second estimate applies the Fenske equation to each section separately at total reflux. Seader reports Kirkbride as the better of the two on his test problem, and it is listed first here. The total stage count is rounded up to a whole number before the split, because a column is built of whole stages; the reboiler is one of them, so the number of theoretical trays is one less than the rounded stage count.
+where $x_{B,LK}$ denotes the mole fraction of the light key in the bottoms, $x_{D,HK}$ the mole fraction of the heavy key in the distillate, $B$ the total bottoms rate and $D$ the total distillate rate, both in kmol/h. A second estimate applies the Fenske equation to each section separately at total reflux. Seader reports Kirkbride as the better of the two on his test problem, and it is listed first here. Rounding up the total stage count to a whole number precedes the split, because a column is built of whole stages; the reboiler is one of them, so the number of theoretical trays is one less than the rounded stage count.
 
-The anchor checks assert the values verified against Seader's Examples 9.2, 9.4 and 9.6 (the Class 1 row). A failed assertion means the calculation has drifted from the verified case.""",
+Anchor checks assert the values verified against Seader's Examples 9.2, 9.4 and 9.6 (the Class 1 row). A failed assertion means the calculation has drifted from the verified case.""",
         code=r"""
 res7 = F.run_case(inp)
 m7 = res7["metrics"]

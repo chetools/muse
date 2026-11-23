@@ -12,8 +12,8 @@ Python.  If the runtime cannot load, the page shows an explicit error;
 no calculation is reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/fenske-underwood-gilliland-v2.html
-  python3 build_page.py --stub   -> dist/fenske-underwood-gilliland-v2-stub.html
+  python3 build_page.py          -> dist/fenske-underwood-gilliland-v3.html
+  python3 build_page.py --stub   -> dist/fenske-underwood-gilliland-v3-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -34,8 +34,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "fenske-underwood-gilliland/walkthrough_molab.py")
-OUT_NAME = "fenske-underwood-gilliland-v2.html"
-STUB_NAME = "fenske-underwood-gilliland-v2-stub.html"
+OUT_NAME = "fenske-underwood-gilliland-v3.html"
+STUB_NAME = "fenske-underwood-gilliland-v3-stub.html"
 PYODIDE_MODULES = ["fug.py"]  # registered in the worker boot (build_page)
 
 
@@ -328,9 +328,11 @@ def build(stub=False):
         src = open(os.path.join(
             PYDIR if name != "build_page.py" else HERE, name)).read()
         listings.append(
-            f"<details id=\"{lid}\"><summary>{name}</summary>"
+            f"<h3 id=\"{lid}\">{html_mod.escape(name)}"
+            f"<a class=\"self-link\" href=\"#{lid}\" "
+            f"aria-label=\"Link to this section\">#</a></h3>"
             f"<pre><code>" + html_mod.escape(src)
-            + "</code></pre></details>")
+            + "</code></pre>")
     for i, c in enumerate(CELLS):
         wid = "walkthrough-" + _slugify(c["title"], set())
         code_toc_items.append((wid, f"Walkthrough step {i + 1}: "
