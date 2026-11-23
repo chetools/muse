@@ -54,6 +54,16 @@ def _(mo):
         correlation, GPDC, drawn in SI units), and **sizing** (diameter at a chosen
         fraction of flooding, packed height from $N_{OG} \times H_{OG}$).
 
+        At the default settings of §3, the sizing of §8 gives a column
+        diameter of 1.3 m and a packed height of 11.22 m — 6.12 overall
+        gas-phase transfer units at 1.83 m per unit — with the column
+        operating at 65.9% of flood.
+
+        The notebook is written for chemical engineering students and
+        engineers meeting packed-absorber design; it assumes
+        vapour–liquid equilibrium, Henry's law, film theory and numerical
+        integration at undergraduate level.
+
         ## Example system (defaults — change them with the sliders)
 
         Sour natural gas (H₂S in methane) contacted counter-currently with
@@ -61,14 +71,30 @@ def _(mo):
         H₂S transfers from the gas into the liquid; the sweet gas leaves
         the top, the rich amine the bottom.
 
-        ## How to use this notebook
+        ## Contents
+
+        1. [Nomenclature](#1-nomenclature)
+        2. [Packing selection](#2-packing-selection)
+        3. [Feed, solvent, and physical properties](#3-feed-solvent-and-physical-properties)
+        4. [Vapor–liquid equilibrium of H₂S in aqueous MDEA](#4-vaporliquid-equilibrium-of-h2s-in-aqueous-mdea)
+        5. [Wetted area and film coefficients — Onda et al. (1968)](#5-wetted-area-and-film-coefficients-onda-et-al-1968)
+        6. [Hydraulics — the generalized pressure-drop correlation (GPDC)](#6-hydraulics-the-generalized-pressure-drop-correlation-gpdc)
+        7. [Transfer units by numerical integration](#7-transfer-units-by-numerical-integration)
+        8. [Sizing calculation](#8-sizing-calculation)
+        9. [The GPDC chart in SI units](#9-the-gpdc-chart-in-si-units)
+        10. [Operating diagram and driving force](#10-operating-diagram-and-driving-force)
+        11. [Turndown range](#11-turndown-range)
+        12. [Pressure-drop comparison and design summary](#12-pressure-drop-comparison-and-design-summary)
+        13. [References and further reading](#13-references-and-further-reading)
+
+        ## Notebook use
 
         1. Pick a packing in §2 — its properties are shown.
         2. Set the feed and solvent in §3.
         3. Follow the calculation sections in order; every step shows its
            equations, the numbers, and a figure.
-        4. §12 compares two independent pressure-drop estimates;
-           §11 explains turndown.
+        4. §11 explains turndown; §12 compares two independent
+           pressure-drop estimates.
 
         All units are SI unless stated.
         """
@@ -135,8 +161,10 @@ def _(mo):
         material's critical surface tension $\sigma_c$).
 
         Random-packing data ($F_p$, $a_t$, $\epsilon$, plus the Robbins
-        dry factor $F_{pd}$) are from Perry's Handbook, Table 14-13;
-        plastic Pall-ring $F_p$ from the Norton packing-factor chart.
+        dry factor $F_{pd}$) are from Perry's Handbook, Table 14-13
+        (Green & Perry 2008); plastic Pall-ring $F_p$ from the Norton
+        packing-factor chart. IMTP in the list below is Intalox Metal
+        Tower Packing, a metal random packing.
         $F_p$ is an empirically fitted quantity — vendor and
         generation-specific — so confirm it for the exact packing before
         detailed design. Structured-packing $F_p$ values are indicative.
@@ -246,9 +274,17 @@ def _(mo):
         ## 3. Feed, solvent, and physical properties
 
         Set the design basis below. Gas properties use the ideal-gas law
-        with a compressibility factor $Z_g$ (methane at 20 bar, 40 °C has
-        $Z_g \approx 0.93$); liquid properties are typical values for
-        aqueous MDEA that you can overwrite with measured data.
+        with a compressibility factor $Z_g$, held at 0.93 at every state
+        in this notebook; 0.93 is the value for methane near 50 bar,
+        while at 20 bar and 40 °C the Peng–Robinson equation gives
+        $Z_g$ = 0.964, so at the default state the gas density and the
+        hydraulic results run about 3.5% high. Liquid properties
+        are typical values for aqueous MDEA, held as constants in the
+        design-basis cell; they change only by editing that cell, not
+        from any control. For the diffusivities, $D_G$ comes from the
+        Fuller equation; the liquid diffusivity $D_L$ = 1.1 × 10⁻⁹ m²/s
+        and the gas viscosity $\mu_G$ = 1.25 × 10⁻⁵ Pa s (approximately
+        methane at 20 bar) are fixed constants of the same cell.
         """
     )
     return
@@ -378,8 +414,8 @@ def _(mo):
         r"""
         ## 4. Vapor–liquid equilibrium of H₂S in aqueous MDEA
 
-        The driving force for absorption is the distance between the
-        operating line and the **equilibrium curve** $y^*(x)$. For
+        Absorption is driven by the distance between the operating line
+        and the **equilibrium curve** $y^*(x)$. For
         H₂S in MDEA this curve comes from solution chemistry, not
         from a simple Henry's law, because dissolved H₂S dissociates
         and the amine protonates:
@@ -393,9 +429,10 @@ def _(mo):
         \mathrm{MDEAH^+} &\rightleftharpoons \mathrm{MDEA + H^+}
             && K_{Am}
         \end{aligned}
+        \qquad (1)
         $$
 
-        Here $K_w$, $K_{H2S}$, $K_{Am}$ are the water autoprotolysis,
+        In Eq. (1), $K_w$, $K_{H2S}$, $K_{Am}$ are the water autoprotolysis,
         first H₂S dissociation, and protonated-amine dissociation
         constants (the second H₂S dissociation is negligible at
         absorber pH). With $[\,]_0$ the total (analytical) amine
@@ -407,30 +444,24 @@ def _(mo):
         \text{sulfide:}&\quad \alpha\,[MDEA]_0 = [H_2S] + [HS^-] \\
         \text{charge:}&\quad [H^+] + [MDEAH^+] = [OH^-] + [HS^-]
         \end{aligned}
+        \qquad (2)
         $$
 
         Eliminating $[MDEA]$, $[MDEAH^+]$, $[HS^-]$, $[OH^-]$ with the
-        three mass-action laws leaves **one equation in $[H^+]$**, solved
+        mass-action laws of Eq. (1) and the balances of Eq. (2) leaves
+        **one equation in $[H^+]$**, solved
         numerically; the gas-phase partial pressure follows from Henry's
         law, $p_{H2S}^* = H_{H2S}\,[H_2S]$, and $y^* = p_{H2S}^*/P$.
-        This is the **Kent–Eisenberg (1976)** framework, with
-        MDEA-specific $K(T)$ correlations of the form
-        $\ln K = A + B/T + C\,\ln T + D\,T$ fitted to the
-        solubility data of Jou, Mather & Otto (1982) and later workers.
+        Kent and Eisenberg (1976) set out this framework with activity
+        coefficients taken as unity.
 
-        > **Model status.** The curve below is the Kent–Eisenberg
-        > calculation described above — no longer a placeholder. The
-        > $K(T)$ correlations are verified; the $K_{H2S}$ fit carries
-        > ±0.1 $pK_a$ uncertainty; the ideal-solution bias
-        > (~25–35% underpredicted loading, conservative) is disclosed
-        > in the validation table.
-
-        The temperature dependence is $\ln K = a/T + b\,\ln T + d$,
-        with $(a, b, d)$ from Mahmud et al. (*Processes* 2019, 7, 81,
-        Table 3) for $K_w$ and $K_{Am}$ (verified against handbook
-        values), and a fit to published $pK_{a1}$(H₂S) data for
-        $K_{H2S}$. Henry's constant combines Sander's (2023) water
-        value with the Rinker/Posey MDEA-solution table.
+        Every equilibrium constant follows
+        $\ln K = a/T + b\,\ln T + d$. Mahmud et al. (2019, Table 3) give
+        the constants $(a, b, d)$ for $K_w$ and $K_{Am}$; a fit to a
+        published $pK_{a1}$(H₂S) table gives those for $K_{H2S}$, with
+        ±0.1 $pK_a$ uncertainty. Henry's constant combines Sander's
+        (2023) water value with the MDEA-solution table of Rinker and
+        Posey, as tabulated by Ji et al. (2016, Table 1).
 
         **Validation** (ideal-solution Kent–Eisenberg vs. literature):
 
@@ -443,7 +474,7 @@ def _(mo):
         > coefficients = 1) underpredicts H₂S solubility by ~25–35% in
         > loading at 2–4 M ionic strength. The error is **conservative**
         > (it predicts a taller bed than needed). For final design, use
-        > the Deshmukh–Mather activity model or apparent constants
+        > the Deshmukh–Mather (1981) activity model or apparent constants
         > fitted to the Jou et al. (1982) dataset.
 
         **Applicability:** 20–60 °C, 20–100 wt% MDEA, $0 < \alpha < 1$.
@@ -550,7 +581,6 @@ def _(go, mo, np, y_in, y_out, ystar):
     _fig.add_hline(y=y_out * 1e6, line_dash="dot", line_color="gray",
                    annotation_text="sweet gas y_out")
     _fig.update_layout(
-        title="H2S equilibrium curve (Kent–Eisenberg) at column T, P",
         xaxis_title="liquid H2S mole fraction x (mol %)",
         yaxis_title="equilibrium y* (ppmv)", yaxis_type="log",
         yaxis_range=_yrange,
@@ -563,13 +593,19 @@ def _(go, mo, np, y_in, y_out, ystar):
 
 @app.cell
 def _(mo):
+    mo.md(r"*Figure 1. Equilibrium curve $y^*(x)$ for H₂S over aqueous MDEA from the Kent–Eisenberg model (§4), at the temperature, pressure and MDEA strength set in §3 (defaults: 40 °C, 20 bar, 45 wt%). The dashed lines mark the feed and sweet-gas H₂S levels.*")
+    return
+
+
+@app.cell
+def _(mo):
     mo.md(
         r"""
         ## 5. Wetted area and film coefficients — Onda et al. (1968)
 
         Mass transfer happens only where gas meets liquid. The **wetted
         area** $a_w$ (m² of gas–liquid interface per m³ of packed bed) is
-        therefore the central mass-transfer quantity — and it is always
+        the central mass-transfer quantity, and it is always
         smaller than the geometric area $a_t$, because liquid does not
         cover the packing uniformly: it runs in rivulets, bridges between
         packing pieces, and leaves dry patches, especially at low liquid
@@ -588,44 +624,49 @@ def _(mo):
         \left(\frac{L'^2\,a_t}{\rho_L^2\,g}\right)^{-0.05}
         \left(\frac{L'^2}{\rho_L\,\sigma_L\,a_t}\right)^{0.2}
         \right]
+        \qquad (3)
         $$
 
-        Reading the correlation term by term:
+        Reading Eq. (3) term by term:
 
         - $\sigma_c/\sigma_L$: **wettability**. $\sigma_c$ is the critical
           surface tension of the packing material (0.061 N/m ceramic,
           0.075 N/m metal, 0.033 N/m plastic). If $\sigma_c > \sigma_L$
           the liquid spreads spontaneously and $a_w \to a_t$; on plastic
-          ($\sigma_c < \sigma_L$) it beads up and $a_w$ collapses. This is
+          ($\sigma_c < \sigma_L$) it beads up and $a_w$ decreases to a small
+          fraction of $a_t$. This is
           why metal and ceramic packings wet far better than plastic ones.
         - $L'/(a_t\,\mu_L)$: a **liquid Reynolds number** (inertial vs
           viscous forces in the film). More liquid → thicker films, more
-          spreading → larger $a_w$. The weak 0.1 exponent says wetting is
-          hard to buy with liquid rate alone.
+          spreading → larger $a_w$. The weak 0.1 exponent says wetting
+          increases only slightly with liquid rate.
         - $L'^2 a_t/(\rho_L^2 g)$: a **Froude number** (inertial vs gravity).
           Its negative exponent means gravity drainage thins the films and
           reduces coverage.
         - $L'^2/(\rho_L\,\sigma_L\,a_t)$: a **Weber number** (inertial vs
-          surface tension). Surface tension resists the creation of new
-          interface, so it enters with a positive exponent on the
-          spreading side.
+          surface tension). The group enters the correlation with
+          exponent +0.2, and $\sigma_L$ stands in the group's
+          denominator: a higher liquid surface tension gives a smaller
+          Weber number and a smaller $a_w$, because surface tension
+          resists the creation of new interface.
 
-        The $1 - \exp(-...)$ form guarantees $0 < a_w/a_t < 1$: at very low
+        Its $1 - \exp(-...)$ form guarantees $0 < a_w/a_t < 1$: at very low
         liquid loads only a fraction of the packing wets; at high loads
         $a_w$ asymptotes to $a_t$ but never exceeds it.
 
         ### Film coefficients
 
         With the interface known, Onda gives the **liquid-film**
-        coefficient $k_L$ (m/s):
+        coefficient $k_L$ (m/s) as Eq. (4):
 
         $$
         k_L\left(\frac{\rho_L}{\mu_L\,g}\right)^{1/3}
         = 0.0051\left(\frac{L'}{a_w\,\mu_L}\right)^{2/3}
         \left(\frac{\mu_L}{\rho_L\,D_L}\right)^{-1/2}(a_t\,d_p)^{0.4}
+        \qquad (4)
         $$
 
-        and the **gas-film** coefficient $k_G$ (m/s), with the Onda
+        and the **gas-film** coefficient $k_G$ (m/s) as Eq. (5), with the Onda
         constant $K_5 = 5.23$ for $d_p > 0.015$ m ($K_5 = 2.00$ for
         $d_p < 0.015$ m):
 
@@ -633,9 +674,10 @@ def _(mo):
         \frac{k_G}{a_t\,D_G}
         = K_5\left(\frac{G'}{a_t\,\mu_G}\right)^{0.7}
         \left(\frac{\mu_G}{\rho_G\,D_G}\right)^{1/3}(a_t\,d_p)^{-2.0}
+        \qquad (5)
         $$
 
-        Converted to the mole-fraction basis used in §5, with $R$ the
+        Converted to the mole-fraction basis used in §7 and §8 (Eq. (6)), with $R$ the
         gas constant (J/(mol·K)), $P/(R\,T)$ the gas molar concentration
         (mol/m³), and $\rho_L/M_L$ the liquid molar concentration
         (mol/m³) where $M_L$ is the liquid molar mass (kg/mol):
@@ -643,6 +685,7 @@ def _(mo):
         $$
         k_y = k_G\,\frac{P}{R\,T}, \qquad
         k_x = k_L\,\frac{\rho_L}{M_L}
+        \qquad (6)
         $$
 
         ⚠️ Onda is for **random** packings. For structured packings the
@@ -697,45 +740,53 @@ def _(mo):
         The GPDC (lineage: Sherwood et al. 1938 → Leva 1954 → Eckert 1970 →
         Strigle 1994 / Perry's Handbook) collapses flooding and pressure-drop
         data for all random packings onto one log–log chart by plotting two
-        dimensionless-ish groups against each other:
+        groups against each other:
 
         $$
         X = \frac{L'}{G'}\sqrt{\frac{\rho_G}{\rho_L}}
         \qquad\text{(flow parameter, abscissa)}
+        \qquad (7)
         $$
 
         $$
         Y = \frac{{G'}^2\,F_p\,\mu_L^{0.1}}
                  {\rho_G\,(\rho_L - \rho_G)}
         \qquad\text{(capacity parameter, ordinate)}
+        \qquad (8)
         $$
 
+        $X$ (Eq. (7)) is dimensionless. $Y$ (Eq. (8)) is dimensionless
+        under the viscosity convention stated below.
         $X$ measures the liquid load relative to the gas load (corrected
         for the density ratio); $Y$ measures how hard the gas is being
         pushed (dynamic pressure $\sim {G'}^2/\rho_G$) against the
-        packing resistance $F_p$. Note the empirical viscosity term:
+        packing resistance $F_p$. In the viscosity term,
         $\mu_L$ is the **pure number** of the liquid viscosity in
-        centipoise (e.g. 3.8 for our MDEA solution) — the correlation is
-        not fully dimensionless in this form. In SI, $F_p$ is in m⁻¹,
+        centipoise (e.g. 3.8 for our MDEA solution); with $\mu_L$ read
+        that way, $Y$ is dimensionless. In SI, $F_p$ is in m⁻¹,
         $G'$ in kg/(m² s), and the conversion factor $g_c = 1$.
 
         ### Flooding
 
-        The top curve is the **flooding line**: above it, liquid can no
+        At the top of the chart, the **flooding line** bounds the
+        operating region: above it, liquid can no
         longer drain against the gas and the column floods. Strigle's fit
         of Eckert's flooding line (base-10 logs, valid for
-        $0.01 < X < 10$):
+        $0.01 < X < 10$) is Eq. (9):
 
         $$
         \log_{10} Y_{flood} = -1.668 - 1.085\,\log_{10} X - 0.098\,(\log_{10} X)^2
+        \qquad (9)
         $$
 
-        Inverting the definition of $Y$ gives the flooding mass flux:
+        Inverting the definition of $Y$, Eq. (8), gives the flooding mass flux,
+        Eq. (10):
 
         $$
         G'_{flood} = \sqrt{
         \frac{Y_{flood}\,\rho_G\,(\rho_L - \rho_G)}{F_p\,\mu_L^{0.1}}
         }
+        \qquad (10)
         $$
 
         Columns are designed at a **fraction of flood** (typically
@@ -743,29 +794,31 @@ def _(mo):
 
         ### Reading pressure drop off the chart
 
-        Below the flood line, the chart carries a family of
+        Below the flood line, the chart shows a family of
         **constant-$\Delta p$ curves** (pressure drop per metre of
-        packing). The GPDC has no closed-form $\Delta p$ equation, so the
+        packing). The GPDC has no closed-form $\Delta p$ equation; the
         notebook interpolates the curves as **parallel to the flood line
         on the log–log chart**, anchored at the flooding pressure drop of
-        Kister & Gill (1991):
+        Kister & Gill (1991), Eq. (11):
 
         $$
         \Delta p_{flood} = 0.115\,F_p^{0.7}
-        \quad\text{[inch H₂O per foot, $F_p$ in ft⁻¹} = 817.3\,\text{Pa/m per in H₂O/ft]}
+        \quad\text{[in H₂O/ft, with $F_p$ in ft⁻¹]; 1 in H₂O/ft} = 817.3\,\text{Pa/m}
+        \qquad (11)
         $$
 
         > **Range note.** Kister & Gill validated this for
         > $F_p < 60$ ft⁻¹ (197 m⁻¹); above that the notebook caps
         > $\Delta p_{flood}$ at 2.0 in H₂O/ft (1635 Pa/m), following the
         > practice in several teaching sources. Small packings (high
-        > $F_p$) therefore report the capped value — check the
-        > cross-check in §12.
+        > $F_p$) report the capped value;
+        > §12 cross-checks the pressure drop.
 
-        and, with the chart geometry exponent $n \approx 2.36$:
+        and, with the chart geometry exponent $n \approx 2.36$, Eq. (12):
 
         $$
         \Delta p = \Delta p_{flood}\left(\frac{Y}{Y_{flood}}\right)^{n}
+        \qquad (12)
         $$
 
         This is an approximation of a chart reading — §12 compares it
@@ -819,10 +872,79 @@ def _(np):
 def _(mo):
     mo.md(
         r"""
-        ## 7. Sizing calculation
+        ## 7. Transfer units by numerical integration
 
-        > The $N_{OG}$ / $Z$ numbers below use the Kent–Eisenberg
-        > equilibrium from §4. The ideal-solution bias (~25–35%
+        The number of overall gas-phase transfer units is the integral
+        of the reciprocal driving force from the sweet gas ($y_{out}$)
+        to the feed ($y_{in}$), Eq. (13):
+
+        $$
+        N_{OG} = \int_{y_{out}}^{y_{in}} \frac{dy}{\,y - y^*(x(y))\,},
+        \qquad
+        x(y) = x_{in} + \frac{G}{L}\,(y - y_{out}).
+        \qquad (13)
+        $$
+
+        Because $y^*(x)$ is curved (chemical equilibrium, §4), this
+        integral has no closed form — it is evaluated numerically with
+        adaptive quadrature (`scipy.integrate.quad`). Packed height
+        follows by integrating the local transfer-unit height
+        $H_{OG}(y) = G_M/(K_y(y)\,a_w)$ against the same driving force,
+        Eq. (14):
+
+        $$
+        Z = \int_{y_{out}}^{y_{in}}
+            \frac{G_M\,dy}{(y - y^*)\,K_y(y)\,a_w},
+        \qquad
+        \frac{1}{K_y} = \frac{1}{k_y} + \frac{m}{k_x},
+        \;\; m = \frac{dy^*}{dx},
+        \qquad (14)
+        $$
+
+        where $G_M$ is the superficial gas molar flux (mol/(m² s)) and
+        $m$ is the **local** slope of the equilibrium curve — evaluated
+        by finite differences at each quadrature point, not averaged.
+        Figure 2 shades the integrand of Eq. (13), whose area is $N_{OG}$.
+        """
+    )
+    return
+
+
+@app.cell
+def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar, N_OG):
+    _ys = np.linspace(y_out, y_in, 400)
+    _xs = x_in + (G_tot / L_tot) * (_ys - y_out)
+    _inv = 1.0 / (_ys - ystar(_xs))
+    _fig = go.Figure()
+    _fig.add_trace(go.Scatter(x=_ys * 1e6, y=_inv, mode="lines",
+                              fill="tozeroy", name="1/(y − y*)",
+                              line=dict(color="#1f77b4", width=2),
+                              fillcolor="rgba(31,119,180,0.25)"))
+    _fig.update_layout(
+        xaxis_title="gas H2S mole fraction y (ppmv)",
+        yaxis_title="1 / (y − y*)",
+        font=dict(family="Georgia, serif", size=13),
+        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
+        margin=dict(l=60, r=170, t=50, b=50))
+    mo.ui.plotly(_fig)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"*Figure 2. Transfer-unit integrand $1/(y - y^*)$ against the gas mole fraction $y$ at the current settings; the shaded area is $N_{OG}$ (6.12 at the defaults).*")
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+        ## 8. Sizing calculation
+
+        > $N_{OG}$ and $Z$ below come from the integrals of
+        > §7 (Eqs. (13) and (14)) applied to the Kent–Eisenberg
+        > equilibrium of §4. Its ideal-solution bias (~25–35%
         > underpredicted loading) makes the packed height
         > **conservative**; validate against pilot or vendor data
         > before detailed design.
@@ -909,8 +1031,8 @@ def _(G_C, PACK_BY_NAME, T_ui, flood_ui, gpdc_Gp_flood, gpdc_X, gpdc_Y,
         f"($N_{{OG}}$ = {N_OG:.2f}, $H_{{OG}}$ = {H_OG:.2f} m) — Kent–Eisenberg (§4)\n"
         f"- Wetted area $a_w$ = {a_w:.0f} m²/m³ "
         f"({wet_frac*100:.0f}% of $a_t$ = {a_t:.0f} m²/m³)\n"
-        f"- Film coefficients: $k_L$ = {k_L*1000:.3f} mm/s, "
-        f"$k_G$ = {k_G*1000:.1f} mm/s; "
+        f"- Film coefficients: $k_L$ = {k_L*1e5:.2f}×10⁻⁵ m/s, "
+        f"$k_G$ = {k_G*1e3:.2f}×10⁻³ m/s; "
         f"$K_y$ ranges {Ky_vals.min():.3f}–{Ky_vals.max():.3f} mol/(m² s)\n"
         f"- GPDC pressure gradient = {dp_gpdc:.0f} Pa/m "
         f"(flood Δp = {dp_flood_kg:.0f} Pa/m); "
@@ -964,13 +1086,15 @@ def _(np):
         return dp * 817.22083                             # Pa/m
 
     return (robbins_dp,)
+
+
 @app.cell
 def _(mo):
     mo.md(
         r"""
-        ## 8. The GPDC chart in SI units
+        ## 9. The GPDC chart in SI units
 
-        The figure below is the generalized pressure-drop correlation
+        Figure 3 shows the generalized pressure-drop correlation
         drawn in SI: the abscissa is the flow parameter $X$, the ordinate
         the capacity parameter $Y$. The heavy curve is the flooding line
         (Strigle's fit); the lighter curves are lines of constant
@@ -1011,9 +1135,7 @@ def _(Fp, X_design, Y_op, dp_flood_kg, dp_gpdc, frac_flood_actual, go,
         hovertemplate=(f"X={X_design:.4f}<br>Y_flood="
                        f"{gpdc_Yflood(X_design):.4f}<extra></extra>")))
     _fig.update_layout(
-        title=(f"Generalized pressure-drop correlation (SI) — "
-               f"{frac_flood_actual*100:.0f}% of flood"),
-        xaxis_title="flow parameter X = (L'/G')·sqrt(rho_G/rho_L)",
+        xaxis_title="flow parameter X = (L'/G') √(ρ_G/ρ_L)",
         yaxis_title="capacity parameter Y",
         xaxis_type="log", yaxis_type="log",
         font=dict(family="Georgia, serif", size=13),
@@ -1027,15 +1149,23 @@ def _(Fp, X_design, Y_op, dp_flood_kg, dp_gpdc, frac_flood_actual, go,
 
 @app.cell
 def _(mo):
+    mo.md(r"*Figure 3. The generalized pressure-drop correlation in SI units (§9): flooding line, constant-$\Delta p$ curves, and the operating and flooding points at the current settings (65.9% of flood at the defaults).*")
+    return
+
+
+@app.cell
+def _(mo):
     mo.md(
         r"""
-        ## 9. Operating diagram — where the driving force lives
+        ## 10. Operating diagram and driving force
 
         On a $y$–$x$ diagram (gas mole fraction $y$ vs liquid mole
-        fraction $x$), the **operating line** is the material balance
+        fraction $x$), the **operating line** is the material balance,
+        Eq. (15):
 
         $$
         y = y_{out} + \frac{L}{G}\,(x - x_{in}),
+        \qquad (15)
         $$
 
         and the **equilibrium curve** is $y^*(x)$ from §4. At any height
@@ -1078,7 +1208,6 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar):
                        y0=ystar(_xx) * 1e6, y1=_yy * 1e6,
                        line=dict(color="#2ca02c", width=2, dash="dot"))
     _fig.update_layout(
-        title="Operating diagram (y–x)",
         xaxis_title="liquid H2S mole fraction x (mol %)",
         yaxis_title="gas H2S mole fraction y (ppmv)",
         yaxis_type="log",
@@ -1095,61 +1224,7 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar):
 
 @app.cell
 def _(mo):
-    mo.md(
-        r"""
-        ## 10. Transfer units by numerical integration
-
-        The number of overall gas-phase transfer units is the integral
-        of the reciprocal driving force from the sweet gas ($y_{out}$)
-        to the feed ($y_{in}$):
-
-        $$
-        N_{OG} = \int_{y_{out}}^{y_{in}} \frac{dy}{\,y - y^*(x(y))\,},
-        \qquad
-        x(y) = x_{in} + \frac{G}{L}\,(y - y_{out}).
-        $$
-
-        Because $y^*(x)$ is curved (chemical equilibrium, §4), this
-        integral has no closed form — it is evaluated numerically with
-        adaptive quadrature (`scipy.integrate.quad`). The packed height
-        integrates the local transfer-unit height
-        $H_{OG}(y) = G_M/(K_y(y)\,a_w)$ against the same driving force:
-
-        $$
-        Z = \int_{y_{out}}^{y_{in}}
-            \frac{G_M\,dy}{(y - y^*)\,K_y(y)\,a_w},
-        \qquad
-        \frac{1}{K_y} = \frac{1}{k_y} + \frac{m}{k_x},
-        \;\; m = \frac{dy^*}{dx},
-        $$
-
-        where $G_M$ is the superficial gas molar flux (mol/(m² s)) and
-        $m$ is the **local** slope of the equilibrium curve — evaluated
-        by finite differences at each quadrature point, not averaged.
-        The figure shades the integrand whose area is $N_{OG}$.
-        """
-    )
-    return
-
-
-@app.cell
-def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar, N_OG):
-    _ys = np.linspace(y_out, y_in, 400)
-    _xs = x_in + (G_tot / L_tot) * (_ys - y_out)
-    _inv = 1.0 / (_ys - ystar(_xs))
-    _fig = go.Figure()
-    _fig.add_trace(go.Scatter(x=_ys * 1e6, y=_inv, mode="lines",
-                              fill="tozeroy", name="1/(y − y*)",
-                              line=dict(color="#1f77b4", width=2),
-                              fillcolor="rgba(31,119,180,0.25)"))
-    _fig.update_layout(
-        title=f"Transfer-unit integrand — shaded area = N_OG = {N_OG:.2f}",
-        xaxis_title="gas H2S mole fraction y (ppmv)",
-        yaxis_title="1 / (y − y*)",
-        font=dict(family="Georgia, serif", size=13),
-        legend=dict(x=1.02, y=1.0, xanchor="left", yanchor="top"),
-        margin=dict(l=60, r=170, t=50, b=50))
-    mo.ui.plotly(_fig)
+    mo.md(r"*Figure 4. Operating line and equilibrium curve (§10); the dotted segments mark the local driving force $y - y^*(x)$.*")
     return
 
 
@@ -1157,15 +1232,16 @@ def _(G_tot, L_tot, go, mo, np, x_in, y_in, y_out, ystar, N_OG):
 def _(mo):
     mo.md(
         r"""
-        ## 11. Turndown — how far can the column back off?
+        ## 11. Turndown range
 
         A column is designed at one rate (here ~70% of flood) but must
-        operate over a range. **Turndown** is the ratio
+        operate over a range. **Turndown** is the ratio, Eq. (16):
 
         $$
         \text{turndown} =
         \frac{\text{maximum satisfactory throughput}}
              {\text{minimum satisfactory throughput}},
+        \qquad (16)
         $$
 
         and both ends are set by real physics, not by the design slider:
@@ -1177,14 +1253,17 @@ def _(mo):
           throughput.
         - **Bottom end — wetting and distribution (soft limits).** Cut
           the liquid rate and Onda's correlation shows $a_w/a_t$
-          collapsing (right panel): dry patches spread, $K_y a_w$
-          falls, and the $N_{OG}$ you paid for in packed height quietly
-          disappears. Before that, the liquid **distributor** usually
-          sets the practical limit — orifice distributors turn down
-          about 2:1–3:1 before maldistribution ruins the irrigation
-          uniformity.
+          decreasing (right panel): dry patches spread, $K_y a_w$
+          decreases, and the transfer units that the packed height
+          would provide at full wetting are not realized. The liquid
+          **distributor** sets the practical limit before the wetting
+          limit is reached: this notebook takes an orifice distributor
+          to maintain uniform irrigation over a liquid-rate range of
+          about 2:1–3:1, as a design assumption.
 
-        Typical packed columns achieve 2:1–4:1 turndown. Note this
+        Packed columns are commonly taken to achieve 2:1–4:1 turndown;
+        that range is adopted here as a design assumption, not a model
+        output. Note that this
         column was sized for the *design* rate; the panels below explore
         the window around it.
         """
@@ -1221,7 +1300,7 @@ def _(Fp, Gp, Lp, X_design, a_t, dp_p, eps, frac_flood, go, gpdc_Gp_flood,
     _fig.update_yaxes(title_text="% of flood", row=1, col=1)
     _fig.update_xaxes(title_text="liquid rate / design", row=1, col=2)
     _fig.update_yaxes(title_text="wetted fraction a_w/a_t", row=1, col=2)
-    _fig.update_layout(title="Operating window around the design point",
+    _fig.update_layout(
                        font=dict(family="Georgia, serif", size=13),
                        margin=dict(l=60, r=20, t=60, b=50),
                        showlegend=False)
@@ -1231,34 +1310,39 @@ def _(Fp, Gp, Lp, X_design, a_t, dp_p, eps, frac_flood, go, gpdc_Gp_flood,
 
 @app.cell
 def _(mo):
+    mo.md(r"*Figure 5. Operating window around the design point (§11): percentage of flood against gas throughput at fixed liquid rate (left), and wetted fraction $a_w/a_t$ against liquid rate (right).*")
+    return
+
+
+@app.cell
+def _(mo):
     mo.md(
         r"""
         ## 12. Pressure-drop comparison and design summary
 
-        Two independent routes to the bed pressure gradient -- both
+        Two independent routes to the bed pressure gradient — both
         computed for the current operating point in the cross-check
-        after section 7:
+        after §8:
 
         | Method | Basis | Status here |
         |---|---|---|
-        | GPDC chart reading (section 6) | Eckert/Strigle chart + Kister-Gill anchor | computed |
+        | GPDC chart reading (§6) | Eckert/Strigle chart + Kister–Gill anchor | computed |
         | Robbins (1991) | packing-specific pressure-drop correlation | computed (needs Fpd) |
 
         Same order of magnitude across independent correlations is what
         builds confidence in a hydraulics design; systematic disagreement
-        sends you back to the packing data (section 2), not to a fudge
+        points to the packing data (§2), not to a fudge
         factor.
 
-        What this notebook does and does not claim: it *does* size a
+        The notebook sizes a
         packed absorber's diameter from GPDC flooding hydraulics,
-        integrate N_OG numerically against an amine equilibrium curve,
-        and cross-check the pressure gradient with Robbins. It
-        *does not* replace rate-based simulation (Aspen RateSep,
-        ProTreat) for final design, vendor hydraulics for the exact
-        packing, or pilot data for a new solvent. The equilibrium curve
-        is the largest remaining uncertainty (section 4): swap in a
-        validated VLE and every downstream number -- N_OG, H_OG, packed
-        height, turndown -- updates consistently.
+        integrates $N_{OG}$ numerically against an amine equilibrium curve,
+        and cross-checks the pressure gradient with Robbins. Final design still requires rate-based simulation (Aspen RateSep,
+        ProTreat), vendor hydraulics for the exact
+        packing, or pilot data for a new solvent. One uncertainty
+        dominates the rest: the equilibrium curve (§4). Swap in a
+        validated VLE and every downstream number — $N_{OG}$, $H_{OG}$, packed
+        height, turndown — updates consistently.
         """
     )
     return
@@ -1271,7 +1355,7 @@ def _(D, H_OG, N_OG, Z, a_w, dp_gpdc, dp_total, frac_flood_actual, mo,
         f"### Design summary\n\n"
         f"- **Service:** H₂S absorption from natural gas into aqueous MDEA\n"
         f"- **Packing:** {pack['name']}\n"
-        f"- **Column:** $D$ = {D:.1f} m, packed height $Z$ = {Z:.1f} m "
+        f"- **Column:** $D$ = {D:.1f} m, packed height $Z$ = {Z:.2f} m "
         f"(Kent–Eisenberg equilibrium, §4)\n"
         f"- **Separation:** $y_{{in}}$ = {y_in*100:.2f} mol % → "
         f"$y_{{out}}$ = {y_out*1e6:.0f} ppmv; "
@@ -1293,29 +1377,59 @@ def _(mo):
           coefficients between gas and liquid phases in packed columns.
           *J. Chem. Eng. Japan* 1(1), 56–62.
           DOI: [10.1252/kakoronbunshu1953.32.136](https://doi.org/10.1252/kakoronbunshu1953.32.136)
+        - Kent, R. L. & Eisenberg, B. (1976). Better data for amine
+          treating. *Hydrocarbon Processing* 55(2), 87–90.
+        - Deshmukh, R. D. & Mather, A. E. (1981). A mathematical model
+          for equilibrium solubility of hydrogen sulfide and carbon
+          dioxide in aqueous alkanolamine solutions. *Chem. Eng. Sci.*
+          36, 355–362.
+          DOI: [10.1016/0009-2509(81)85015-4](https://doi.org/10.1016/0009-2509(81)85015-4)
+        - Jou, F.-Y., Mather, A. E. & Otto, F. D. (1982). Solubility of
+          H₂S and CO₂ in aqueous methyldiethanolamine solutions.
+          *Ind. Eng. Chem. Process Des. Dev.* 21(4), 539–544.
+          DOI: [10.1021/i200019a001](https://doi.org/10.1021/i200019a001)
+        - Mahmud, N., Benamor, A., Nasser, M., El-Naas, M. H. &
+          Tontiwachwuthikul, P. (2019). Reaction kinetics of carbon
+          dioxide in aqueous blends of N-methyldiethanolamine and
+          L-arginine using the stopped-flow technique. *Processes*
+          7(2), 81.
+          DOI: [10.3390/pr7020081](https://doi.org/10.3390/pr7020081)
+        - Li, M.-H. & Shen, K.-P. (1993). Solubility of hydrogen sulfide
+          in aqueous mixtures of monoethanolamine with
+          N-methyldiethanolamine. *J. Chem. Eng. Data* 38(1), 105–108.
+        - Sander, R. (2023). Compilation of Henry's law constants
+          (version 5.0.0) for water as solvent. *Atmos. Chem. Phys.*
+          23, 10901–12440.
+          DOI: [10.5194/acp-23-10901-2023](https://doi.org/10.5194/acp-23-10901-2023)
+        - Ji, H., Zhang, Y., Wei, C. & Wang, H. (2016). Experimental
+          study on removal of H₂S using MDEA solution in microchannel.
+          *Proc. International Conference on Energy and Environmental
+          Protection (ICEEP 2016)*, Atlantis Press. (Table 1 tabulates
+          the MDEA-solution data of Rinker and of Posey used in §4.)
+        - Sherwood, T. K., Shipley, G. H. & Holloway, F. A. L. (1938).
+          Flooding velocities in packed columns. *Ind. Eng. Chem.* 30,
+          765–769.
+        - Leva, M. (1954). *Chem. Eng. Prog. Symp. Ser.* 50(1), 51
+          (packed-tower pressure-drop curves; cited as in *Perry's
+          Chemical Engineers' Handbook*, 9th ed.).
+        - Eckert, J. S. (1970). Selecting the proper distillation
+          column packing. *Chem. Eng. Prog.* 66(3), 39–44.
         - Kister, H. Z. & Gill, D. R. (1991). Predict flood points and
           pressure drop for modern random packings. *Chem. Eng. Prog.*
           87(2), 32–42.
         - Robbins, L. A. (1991). Improve pressure-drop prediction with a
           new correlation. *Chem. Eng. Prog.* 87(5), 87–91.
-        - Kent, R. L. & Eisenberg, B. (1976). Better data for amine
-          treating. *Hydrocarbon Processing* 55(2), 87–90.
-        - Jou, F.-Y., Mather, A. E. & Otto, F. D. (1982). Solubility of
-          H₂S and CO₂ in aqueous methyldiethanolamine solutions.
-          *Ind. Eng. Chem. Process Des. Dev.* 21(4), 539–544.
-          DOI: [10.1021/i200019a001](https://doi.org/10.1021/i200019a001)
         - Billet, R. & Schultes, M. (1999). Prediction of mass transfer
           columns with dumped and arranged packings. *Chem. Eng.
           Technol.* 22(11), 969–987.
           DOI: [10.1002/(SICI)1521-4125(199911)22:11<969::AID-CEAT969>3.0.CO;2-3](https://doi.org/10.1002/(SICI)1521-4125(199911)22:11<969::AID-CEAT969>3.0.CO;2-3)
         - Strigle, R. F. (1994). *Packed Tower Design and Applications*,
           2nd ed. Gulf Publishing.
-        - Treybal, R. E. (1980). *Mass-Transfer Operations*, 3rd ed.
-          McGraw-Hill. (GPDC packing factors, Table 6.3.)
-        - Seader, J. D., Henley, E. J. & Roper, D. K. (2011).
-          *Separation Process Principles*, 3rd ed. Wiley.
-        - Kohl, A. L. & Nielsen, R. B. (1997). *Gas Purification*,
-          5th ed. Gulf Publishing. (Amine treating practice, MDEA.)
+        - Green, D. W. & Perry, R. H. (eds.) (2008). *Perry's Chemical
+          Engineers' Handbook*, 8th ed. McGraw-Hill. (§14, Table 14-13:
+          random-packing data.)
         """
     )
     return
+
+
