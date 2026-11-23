@@ -14,19 +14,24 @@
 <header class="page-head" id="top">
   <h1>McCabe–Thiele and Ponchon–Savarit</h1>
   <p>Binary distillation design by the two classical graphical methods, computed
-  side by side on one specification. The real systems use the ChemCAD NRTL
-  parameters and the ChemCAD Latent Heat enthalpy model; the synthetic preset
-  holds the relative volatility fixed. All calculation runs in Python
-  (Pyodide) in the browser; the first display is the precomputed default run,
-  computed when this page was built.</p>
+  side by side on one specification. For the default benzene–toluene
+  specification, the McCabe–Thiele construction gives 13.16 stages and the
+  Ponchon–Savarit construction gives 14.31 stages. Written for chemical
+  engineering students who have met stagewise material balances and
+  vapour–liquid equilibrium, the page derives both constructions in the
+  Theory panel and recomputes them in the App panel on any specification.
+  The real systems use the ChemCAD NRTL (non-random two-liquid) parameters
+  and the ChemCAD Latent Heat enthalpy model; the synthetic preset holds
+  the relative volatility fixed. All calculation runs in Python (Pyodide)
+  in the browser; the first display is the precomputed default run.</p>
 </header>
 <nav class="tabs" role="tablist" aria-label="Page panels">
-  <button role="tab" id="tabbtn-app" aria-selected="true" data-panel="app">App</button>
-  <button role="tab" id="tabbtn-theory" aria-selected="false" data-panel="theory">Theory</button>
+  <button role="tab" id="tabbtn-theory" aria-selected="true" data-panel="theory">Theory</button>
+  <button role="tab" id="tabbtn-app" aria-selected="false" data-panel="app">App</button>
   <button role="tab" id="tabbtn-code" aria-selected="false" data-panel="code">Code</button>
 </nav>
 <main>
-<section class="panel active" id="panel-app" role="tabpanel" aria-label="App">
+<section class="panel" id="panel-app" role="tabpanel" aria-label="App">
   <div class="banner" id="az-banner" role="alert"></div>
   <div class="app-grid">
     <aside class="controls" id="controls">
@@ -150,7 +155,7 @@
       <div class="figbox single" id="app-psxy" style="margin-top:16px">
         <h3>Ponchon–Savarit operating lines on the y–x diagram</h3>
         <div class="fig" id="fig-psxy"></div>
-        <p class="figcap">Fig. 3 | Operating points of the Ponchon–Savarit run on the y–x diagram. x<sub>n</sub> is the liquid mole fraction of the light component leaving stage n and y<sub>n+1</sub> is the vapour mole fraction of the light component leaving stage n + 1, so a point (x<sub>n</sub>, y<sub>n+1</sub>) pairs the two streams that pass each other between those stages. The points are joined in stage order between the product points (x<sub>D</sub>, x<sub>D</sub>) and (x<sub>B</sub>, x<sub>B</sub>), where x<sub>D</sub> is the distillate mole fraction and x<sub>B</sub> is the bottoms mole fraction. The internal liquid and vapour molar flow rates vary from stage to stage, so the joined points form a curve in each section instead of two straight lines — close to the lines where the variation is small, and coincident with them on the synthetic preset at a latent-heat ratio of 1.0, where the flow rates are constant. In a pinched run the joined points stop at the pinch composition and the bottoms product point is not drawn, because the stepping does not reach it. The light-grey straight lines are the McCabe–Thiele operating lines for the same specification — the same product compositions, reflux ratio and feed condition — which are straight because that method holds the internal flow rates constant in each section.</p>
+        <p class="figcap">Fig. 3 | Operating points of the Ponchon–Savarit run on the y–x diagram, joined in stage order between the product points (x<sub>D</sub>, x<sub>D</sub>) and (x<sub>B</sub>, x<sub>B</sub>). x<sub>n</sub> is the liquid mole fraction of the light component leaving stage n and y<sub>n+1</sub> is the vapour mole fraction of the light component leaving stage n + 1. The light-grey straight lines are the McCabe–Thiele operating lines for the same specification.</p>
       </div>
       <div class="figbox single" id="app-txy" style="margin-top:16px">
         <h3>Temperature–composition diagram</h3>
@@ -167,11 +172,11 @@
           <tbody id="stage-rows"></tbody>
         </table>
       </div>
-      <p class="figcap">Stage 1 is the top stage. L and V are the liquid and vapour molar flow rates leaving the stage, in kmol/s. The last row is the final stepped stage: its liquid composition overshoots x<sub>B</sub> because the reported stage count is fractional, so the last stage is counted in part; the bottoms product composition is the specified x<sub>B</sub>, and the liquid flow on that row is the bottoms flow B. The section flow relations (V &minus; L = D in the rectifying section, L &minus; V = B in the stripping section, with D the distillate flow rate) pair streams crossing one cut through the column — the vapour leaving a stage with the liquid leaving the stage above it — not the two flows in a single row of this table. Under constant molal overflow L and V would be constant within each section; their variation here is what the McCabe–Thiele construction neglects.</p>
+      <p class="figcap">Stage 1 is the top stage. L and V are the liquid and vapour molar flow rates leaving the stage, in kmol/s. The last row is the final stepped stage. Its liquid composition overshoots x<sub>B</sub>; because the reported stage count is fractional, the last stage is counted in part. On that row the liquid flow is the bottoms flow B, and the product composition is the specified x<sub>B</sub>. The section flow relations (V &minus; L = D in the rectifying section, L &minus; V = B in the stripping section, with D the distillate flow rate) pair streams crossing one cut through the column — the vapour leaving a stage with the liquid leaving the stage above it — not the two flows in a single row of this table. Under constant molal overflow L and V would be constant within each section; their variation here is what the McCabe–Thiele construction neglects.</p>
     </div>
   </div>
 </section>
-<section class="panel" id="panel-theory" role="tabpanel" aria-label="Theory">
+<section class="panel active" id="panel-theory" role="tabpanel" aria-label="Theory">
   <div class="tocgrid">
     <aside class="toc" id="theory-toc"><p class="toc-h">Contents</p>@@THEORY_TOC@@</aside>
     <div>
@@ -193,9 +198,8 @@
         <div class="textcol" style="max-width:none">
           <h2 id="code-core">mtps_core.py</h2>
           <p>The complete calculation: equilibrium, feed condition, both
-          stepping constructions and the duties. This listing is rendered from
-          the file on disk at build time and is byte-identical to the module
-          the App tab runs.</p>
+          stepping constructions and the duties — the module the App tab
+          runs.</p>
           @@LISTING_CORE@@
           <h2 id="code-data">mtps_data.py</h2>
           <p>The frozen ChemCAD data: pure-component coefficients and NRTL
@@ -203,8 +207,8 @@
           chetools/chetools repository.</p>
           @@LISTING_DATA@@
           <h2 id="code-notebook">Editable notebook</h2>
-          <p>The walkthrough is the read-only, build-time-rendered breakdown
-          in the Walkthrough sub-tab. The editable notebook on MoLab is the
+          <p>The walkthrough is the read-only breakdown in the Walkthrough
+          sub-tab. The editable notebook on MoLab is the
           same cells as a marimo notebook with the two modules inlined; run
           all cells once after opening, then edit the specification in
           Step 1 and re-run.</p>
@@ -220,10 +224,9 @@
       <div>
         <details class="toc-details"><summary>Contents</summary>@@WALK_TOC@@</details>
         <div class="textcol" style="max-width:none">
-          <p>The steps below were computed when this page was built, from the
-          same cells that generate the editable notebook on MoLab (linked
-          under Listings). Printed output and figures are the build-time
-          results.</p>
+          <p>The steps below are the same cells that generate the editable
+          notebook on MoLab (linked under Listings), shown with their
+          printed output and figures.</p>
           @@WALKTHROUGH_HTML@@
         </div>
       </div>

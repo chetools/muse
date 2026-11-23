@@ -76,6 +76,7 @@ fieldset.feedmode label { font-weight: 500; display: block; margin: 4px 0; }
 .metric .u { font-size: 0.82rem; color: var(--ink-2); }
 .diagrams { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .diagrams .figbox, .figbox.single { border: 1px solid var(--rule); border-radius: 4px; padding: 6px; }
+.diagrams .figbox { min-width: 0; }
 .figbox h3 { margin: 4px 6px; font-size: 0.98rem; }
 .fig { width: 100%; height: 460px; }
 .fig.tall { height: 380px; }

@@ -21,9 +21,9 @@ component) in the feed, dimensionless; $x_D$ is the mole fraction of
 benzene in the distillate (overhead liquid product), dimensionless;
 $x_B$ is the mole fraction of benzene in the bottoms (liquid product
 from the reboiler), dimensionless; $D$ and $B$ are the molar flow
-rates of distillate and bottoms in $\mathrm{kmol/s}$. The overall
-balances $F = D + B$ and $F z_F = D x_D + B x_B$ fix $D$ and $B$
-before any stage is stepped.
+rates of distillate and bottoms in $\mathrm{kmol/s}$. From the
+overall balances $F = D + B$ and $F z_F = D x_D + B x_B$, $D$ and
+$B$ are fixed before any stage is stepped.
 """,
         "code": r"""
 import numpy as np
@@ -36,7 +36,7 @@ D_flow, B_flow = mc.overall_flows(spec_bt["zF"], spec_bt["xD"],
                                   spec_bt["xB"], 1.0)
 print(f"D = {D_flow:.4f} kmol/s, B = {B_flow:.4f} kmol/s")
 print(f"arithmetic check (not an independent verification: D and B "
-      f"were solved from these two balances, so substituting them "
+      f"were solved from these two balances; substituting them "
       f"back closes identically): D*xD + B*xB = "
       f"{D_flow * spec_bt['xD'] + B_flow * spec_bt['xB']:.6f} "
       f"(feed: {spec_bt['zF']:.6f})")
@@ -52,13 +52,14 @@ temperature in kelvin ($\mathrm{K}$); $x$ is the liquid mole fraction
 of benzene, dimensionless; $y$ is the vapour mole fraction of benzene
 in equilibrium with that liquid, dimensionless. The bubble-point
 calculation solves $\sum_i x_i \gamma_i P_i^{\mathrm{sat}} = P$ for
-$T$ at each $x$, where $\gamma_i$ is the activity coefficient of
-component $i$ from the NRTL model with the ChemCAD parameters, and
-$P_i^{\mathrm{sat}}$ is the pure-component vapour pressure of
-component $i$ in $\mathrm{Pa}$. The relative volatility at the feed
-composition, $\alpha = \gamma_1 P_1^{\mathrm{sat}} /
-(\gamma_2 P_2^{\mathrm{sat}})$, is dimensionless; the subscripts 1
-and 2 denote benzene and toluene.
+$T$ at each $x$, where $\gamma_i$ is the activity
+coefficient of component $i$ from the NRTL (non-random two-liquid)
+model with the ChemCAD parameters, and $P_i^{\mathrm{sat}}$ is
+the pure-component vapour pressure of component $i$ in
+$\mathrm{Pa}$. At the feed composition, $\alpha = \gamma_1
+P_1^{\mathrm{sat}} / (\gamma_2 P_2^{\mathrm{sat}})$ is the
+relative volatility, dimensionless; the subscripts 1 and 2 denote
+benzene and toluene.
 """,
         "code": r"""
 pair_bt = ("Benzene", "Toluene")
@@ -125,14 +126,14 @@ constant molal overflow assumption: the liquid and vapour molar flow
 rates are taken as constant within each column section. $R$ is the
 reflux ratio, $R = L/D$ where $L$ is the liquid molar flow rate in
 the rectifying section in $\mathrm{kmol/s}$, dimensionless as a
-ratio. The page sets $R$ as a multiple of the minimum reflux ratio
-$R_{\min}$, itself found by bisection (repeated halving of an
-interval) on stepping feasibility: below $R_{\min}$ the staircase
+ratio. On the page $R$ is set as a multiple of the minimum reflux
+ratio $R_{\min}$, itself found by bisection (repeated halving of
+an interval) on stepping feasibility: below $R_{\min}$ the staircase
 pinches and never reaches $x_B$. $N$ is the stage count including
 the reboiler, dimensionless; the total condenser is not a stage.
-The minimum stage count $N_{\min}$ comes from total-reflux stepping
-(the operating lines on the diagonal), the construction behind the
-Fenske equation.
+$N_{\min}$, the minimum stage count, comes from total-reflux
+stepping (the operating lines on the diagonal), the construction
+behind the Fenske equation.
 """,
         "code": r"""
 eqc_bt = mc.table_eq_curve(eqtab)
@@ -224,7 +225,9 @@ figure([
         "title": "Fixed relative volatility: anchors and the latent-heat ratio",
         "md": r"""
 For the synthetic preset the relative volatility $\alpha$ is held
-fixed at 2.50 and the enthalpies are prescribed: saturated-liquid
+fixed at 2.50, on the specification $z_F = 0.50$, $x_D = 0.95$,
+$x_B = 0.05$ and $q = 1$; the enthalpies are prescribed:
+saturated-liquid
 molar enthalpy 0 $\mathrm{kJ/mol}$ at every composition (the datum),
 and saturated-vapour molar enthalpy
 $H(y) = y L_A + (1-y) L_B$ in $\mathrm{kJ/mol}$, where $L_A =
@@ -238,7 +241,7 @@ below checks the anchors of the specification: minimum reflux ratio
 $r_L = 2$ the McCabe–Thiele count cannot move (it never sees the
 enthalpies), while the Ponchon–Savarit stepping pinches at the
 reflux multiple 1.3 used below: Ponchon–Savarit has its own,
-higher minimum reflux when constant molal overflow fails, so its
+higher minimum reflux when constant molal overflow fails. Its
 stage count there is unbounded, not finite. Raising the multiple
 to 1.6 takes the run past that minimum, and the
 Ponchon–Savarit stepping completes at 16.93 stages.
@@ -280,12 +283,13 @@ assert abs(res_a3["ps"]["N"] - 16.93) < 0.05
 Raising $P$ raises every boiling temperature, and the vapour
 pressures of the two components converge: $\alpha$ at a fixed liquid
 composition falls. For benzene–toluene at $x = 0.5$ the fall is from
-2.46 at $1\ \mathrm{atm}$ to 1.90 at $10\ \mathrm{atm}$, so a column
-designed at high pressure needs more stages at the same reflux
-ratio, while its condenser runs hotter (the distillate bubble point
-rises from 81 to $181\ ^{\circ}\mathrm{C}$ over the same pressure
-range), which is why the App tab allows column pressures to
-$10\ \mathrm{atm}$ and temperatures to $220\ ^{\circ}\mathrm{C}$.
+2.46 at $1\ \mathrm{atm}$ to 1.90 at $10\ \mathrm{atm}$, and a
+column designed at high pressure needs more stages at the same
+reflux ratio, while its condenser runs hotter (the distillate
+bubble point rises from 81 to $181\ ^{\circ}\mathrm{C}$ over the
+same pressure range), which is why the App tab allows column
+pressures to $10\ \mathrm{atm}$ and temperatures to
+$230\ ^{\circ}\mathrm{C}$.
 """,
         "code": r"""
 pressures_atm = [0.5, 1.0, 2.0, 5.0, 10.0]
@@ -308,15 +312,16 @@ figure([
         "title": "Rating: stage count specified, distillate composition held",
         "md": r"""
 The steps so far are design calculations: both product
-compositions are specified and the stage count comes out. The
-rating form specifies the stage count instead. With the feed, the
-reflux ratio $R$ and the stage count $N$ given, the overall
-balances plus the staircase still leave one degree of freedom, so
-one product composition must be held and the other is calculated.
-Here $x_D$ is held at the Step 1 value, $R$ is the absolute reflux
-ratio of Step 4, and $N = 15$ stages are specified. Each method
-bisects the unknown $x_B$ until its own stepped fractional count
-equals 15, so the two methods calculate slightly different values:
+compositions are specified and the stage count comes out. In the
+rating form the stage count is specified instead. With the feed,
+the reflux ratio $R$ and the stage count $N$ given, the overall
+balances plus the staircase still leave one degree of freedom;
+one product composition must therefore be held and the other is
+calculated. Here $x_D$ is held at the Step 1 value, $R$ is the
+absolute reflux ratio of Step 4, and $N = 15$ stages are
+specified. Each method bisects the unknown $x_B$ until its own
+stepped fractional count equals 15, and the two methods calculate
+slightly different values:
 at the same reflux, 15 stages strip further than the 13.16
 McCabe–Thiele stages of the design run, and both calculated values
 lie below the design $x_B = 0.05$.
@@ -349,7 +354,7 @@ for m8, label8 in (("mt", "McCabe-Thiele"),
             + res_s8[m8]["B_kmol_s"] * res_s8[m8]["xB_out"])
     print(f"{label8}: arithmetic check (not an independent "
           f"verification: D and B are produced from these two "
-          f"balances for the solved pair, so substituting them "
+          f"balances for the solved pair; substituting them "
           f"back closes identically): D*xD + B*xB = {bal8:.6f} "
           f"(feed: {spec_bt['zF']:.6f})")
     assert abs(bal8 - spec_bt["zF"]) < 1e-9
@@ -363,11 +368,11 @@ assert res_s8["ps"]["xB_out"] < spec_bt["xB"]
         "md": r"""
 The one remaining specification can instead be the distillate
 flow rate $D$ itself, in $\mathrm{kmol/s}$; here $D$ is set to the
-Step 1 value, $0.388889\ \mathrm{kmol/s}$, so $B = F - D$ is fixed
-as well. The component balance then ties the two product
+Step 1 value, $0.388889\ \mathrm{kmol/s}$, and $B = F - D$ is fixed
+as well. Then the component balance ties the two product
 compositions together, $x_B = (F z_F - D x_D)/B$, and one unknown,
-$x_D$, remains. The reflux is set as a multiple of the minimum,
-1.3 as in Step 4, which makes the solve nested: each trial pair
+$x_D$, remains. Set as a multiple of the minimum, 1.3 as in
+Step 4, the reflux makes the solve nested: each trial pair
 first gets its McCabe–Thiele minimum reflux ratio and its
 operating reflux ratio, then its stepped count, and the bisection
 drives that count to the specified $N = 15$. Because the trial

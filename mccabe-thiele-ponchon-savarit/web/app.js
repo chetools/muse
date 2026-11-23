@@ -23,6 +23,18 @@ function showPanel(name, push) {
   });
   if (push) history.replaceState(null, "", "#" + name);
   if (name === "code") renderWalkFigs();
+  if (name === "app") {
+    /* The App figures are drawn from the prestart payload while the
+       panel may be hidden (Theory is the landing panel); resize them
+       explicitly once the panel is visible, as a window-resize
+       dispatch alone does not refit them. */
+    requestAnimationFrame(() => {
+      ["fig-mt", "fig-ps", "fig-psxy", "fig-txy"].forEach((id) => {
+        const el = $(id);
+        if (el && el.data) Plotly.Plots.resize(el);
+      });
+    });
+  }
 }
 document.querySelectorAll("nav.tabs button").forEach((b) => {
   b.addEventListener("click", () => showPanel(b.dataset.panel, true));
@@ -37,10 +49,10 @@ document.querySelectorAll(".subtabs button").forEach((b) => {
   });
 });
 function routeHash() {
-  const h = (location.hash || "#app").slice(1);
+  const h = (location.hash || "#theory").slice(1);
   if (PANELS.includes(h)) { showPanel(h, false); return; }
   const el = document.getElementById(h);
-  if (!el) { showPanel("app", false); return; }
+  if (!el) { showPanel("theory", false); return; }
   if (el.closest("#panel-theory")) showPanel("theory", false);
   else if (el.closest("#panel-code")) {
     showPanel("code", false);
