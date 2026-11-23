@@ -11,21 +11,27 @@ dimensionless, and the level gains are in 1/s."""
 CELLS = [
     {"md": """## Step 1: The column and its steady state
 
-The parameter set `ColumnParams` holds the operating point as
-plain variables with defaults: the number of trays $N$, the
-relative volatility $\\alpha$ (dimensionless), the feed flow
-$F$ (mol/s), the feed composition $x_F$ (mole fraction of the
-light component in the feed, dimensionless), the feed liquid
-fraction $q$ (dimensionless), the reflux flow $L$ (mol/s) and
-the boilup flow $V$ (mol/s). The default column has $N = 5$
-trays, so $NT = 7$ stages. The steady state is the state at
-which every stage balance is zero; the solver returns the
-composition profile $x_i$ over the stages and the largest
+In the parameter set `ColumnParams`, the operating point
+stands as plain variables with defaults: the number of trays
+$N$, the relative volatility $\\alpha$ (dimensionless), the feed
+flow $F$ (mol/s), the feed composition $x_F$ (mole fraction of
+the light component in the feed, dimensionless), the feed
+liquid fraction $q$ (dimensionless), the reflux flow $L$
+(mol/s) and the boilup flow $V$ (mol/s). $N = 5$ trays is the
+default column, with $NT = 7$ stages. The steady state is the
+state at which every stage balance is zero; the solver returns
+the composition profile $x_i$ over the stages and the largest
 absolute residual of the right-hand side, which must be near
 zero for the state to be a steady state. At $N = 5$ the Column
 A flows give a distillate composition $x_D$ of about 0.73, not
-the 0.99 of the 41-stage anchor column: the same flows on fewer
-stages separate less.""",
+the 0.99 of the 41-stage anchor column: the same flows on
+fewer stages separate less.
+
+Figure: liquid mole fraction $x$ against stage number at the
+default column ($N = 5$ trays, $NT = 7$ stages, feed on stage
+4 counted from the bottom), from $x_B = 0.2704$ at the
+reboiler (stage 1) to $x_D = 0.7296$ at the condenser
+(stage 7).""",
      "code": """import numpy as np
 import column_a as ca
 
@@ -48,27 +54,27 @@ figure([{"x": list(range(1, nt_default + 1)),
 
     {"md": """## Step 2: The stage balances at the steady state
 
-The right-hand side function `rhs` returns the time derivatives
-of all $2 NT$ states: the composition derivatives $dx_i/dt$
-(1/s) followed by the holdup derivatives $dM_i/dt$ (mol/s). The liquid
-flow leaving stage $i$ downward, $L_i$ (mol/s), follows the
-linearised liquid-flow law: the nominal profile plus the holdup
-deviation divided by the liquid time constant $\\tau_l$ (s).
-Because every holdup sits at its nominal value $M_0$ (mol) at
-the steady state, the liquid profile returned here is the
-nominal profile: the stripping-section value $L + qF$ below and
-at the feed stage, and $L$ above it. The cell also checks the
-steady state by a combination Step 1 does not use: the
-whole-column balance closure. Summing the stage balances over
-the whole column, every inter-stage flow cancels, so the total
-closure is the feed flow $F$ (mol/s) minus the two product
-flows $D$ and $B$ (mol/s), and the light-component closure is
-$F x_F$ minus $D x_D$ and $B x_B$ (all in mol/s), with $x_D$
-and $x_B$ the solved product compositions of Step 1. The total
-closure is zero by the construction of $D$ and $B$ in Step 1's
-operating point; the component closure is the independent
-check, because it combines the boundary flows with the solved
-compositions.""",
+Time derivatives of all $2 NT$ states are returned by the
+right-hand side function `rhs`: the composition derivatives
+$dx_i/dt$ (1/s) followed by the holdup derivatives $dM_i/dt$
+(mol/s). $L_i$ (mol/s), the liquid flow leaving stage $i$
+downward, follows the linearised liquid-flow law: the nominal
+profile plus the holdup deviation divided by the liquid time
+constant $\\tau_l$ (s). Because every holdup sits at its nominal
+value $M_0$ (mol) at the steady state, the liquid profile
+returned here is the nominal profile: the stripping-section
+value $L + qF$ below and at the feed stage, and $L$ above it.
+A combination Step 1 does not use also checks the steady
+state: the whole-column balance closure. Summing the stage
+balances over the whole column, every inter-stage flow
+cancels; the total closure is thus the feed flow $F$ (mol/s)
+minus the two product flows $D$ and $B$ (mol/s), and the
+light-component closure is $F x_F$ minus $D x_D$ and $B x_B$
+(all in mol/s), with $x_D$ and $x_B$ the solved product
+compositions of Step 1. The total closure is zero by the
+construction of $D$ and $B$ in Step 1's operating point; the
+component closure is the independent check, because it
+combines the boundary flows with the solved compositions.""",
      "code": """Ldown_steady, Vup_steady = ca.stage_flows(z_steady, p_default.u0,
                                           p_default, g_default, np)
 print("liquid flow leaving each stage downward (mol/s) =",
@@ -87,12 +93,13 @@ print("whole-column balance closure, light component "
 
     {"md": """## Step 3: Automatic differentiation of the model
 
-The Jacobian $A$ of the model is the matrix of partial
+$A$, the Jacobian of the model, is the matrix of partial
 derivatives of the right-hand side with respect to the states,
-$A_{ij} = \\partial f_i / \\partial z_j$ (1/s). The autograd
-library computes it exactly, to machine precision, by applying
-the chain rule to the coded function; no difference step is
-chosen anywhere. The cell compares the autograd Jacobian of the
+$A_{ij} = \\partial f_i / \\partial z_j$ (1/s). By applying
+the chain rule to the coded function, the autograd
+library computes it exactly, to machine precision; no
+difference step is chosen anywhere. The cell compares the
+autograd Jacobian of the
 open-loop model at the steady state against a central
 finite-difference Jacobian with step $h = 10^{-6}$ times the
 state scale, and prints the largest absolute entry difference.
@@ -127,10 +134,11 @@ variables are $L$ and $V$ (mol/s); the distillate flow $D$
 (mol/s) holds the reflux-drum level and the bottoms flow $B$
 (mol/s) holds the reboiler level. With perfect level control
 the linearised model has the steady-state gain matrix $G$
-(2 by 4, columns $L$, $V$, $F$, $x_F$). The relative gain
-array (RGA) of the 2 by 2 manipulated-variable block is the
-element-by-element product of that block with the transpose of
-its inverse; its 1,1 element $\\lambda_{11}$ (dimensionless)
+(2 by 4, columns $L$, $V$, $F$, $x_F$). Of the 2 by 2
+manipulated-variable block, the relative gain array (RGA) is
+the element-by-element product of that block with the
+transpose of its inverse; its 1,1 element $\\lambda_{11}$
+(dimensionless)
 also follows from the shortcut
 $\\lambda_{11} = 1 / (1 - g_{12} g_{21} / (g_{11} g_{22}))$.
 The cell prints both values: they must agree to round-off.""",
@@ -145,15 +153,16 @@ print("RGA =", np.round(Lambda_lv, 3).tolist(),
 
     {"md": """## Step 5: The five configurations at the anchor column
 
-The Column A anchor has $NT = 41$ stages, that is $N = 39$
-trays, with the feed on stage 21 counted from the bottom. The
-published steady-state RGA 1,1 elements (Skogestad and Morari,
-1987, reported in Skogestad's 2006 plenary paper) are: LV 35.1,
-DV 0.45, LB 0.56, DB infinite, and (L/D)-(V/B) 3.22. The cell
-recomputes each value from the model at the anchor. The DB
-value is not computed: its linear model has a pole at the
-origin (Step 8), so no steady-state gain matrix exists and the
-RGA is infinite. The DV and LB values agree with the
+At the Column A anchor there are $NT = 41$ stages, that is
+$N = 39$ trays, with the feed on stage 21 counted from the
+bottom. Skogestad and Morari (1987), as reported in
+Skogestad's 2006 plenary paper, give the published
+steady-state RGA 1,1 elements: LV 35.1, DV 0.45, LB 0.56, DB
+infinite, and (L/D)-(V/B) 3.22. Each value is recomputed by
+the cell from the model at the anchor. For DB no value is
+computed: its linear model has a pole at the origin (Step 8);
+no steady-state gain matrix thus exists and the RGA is
+infinite. The DV and LB values agree with the
 published values to the published digits; the LV value comes
 out at 35.9 against the published 35.1 and the ratio value at
 3.29 against 3.22, each about 2 % off, because a relative
@@ -184,11 +193,14 @@ responds to the reflux-drum holdup deviation with gain
 $K_{cD}$ (1/s) and the bottoms flow to the reboiler holdup
 deviation with gain $K_{cB}$ (1/s); the default is
 $K_{cD} = K_{cB} = 10$ per minute $= 0.1667$ 1/s. The two drum
-holdups stay in the state vector, so the linear model is two
-states larger and its slowest poles move. At steady state the
-holdup deviations are zero, so the steady-state gains are the
-same as under perfect level control; the cell verifies that to
-round-off. The dynamics differ, which is what the level gains
+holdups stay in the state vector, and the linear model is two
+states larger. Two poles are added at exactly $-0.166667$
+1/s, the level gains; the slowest composition poles do not
+move, and the dominant time constant is 222.3 s in both modes.
+At steady state the holdup deviations are zero; the
+steady-state gains are thus the same as under perfect level
+control, and the cell verifies that to round-off. What differs
+is the dynamics, which is what the level gains
 are for the reader to explore on the page.""",
      "code": """A_lvp, B_lvp, C_lvp = ca.linearise(z_steady, p_default, g_default,
                                    "LV", "P")
@@ -206,16 +218,21 @@ CELLS += [
 
 A first-order plus dead time (FOPTD) channel has a gain $K$
 (output change per unit input change), a time constant
-$\\tau$ (s) and an apparent dead time $\\theta$ (s). The fit
-holds $K$ at the exact steady-state gain of Step 4 and chooses
-$\\tau$ and $\\theta$ to minimise the sum of squared errors
-between the FOPTD unit-step response and the high-order linear
-step response, sampled at 200 uniform times over a horizon of
-five times the dominant time constant. The fit error is the
-integral of the absolute error between the two responses,
-divided by the integral of the absolute high-order response,
-in %. The cell fits the channel from $L$ to $x_D$ of the LV
-configuration and plots both responses.""",
+$\\tau$ (s) and an apparent dead time $\\theta$ (s). At the
+exact steady-state gain of Step 4, $K$ is held, and
+$\\tau$ and $\\theta$ are chosen to minimise the sum of
+squared errors between the FOPTD unit-step response and the
+high-order linear step response, sampled at 200 uniform times
+over a horizon of five times the dominant time constant. In
+%, the fit error is the integral of the absolute error
+between the two responses, divided by the integral of the
+absolute high-order response. The cell fits the channel from
+$L$ to $x_D$ of the LV configuration and plots both responses.
+
+Figure: unit-step responses of the channel from $L$ to $x_D$
+(LV configuration, default column): the high-order linear
+response and its FOPTD fit ($K = 0.02645$, $\\tau = 228.0$ s,
+$\\theta = 17.3$ s, fit error 0.39 %).""",
      "code": """tau_dom_lv, _poles_lv = ca.dominant_time_constant(A_lv)
 t_fit = np.linspace(0.0, 5.0 * tau_dom_lv, 200)
 y_high = ca.step_response(A_lv, B_lv[:, 0], C_lv[0, :], t_fit)
@@ -243,8 +260,8 @@ can restore the total. The linear model therefore has a pole
 at the origin, printed in Step 5. A balanced move, $D$ up and
 $B$ down by the same amount, keeps $F - D - B$ unchanged and
 does have a steady state; its gains come from the
-least-squares solution of the steady-state equations. The cell
-computes those balanced-split gains at the default column,
+least-squares solution of the steady-state equations. At the
+default column, the cell computes those balanced-split gains,
 prints the residual of the deflated steady-state system
 $A z = -B w$ for the balanced direction and for the
 feed-composition direction (both at round-off level), and,

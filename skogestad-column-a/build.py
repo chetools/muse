@@ -1,4 +1,4 @@
-"""Build dist/skogestad-column-a-standalone-v4.html.
+"""Build dist/skogestad-column-a-standalone-v5.html.
 
 Single entry point: renders Theory from web/theory.md, the Code
 listings from the Python files on disk, the walkthrough from
@@ -25,7 +25,7 @@ WEB = ROOT / "web"
 DIST = ROOT / "dist"
 TOOLS = ROOT / ".buildtools"
 VENDOR = ROOT / "vendor"
-OUT_NAME = "skogestad-column-a-standalone-v4.html"
+OUT_NAME = "skogestad-column-a-standalone-v5.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/"
              "gh-pages/skogestad-column-a/walkthrough_molab.py")
 

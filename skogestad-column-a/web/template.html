@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Skogestad Column A: control configurations and transfer matrices</title>
+<style>
+@@BASE_CSS@@
+@@KATEX_CSS@@
+</style>
+<script>@@PLOTLY_JS@@</script>
+</head>
+<body>
+<a class="sr-only" href="#panel-theory">Skip to the main content</a>
+<div class="col">
+<header class="head">
+<h1>Skogestad Column A: control configurations and transfer matrices</h1>
+<p class="intro">A binary distillation column with N trays
+(default N = 5), a reboiler and a total condenser, following
+Skogestad's Column A model. The page simulates the nonlinear
+column, linearises it by automatic differentiation, forms the
+transfer matrix from the two manipulated variables and the two
+feed disturbances to the distillate composition xD and the
+bottoms composition xB for five control configurations under
+perfect and under proportional-only level control, and reduces
+each transfer matrix to first-order plus dead time (FOPTD)
+entries by least-squares fitting. Flows are in mol/s, holdups
+in mol, times in s,
+compositions are mole fractions (dimensionless) and level gains
+are in 1/s.</p>
+<p class="status" id="boot-status">Loading the Python runtime…</p>
+<progress id="run-progress" hidden aria-label="Computation in progress"></progress>
+<p class="readyline" id="ready-line" hidden></p>
+</header>
+
+<nav class="tabs" id="tabbar" aria-label="Main panels">
+<button data-tab="theory" class="tabbtn active">Theory</button>
+<button data-tab="app" class="tabbtn">App</button>
+<button data-tab="analysis" class="tabbtn">Analysis</button>
+<button data-tab="code" class="tabbtn">Code</button>
+</nav>
+
+<!-- ======================= APP ======================= -->
+<section class="panel" id="panel-app" hidden>
+<div class="layout">
+<aside class="side">
+<h2>Column <button type="button" class="guidebtn" popovertarget="guide-column">Guide</button></h2>
+<div popover id="guide-column" class="guidepop">
+<button type="button" class="guideclose" popovertarget="guide-column" popovertargetaction="hide">Close</button>
+<p>The column inputs set the operating point: number of trays N (dimensionless count, 3 to 41, default 5), relative volatility α (dimensionless, default 1.5), feed flow F (in mol/s), feed composition xF (mole fraction, dimensionless), feed liquid fraction q (dimensionless), reflux flow L (in mol/s) and boilup flow V (in mol/s). Changing any input re-runs the calculation automatically once the runtime is ready; the summary table and the composition profile update. Watch xD (distillate mole fraction) and xB (bottoms mole fraction) move as N changes: more trays separate more at the same flows.</p>
+</div>
+<label>Number of trays N (dimensionless count, 3 to 41)
+<input type="number" id="in-n" value="5" step="1" min="3" max="41"></label>
+<label>Relative volatility α (dimensionless)
+<input type="number" id="in-alpha" value="1.5" step="0.05" min="1.05" max="3"></label>
+<label>Feed flow F (mol/s)
+<input type="number" id="in-feed-flow" value="16.667" step="0.5"></label>
+<label>Feed composition xF (mole fraction)
+<input type="number" id="in-feed-comp" value="0.5" step="0.01" min="0.01" max="0.99"></label>
+<label>Feed liquid fraction q (dimensionless)
+<input type="number" id="in-feed-q" value="1.0" step="0.05" min="0" max="1"></label>
+<label>Reflux flow L (mol/s)
+<input type="number" id="in-reflux" value="45.105" step="0.5"></label>
+<label>Boilup flow V (mol/s)
+<input type="number" id="in-boilup" value="53.438" step="0.5"></label>
+<h2>Control configuration <button type="button" class="guidebtn" popovertarget="guide-config">Guide</button></h2>
+<div popover id="guide-config" class="guidepop">
+<button type="button" class="guideclose" popovertarget="guide-config" popovertargetaction="hide">Close</button>
+<p>The Configuration select chooses which two flows are manipulated: LV manipulates the reflux flow L and the boilup flow V; DV manipulates the distillate flow D and the boilup flow V; LB manipulates the reflux flow L and the bottoms flow B; DB manipulates the distillate flow D and the bottoms flow B (all flows in mol/s); and the (L/D)-(V/B) configuration manipulates the two flow ratios (dimensionless). The Level control mode select chooses perfect level control (holdups constant) or proportional-only (P) control with reflux-drum level gain KcD (in 1/s) and reboiler level gain KcB (in 1/s). The Configuration choice changes the transfer matrix, the gains and the relative gain array in the Analysis panel; the Level control mode choice changes the poles (the dynamics), not the steady-state gains or the relative gain array; DB is the singular case (a pole at the origin).</p>
+</div>
+<label>Configuration
+<select id="in-config">
+<option value="LV" selected>LV (manipulated: L, V)</option>
+<option value="DV">DV (manipulated: D, V)</option>
+<option value="LB">LB (manipulated: L, B)</option>
+<option value="DB">DB (manipulated: D, B)</option>
+<option value="RR">(L/D)-(V/B) (manipulated: ratios L/D, V/B)</option>
+</select></label>
+<label>Level control mode
+<select id="in-mode">
+<option value="perfect" selected>Perfect (holdups constant)</option>
+<option value="P">Proportional-only (P)</option>
+</select></label>
+<label>Reflux-drum level gain KcD (1/s)
+<input type="number" id="in-kc-drum" value="0.1667" step="0.01" min="0" max="2"></label>
+<label>Reboiler level gain KcB (1/s)
+<input type="number" id="in-kc-reb" value="0.1667" step="0.01" min="0" max="2"></label>
+<h2>Step test <button type="button" class="guidebtn" popovertarget="guide-step">Guide</button></h2>
+<div popover id="guide-step" class="guidepop">
+<button type="button" class="guideclose" popovertarget="guide-step" popovertargetaction="hide">Close</button>
+<p>The Step test steps one input (a manipulated variable, the feed flow F (in mol/s), or the feed composition xF (mole fraction, dimensionless)) by the Step size and plots the linear response against the nonlinear response in the App. Small steps: the two curves nearly coincide. Large steps: they separate — the separation measures the range over which the linear model can be trusted.</p>
+</div>
+<label>Stepped input
+<select id="in-step-col">
+<option value="0">First manipulated variable</option>
+<option value="1">Second manipulated variable</option>
+<option value="2">Feed flow F</option>
+<option value="3">Feed composition xF</option>
+</select></label>
+<label>Step size (units of the stepped input)
+<input type="number" id="in-step-size" value="1.0" step="0.1"></label>
+<p><button id="run-btn" class="run" disabled>Run</button></p>
+<p class="err" id="run-err" hidden></p>
+<p class="note" id="run-note"></p>
+<p class="stale" id="app-stale" hidden>Inputs differ from the displayed run.</p>
+</aside>
+<div class="main">
+<h2 id="app-summary-h">Steady state and composition profile <button type="button" class="guidebtn" popovertarget="guide-results">Guide</button></h2>
+<div popover id="guide-results" class="guidepop">
+<button type="button" class="guideclose" popovertarget="guide-results" popovertargetaction="hide">Close</button>
+<p>Reading the results: the summary table gives the steady state (xD (distillate mole fraction), xB (bottoms mole fraction), distillate and bottoms flows, dominant time constant in s, steady-state residual); the profile chart shows the liquid mole fraction stage by stage from the reboiler (stage 1) to the condenser (stage NT, where NT is the total number of stages, a dimensionless count). Results shown before the first live run are precomputed for the default inputs and labelled "(precomputed)"; the first live run replaces them. During a run the progress bar shows; when it finishes the bar is removed and a brief ready line remains.</p>
+</div>
+<div id="app-summary"></div>
+<div class="chart tall" id="chart-profile"></div>
+<h2 id="app-step-h">Step response: linear against nonlinear</h2>
+<div class="chart tall" id="chart-step"></div>
+<div id="app-step-note"></div>
+</div>
+</div>
+</section>
+
+<!-- ======================= ANALYSIS ======================= -->
+<section class="panel" id="panel-analysis" hidden>
+<div class="layout">
+<aside class="side">
+<h2>Analysis</h2>
+<p class="note">The analysis uses the column, configuration and
+level-mode inputs of the App tab. The gain matrix, the relative
+gain array (RGA) and the poles update with every run. The
+first-order plus dead time (FOPTD) matrix is fitted on request
+for the selected configuration and mode, and the channel overlay
+shows one fitted channel against its high-order step response.</p>
+<p><button id="fit-btn" class="run" disabled>Fit FOPTD matrix</button></p>
+<p class="err" id="fit-err" hidden></p>
+<p class="note" id="fit-note"></p>
+<p class="stale" id="an-stale" hidden>Inputs differ from the displayed analysis.</p>
+<h2>Channel overlay</h2>
+<label>Output
+<select id="ch-out">
+<option value="0">xD (distillate)</option>
+<option value="1">xB (bottoms)</option>
+</select></label>
+<label>Input
+<select id="ch-in">
+<option value="0">First manipulated variable</option>
+<option value="1">Second manipulated variable</option>
+<option value="2">Feed flow F</option>
+<option value="3">Feed composition xF</option>
+<option value="4">Balanced split (DB only)</option>
+</select></label>
+<p><button id="ch-btn" disabled>Show channel overlay</button></p>
+<p class="err" id="ch-err" hidden></p>
+</aside>
+<div class="main">
+<h2 id="an-gains-h">Steady-state gain matrix</h2>
+<div id="an-gains"></div>
+<h2 id="an-rga-h">Relative gain array</h2>
+<div id="an-rga"></div>
+<h2 id="an-poles-h">Poles and dominant time constant</h2>
+<div id="an-poles"></div>
+<h2 id="an-foptd-h">FOPTD matrix</h2>
+<div id="an-foptd"></div>
+<h2 id="an-channel-h">Channel step-response overlay</h2>
+<div class="chart tall" id="chart-channel"><p class="note chart-placeholder">No channel overlay yet — it appears here when the FOPTD matrix is fitted.</p></div>
+<div id="an-channel-note"></div>
+</div>
+</div>
+</section>
+
+<!-- ======================= THEORY ======================= -->
+<section class="panel" id="panel-theory">
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav id="theory-toc" aria-label="Theory contents">
+@@THEORY_TOC@@
+</nav></aside>
+<div class="main prose" id="theory-body">
+@@THEORY_HTML@@
+</div>
+</div>
+</section>
+
+<!-- ======================= CODE ======================= -->
+<section class="panel" id="panel-code" hidden>
+<nav class="subtabs" aria-label="Code sub-panels">
+<button data-subtab="listings" class="subbtn active">Listings</button>
+<button data-subtab="walkthrough" class="subbtn">Walkthrough</button>
+</nav>
+<div class="subpanel" id="sub-listings">
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav aria-label="Code contents">
+<a href="#code-core">column_a.py — model, linearisation, FOPTD fitting</a>
+<a href="#code-driver">driver.py — page payloads</a>
+<a href="#code-notebook">Editable notebook</a>
+</nav></aside>
+<div class="main">
+<h2 id="code-core">column_a.py</h2>
+@@LISTING_CORE@@
+<h2 id="code-driver">driver.py</h2>
+@@LISTING_DRIVER@@
+<h2 id="code-notebook">Editable notebook</h2>
+<p>The walkthrough is also an editable marimo notebook on MoLab:
+every value can be changed and the cells re-run there. The
+in-page walkthrough (next sub-tab) is read-only.</p>
+<p>MoLab link: <a href="@@MOLAB_URL@@">@@MOLAB_URL@@</a></p>
+<p>Download: <a href="walkthrough_molab.py" download>walkthrough_molab.py</a>
+(the notebook file published beside this page).</p>
+</div>
+</div>
+</div>
+<div class="subpanel" id="sub-walkthrough" hidden>
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav id="walk-toc" aria-label="Walkthrough contents">
+@@WALK_TOC@@
+</nav></aside>
+<div class="main">
+<p class="note">Read-only walkthrough (WASM page panel). For the
+editable version, use the MoLab notebook linked under
+Listings.</p>
+@@WALK_HTML@@
+</div>
+</div>
+</div>
+</section>
+
+<footer>
+<p>Skogestad Column A page. Computations in Python (Pyodide) in
+the browser, computed live once the runtime is ready.</p>
+</footer>
+</div>
+
+<div class="sr-only" aria-live="polite" id="live-region"></div>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+<script>@@WORKER_JS@@</script>
+<script>@@APP_JS@@</script>
+</body>
+</html>

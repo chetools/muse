@@ -1,46 +1,43 @@
 ## Introduction
 
 This page presents a binary distillation column that follows
-Skogestad's Column A model. The column is simulated with a
-nonlinear stage model, and the model is linearised at its
-operating point. The number of trays is $N$ (a dimensionless
-count). The distillate composition is $x_D$ (the mole fraction
-of the light component in the distillate, dimensionless), and
-the bottoms composition is $x_B$ (the mole fraction of the
-light component in the bottoms, dimensionless). The reflux
-flow is $L$ (mol/s), the boilup flow is $V$ (mol/s), the
-distillate flow is $D$ (mol/s), and the bottoms flow is $B$
-(mol/s). A configuration code names the two manipulated flows:
+Skogestad's Column A model. A nonlinear stage model simulates
+the column, and the model is linearised at its operating
+point. $N$ (a dimensionless count) is the number of trays.
+$x_D$ (the mole fraction of the light component in the
+distillate, dimensionless) is the distillate composition, and
+$x_B$ (the mole fraction of the light component in the
+bottoms, dimensionless) is the bottoms composition. $L$
+(mol/s) is the reflux flow, $V$ (mol/s) the boilup flow, $D$
+(mol/s) the distillate flow, and $B$ (mol/s) the bottoms flow.
+A configuration code names the two manipulated flows:
 for example, LV names $L$ and $V$.
 
 The page computes transfer matrices from the manipulated
-variables and the feed disturbances to $x_D$ and $x_B$. The
-computation covers five control configurations and two
-level-control modes. The page also computes the relative gain
-array (RGA) for each configuration that has a steady-state
-gain matrix, and a reduction of each transfer-matrix entry to
-first-order plus dead time (FOPTD) form.
+variables and the feed disturbances to $x_D$ and $x_B$. Five
+control configurations and two level-control modes are
+covered. For each configuration that has a
+steady-state gain matrix, the page also computes the relative
+gain array (RGA), and each transfer-matrix entry is reduced
+to first-order plus dead time (FOPTD) form.
 
-The Theory is organised with the model first. The column and
-stage model, the steady state, and the control configurations
-and level closures come before the linearisation. The transfer
-matrix, the steady-state gains, the RGA, the singular
-configuration case, and the FOPTD reduction follow. A
-comparison against the nonlinear model and a statement of
-scope and limits close the Theory.
+The page is written for chemical engineering students.
+Laplace transforms and transfer functions, eigenvalues and the
+Jacobian with the chain rule, and least-squares fitting are
+assumed.
 
 ## Relevance
 
 Control configuration choice matters for a distillation column
 because the two product compositions are controlled with two
 manipulated flows, and the interaction between the two
-composition loops depends on which flows are manipulated. The
+composition loops depends on which flows are manipulated; the
 level closures set the remaining flows. A change in one
 manipulated flow moves both compositions, and the second loop
-answers with its own flow. The size of that steady-state
-interaction changes with the configuration: the same column
+answers with its own flow. That steady-state interaction
+changes size with the configuration: the same column
 can be strongly interacting under one configuration and
-nearly decoupled under another. The way the two levels are
+nearly decoupled under another. How the two levels are
 closed changes the dynamics (the poles), but not the
 steady-state gains.
 
@@ -52,7 +49,7 @@ nonlinear model is the check on the range of that comparison:
 a step test on the nonlinear model shows how far the linear
 responses stay close to the nonlinear responses.
 
-## Key points to be demonstrated
+## Key points
 
 1. Linearisation by automatic differentiation of the nonlinear
 stage model gives the transfer matrix at the operating point,
@@ -63,14 +60,16 @@ for small steps; the separation grows with step size (§6, §7,
 depends strongly on the control configuration: the 1,1
 element of the RGA, $\lambda_{11}$ (dimensionless), is about
 19.4 for the LV configuration at the default column
-($N = 5$) and 35.9 at the anchor column ($N = 39$), against
+($N = 5$) and 35.9 at the anchor column ($N = 39$, the
+published Column A reference column that the model is checked
+against in §4), against
 0.45 for DV at the anchor — the same column, a different
-pairing problem (§5, §8). The level closure does not change
-the steady-state gains or $\lambda_{11}$ (the gains are the
-same in both modes, §5); it changes the poles, because the
+pairing problem (§5, §8). Steady-state gains and
+$\lambda_{11}$ are unchanged by the level closure (the gains
+are the same in both modes, §5); the poles change, because the
 proportional-only model keeps the two level states.
-3. The RGA can be computed from the full matrix formula or
-from the shortcut
+3. Computation of the RGA uses the full matrix formula or
+the shortcut
 $1 / (1 - g_{12} g_{21} / (g_{11} g_{22}))$, where $g_{ij}$ is
 the steady-state gain from input $j$ to output $i$ (mole
 fraction per unit input); the two agree, and every row and
@@ -94,54 +93,49 @@ The demonstration uses the [App panel](#panel-app) for the
 column settings, the configuration and the step test, and the
 [Analysis panel](#panel-analysis) for the gain, RGA and FOPTD
 tables. Calculations run automatically after the runtime loads
-and again on every input change. The first display is
-precomputed for the default inputs and labelled as such until
-the first live run replaces it.
+and again on every input change. The first display is precomputed for the default inputs and
+labelled as such until the first live run replaces it.
 
-The relative volatility is $\alpha$ (dimensionless). The feed
-flow is $F$ (mol/s), the feed composition is $x_F$
-(dimensionless), and the feed liquid fraction is $q$
-(dimensionless). The reflux flow is $L$ (mol/s), the boilup
-flow is $V$ (mol/s), the distillate flow is $D$ (mol/s), and
-the bottoms flow is $B$ (mol/s). The reflux-drum level gain is
-$K_{cD}$ and the reboiler level gain is $K_{cB}$ (both in 1/s).
+$\alpha$ (dimensionless) is the relative volatility. $F$
+(mol/s) is the feed flow, $x_F$ (dimensionless) the feed
+composition, and $q$ (dimensionless) the feed liquid fraction.
+$K_{cD}$ is the reflux-drum level gain and $K_{cB}$ the
+reboiler level gain (both in 1/s).
 
-The App panel inputs are "Number of trays N", "Relative
+Inputs to the App panel are "Number of trays N", "Relative
 volatility α", "Feed flow F", "Feed composition xF", "Feed
-liquid fraction q", "Reflux flow L" and "Boilup flow V". The
-"Configuration" select offers LV, DV, LB, DB and (L/D)-(V/B).
-The "Level control mode" select offers Perfect and
+liquid fraction q", "Reflux flow L" and "Boilup flow V".
+"Configuration" offers LV, DV, LB, DB and (L/D)-(V/B).
+"Level control mode" offers Perfect and
 Proportional-only, with the level gains set by "Reflux-drum
-level gain KcD" and "Reboiler level gain KcB". The Step test
-is set by "Stepped input" and "Step size". The App panel
+level gain KcD" and "Reboiler level gain KcB". "Stepped
+input" and "Step size" set the Step test. The App panel
 outputs are the summary table, the composition-profile chart
 and the step-response chart, which plots the linear response
-against the nonlinear response. The Analysis panel outputs are
-tables of the steady-state gain matrix, the relative gain
+against the nonlinear response. Outputs of the Analysis panel
+are tables of the steady-state gain matrix, the relative gain
 array, and the poles and dominant time constant, the "Fit
 FOPTD matrix" button and the FOPTD matrix table it fills, and
 the channel overlay, set by the "Output" and "Input" selects
 and the "Show channel overlay" button.
 
-Each key point is demonstrated as follows:
-
-- Point 1 is derived in §6, §7 and §11. The App Step test
-("Stepped input", "Step size") and the step-response chart
-carry out the comparison between the linear and nonlinear
+- Point 1 is derived in §6, §7 and §11. In the App Step test
+("Stepped input", "Step size"), the step-response chart
+carries out the comparison between the linear and nonlinear
 responses.
-- Point 2 is derived in §5 and §8. The "Configuration" select
-and the "Level control mode" select set the case, and the
+- Point 2 is derived in §5 and §8. "Configuration" and
+"Level control mode" set the case, and the
 relative gain array table in the Analysis panel gives
 $\lambda_{11}$ for the case.
-- Point 3 is derived in §8. The steady-state gain matrix table
-and the relative gain array table in the Analysis panel give
-the gains and the array, and the note under the relative gain
-array table compares the two routes to $\lambda_{11}$.
+- Point 3 is derived in §8. Gains and the array stand in the
+steady-state gain matrix table and the relative gain array
+table in the Analysis panel, and the note under the relative
+gain array table compares the two routes to $\lambda_{11}$.
 - Point 4 is derived in §9. Setting "Configuration" to DB
 changes the Analysis panel output to the finite gains and ramp
 rates described in §9, and the App step-response chart shows
 the integrating responses.
-- Point 5 is derived in §10. The "Fit FOPTD matrix" button
+- Point 5 is derived in §10. "Fit FOPTD matrix"
 builds the FOPTD matrix table, and the channel overlay
 compares one fitted entry against the high-order response for
 that channel.
@@ -182,9 +176,9 @@ Set "Configuration" to DB. The Analysis panel then shows no
 gain matrix and no RGA. It shows the gains for the balanced
 split and for $x_F$, the residuals of the deflated system
 (below $10^{-8}$; at the defaults they print at $10^{-15}$ or
-smaller), and the ramp rates of the integrating channels. The
-App step-response chart shows ramping (integrating) responses
-for an unbalanced stepped input.
+smaller), and the ramp rates of the integrating channels. In
+the App step-response chart, an unbalanced stepped input gives
+ramping (integrating) responses.
 
 ### Experiment 5
 
@@ -203,27 +197,27 @@ high-order response in each case.
 ### Experiment 6
 
 At the defaults, switch "Level control mode" from Perfect to
-Proportional-only and back. The gain matrix, $\lambda_{11}$
-and the dominant time constant in the Analysis panel are
+Proportional-only and back. In the Analysis panel, the gain
+matrix, $\lambda_{11}$ and the dominant time constant are
 unchanged, because the steady-state gains are the same in
 both modes (§5). The poles table changes: the pole count
 rises from 12 to 14 at the default column, and the two added
 poles sit at $-0.1667$ 1/s (the level poles, set by the level
-gains), faster than the slowest pole. The two level gains
-$K_{cD}$ and $K_{cB}$ (in 1/s) set how strongly the levels are
-held. Read the poles from the panel.
+gains), faster than the slowest pole. $K_{cD}$ and $K_{cB}$
+(in 1/s), the two level gains, set how strongly the levels
+are held. Read the poles from the panel.
 
 ## 1. The column, the stages and the operating point
 
 The column separates a binary mixture (two components) into a
 distillate product drawn from the top and a bottoms product drawn
-from the bottom. The light component is the more volatile of the
-two. The column has $N$ trays (a dimensionless count), a reboiler
+from the bottom. Of the two, the light component is the more
+volatile. $N$ trays (a dimensionless count) sit between a reboiler
 below the trays and a total condenser above them. Stages are
 counted from the bottom: the reboiler is stage 1, the trays are
 stages 2 to $N + 1$, and the condenser is stage $NT$, where
 $NT = N + 2$ is the total number of stages (a dimensionless
-count). The feed enters on the middle stage: in the zero-based
+count). On the middle stage, the feed enters: in the zero-based
 stage counting the code uses (the reboiler is stage index 0),
 the feed stage index is $NT // 2$, that is stage $NT // 2 + 1$
 counted from the bottom, which is the exact middle stage when
@@ -244,13 +238,13 @@ is no vapour holdup; and the liquid-flow dynamics are linearised
 (§3). Energy balances do not appear: with constant $\alpha$ and
 constant molar flows, the composition dynamics do not need them.
 
-The state of stage $i$ (with $i$ from 1 to $NT$) is described by
-two quantities: the liquid composition $x_i$ (the mole fraction
+Two quantities describe the state of stage $i$ (with $i$ from
+1 to $NT$): the liquid composition $x_i$ (the mole fraction
 of the light component in the liquid on stage $i$,
 dimensionless) and the liquid holdup $M_i$ (the amount of liquid
-on stage $i$, in mol). The full state vector $z$ stacks the
-$NT$ compositions followed by the $NT$ holdups, so $z$ has
-$2 NT$ entries. The outputs are the two product compositions:
+on stage $i$, in mol). $z$, the full state vector, stacks the
+$NT$ compositions followed by the $NT$ holdups and has
+$2 NT$ entries. Two product compositions are the outputs:
 the distillate composition $x_D = x_{NT}$ (the liquid composition
 of the condenser stage, dimensionless), which is the composition
 of both the distillate and the reflux because the condenser is
@@ -265,18 +259,19 @@ bottoms flow $B$ (product drawn from the reboiler), the feed
 flow $F$, and, as a composition rather than a flow, the feed
 composition $x_F$ (the mole fraction of the light component in
 the feed, dimensionless; the source writes $z_F$ for the same
-quantity [skogestad-cola], and this page writes $x_F$). The feed
-liquid fraction $q$ (dimensionless) is the fraction of the feed
+quantity [skogestad-cola], and this page writes $x_F$). $q$ (dimensionless), the feed
+liquid fraction, is the fraction of the feed
 that is liquid: $q = 1$ is a saturated liquid feed, $q = 0$ a
-saturated vapour feed. The open-loop input vector is
-$u = [L, V, D, B, F, x_F]$.
+saturated vapour feed. $u = [L, V, D, B, F, x_F]$ is the
+open-loop input vector.
 
 The operating point is defined by the flows, not by product
-specifications. The nominal flows are the Column A data
-[skogestad-cola] converted to SI units (the source uses kmol,
+specifications. Column A data
+[skogestad-cola], converted to SI units (the source uses kmol,
 kmol/min and min; the conversions are: flows from kmol/min to
 mol/s multiply by $1000/60$, holdups from kmol to mol multiply by
-1000, times from min to s multiply by 60): feed flow
+1000, times from min to s multiply by 60), give the nominal
+flows: feed flow
 $F = 1$ kmol/min $= 16.667$ mol/s, feed composition
 $x_F = 0.5$, feed liquid fraction $q = 1$, reflux flow
 $L = 2.70629$ kmol/min $= 45.105$ mol/s, boilup flow
@@ -301,92 +296,93 @@ in that vapour, dimensionless); liquid leaves downward at flow
 $L_i$ (mol/s) with composition $x_i$; and vapour leaves upward
 at flow $V_i$ (mol/s) with vapour composition $y_i$
 (dimensionless). On the feed stage, the feed adds $F$ (mol/s) of
-composition $x_F$. The total material balance on stage $i$ is
+composition $x_F$. Stage $i$'s total material balance is
 the rate of change of the holdup [skogestad-cola]:
 
-$$\frac{dM_i}{dt} = L_{i+1} - L_i + V_{i-1} - V_i + F_i,$$
+$$\frac{dM_i}{dt} = L_{i+1} - L_i + V_{i-1} - V_i + F_i, \tag{1}$$
 
 where $t$ is time (s) and $F_i$ is the feed flow into stage $i$
-(mol/s), equal to $F$ on the feed stage and zero elsewhere. The
-component balance tracks the amount of light component,
-$M_i x_i$ (mol):
+(mol/s), equal to $F$ on the feed stage and zero elsewhere. $M_i x_i$ (mol), the amount of light component, is tracked by
+the component balance:
 
 $$\frac{d(M_i x_i)}{dt} = L_{i+1} x_{i+1} - L_i x_i
-+ V_{i-1} y_{i-1} - V_i y_i + F_i x_F.$$
++ V_{i-1} y_{i-1} - V_i y_i + F_i x_F. \tag{2}$$
 
-The composition derivative follows from the product rule,
-$d(M_i x_i)/dt = M_i \, dx_i/dt + x_i \, dM_i/dt$, solved for
-$dx_i/dt$:
+From the product rule,
+$d(M_i x_i)/dt = M_i \, dx_i/dt + x_i \, dM_i/dt$, the
+composition derivative follows, solved for $dx_i/dt$:
 
 $$\frac{dx_i}{dt} = \frac{1}{M_i}\left(
-\frac{d(M_i x_i)}{dt} - x_i \frac{dM_i}{dt} \right).$$
+\frac{d(M_i x_i)}{dt} - x_i \frac{dM_i}{dt} \right). \tag{3}$$
 
 This form is what the code integrates: it computes $dM_i/dt$ and
-$d(M_i x_i)/dt$ from the two balances and then divides. The
-boundary stages use the same two balances with the missing
-streams set to zero and the product flows added. The condenser
-(stage $NT$) receives vapour $V_{NT-1}$ from the top tray,
-returns reflux $L$ and discharges distillate $D$, so its total
-outflow is $L + D$ and its holdup obeys
+$d(M_i x_i)/dt$ from the two balances and then divides. For
+the boundary stages, the same two balances serve, with the
+missing streams set to zero and the product flows added. The
+condenser (stage $NT$) receives vapour $V_{NT-1}$ from the top
+tray, returns reflux $L$ and discharges distillate $D$; its
+total outflow is $L + D$ and its holdup obeys
 $dM_{NT}/dt = V_{NT-1} - L - D$; it has no vapour outflow. The
 reboiler (stage 1) receives liquid $L_2$ from the tray above,
-discharges vapour $V$ upward and bottoms $B$ downward, so
-$dM_1/dt = L_2 - V - B$; it has no vapour inflow. In the code the
-four inter-stage flow arrays are built for all stages at once,
-with masks (arrays of zeros and ones) selecting the reboiler,
-tray and condenser rows, so one pair of balance equations serves
-every stage.
+discharges vapour $V$ upward and bottoms $B$ downward;
+$dM_1/dt = L_2 - V - B$, and it has no vapour inflow. In the
+code the four inter-stage flow arrays are built for all stages
+at once, with masks (arrays of zeros and ones) selecting the
+reboiler, tray and condenser rows; one pair of balance
+equations thus serves every stage.
 
-The vapour composition $y_i$ is fixed by equilibrium with the
-liquid on the same stage. The relative volatility $\alpha$
-(dimensionless) is the ratio of the two pure-component
+Equilibrium with the liquid on the same stage fixes the vapour
+composition $y_i$. $\alpha$ (dimensionless), the relative
+volatility, is the ratio of the two pure-component
 volatilities; for a binary mixture at constant $\alpha$ the
 equilibrium relation is [skogestad-cola]
 
-$$y_i = \frac{\alpha x_i}{1 + (\alpha - 1) x_i}.$$
+$$y_i = \frac{\alpha x_i}{1 + (\alpha - 1) x_i}. \tag{4}$$
 
-The limits check the formula: at $x_i = 0$ it gives $y_i = 0$,
+Checking the limits: at $x_i = 0$ the formula gives $y_i = 0$,
 at $x_i = 1$ it gives $y_i = 1$, and for $\alpha > 1$ it gives
 $y_i > x_i$ between the ends, as a light component must.
 
 ## 3. Inter-stage flows: vapour flows and the liquid-flow law
 
 The vapour flow leaving stage $i$ upward, $V_i$ (mol/s), is the
-boilup $V$ everywhere below the feed stage. The vapour part of
-the feed, $(1 - q) F$ (mol/s), joins the vapour stream at the
-feed stage, so above the feed stage the vapour flow is
-$V + (1 - q) F$. The vapour flow leaving the feed stage itself
-is $V + (1 - q) F$: the feed stage belongs to the upper group,
-not the lower, so the assignment covers every stage. With a
-saturated liquid feed ($q = 1$) the
+boilup $V$ everywhere below the feed stage. At the feed stage,
+the vapour part of the feed, $(1 - q) F$ (mol/s), joins the
+vapour stream; above the feed stage the vapour flow is
+therefore $V + (1 - q) F$. Leaving the feed stage itself, the
+vapour flow is $V + (1 - q) F$: the feed stage belongs to the
+upper group, not the lower, and the assignment thus covers
+every stage. With a saturated liquid feed ($q = 1$) the
 vapour flow is simply $V$ on every stage below the condenser,
-and the condenser receives $V$. There is no vapour holdup, so
+and the condenser receives $V$. No vapour holdup exists, and
 the vapour flow responds to a change in $V$ or in $F$ at once,
 with no state of its own. This is the constant-molar-flow
 assumption of §1: within a section, the molar flows do not vary
 from stage to stage at a given instant; they vary between
 sections only through the feed terms.
 
-The liquid flow leaving stage $i$ downward, $L_i$ (mol/s), is
+$L_i$ (mol/s), the liquid flow leaving stage $i$ downward, is
 set by the liquid on the stage: a stage holding more liquid
-passes more liquid downward. The source model linearises this
-hydraulic relation about the operating point [skogestad-cola]:
+passes more liquid downward. About the operating point, the
+source model linearises this hydraulic relation
+[skogestad-cola]:
 
-$$L_i = L_{0,i} + \frac{M_i - M_0}{\tau_l},$$
+$$L_i = L_{0,i} + \frac{M_i - M_0}{\tau_l}, \tag{5}$$
 
 where $L_{0,i}$ is the nominal liquid flow leaving stage $i$ at
 the operating point (mol/s), $M_0$ is the nominal stage holdup
 (500 mol) and $\tau_l$ is the liquid time constant (s), the
 time a holdup deviation takes to drain through the flow change
 it causes: a deviation $M_i - M_0$ (mol) produces a flow change
-$(M_i - M_0)/\tau_l$ (mol/s), and $\tau_l = 3.78$ s is short, so
-the liquid profile follows holdup changes quickly. The nominal
-profile $L_{0,i}$ is $L + qF$ (mol/s) at and below the feed
-stage (the liquid part of the feed, $qF$, joins the liquid
-stream there) and $L$ above the feed stage. The source model
-also carries a term for the effect of the vapour flow on the
-liquid flow, with coefficient $\lambda$ (dimensionless); Column
-A uses $\lambda = 0$, so the term is absent here. Two flows do
+$(M_i - M_0)/\tau_l$ (mol/s), and $\tau_l = 3.78$ s is short;
+the liquid profile therefore follows holdup changes quickly.
+At and below the feed stage the nominal profile $L_{0,i}$ is
+$L + qF$ (mol/s) (the liquid part of the feed, $qF$, joins the
+liquid stream there); above the feed stage it is $L$. The
+source model also has a term for the effect of the vapour flow
+on the liquid flow, with coefficient $\lambda$
+(dimensionless); Column A uses $\lambda = 0$, and the term is
+absent here. Two flows do
 not follow the law: the liquid leaving the condenser is the
 reflux $L$ itself (the distillate $D$ leaves the drum
 separately), and the liquid leaving the reboiler is the bottoms
@@ -400,22 +396,23 @@ condenser stage) and the reboiler, as §5 sets out.
 A steady state is a state $z_0$ at which every derivative in §2
 is zero at the nominal input $u_0 = [L, V, D_0, B_0, F, x_F]$,
 where $D_0$ is the nominal distillate flow (mol/s) and $B_0$ is
-the nominal bottoms flow (mol/s). The two product flows are not
+the nominal bottoms flow (mol/s). Neither product flow is
 free at the operating point: the condenser total balance at
 steady state gives $D_0 = V + (1 - q) F - L$, and the overall
 column balance then gives $B_0 = F - D_0$. With the nominal
 flows of §1, $D_0 = B_0 = 8.333$ mol/s ($0.5$ kmol/min in the
-source units). The page solves the steady state as follows.
+source units). Solving the steady state proceeds as follows.
 Every holdup is held at $M_0$, which makes every total balance
 zero identically at $u_0$ (each stage receives and discharges
-the same flows by the profile of §3). The $NT$ component
-balances then form $NT$ nonlinear equations in the $NT$
-compositions, solved by a Newton-type solver (the `fsolve`
-routine of SciPy) from a smooth initial profile running from
-$x = 0.02$ at the reboiler to $x = 0.98$ at the condenser. The
-solution is accepted only with its residual reported: the
-largest absolute entry of the full right-hand side at the
-solution, which is of the order of $10^{-12}$ at the anchor.
+the same flows by the profile of §3). In the $NT$
+compositions, the $NT$ component balances form $NT$ nonlinear
+equations, solved by a Newton-type solver (the `fsolve`
+routine of SciPy [virtanen-2020]) from a smooth initial
+profile running from $x = 0.02$ at the reboiler to $x = 0.98$
+at the condenser. Acceptance of the solution requires its
+residual to be reported: the largest absolute entry of the
+full right-hand side at the solution, which is of the order
+of $10^{-12}$ at the anchor.
 The anchor check is the first verification of the whole page:
 at $N = 39$ the solved profile gives $x_D = 0.9900$ and
 $x_B = 0.0100$, the Column A product compositions
@@ -467,8 +464,8 @@ above, given by the liquid-flow law of §3 at stage 2. Setting
 $dM_{NT}/dt = 0$ in the condenser balance and $dM_1/dt = 0$ in
 the reboiler balance gives the four perfect closures:
 
-$$D = V + (1 - q) F - L, \qquad L = V + (1 - q) F - D,$$
-$$B = L_{\mathrm{in}} - V, \qquad V = L_{\mathrm{in}} - B,$$
+$$D = V + (1 - q) F - L, \qquad L = V + (1 - q) F - D, \tag{6}$$
+$$B = L_{\mathrm{in}} - V, \qquad V = L_{\mathrm{in}} - B, \tag{7}$$
 
 of which each configuration uses one from the first pair (the
 stream it assigns to the drum) and one from the second pair
@@ -480,9 +477,9 @@ then $V = R_2 B$; the condenser balance
 $V + (1 - q) F - L - D = 0$ with $L = R_1 D$ gives
 $D = (V + (1 - q) F) / (1 + R_1)$ and then $L = R_1 D$. Because
 the two holdups are constant under perfect control, their
-derivatives are identically zero and the two states carry no
-dynamics; the linearisation of §6 removes them, so a perfect
-model has $2 NT - 2$ states.
+derivatives are identically zero and the two states have no
+dynamics; the linearisation of §6 removes them; a perfect
+model therefore has $2 NT - 2$ states.
 
 Proportional-only level control (the mode labelled P) replaces
 the two algebraic closures by proportional laws. With
@@ -493,9 +490,9 @@ a holdup deviation in mol times the gain is a flow change in
 mol/s), the level streams are
 
 $$D = D_0 + K_{cD} \, \Delta M_{NT}
-\quad\text{or}\quad L = L_0 + K_{cD} \, \Delta M_{NT},$$
+\quad\text{or}\quad L = L_0 + K_{cD} \, \Delta M_{NT}, \tag{8}$$
 $$B = B_0 + K_{cB} \, \Delta M_1
-\quad\text{or}\quad V = V_0 + K_{cB} \, \Delta M_1,$$
+\quad\text{or}\quad V = V_0 + K_{cB} \, \Delta M_1, \tag{9}$$
 
 the first of each pair when that stream holds the level, where
 $L_0$ and $V_0$ are the nominal values of $L$ and $V$ (mol/s).
@@ -503,12 +500,13 @@ The sign is positive in all four laws: a drum holding too much
 liquid discharges more, whether the discharge is the product
 $D$ or the reflux $L$; a reboiler holding too much liquid
 discharges more, as bottoms $B$ or boiled off as $V$. In the
-ratio configuration under P control, $D$ and $B$ follow the two
-laws above and $L = R_1 D$, $V = R_2 B$ follow from the ratios.
+ratio configuration under P control, $D$ and $B$ follow
+Eqs. (8) and (9), and $L = R_1 D$, $V = R_2 B$ follow from the
+ratios.
 The default gains are $K_{cD} = K_{cB} = 10$ per minute
 $= 0.1667$ 1/s, the value used with the source model
-[skogestad-cola]. There is no integral action in either level
-loop, so a sustained disturbance leaves a steady holdup offset;
+[skogestad-cola]. With no integral action in either level
+loop, a sustained disturbance leaves a steady holdup offset;
 but at any steady state the deviations are whatever they are
 constant, the flows equal the perfect-control flows, and the
 steady-state gains of §7 are the same in both modes (the test
@@ -524,9 +522,9 @@ closures of §5 into the balances of §2 gives a closed model
 $dz/dt = f(z, w)$: the right-hand side $f$ (a vector of $2 NT$
 derivatives, compositions in 1/s and holdups in mol/s) as a
 function of the state $z$ and the configuration input
-$w = [MV_1, MV_2, F, x_F]$. The linear model is the first-order
-Taylor expansion of $f$ about the steady state $(z_0, w_0)$,
-where $w_0$ is the nominal value of $w$. With deviation
+$w = [MV_1, MV_2, F, x_F]$. A first-order Taylor expansion of
+$f$ about the steady state $(z_0, w_0)$, where $w_0$ is the
+nominal value of $w$, gives the linear model. With deviation
 variables $\tilde z = z - z_0$ and $\tilde w = w - w_0$ (each
 entry the value minus its steady value, in the units of the
 original quantity), and using $f(z_0, w_0) = 0$,
@@ -534,7 +532,7 @@ original quantity), and using $f(z_0, w_0) = 0$,
 $$\frac{d\tilde z}{dt} = A \, \tilde z + B \, \tilde w,
 \qquad
 \begin{bmatrix} \tilde x_D \\ \tilde x_B \end{bmatrix}
-= C \, \tilde z,$$
+= C \, \tilde z, \tag{10}$$
 
 where $A$ is the Jacobian matrix of $f$ with respect to $z$,
 $A_{ij} = \partial f_i / \partial z_j$, whose units follow from
@@ -548,12 +546,13 @@ the Jacobian of $f$ with respect to $w$, and $C$ is the
 2 by $2 NT$ output matrix that selects the condenser-stage and
 reboiler-stage compositions, that is, it picks $\tilde x_D$ and
 $\tilde x_B$ out of $\tilde z$. In perfect mode the two constant
-holdup states are removed first (§5), so $A$ is
+holdup states are removed first (§5), and $A$ is
 $(2 NT - 2)$ by $(2 NT - 2)$; in P mode it is $2 NT$ by $2 NT$.
 
-The Jacobians are computed by automatic differentiation, with
-the autograd library. The library works in two passes over one
-evaluation of the coded right-hand side. In the first pass the
+Automatic differentiation, with the autograd
+library [maclaurin-2015], computes the Jacobians. The library
+works in two passes over one evaluation of the coded
+right-hand side. In the first pass the
 function is evaluated once on traced arrays, and the library
 records every elementary operation (additions, multiplications,
 divisions, and the equilibrium relation of §2) in a
@@ -573,10 +572,10 @@ arguments (a vector-Jacobian product). The backward pass ends
 with the derivatives of the seeded output with respect to every
 input — one row of the Jacobian. Repeating the backward pass
 with the unit seed placed on each of the outputs in turn
-assembles the full Jacobian. The result is the exact derivative
-of the coded function, correct to the round-off of the
-arithmetic itself (relative errors of the order of $10^{-16}$),
-because no approximation is made: there is no difference step
+assembles the full Jacobian. No approximation is made: the
+result is the exact derivative of the coded function, correct
+to the round-off of the arithmetic itself (relative errors of
+the order of $10^{-16}$), because there is no difference step
 to choose, unlike a finite-difference derivative
 $(f(z + h e_j) - f(z - h e_j)) / (2h)$, where $h$ is a small
 increment in the units of the perturbed state component and
@@ -585,17 +584,17 @@ elsewhere, whose error balances the truncation error of the
 difference formula, which falls as $h$ shrinks, against the
 round-off of subtracting two nearly equal numbers, which grows
 as $h$ shrinks, leaving a best accuracy of about $10^{-8}$ to
-$10^{-11}$ for the step sizes that work at all. The page's test suite makes the comparison explicit: at the
-default column the autograd Jacobian and a central
-finite-difference Jacobian of the open-loop model agree to a
-largest entry difference of about $10^{-11}$, which is the
-finite-difference error, not the automatic-differentiation
-error. One implementation condition matters: the model code is
+$10^{-11}$ for the step sizes that work at all. At the default
+column, the page's test suite makes the comparison explicit:
+the autograd Jacobian and a central finite-difference Jacobian
+of the open-loop model agree to a largest entry difference of
+about $10^{-11}$, which is the finite-difference error, not
+the automatic-differentiation error. One implementation condition matters: the model code is
 written functionally (arrays are combined with masks, shifts and
 concatenations, never written in place), because automatic
 differentiation traces operations on values, and an in-place
 write would silently produce a derivative of a different
-function. The same model function serves the nonlinear
+function. One model function serves both the nonlinear
 simulation (evaluated with ordinary NumPy arrays) and the
 differentiation (evaluated with the library's traced arrays);
 the function takes the array module as an argument so that the
@@ -603,7 +602,7 @@ two evaluations cannot drift apart.
 
 ## 7. The transfer matrix, poles and steady-state gains
 
-The transfer matrix $G(s)$ of a configuration is the
+$G(s)$, the transfer matrix of a configuration, is the
 2 by 4 matrix of transfer functions from the deviation input
 $\tilde w$ to the deviation outputs $[\tilde x_D, \tilde x_B]$,
 where $s$ is the Laplace variable (1/s). Taking the Laplace
@@ -612,38 +611,40 @@ gives $s \tilde Z(s) = A \tilde Z(s) + B \tilde W(s)$ for the
 transformed state $\tilde Z(s)$; solving for $\tilde Z(s)$ and
 applying $C$ gives
 
-$$G(s) = C \, (s I - A)^{-1} B,$$
+$$G(s) = C \, (s I - A)^{-1} B, \tag{11}$$
 
 where $I$ is the identity matrix of the size of $A$. Each entry
 $G_{ij}(s)$ is a rational function (a ratio of polynomials in
-$s$): the transfer function from input $j$ to output $i$. The
-poles of the model are the eigenvalues of $A$ (in 1/s); the
-model is stable when every pole has a negative real part. The
-dominant pole, for the composition response, is the finite pole
+$s$): the transfer function from input $j$ to output $i$.
+Eigenvalues of $A$ (in 1/s) are the poles of the model; the
+model is stable when every pole has a negative real part. For
+the composition response, the dominant pole is the finite pole
 with the real part closest to zero — the slowest decaying mode
-that the compositions show — and the dominant time constant is
-$\tau_{\mathrm{dom}} = -1 /
-\mathrm{Re}(p_{\mathrm{dom}})$ (s), the time scale of that
-slowest decay. The open-loop model also has two poles exactly
-at the origin, from the reflux-drum and reboiler holdups, which
+that the compositions show. Writing $p_{\mathrm{dom}}$ for
+that pole, the dominant time constant is
+$\tau_{\mathrm{dom}} = -1 / \mathrm{Re}(p_{\mathrm{dom}})$ (s),
+the time scale of that slowest decay. The open-loop model
+also has two poles exactly at the origin, from the
+reflux-drum and reboiler holdups, which
 no open-loop stream restores (§5): those poles are the closest
 to zero overall, but they govern inventory drift, not the
 composition response, and "dominant" on this page always means
 the slowest finite pole. At the anchor column the dominant
 open-loop pole is $-5.1562 \times 10^{-3}$ per minute
-[skogestad-cola], that is $-8.59 \times 10^{-5}$ 1/s, so
-$\tau_{\mathrm{dom}} \approx 11{,}600$ s: a high-purity column
+[skogestad-cola], that is $-8.59 \times 10^{-5}$ 1/s;
+$\tau_{\mathrm{dom}}$ is therefore $\approx 11{,}600$ s: a
+high-purity column
 settles over hours, and every time scale on this page inherits
 that slowness.
 
 The steady-state gain matrix is $G(0)$, the value of the
 transfer matrix at $s = 0$. It also follows directly from the
 linear model without any transform: at a steady state the
-derivative is zero, so $A \tilde z = - B \tilde w$, the state
+derivative is zero, thus $A \tilde z = - B \tilde w$, the state
 deviation is $\tilde z = - A^{-1} B \tilde w$, and the output
 deviation is
 
-$$G(0) = - C A^{-1} B.$$
+$$G(0) = - C A^{-1} B. \tag{12}$$
 
 The entry $G(0)_{ij}$ is the steady change in output $i$ per
 unit steady change in input $j$, with all other inputs held,
@@ -651,36 +652,38 @@ and its units are per configuration: for the LV, DV, LB and DB
 configurations the two manipulated-variable columns are flows,
 in mole fraction per (mol/s); for the ratio configuration the
 two manipulated-variable columns are the dimensionless ratios
-$R_1$ and $R_2$, so those entries are in mole fraction per unit
-ratio; the feed-flow column is in mole fraction per (mol/s) in
+$R_1$ and $R_2$; those entries are therefore in mole fraction
+per unit ratio; the feed-flow column is in mole fraction per (mol/s) in
 every configuration; and the $x_F$ column is dimensionless
-(mole fraction per mole fraction). The Analysis tab shows this
-2 by 4 matrix for the selected configuration and mode. One configuration has no such
+(mole fraction per mole fraction). For the selected
+configuration and mode, the Analysis tab shows this
+2 by 4 matrix. One configuration has no such
 matrix; §9 explains why, and what is shown instead.
 
 ## 8. The relative gain array and its shortcut
 
-The gain matrix of §7 says how much each output moves when one
-input moves with the other input held constant. Control loops
+How much each output moves when one input moves with the
+other input held constant is stated by the gain matrix of §7. Control loops
 do not hold the other input constant; they move it, to hold the
-other output constant. The relative gain array (RGA) compares
-the two situations. Its entry $\lambda_{ij}$ (dimensionless) is
+other output constant. Comparison of the two situations is
+the relative gain array (RGA). Its entry $\lambda_{ij}$
+(dimensionless) is
 defined as
 
 $$\lambda_{ij} = \frac{(\partial y_i / \partial u_j)
 \text{ with all other inputs constant}}
 {(\partial y_i / \partial u_j)
-\text{ with all other outputs constant}},$$
+\text{ with all other outputs constant}}, \tag{13}$$
 
 where $y_1 = x_D$, $y_2 = x_B$ are the outputs and $u_1$, $u_2$
-are the two manipulated variables of the configuration. The
-denominator is the gain seen by loop $i$ when every other loop
-is closed under perfect control (each other output held exactly
-at its set point). A value $\lambda_{ij} = 1$ means the other
+are the two manipulated variables of the configuration. Loop
+$i$'s gain with every other loop closed under perfect control
+(each other output held exactly at its set point) is the
+denominator. A value $\lambda_{ij} = 1$ means the other
 loops do not affect this gain at all; $\lambda_{ij}$ near zero
 means the pairing has almost no gain of its own once the other
 loop is closed; a negative $\lambda_{ij}$ means the gain changes
-sign when the other loop closes, so a controller tuned on the
+sign when the other loop closes; a controller tuned on the
 open-loop gain destabilises the closed loop; and a large
 $\lambda_{ij}$ means strong interaction, with the closed-loop
 gain much smaller than the open-loop gain.
@@ -691,37 +694,38 @@ relations of §7 for the manipulated-variable block, with gains
 $g_{ij}$ (output $i$ per unit input $j$, in the units of §7):
 
 $$y_1 = g_{11} u_1 + g_{12} u_2, \qquad
-y_2 = g_{21} u_1 + g_{22} u_2,$$
+y_2 = g_{21} u_1 + g_{22} u_2, \tag{14}$$
 
-in deviation variables. The open-loop gain from $u_1$ to $y_1$
-is $g_{11}$ (set $du_2 = 0$). For the closed-loop gain, hold
+in deviation variables. From $u_1$ to $y_1$ the open-loop
+gain is $g_{11}$ (set $du_2 = 0$). For the closed-loop gain, hold
 $y_2$ constant, as a perfect second loop does: $dy_2 = 0$ gives
-$g_{21} du_1 + g_{22} du_2 = 0$, so the second loop moves its
-input by $du_2 = -(g_{21} / g_{22}) du_1$. Substituting into the
+$g_{21} du_1 + g_{22} du_2 = 0$, thus the second loop moves
+its input by $du_2 = -(g_{21} / g_{22}) du_1$. Substituting
+into the
 first relation,
 
 $$dy_1 = g_{11} du_1 + g_{12} du_2
-= \left( g_{11} - \frac{g_{12} g_{21}}{g_{22}} \right) du_1,$$
+= \left( g_{11} - \frac{g_{12} g_{21}}{g_{22}} \right) du_1, \tag{15}$$
 
-so the gain with the other loop closed is
+Thus the gain with the other loop closed is
 $g_{11} - g_{12} g_{21} / g_{22}$. The relative gain is the
 ratio of the two gains:
 
 $$\lambda_{11} = \frac{g_{11}}
 {g_{11} - g_{12} g_{21} / g_{22}}
-= \frac{1}{1 - \dfrac{g_{12} g_{21}}{g_{11} g_{22}}}.$$
+= \frac{1}{1 - \dfrac{g_{12} g_{21}}{g_{11} g_{22}}}. \tag{16}$$
 
 The last step divides numerator and denominator by $g_{11}$.
 This is the shortcut formula: with the single combination
 $\kappa = g_{12} g_{21} / (g_{11} g_{22})$ (dimensionless),
-$\lambda_{11} = 1 / (1 - \kappa)$. The same computation for the
-other entries gives $\lambda_{22} = \lambda_{11}$ and
-$\lambda_{12} = \lambda_{21} = 1 - \lambda_{11}$, so one number
-determines the whole 2 by 2 array.
+$\lambda_{11} = 1 / (1 - \kappa)$. For the other entries the
+same computation gives $\lambda_{22} = \lambda_{11}$ and
+$\lambda_{12} = \lambda_{21} = 1 - \lambda_{11}$; one number
+thus determines the whole 2 by 2 array.
 
 The general definition, for any size, is the matrix formula
 
-$$\Lambda = G \circ (G^{-1})^{T},$$
+$$\Lambda = G \circ (G^{-1})^{T}, \tag{17}$$
 
 where $G$ is the steady-state gain matrix, $G^{-1}$ is its
 matrix inverse, the superscript $T$ is the transpose, and
@@ -731,25 +735,26 @@ entries in that position, not a matrix product). For a 2 by 2
 matrix the inverse is
 $G^{-1} = \frac{1}{g_{11} g_{22} - g_{12} g_{21}}
 \begin{bmatrix} g_{22} & -g_{12} \\ -g_{21} & g_{11}
-\end{bmatrix}$,
-so the 1,1 entry of the element-by-element product is
+\end{bmatrix}$;
+thus the 1,1 entry of the element-by-element product is
 $g_{11} g_{22} / (g_{11} g_{22} - g_{12} g_{21})$, which divided
 top and bottom by $g_{11} g_{22}$ is exactly the shortcut
-$1 / (1 - \kappa)$ above. That agreement is an algebraic
+$1 / (1 - \kappa)$ of Eq. (16). That agreement is an algebraic
 identity between two rearrangements of the same four gains: it
 checks the algebra and its implementation, and it is not
 evidence that the gains themselves are right, because both
-routes start from the same numbers. The gains are evidenced
-from outside this computation: by the published values in the
-table below, and by the test suite's comparison of the
+routes start from the same numbers. Evidence for the gains
+comes from outside this computation: from the published
+values in the table in this section, and from the test
+suite's comparison of the
 configuration gains between the automatic-differentiation route
 of §6 and a central finite-difference route (the Jacobians of
 the closed model formed by finite differences, the gains formed
 from them in the same way), which agree within the
 finite-difference accuracy stated there.
 
-Every row and every column of the RGA sums to 1. The proof is
-one line each way from the entry formula
+Every row and every column of the RGA sums to 1. One line
+each way proves the sums, from the entry formula
 $\lambda_{ij} = G_{ij} (G^{-1})_{ji}$ (the transpose in the
 matrix formula is what puts the indices of $G^{-1}$ in this
 order). Summing row $i$ over its columns,
@@ -762,27 +767,28 @@ $\sum_i \lambda_{ij} = \sum_i (G^{-1})_{ji} G_{ij}
 = (G^{-1} G)_{jj} = 1$,
 the $j,j$ entry of $G^{-1} G$, also the identity. The sums are
 therefore a property of any invertible gain matrix, proved here
-from the definition; they hold whatever the gains are, so their
-agreement with 1 in any computed array is not a check on the
-model. Two consequences
+from the definition; they hold whatever the gains are, and
+their agreement with 1 in any computed array is not a check
+on the model. Two consequences
 follow at once: the entries of a row cannot all be small, and a
 negative entry in a row forces another entry of that row above
-1. The RGA is also unchanged by the units of the inputs and
-outputs: rescaling output $i$ by a factor $a$ and input $j$ by
+1. Units of the inputs and outputs also leave the RGA
+unchanged: rescaling output $i$ by a factor $a$ and input $j$
+by
 a factor $b$ multiplies $G_{ij}$ by $a b$, multiplies
 $(G^{-1})_{ji}$ by $1 / (a b)$, and the product is unchanged.
-This is why the RGA values below can be compared with the
-published values although the page works in mol/s and the
-source in kmol/min.
+This is why the recomputed RGA values in the table in this
+section can be compared with the published values although
+the page works in mol/s and the source in kmol/min.
 
-The pairing guidance read from the array is: pair each output
+From the array, the pairing guidance is: pair each output
 with the input whose relative gain is positive and close to 1;
 avoid pairings with negative relative gain; treat large values
 as a warning of interaction and of sensitivity to gain errors,
-not by themselves as a disqualification. The published
-steady-state values for Column A (Skogestad and Morari, 1987,
-as reported in [skogestad-2006]) and the values this page's
-model recomputes at the anchor are:
+not by themselves as a disqualification. Two columns follow:
+the published steady-state values for Column A (Skogestad and
+Morari, 1987, as reported in [skogestad-2006]) and the values
+this page's model recomputes at the anchor:
 
 | Configuration | Published $\lambda_{11}$ | Recomputed $\lambda_{11}$ |
 |---|---|---|
@@ -797,8 +803,8 @@ configuration, which this page does not include.) The DV and LB
 values agree to the published digits. The LV and ratio values
 differ from the published values by about 2 %, and the shortcut
 shows why such differences arise. For LV,
-$\kappa = 0.972$, so $\lambda_{11} = 1 / (1 - \kappa)$ divides
-by $0.028$, and a change of 0.3 % in any gain moves
+$\kappa = 0.972$; $\lambda_{11} = 1 / (1 - \kappa)$ thus
+divides by $0.028$, and a change of 0.3 % in any gain moves
 $\lambda_{11}$ by about 10 %. A large relative gain is a
 difference of nearly cancelling terms, and its own value is
 correspondingly uncertain; its message is the order of
@@ -807,8 +813,9 @@ composition loop cuts the apparent gain of the other by a
 factor of about 35, yet LV remains the standard industrial
 configuration, workable when a fast inner temperature loop is
 closed first [skogestad-2006]. For the ratio configuration,
-$\kappa = 0.696$, so $\lambda_{11}$ divides by $0.304$ and a
-change of 1 % in any gain moves $\lambda_{11}$ by about 2.3 %:
+$\kappa = 0.696$; $\lambda_{11}$ thus divides by $0.304$, and
+a change of 1 % in any gain moves $\lambda_{11}$ by about
+2.3 %:
 percent-level differences in the gains are enough to account
 for the difference between the recomputed 3.29 and the
 published 3.22, and the recomputed 3.29 is moderate
@@ -816,8 +823,8 @@ interaction. For DV and LB,
 $\lambda_{11}$ near 0.5 means the diagonal and off-diagonal
 pairings are nearly equivalent by this measure alone (the
 off-diagonal entries are $1 - \lambda_{11}$, also near 0.5).
-The
-array on this page is the steady-state RGA; the same matrix
+On this page the array is the steady-state RGA; the same
+matrix
 formula applied to $G(s)$ at $s$ on the imaginary axis gives a
 frequency-dependent RGA, which the page does not display.
 
@@ -827,13 +834,13 @@ The DB configuration is the exception that §7 set aside, and
 its behaviour is structural, not numerical. Sum the total
 balance of §2 over all $NT$ stages. Every inter-stage flow
 appears once as an outflow from one stage and once as an inflow
-to the next, so all of them cancel; the reflux $L$ and the
+to the next, and all of them cancel; the reflux $L$ and the
 boilup $V$ are internal streams (each leaves one stage and
 enters another inside the column system), and what remains is
 the total inventory $M_{\mathrm{tot}} = \sum_i M_i$ (mol)
 obeying
 
-$$\frac{dM_{\mathrm{tot}}}{dt} = F - D - B.$$
+$$\frac{dM_{\mathrm{tot}}}{dt} = F - D - B. \tag{18}$$
 
 Only the three streams that cross the column boundary appear.
 In the LV, DV, LB and ratio configurations, at least one of
@@ -856,8 +863,9 @@ alone, in $B$ alone, or in $F$ alone makes $F - D - B$
 permanently non-zero: the inventory fills or drains at a
 constant rate, the compositions follow with a response that
 grows linearly in time (a ramp) once the transients settle,
-and there is no steady state and no steady-state gain. The
-Analysis tab marks these channels integrating and reports,
+and there is no steady state and no steady-state gain. These
+channels are marked integrating on the Analysis tab, which
+reports,
 instead of a gain, the long-time ramp rate of each output
 (mole fraction per s, per unit of input), measured as the slope
 of the linear step response over its last quarter. Two
@@ -870,19 +878,18 @@ least-squares sense, which returns the solution in the
 non-integrating subspace (the equations are consistent exactly
 for input directions that do not excite the inventory mode,
 and the least-squares solution discards the inconsistent
-component, which is zero for these two directions). The page
-shows those finite gains for the balanced split and for the
+component, which is zero for these two directions). Those
+finite gains are shown for the balanced split and for the
 $x_F$ column, and no gain matrix or RGA for DB as a whole. The
-DB treatment described here — the least-squares gains on the
-balanced and feed-composition directions, the integrating
-channels marked and not fitted (§10), and the split of entries
-in the display — is implemented in the page driver
-(driver.py), not in the core model file (column_a.py). The
-driver also computes the residual of the deflated system
-$A \tilde z = - B \tilde w$ for each of the two finite
-directions and displays both residuals with the DB gains on
-the Analysis tab; at the default column both are below
-$10^{-8}$, at the level of the round-off of the solve.
+DB treatment described here consists of the least-squares
+gains on the balanced and feed-composition directions, the
+integrating channels marked and not fitted (§10), and the
+split of entries in the display. For each of the two finite
+directions, the residual of the deflated system
+$A \tilde z = - B \tilde w$ is also computed and displayed
+with the DB gains on the Analysis tab; at the default column
+both are below $10^{-8}$, at the level of the round-off of
+the solve.
 
 ## 10. Reduction to first-order plus dead time entries
 
@@ -893,46 +900,47 @@ for reading time scales, the Analysis tab also reduces every
 entry to a first-order plus dead time (FOPTD) model,
 
 $$G_{ij}(s) \approx \frac{K_{ij} \, e^{-\theta_{ij} s}}
-{\tau_{ij} s + 1},$$
+{\tau_{ij} s + 1}, \tag{19}$$
 
 where $K_{ij}$ is the gain (in the units of §7 for that
 configuration and column), $\tau_{ij}$ is the time constant (s) and
-$\theta_{ij}$ is the apparent dead time (s). The column model
-contains no true dead time; $\theta_{ij}$ is apparent, the
+$\theta_{ij}$ is the apparent dead time (s). No true dead time
+exists in the column model; $\theta_{ij}$ is apparent, the
 delay-like behaviour of many tray lags in series, whose step
 response is S-shaped (slow at first, then steepening) where a
-single lag rises fastest at the start. The unit-step response
-of the FOPTD model is zero until $t = \theta_{ij}$ and then
+single lag rises fastest at the start. Zero until
+$t = \theta_{ij}$, the unit-step response
+of the FOPTD model is then
 $K_{ij} (1 - e^{-(t - \theta_{ij}) / \tau_{ij}})$.
 
-The fit is a least-squares problem, stated exactly. The gain is
-not fitted: $K_{ij}$ is held at the exact steady-state gain
-$G(0)_{ij}$ from §7, so the FOPTD matrix has the true gains,
+The fit is a least-squares problem, stated exactly. $K_{ij}$ is
+not fitted: it is held at the exact steady-state gain
+$G(0)_{ij}$ from §7; the FOPTD matrix has the true gains,
 and any RGA computed from its manipulated-variable block is the
-true RGA. The two fitted parameters minimise the sum of squared
+true RGA. Two fitted parameters minimise the sum of squared
 errors against the high-order linear step response,
 
 $$\min_{\tau > 0, \; \theta \geq 0} \;
 \sum_{k=1}^{200} \left( y_{ij}(t_k)
-- y^{\mathrm{FOPTD}}_{ij}(t_k) \right)^2,$$
+- y^{\mathrm{FOPTD}}_{ij}(t_k) \right)^2, \tag{20}$$
 
 where $y_{ij}$ is the unit-step response of the linear model of
 §6 (integrated as a linear system, not taken from the nonlinear
-column, so the fit does not depend on a step size) and the
+column; the fit does not depend on a step size) and the
 sample times $t_k$ are 200 uniform points on a horizon of five
-times the dominant time constant of §7. The minimisation runs
-in two stages: for each value of $\theta$ on a grid of 41
+times the dominant time constant of §7. Two stages run the
+minimisation: for each value of $\theta$ on a grid of 41
 values from 0 to 30 % of the horizon, $\tau$ is fitted by
 bounded scalar minimisation of the same sum over $\log \tau$;
 the best grid point is then refined by a bounded minimisation
 over $\theta$ in the surrounding grid interval, with $\tau$
 refitted at each trial $\theta$. The coded bounds are
 $\theta \geq 0$ and $\tau$ between 1 s and ten times the fit
-horizon. The grid stage is what keeps
+horizon. What keeps
 the fit out of the local minima that a single local search
-finds in $\theta$.
+finds in $\theta$ is the grid stage.
 
-Each fitted entry carries a fit error: the integral of the
+Each fitted entry has a fit error: the integral of the
 absolute difference between the high-order and FOPTD step
 responses over the horizon, divided by the integral of the
 absolute high-order response, in percent. The fit error
@@ -945,20 +953,20 @@ information, not a numerical failure: it marks a channel whose
 response has a shape no FOPTD model has, for example an inverse
 response (the output first moves the wrong way) caused by a
 right-half-plane zero, which occurs in DV channels, or two
-well-separated time scales. The gain of such a channel is still
-exact; its $\tau$ and $\theta$ are the best single-lag
+well-separated time scales. For such a channel the gain is
+still exact; its $\tau$ and $\theta$ are the best single-lag
 compromise, and the flag says so. Entries whose gain is
 negligible cannot be fitted at all: when $|K_{ij}|$ is below
 0.1 % of the largest $|K|$ in the same matrix, the response is
-at round-off level and any $\tau$, $\theta$ would fit it, so
-the page shows the gain alone and labels the entry negligible.
+at round-off level and any $\tau$, $\theta$ would fit it; the
+page therefore shows the gain alone and labels the entry
+negligible.
 For the DB configuration the rules of §9 apply first: the
 integrating channels are marked and not fitted; the balanced
 split and the $x_F$ column are fitted as usual. That split —
 which channels are fitted, which are marked integrating, and
-which are shown as negligible — is applied in the page driver
-(driver.py) when it builds the display rows; the fitting
-routine itself fits any channel it is given.
+which are shown as negligible — applies to the display rows;
+the fitting routine itself fits any channel it is given.
 
 ## 11. The nonlinear step comparison
 
@@ -966,13 +974,14 @@ The App tab plots, for one selected input column and step size,
 two responses on the same axes: the linear response, from the
 transfer matrix of §7, and the nonlinear response, from
 integrating the full model $dz/dt = f(z, w)$ of §6 with the
-input stepped. The nonlinear integration (in driver.py) uses
-the Radau method, an implicit Runge-Kutta method suited to
-stiff systems, with no Jacobian supplied, so the integrator
-forms its own Jacobian by finite differences of the coded
-right-hand side; the linear step-response integration is the
-one that supplies a Jacobian, namely the linear model's $A$
-matrix. Both are
+input stepped. Nonlinear integration uses the Radau
+method [hairer-wanner-1996], an implicit Runge-Kutta method
+suited to stiff systems, with no Jacobian supplied; the
+integrator
+therefore forms its own Jacobian by finite differences of the
+coded right-hand side; the linear step-response integration
+is the one that supplies a Jacobian, namely the linear
+model's $A$ matrix. Both are
 plotted as deviations from the steady state. At the default
 step — a step of 1 mol/s in $L$ on the default column, in the
 LV configuration — the two curves are close but not identical:
@@ -1000,11 +1009,10 @@ constant-relative-volatility column of equilibrium stages with
 linearised liquid dynamics and no vapour holdup, energy balance
 or pressure dynamics. Real columns depart from every one of
 those assumptions; the model's purpose is the control-structure
-question of §5, for which the departures are second-order. The
-linear results are local to the operating point (§11). The
-FOPTD entries are reductions for comparison and for reading
-time scales; no controller is designed from them on this page.
-The relative gains are steady-state values (§8).
+question of §5, for which the departures are second-order. Linear results are local to the operating point (§11). For
+comparison and for reading time scales, the FOPTD entries are
+reductions; no controller is designed from them on this page.
+Relative gains are steady-state values (§8).
 
 ## 13. Conclusion and discussion
 
@@ -1023,11 +1031,11 @@ feed-composition channel. Point 5 reduced each transfer-matrix
 entry to an FOPTD entry and reported a fit error for each
 entry.
 
-The limits are the limits of §11 and §12. The linear results
+Limits are those of §11 and §12. Linear results
 are local to the operating point, and the separation between
-the linear and nonlinear responses grows with step size. The
-FOPTD entries are reductions for comparison and for reading
-time scales; no controller is designed from them on this page.
+the linear and nonlinear responses grows with step size. For
+comparison and for reading time scales, the FOPTD entries are
+reductions; no controller is designed from them on this page.
 The relative gains are steady-state values. The model is
 binary, at constant pressure and constant relative volatility,
 with equilibrium stages and linearised liquid dynamics, and
@@ -1046,3 +1054,21 @@ distillation column control", plenary paper, Chemical
 Engineering Research and Design, special issue, 2006 (revised
 22 November 2006).
 https://skoge.folk.ntnu.no/publications/2006/skogestad_distillation06-plenary/old-submitted/dist06-plenary.pdf
+
+[virtanen-2020] Virtanen, P., Gommers, R., Oliphant, T. E.,
+et al., "SciPy 1.0: fundamental algorithms for scientific
+computing in Python", Nature Methods 17(3), pp. 261–272, 2020.
+https://doi.org/10.1038/s41592-019-0686-2
+
+[maclaurin-2015] Maclaurin, D., Duvenaud, D. and Adams, R. P.,
+"Gradient-based hyperparameter optimization through reversible
+learning", Proceedings of the 32nd International Conference on
+Machine Learning (ICML), JMLR Workshop and Conference
+Proceedings 37, pp. 2113–2122, 2015.
+https://jmlr.csail.mit.edu/proceedings/papers/v37/maclaurin15.pdf
+
+[hairer-wanner-1996] Hairer, E. and Wanner, G., "Solving
+Ordinary Differential Equations II: Stiff and
+Differential-Algebraic Problems", Springer, Berlin, 1996,
+§IV.5, pp. 71–90.
+https://doi.org/10.1007/978-3-642-05221-7
