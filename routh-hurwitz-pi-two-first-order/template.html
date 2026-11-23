@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Stability limits of two first-order systems in series under proportional–integral control</title>
+<!--KATEX_CSS-->
+<style>
+  :root{
+    --ink:#1b1b1b; --ink-2:#5a5a5a; --rule:#d6d6d6;
+    --paper:#ffffff; --tint:#f4f6f8; --accent:#0072B2;
+    --measure:68ch;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#e8e8e6; --ink-2:#a3a3a0; --rule:#3a3f45;
+      --paper:#14171a; --tint:#1d2126; --accent:#56B4E9;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:Georgia, "Source Serif 4", "Times New Roman", serif;
+    font-size:17px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent); text-decoration-thickness:1px; text-underline-offset:3px}
+  .page{max-width:calc(var(--measure) + 296px); margin:0 auto; padding:0 16px}
+  header{padding:40px 0 0}
+  .layout{display:flex; gap:0 32px; margin-top:24px}
+  main{flex:1 1 auto; min-width:0; max-width:var(--measure); margin-left:auto; padding:0 0 64px}
+  h1{font-size:32px; line-height:1.15; font-weight:600; margin:0 0 16px; letter-spacing:-.01em}
+  .lede{font-size:18px; line-height:1.55; margin:0 0 8px}
+  nav.toc{
+    flex:0 0 232px; align-self:flex-start;
+    position:sticky; top:24px;
+    max-height:calc(100vh - 48px); overflow-y:auto;
+    display:flex; flex-direction:column; gap:2px;
+    padding:2px 8px 12px 0; margin:6px 0 0;
+    font-family:system-ui, -apple-system, "Segoe UI", sans-serif; font-size:14px;
+  }
+  .toc-title{
+    font-size:12px; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--ink-2); font-weight:600; margin:0 0 6px;
+  }
+  nav.toc a{color:var(--ink); text-decoration:none; padding:3px 0}
+  nav.toc a:hover{color:var(--accent); text-decoration:underline}
+  nav.toc a.current{color:var(--accent); font-weight:600}
+  nav.toc a b{color:var(--accent); font-weight:600; margin-right:6px}
+  @media (max-width:1080px){
+    .page{max-width:calc(var(--measure) + 32px)}
+    .layout{display:block; margin-top:0}
+    main{margin:0 auto}
+    nav.toc{
+      position:static; max-height:none; overflow:visible;
+      flex-direction:row; flex-wrap:wrap; gap:6px 22px;
+      border-top:1px solid var(--rule); border-bottom:1px solid var(--rule);
+      padding:10px 0; margin:24px auto 8px; max-width:var(--measure);
+    }
+    .toc-title{flex-basis:100%; margin:0}
+    nav.toc a{padding:0}
+  }
+  section{margin-top:40px}
+  h2{font-size:24px; line-height:1.2; font-weight:600; margin:0 0 6px}
+  h2 .no{color:var(--accent); margin-right:10px}
+  h3{font-size:19px; line-height:1.25; font-weight:600; margin:28px 0 6px}
+  p{margin:10px 0}
+  .muted{color:var(--ink-2)}
+  .eq{position:relative; padding:6px 44px 6px 2px; margin:14px 0; overflow-x:auto}
+  .eq .katex-display{margin:0; padding:2px 0}
+  .katex{font-size:1.05em}
+  .eqno{
+    position:absolute; right:2px; top:50%; transform:translateY(-50%);
+    font-family:system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size:14px; color:var(--ink-2); white-space:nowrap;
+  }
+  .where{margin:4px 0 10px 0; padding-left:0}
+  .where > span{display:block; margin:2px 0}
+  table{width:100%; border-collapse:collapse; font-family:system-ui, -apple-system, "Segoe UI", sans-serif; font-size:14.5px; font-variant-numeric:tabular-nums}
+  .table-wrap{margin:18px 0; overflow-x:auto}
+  th, td{padding:9px 12px 9px 0; text-align:left; vertical-align:top; border-bottom:1px solid var(--rule)}
+  th{font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-2); font-weight:600; border-bottom:1.5px solid var(--ink-2)}
+  tr:last-child td{border-bottom:none}
+  td.sym{white-space:nowrap; width:110px}
+  td.unit{white-space:nowrap; color:var(--ink-2)}
+  table.routh td, table.routh th{text-align:center; padding:9px 12px}
+  table.routh td:first-child, table.routh th:first-child{text-align:left}
+  figure{margin:22px 0; border:1px solid var(--rule); border-radius:4px; padding:16px}
+  figure svg{width:100%; height:auto; display:block}
+  figcaption{font-family:system-ui, -apple-system, "Segoe UI", sans-serif; font-size:14px; color:var(--ink-2); margin-top:12px; line-height:1.5}
+  figcaption strong{color:var(--ink); font-weight:600}
+  table caption{font-family:system-ui, -apple-system, "Segoe UI", sans-serif; font-size:14px; color:var(--ink-2); text-align:left; line-height:1.5; padding:0 0 8px}
+  table caption strong{color:var(--ink); font-weight:600}
+  hr.sep{border:none; border-top:1px solid var(--rule); margin:44px 0 0}
+  .footnote{font-size:15px; color:var(--ink-2); line-height:1.6}
+  @media (max-width:480px){
+    h1{font-size:28px}
+    .eq .katex-display{font-size:.88em}
+    .eq{padding-right:36px}
+    table.symbols{font-size:13.5px}
+    table.symbols td.sym{width:84px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Stability limits of two first-order systems in series under proportional–integral control</h1>
+    <p class="lede">Two first-order systems in series, closed with a proportional–integral controller, give a third-order characteristic equation. Each system has a steady-state gain and a time constant: $\tau_1$ and $\tau_2$ are the two time constants, in seconds, and $K$ is the overall process gain, the product of the two system gains. In the controller, $K_c$ is the proportional gain and $\tau_I$ is the integral time, in seconds. The Routh–Hurwitz criterion applied to that equation gives a sharp stability boundary: the loop is stable for every positive controller gain $K_c$ when the integral time $\tau_I$ is at or above $\tau_1 \tau_2 / (\tau_1 + \tau_2)$, and below that integral time stability ends at the critical controller gain $K_{c,\mathrm{crit}} = \tau_I (\tau_1 + \tau_2) / [K(\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2))]$. At the boundary the loop oscillates at the angular frequency $\omega_0 = 1/\sqrt{\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)}$. Assumed background is Laplace transforms, transfer functions, and feedback control; the page is written for chemical engineering students.</p>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Contents">
+      <span class="toc-title">Contents</span>
+      <a href="#symbols"><b>§</b>Symbols</a>
+      <a href="#system"><b>1</b>System</a>
+      <a href="#characteristic"><b>2</b>Characteristic equation</a>
+      <a href="#routh"><b>3</b>Routh–Hurwitz criterion</a>
+      <a href="#stability"><b>4</b>Stability condition</a>
+      <a href="#limit"><b>5</b>Oscillation at the limit</a>
+      <a href="#example"><b>6</b>Worked example</a>
+      <a href="#check"><b>7</b>Proportional-only control as a check</a>
+      <a href="#closing"><b>§</b>Closing</a>
+      <a href="#references"><b>§</b>References</a>
+    </nav>
+    <main>
+
+  <section id="symbols">
+    <h2>Symbols</h2>
+    <div class="table-wrap">
+    <table class="symbols">
+      <thead><tr><th>Symbol</th><th>Meaning</th><th>Unit</th></tr></thead>
+      <tbody>
+        <tr><td class="sym">$s$</td><td>Laplace variable</td><td class="unit">s<sup>−1</sup></td></tr>
+        <tr><td class="sym">$R(s)$, $Y(s)$</td><td>Set point and controlled output</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$E(s)$</td><td>Error, $R(s) - Y(s)$</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$U(s)$</td><td>Controller output</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$G_1(s)$, $G_2(s)$</td><td>Transfer functions of the two first-order systems</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$G_p(s)$</td><td>Overall process transfer function, $G_1(s) G_2(s)$</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$G_c(s)$</td><td>Controller transfer function</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$L(s)$</td><td>Open-loop transfer function, $G_c(s) G_p(s)$</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$j$</td><td>Imaginary unit, $j^2 = -1$</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$K_1$, $K_2$</td><td>Steady-state gains of the two first-order systems</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$K$</td><td>Overall process gain, $K_1 K_2$</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$\tau_1$, $\tau_2$</td><td>Time constants of the two first-order systems</td><td class="unit">s</td></tr>
+        <tr><td class="sym">$K_c$</td><td>Controller proportional gain</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$\tau_I$</td><td>Controller integral time</td><td class="unit">s</td></tr>
+        <tr><td class="sym">$K_i$</td><td>Controller integral gain, $K_c / \tau_I$</td><td class="unit">s<sup>−1</sup></td></tr>
+        <tr><td class="sym">$a_3, a_2, a_1, a_0$</td><td>Coefficients of the characteristic polynomial</td><td class="unit">s<sup>3</sup>, s<sup>2</sup>, s, —</td></tr>
+        <tr><td class="sym">$b_1$</td><td>First-column entry of the $s^1$ row of the Routh array</td><td class="unit">s</td></tr>
+        <tr><td class="sym">$c_1$</td><td>First-column entry of the $s^0$ row of the Routh array</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$K_{c,\mathrm{crit}}$</td><td>Critical controller gain at the stability boundary</td><td class="unit">—</td></tr>
+        <tr><td class="sym">$\omega_0$</td><td>Angular frequency of oscillation at the stability boundary</td><td class="unit">rad/s</td></tr>
+        <tr><td class="sym">$T_0$</td><td>Period of oscillation at the stability boundary, $2\pi/\omega_0$</td><td class="unit">s</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="muted">Gains are dimensionless where the signals at the two ends of a block share units. Time constants are in seconds throughout.</p>
+  </section>
+
+  <section id="system">
+    <h2><span class="no">1</span>System</h2>
+    <p>Figure 1 shows the loop. Two first-order systems stand in series in the forward path, and a proportional–integral controller drives them from the error between set point and output, with unity negative feedback. The derivation assumes linear time-invariant behaviour, no saturation, no dead time, and positive parameters throughout: $\tau_1 > 0$, $\tau_2 > 0$, $\tau_I > 0$, $K > 0$, and $K_c > 0$. A zero controller gain leaves a root at the origin, and a negative controller gain makes the constant term of the characteristic equation negative; neither case has all roots with negative real parts, and the analysis below takes $K_c > 0$.</p>
+    <figure>
+      <svg viewBox="0 0 640 190" role="img" aria-label="Block diagram: set point enters a summing junction, then a proportional-integral controller, then two first-order systems in series, giving the output, which is fed back to the summing junction.">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1b1b1b" />
+          </marker>
+        </defs>
+        <g font-family="system-ui, sans-serif" font-size="14" fill="#1b1b1b">
+          <text x="8" y="90">R(s)</text>
+          <circle cx="92" cy="85" r="15" fill="none" stroke="#1b1b1b" stroke-width="1.2" />
+          <text x="86" y="80" font-size="13">+</text>
+          <text x="86" y="108" font-size="13">−</text>
+          <line x1="45" y1="85" x2="76" y2="85" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#arr)" />
+          <text x="118" y="72">E(s)</text>
+          <line x1="107" y1="85" x2="150" y2="85" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#arr)" />
+          <rect x="150" y="60" width="92" height="50" fill="none" stroke="#1b1b1b" stroke-width="1.2" />
+          <text x="174" y="90">G<tspan baseline-shift="sub" font-size="11">c</tspan>(s)</text>
+          <text x="258" y="72">U(s)</text>
+          <line x1="242" y1="85" x2="288" y2="85" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#arr)" />
+          <rect x="288" y="60" width="92" height="50" fill="none" stroke="#1b1b1b" stroke-width="1.2" />
+          <text x="312" y="90">G<tspan baseline-shift="sub" font-size="11">1</tspan>(s)</text>
+          <line x1="380" y1="85" x2="424" y2="85" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#arr)" />
+          <rect x="424" y="60" width="92" height="50" fill="none" stroke="#1b1b1b" stroke-width="1.2" />
+          <text x="448" y="90">G<tspan baseline-shift="sub" font-size="11">2</tspan>(s)</text>
+          <line x1="516" y1="85" x2="560" y2="85" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#arr)" />
+          <text x="572" y="90">Y(s)</text>
+          <line x1="538" y1="85" x2="538" y2="158" stroke="#1b1b1b" stroke-width="1.2" />
+          <line x1="538" y1="158" x2="92" y2="158" stroke="#1b1b1b" stroke-width="1.2" />
+          <line x1="92" y1="158" x2="92" y2="101" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#arr)" />
+        </g>
+      </svg>
+      <figcaption><strong>Fig. 1 | Unity-feedback loop with two first-order systems in series under proportional–integral control.</strong> $R(s)$ is the set point, $E(s)$ the error, $U(s)$ the controller output, and $Y(s)$ the controlled output. The feedback signal is subtracted at the summing junction.</figcaption>
+    </figure>
+    <p>Each first-order system has the transfer function of a first-order lag: a steady-state gain over a first-order denominator in $s$ [1]. For the first system, the transfer function is</p>
+    <div class="eq">$$G_1(s) = \frac{K_1}{\tau_1 s + 1}$$<span class="eqno">(1)</span></div>
+    <p>and the transfer function of the second system is</p>
+    <div class="eq">$$G_2(s) = \frac{K_2}{\tau_2 s + 1}$$<span class="eqno">(2)</span></div>
+    <p>Two blocks in series multiply, and the process transfer function, from $U(s)$ to $Y(s)$, is thus the product of Eqs. (1) and (2):</p>
+    <div class="eq">$$\begin{aligned} G_p(s) = G_1(s)\, G_2(s) &= \frac{K_1 K_2}{(\tau_1 s + 1)(\tau_2 s + 1)} \\ &= \frac{K}{(\tau_1 s + 1)(\tau_2 s + 1)} \end{aligned}$$<span class="eqno">(3)</span></div>
+    <p class="where"><span>where $K = K_1 K_2$ denotes the overall process steady-state gain.</span></p>
+    <p>The proportional–integral controller has proportional gain $K_c$ and integral time $\tau_I$. Its transfer function, from $E(s)$ to $U(s)$, is the sum of a proportional term and an integral term [1]:</p>
+    <div class="eq">$$G_c(s) = K_c \left(1 + \frac{1}{\tau_I s}\right) = K_c + \frac{K_i}{s} = K_c\,\frac{\tau_I s + 1}{\tau_I s}$$<span class="eqno">(4)</span></div>
+    <p class="where"><span>where $K_i = K_c / \tau_I$ denotes the integral gain.</span></p>
+    <p>Equation (4) shows the two features of integral action that drive the stability result: a pole at the origin, from the factor $1/s$, and a zero at $s = -1/\tau_I$, from the factor $\tau_I s + 1$. That pole raises the order of the closed loop from two to three; the position of the zero, set by $\tau_I$, decides whether that third-order loop stays stable.</p>
+  </section>
+
+  <section id="characteristic">
+    <h2><span class="no">2</span>Characteristic equation</h2>
+    <p>The open-loop transfer function is the product of the controller and the process. From Eqs. (3) and (4), it is</p>
+    <div class="eq">$$\begin{aligned} L(s) &= G_c(s)\, G_p(s) \\ &= K_c\,\frac{\tau_I s + 1}{\tau_I s}\cdot\frac{K}{(\tau_1 s + 1)(\tau_2 s + 1)} \\ &= \frac{K K_c\,(\tau_I s + 1)}{\tau_I s\,(\tau_1 s + 1)(\tau_2 s + 1)} \end{aligned}$$<span class="eqno">(5)</span></div>
+    <p>For unity negative feedback, the closed-loop poles are the roots of $1 + L(s) = 0$. The characteristic equation is thus</p>
+    <div class="eq">$$1 + L(s) = 0$$<span class="eqno">(6)</span></div>
+    <p>Substitution of Eq. (5) in Eq. (6) gives</p>
+    <div class="eq">$$1 + \frac{K K_c\,(\tau_I s + 1)}{\tau_I s\,(\tau_1 s + 1)(\tau_2 s + 1)} = 0$$<span class="eqno">(7)</span></div>
+    <p>Multiplication of Eq. (7) through by the denominator $\tau_I s\,(\tau_1 s + 1)(\tau_2 s + 1)$ clears the fraction. The first term gives $\tau_I s\,(\tau_1 s + 1)(\tau_2 s + 1)$, and the second term gives $K K_c\,(\tau_I s + 1)$. Equation (7) thus becomes</p>
+    <div class="eq">$$\tau_I s\,(\tau_1 s + 1)(\tau_2 s + 1) + K K_c\,(\tau_I s + 1) = 0$$<span class="eqno">(8)</span></div>
+    <p>Expansion of the product of the two first-order factors proceeds term by term: $\tau_1 s$ times $\tau_2 s$ gives $\tau_1 \tau_2 s^2$; $\tau_1 s$ times $1$, plus $1$ times $\tau_2 s$, gives $(\tau_1 + \tau_2)\,s$; and $1$ times $1$ gives $1$. Hence</p>
+    <div class="eq">$$(\tau_1 s + 1)(\tau_2 s + 1) = \tau_1 \tau_2 s^2 + (\tau_1 + \tau_2)\,s + 1$$<span class="eqno">(9)</span></div>
+    <p>Multiplication of Eq. (9) by $\tau_I s$ multiplies each term in turn: $\tau_I s$ times $\tau_1 \tau_2 s^2$ gives $\tau_I \tau_1 \tau_2 s^3$; $\tau_I s$ times $(\tau_1 + \tau_2)\,s$ gives $\tau_I(\tau_1 + \tau_2)\,s^2$; and $\tau_I s$ times $1$ gives $\tau_I s$. Thus</p>
+    <div class="eq">$$\begin{aligned} \tau_I s\,(\tau_1 s + 1)(\tau_2 s + 1) &= \tau_I \tau_1 \tau_2 s^3 + \tau_I(\tau_1 + \tau_2)\,s^2 \\ &\qquad + \tau_I s \end{aligned}$$<span class="eqno">(10)</span></div>
+    <p>Expansion of the remaining term of Eq. (8) gives</p>
+    <div class="eq">$$K K_c\,(\tau_I s + 1) = K K_c \tau_I s + K K_c$$<span class="eqno">(11)</span></div>
+    <p>Substitution of Eqs. (10) and (11) in Eq. (8) gives a polynomial with two terms in $s$: $\tau_I s$ from Eq. (10) and $K K_c \tau_I s$ from Eq. (11). Collection of those terms gives $\tau_I s + K K_c \tau_I s = \tau_I(1 + K K_c)\,s$. The characteristic equation is therefore</p>
+    <div class="eq">$$\begin{aligned} \tau_I \tau_1 \tau_2 s^3 + \tau_I(\tau_1 + \tau_2)\,s^2 &+ \tau_I(1 + K K_c)\,s \\ &+ K K_c = 0 \end{aligned}$$<span class="eqno">(12)</span></div>
+    <p>Equation (12) is a cubic in $s$. Written with coefficients $a_3$, $a_2$, $a_1$, $a_0$, it is</p>
+    <div class="eq">$$a_3 s^3 + a_2 s^2 + a_1 s + a_0 = 0$$<span class="eqno">(13)</span></div>
+    <p class="where"><span>where $a_3 = \tau_I \tau_1 \tau_2$, $a_2 = \tau_I(\tau_1 + \tau_2)$, $a_1 = \tau_I(1 + K K_c)$, and $a_0 = K K_c$.</span></p>
+    <p>Each term of Eq. (12) is dimensionless: $a_3$ has units of s<sup>3</sup> and multiplies $s^3$ in s<sup>−3</sup>; $a_2$ has units of s<sup>2</sup> and multiplies $s^2$ in s<sup>−2</sup>; $a_1$ has units of s and multiplies $s$ in s<sup>−1</sup>; and $a_0$ is dimensionless. Under the assumptions of Section 1, every coefficient is positive: $a_3 > 0$, $a_2 > 0$, $a_1 > 0$, and $a_0 > 0$ for $\tau_1, \tau_2, \tau_I, K, K_c > 0$.</p>
+  </section>
+
+  <section id="routh">
+    <h2><span class="no">3</span>Routh–Hurwitz criterion</h2>
+    <p>The Routh–Hurwitz criterion decides stability from the coefficients of the characteristic polynomial, without solving for its roots [1]. For a polynomial with real coefficients, all roots have negative real parts, and the closed loop is asymptotically stable, if and only if every entry in the first column of the Routh array is positive. This form of the criterion assumes the array completes with no zero entry in the first column; the boundary case $b_1 = 0$ is handled in Section 5 by the auxiliary equation, built there from the $s^2$ row of the array. A necessary condition, met here, is that all coefficients are non-zero and of the same sign; Eq. (13) meets it, since all four coefficients are positive.</p>
+    <p>For the cubic of Eq. (13), the Routh array has four rows, one per power of $s$ from $s^3$ to $s^0$. Coefficients enter the $s^3$ and $s^2$ rows in alternating order. Each entry below them is the negative determinant of the two rows above, divided by the first entry of the row directly above. With those entries, the array is</p>
+    <div class="table-wrap">
+    <table class="routh">
+      <caption><strong>Table 1 | Routh array for the cubic characteristic polynomial of Eq. (13).</strong> The first column decides stability: $a_3$, $a_2$ and $a_0$ are positive under the assumptions of Section 1, leaving the single entry $b_1$ decisive.</caption>
+      <thead><tr><th>Row</th><th>First column</th><th>Second column</th></tr></thead>
+      <tbody>
+        <tr><td>$s^3$</td><td>$a_3$</td><td>$a_1$</td></tr>
+        <tr><td>$s^2$</td><td>$a_2$</td><td>$a_0$</td></tr>
+        <tr><td>$s^1$</td><td>$b_1$</td><td>$0$</td></tr>
+        <tr><td>$s^0$</td><td>$c_1$</td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>From the determinant rule applied to the $s^3$ and $s^2$ rows, the $s^1$ entry $b_1$ follows:</p>
+    <div class="eq">$$b_1 = \frac{a_2 a_1 - a_3 a_0}{a_2}$$<span class="eqno">(14)</span></div>
+    <p>Application of the same rule to the $s^2$ and $s^1$ rows gives the $s^0$ entry $c_1$. The second column of the $s^1$ row is $0$; the determinant thus gives $b_1 a_0 - a_2 \cdot 0$, divided by $b_1$:</p>
+    <div class="eq">$$c_1 = \frac{b_1 a_0 - a_2 \cdot 0}{b_1} = a_0$$<span class="eqno">(15)</span></div>
+    <p>The first column of the array is therefore $a_3$, $a_2$, $b_1$, $a_0$. Three of its entries are positive by the assumptions of Section 1: $a_3 > 0$, $a_2 > 0$, and $a_0 > 0$. Stability thus turns on the single remaining entry, $b_1 > 0$. For a cubic, the condition $b_1 > 0$ is the same as $a_2 a_1 > a_3 a_0$, since $a_2 > 0$.</p>
+  </section>
+
+  <section id="stability">
+    <h2><span class="no">4</span>Stability condition</h2>
+    <p>Evaluation of $b_1$ starts with the two products in Eq. (14). From the coefficients of Eq. (13), the first product is</p>
+    <div class="eq">$$\begin{aligned} a_2 a_1 &= \tau_I(\tau_1 + \tau_2)\cdot\tau_I(1 + K K_c) \\ &= \tau_I^2(\tau_1 + \tau_2)(1 + K K_c) \end{aligned}$$<span class="eqno">(16)</span></div>
+    <p>and the second product is</p>
+    <div class="eq">$$a_3 a_0 = \tau_I \tau_1 \tau_2 \cdot K K_c$$<span class="eqno">(17)</span></div>
+    <p>Subtraction of Eq. (17) from Eq. (16) gives the numerator of Eq. (14). Factorisation of $\tau_I$ from both terms gives</p>
+    <div class="eq">$$\begin{aligned} a_2 a_1 - a_3 a_0 &= \tau_I^2(\tau_1 + \tau_2)(1 + K K_c) \\ &\qquad - \tau_I \tau_1 \tau_2 K K_c \\ &= \tau_I\big[\tau_I(\tau_1 + \tau_2)(1 + K K_c) - \tau_1 \tau_2 K K_c\big] \end{aligned}$$<span class="eqno">(18)</span></div>
+    <p>Division of Eq. (18) by $a_2 = \tau_I(\tau_1 + \tau_2)$, as Eq. (14) requires, proceeds term by term. The first term gives $\tau_I^2(\tau_1 + \tau_2)(1 + K K_c) / [\tau_I(\tau_1 + \tau_2)] = \tau_I(1 + K K_c)$, and the second term gives $\tau_I \tau_1 \tau_2 K K_c / [\tau_I(\tau_1 + \tau_2)] = \tau_1 \tau_2 K K_c / (\tau_1 + \tau_2)$. Hence</p>
+    <div class="eq">$$b_1 = \tau_I(1 + K K_c) - \frac{\tau_1 \tau_2 K K_c}{\tau_1 + \tau_2}$$<span class="eqno">(19)</span></div>
+    <p>The stability condition $b_1 > 0$ is, from Eq. (19),</p>
+    <div class="eq">$$\tau_I(1 + K K_c) > \frac{\tau_1 \tau_2 K K_c}{\tau_1 + \tau_2}$$<span class="eqno">(20)</span></div>
+    <p>Multiplication of Eq. (20) by the positive quantity $\tau_1 + \tau_2$ gives $\tau_I(\tau_1 + \tau_2)(1 + K K_c) > \tau_1 \tau_2 K K_c$. Expansion of the left side gives $\tau_I(\tau_1 + \tau_2) + \tau_I(\tau_1 + \tau_2) K K_c > \tau_1 \tau_2 K K_c$. Collection of the terms in $K_c$ on the left gives the stability condition in its most useful form:</p>
+    <div class="eq">$$\tau_I(\tau_1 + \tau_2) + K K_c\,\big[\tau_I(\tau_1 + \tau_2) - \tau_1 \tau_2\big] > 0$$<span class="eqno">(21)</span></div>
+    <p>Equation (21) has two terms: a positive term $\tau_I(\tau_1 + \tau_2)$, independent of $K_c$, and a term in $K_c$ whose sign is the sign of the bracket $\tau_I(\tau_1 + \tau_2) - \tau_1 \tau_2$. The sign of that bracket divides the result into two cases.</p>
+    <h3>Case A: long integral time, stability for every gain</h3>
+    <p>When the bracket is positive, the $K_c$ term of Eq. (21) adds to the positive first term; Eq. (21) thus holds for every $K_c > 0$. The bracket is positive when</p>
+    <div class="eq">$$\tau_I(\tau_1 + \tau_2) - \tau_1 \tau_2 > 0 \qquad\text{that is}\qquad \tau_I > \frac{\tau_1 \tau_2}{\tau_1 + \tau_2}$$<span class="eqno">(22)</span></div>
+    <p>In this case the closed loop is stable for every positive controller gain. The threshold $\tau_1 \tau_2 / (\tau_1 + \tau_2)$ is the parallel combination of the two time constants, equal to $1/(1/\tau_1 + 1/\tau_2)$. For equal time constants $\tau_1 = \tau_2 = \tau$, it is $\tau/2$.</p>
+    <h3>Case B: short integral time, a critical gain</h3>
+    <p>When the bracket is negative, the $K_c$ term of Eq. (21) subtracts from the positive first term; stability thus holds only up to a limiting gain. The bracket is negative when $\tau_I < \tau_1 \tau_2 / (\tau_1 + \tau_2)$. In this case Eq. (21) rearranges as follows: movement of the $K_c$ term to the right gives $\tau_I(\tau_1 + \tau_2) > K K_c\,[\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)]$, where the bracket on the right is now positive. Division by the positive quantity $K\,[\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)]$ preserves the inequality and gives</p>
+    <div class="eq">$$K_c < \frac{\tau_I(\tau_1 + \tau_2)}{K\,\big[\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)\big]} = K_{c,\mathrm{crit}}$$<span class="eqno">(23)</span></div>
+    <p class="where"><span>where $K_{c,\mathrm{crit}}$ denotes the critical controller gain.</span></p>
+    <p>Equation (23) is the stability limit for short integral times: the loop is stable for $0 < K_c < K_{c,\mathrm{crit}}$ and unstable for $K_c > K_{c,\mathrm{crit}}$. At $K_c = K_{c,\mathrm{crit}}$, $b_1 = 0$ and the loop stands at the stability boundary. Two limits of Eq. (23) check the result: as $\tau_I$ approaches $\tau_1 \tau_2 / (\tau_1 + \tau_2)$ from below, the denominator approaches zero and $K_{c,\mathrm{crit}}$ approaches infinity, joining Case A, where the loop is stable for every gain; and as $\tau_I$ approaches zero, the numerator approaches zero and $K_{c,\mathrm{crit}}$ approaches zero; integral action with a very short integral time thus destabilises the loop at any gain. At the boundary value $\tau_I = \tau_1 \tau_2 / (\tau_1 + \tau_2)$ itself, the bracket in Eq. (21) is zero, Eq. (21) reduces to $\tau_I(\tau_1 + \tau_2) > 0$, and the loop is stable for every $K_c > 0$.</p>
+    <p>For equal time constants $\tau_1 = \tau_2 = \tau$, Eq. (23) reduces to $K_{c,\mathrm{crit}} = 2\tau_I / [K(\tau - 2\tau_I)]$, valid for $\tau_I < \tau/2$.</p>
+  </section>
+
+  <section id="limit">
+    <h2><span class="no">5</span>Oscillation at the limit</h2>
+    <p>At $K_c = K_{c,\mathrm{crit}}$, the entry $b_1$ is zero; the $s^1$ row of the Routh array is thus zero and the $s^0$ row cannot be formed from it. The Routh–Hurwitz procedure handles a zero row with the auxiliary equation, built from the row above it, the $s^2$ row: $a_2 s^2 + a_0 = 0$. Its roots are the pair of closed-loop poles on the imaginary axis at the stability boundary:</p>
+    <div class="eq">$$a_2 s^2 + a_0 = 0 \qquad\text{that is}\qquad s^2 = -\frac{a_0}{a_2}$$<span class="eqno">(24)</span></div>
+    <p>Equation (24) has roots $s = \pm j\sqrt{a_0/a_2}$, a conjugate pair on the imaginary axis. Their angular frequency, from $a_0 = K K_c$ and $a_2 = \tau_I(\tau_1 + \tau_2)$ evaluated at $K_c = K_{c,\mathrm{crit}}$, is</p>
+    <div class="eq">$$\omega_0 = \sqrt{\frac{a_0}{a_2}} = \sqrt{\frac{K K_{c,\mathrm{crit}}}{\tau_I(\tau_1 + \tau_2)}}$$<span class="eqno">(25)</span></div>
+    <p>Substitution of $K_{c,\mathrm{crit}}$ from Eq. (23) in Eq. (25) proceeds in two steps. First, $K K_{c,\mathrm{crit}} = \tau_I(\tau_1 + \tau_2) / [\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)]$. Second, division of that result by $\tau_I(\tau_1 + \tau_2)$ cancels the factor $\tau_I(\tau_1 + \tau_2)$ and leaves</p>
+    <div class="eq">$$\omega_0^2 = \frac{1}{\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)}$$<span class="eqno">(26)</span></div>
+    <p>The oscillation frequency and its period at the stability boundary are therefore</p>
+    <div class="eq">$$\begin{aligned} \omega_0 &= \frac{1}{\sqrt{\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)}}, \\ T_0 &= \frac{2\pi}{\omega_0} = 2\pi\sqrt{\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)} \end{aligned}$$<span class="eqno">(27)</span></div>
+    <p>Equation (27) applies only in Case B, where $\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2) > 0$ and the square root is real. As $\tau_I$ approaches the threshold $\tau_1 \tau_2 / (\tau_1 + \tau_2)$ from below, the denominator of Eq. (26) approaches zero; $\omega_0$ thus approaches infinity and $T_0$ approaches zero; the boundary oscillation grows arbitrarily fast as the critical gain grows without bound.</p>
+    <p>Factorisation of the characteristic polynomial at $K_c = K_{c,\mathrm{crit}}$ gives the third closed-loop pole at the boundary. At the boundary, $a_2 a_1 = a_3 a_0$ and thus $a_1/a_3 = a_0/a_2$. Division of Eq. (13) by $a_3$ gives $s^3 + (a_2/a_3)s^2 + (a_1/a_3)s + a_0/a_3 = 0$, and replacement of $a_1/a_3$ by $a_0/a_2$ gives $s^3 + (a_2/a_3)s^2 + (a_0/a_2)s + a_0/a_3 = 0$. That polynomial factorises as $(s + a_2/a_3)(s^2 + a_0/a_2) = 0$, since expansion of the product gives $s^3 + (a_2/a_3)s^2 + (a_0/a_2)s + (a_2/a_3)(a_0/a_2)$, and $(a_2/a_3)(a_0/a_2) = a_0/a_3$. The three poles at the boundary are thus $s = \pm j\omega_0$ and</p>
+    <div class="eq">$$s_3 = -\frac{a_2}{a_3} = -\frac{\tau_1 + \tau_2}{\tau_1 \tau_2} = -\left(\frac{1}{\tau_1} + \frac{1}{\tau_2}\right)$$<span class="eqno">(28)</span></div>
+    <p>The third pole is real and negative; the sustained oscillation at the boundary thus comes from the imaginary pair alone, with the third mode decaying at the rate $1/\tau_1 + 1/\tau_2$.</p>
+  </section>
+
+  <section id="example">
+    <h2><span class="no">6</span>Worked example</h2>
+    <p>Take $\tau_1 = 5\,\mathrm{s}$, $\tau_2 = 2\,\mathrm{s}$, $K = 1$, and $\tau_I = 1\,\mathrm{s}$. Equation (22) gives the threshold integral time as</p>
+    <div class="eq">$$\frac{\tau_1 \tau_2}{\tau_1 + \tau_2} = \frac{5 \times 2}{5 + 2} = \frac{10}{7} \approx 1.43\,\mathrm{s}$$<span class="eqno">(29)</span></div>
+    <p>Since $\tau_I = 1\,\mathrm{s}$ is below the threshold of $1.43\,\mathrm{s}$, the loop falls in Case B and has a finite critical gain. From Eq. (23), the numerator is $\tau_I(\tau_1 + \tau_2) = 1 \times 7 = 7\,\mathrm{s}$, and the denominator is $K[\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2)] = 1 \times (10 - 7) = 3\,\mathrm{s}^2$. The critical gain is therefore</p>
+    <div class="eq">$$K_{c,\mathrm{crit}} = \frac{7}{3} \approx 2.33$$<span class="eqno">(30)</span></div>
+    <p>Equation (27) with $\tau_1 \tau_2 - \tau_I(\tau_1 + \tau_2) = 10 - 7 = 3\,\mathrm{s}^2$ gives</p>
+    <div class="eq">$$\omega_0 = \frac{1}{\sqrt{3}} \approx 0.577\,\mathrm{rad/s}, \qquad T_0 = 2\pi\sqrt{3} \approx 10.9\,\mathrm{s}$$<span class="eqno">(31)</span></div>
+    <p>From Eq. (28), the third pole at the boundary is $s_3 = -(1/5 + 1/2) = -0.700\,\mathrm{s}^{-1}$. Table 2 lists the closed-loop poles at three gains: half the critical gain, the critical gain, and twice the critical gain. The complex pair crosses the imaginary axis exactly at $K_c = K_{c,\mathrm{crit}}$, with the real part changing sign there, while the real pole stays negative throughout.</p>
+    <div class="table-wrap">
+    <table>
+      <caption><strong>Table 2 | Closed-loop poles at three controller gains, for $\tau_1 = 5\,\mathrm{s}$, $\tau_2 = 2\,\mathrm{s}$, $K = 1$ and $\tau_I = 1\,\mathrm{s}$.</strong> The complex pair crosses the imaginary axis at the critical gain: its real part is negative at $K_c = 7/6$, zero at $K_c = 7/3$ and positive at $K_c = 14/3$, while the real pole stays negative at all three gains.</caption>
+      <thead><tr><th>$K_c$</th><th>$b_1$ (s)</th><th>Closed-loop poles (s<sup>−1</sup>)</th><th>Stability</th></tr></thead>
+      <tbody>
+        <tr><td>$7/6 \approx 1.17$</td><td>$+0.500$</td><td>$-0.645$, $-0.0277 \pm j0.425$</td><td>Stable</td></tr>
+        <tr><td>$7/3 \approx 2.33$</td><td>$0$</td><td>$-0.700$, $\pm j0.577$</td><td>Marginal</td></tr>
+        <tr><td>$14/3 \approx 4.67$</td><td>$-1.00$</td><td>$-0.761$, $+0.0305 \pm j0.782$</td><td>Unstable</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>For contrast, take the same process with $\tau_I = 2\,\mathrm{s}$, above the threshold of $1.43\,\mathrm{s}$. Case A applies, and the loop is stable for every $K_c > 0$. At $K_c = 10$, far above the critical gain of $2.33$ in the $\tau_I = 1\,\mathrm{s}$ example, the poles are $-0.500\,\mathrm{s}^{-1}$ and $-0.100 \pm j0.995\,\mathrm{s}^{-1}$, all with negative real parts.</p>
+    <figure>
+      <svg viewBox="0 0 640 380" role="img" aria-label="Plot of critical gain against integral time for time constants 5 seconds and 2 seconds and overall gain 1. The critical gain rises slowly at first, then steeply, and diverges at integral time 10/7 seconds.">
+        <g font-family="system-ui, sans-serif" font-size="13" fill="#5a5a5a">
+          <line x1="60" y1="310" x2="560" y2="310" stroke="#1b1b1b" stroke-width="1" />
+          <line x1="60" y1="30" x2="60" y2="310" stroke="#1b1b1b" stroke-width="1" />
+          <line x1="60" y1="254" x2="560" y2="254" stroke="#d6d6d6" stroke-width="0.5" />
+          <line x1="60" y1="198" x2="560" y2="198" stroke="#d6d6d6" stroke-width="0.5" />
+          <line x1="60" y1="142" x2="560" y2="142" stroke="#d6d6d6" stroke-width="0.5" />
+          <line x1="60" y1="86" x2="560" y2="86" stroke="#d6d6d6" stroke-width="0.5" />
+          <line x1="60" y1="30" x2="560" y2="30" stroke="#d6d6d6" stroke-width="0.5" />
+          <line x1="536.2" y1="30" x2="536.2" y2="310" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="5,4" />
+          <polyline points="60.0,310.0 93.3,307.9 126.7,305.4 160.0,302.6 193.3,299.1 226.7,294.9 260.0,289.7 293.3,283.1 326.7,274.4 360.0,262.3 393.3,244.7 426.7,216.3 460.0,163.0 476.7,114.0 490.0,49.3" fill="none" stroke="#0072B2" stroke-width="2" />
+          <circle cx="393.3" cy="244.7" r="5" fill="#ffffff" stroke="#0072B2" stroke-width="2" />
+          <text x="52" y="314" text-anchor="end">0</text>
+          <text x="52" y="258" text-anchor="end">2</text>
+          <text x="52" y="202" text-anchor="end">4</text>
+          <text x="52" y="146" text-anchor="end">6</text>
+          <text x="52" y="90" text-anchor="end">8</text>
+          <text x="52" y="34" text-anchor="end">10</text>
+          <text x="60" y="330" text-anchor="middle">0</text>
+          <text x="226.7" y="330" text-anchor="middle">0.5</text>
+          <text x="393.3" y="330" text-anchor="middle">1.0</text>
+          <text x="536.2" y="330" text-anchor="middle">10/7</text>
+          <text x="60" y="16" fill="#1b1b1b" font-size="14">Critical gain, Kc,crit</text>
+          <text x="310" y="362" text-anchor="middle" fill="#1b1b1b" font-size="14">Integral time, τI (s)</text>
+          <text x="520" y="18" text-anchor="end">τI = 10/7 s ≈ 1.43 s</text>
+          <text x="320" y="300">Stable below curve</text>
+          <text x="400" y="58">Unstable above curve</text>
+          <text x="405" y="268" fill="#1b1b1b">τI = 1 s, Kc,crit = 7/3 ≈ 2.33</text>
+        </g>
+      </svg>
+      <figcaption><strong>Fig. 2 | Critical gain rises with integral time and diverges at the threshold.</strong> $K_{c,\mathrm{crit}}$ from Eq. (23) against $\tau_I$ for $\tau_1 = 5\,\mathrm{s}$, $\tau_2 = 2\,\mathrm{s}$, $K = 1$. The dashed line marks the threshold $\tau_I = \tau_1 \tau_2/(\tau_1 + \tau_2) = 10/7\,\mathrm{s}$; beyond it the loop is stable for every $K_c > 0$. The curve is drawn only to $\tau_I = 1.29\,\mathrm{s}$, where $K_{c,\mathrm{crit}} \approx 9.3$; beyond that point the values from Eq. (23) lie above the displayed range (49 at $\tau_I = 1.40\,\mathrm{s}$) and diverge at the threshold. The open circle marks the worked example.</figcaption>
+    </figure>
+  </section>
+
+  <section id="check">
+    <h2><span class="no">7</span>Proportional-only control as a check</h2>
+    <p>Proportional-only control, with $\tau_I \to \infty$ in Eq. (4), gives $G_c(s) = K_c$. The characteristic equation $1 + K_c K / [(\tau_1 s + 1)(\tau_2 s + 1)] = 0$ then clears to $(\tau_1 s + 1)(\tau_2 s + 1) + K K_c = 0$. Expansion by Eq. (9) gives the second-order equation</p>
+    <div class="eq">$$\tau_1 \tau_2 s^2 + (\tau_1 + \tau_2)\,s + 1 + K K_c = 0$$<span class="eqno">(32)</span></div>
+    <p>All three coefficients of Eq. (32) are positive for $\tau_1, \tau_2, K, K_c > 0$, and a second-order polynomial with positive coefficients has both roots with negative real parts. Proportional-only control of two first-order systems in series is therefore stable for every $K_c > 0$. The instability of Section 4 comes from integral action alone: the pole at the origin raises the loop to third order, and the Routh–Hurwitz condition $a_2 a_1 > a_3 a_0$ is the condition that the added dynamics do not push a pole pair across the imaginary axis.</p>
+    <p>From the limit of Eq. (12) as $\tau_I \to \infty$, the same conclusion follows. Division of Eq. (12) by $\tau_I$ gives $\tau_1 \tau_2 s^3 + (\tau_1 + \tau_2)s^2 + (1 + K K_c)s + K K_c/\tau_I = 0$. As $\tau_I \to \infty$, the last term vanishes and the equation reduces to $s[\tau_1 \tau_2 s^2 + (\tau_1 + \tau_2)s + 1 + K K_c] = 0$: the two roots of Eq. (32) plus a pole at the origin, the integrator pole in the limit. Weak integral action, meaning long $\tau_I$, is safe, and $K_{c,\mathrm{crit}}$ in Eq. (23) grows without bound as $\tau_I$ approaches its threshold from below, as Section 4 states.</p>
+  </section>
+
+  <section id="closing">
+    <h2>Closing</h2>
+    <p>Two first-order systems in series under proportional–integral control have the third-order characteristic equation of Eq. (12). The Routh–Hurwitz criterion reduces its stability to the single condition $b_1 > 0$, which gives Eq. (21). When $\tau_I \ge \tau_1 \tau_2/(\tau_1 + \tau_2)$, the loop is stable for every positive controller gain. When $\tau_I < \tau_1 \tau_2/(\tau_1 + \tau_2)$, stability ends at the critical gain of Eq. (23), where the loop oscillates at the frequency of Eq. (27) with the third pole of Eq. (28). The result is limited to the linear model of Section 1: no saturation, no dead time, positive parameters, and unity negative feedback. It gives the stability boundary, not gain or phase margins, and not the shape of the closed-loop response inside the stable region.</p>
+  </section>
+
+  <section id="references">
+    <h2>References</h2>
+    <p>[1] Seborg, D. E., Edgar, T. F., Mellichamp, D. A., &amp; Doyle, F. J., III (2016). <i>Process Dynamics and Control</i> (4th ed.). John Wiley &amp; Sons, Hoboken, NJ. Transfer function models: Section 4.1, pp. 54–56; response of first-order processes: Section 5.2, pp. 70–72; basic control modes, including the proportional–integral form: Section 8.2, pp. 125–129; stability of closed-loop control systems and the Routh–Hurwitz criterion: Section 11.4, pp. 186–190.</p>
+  </section>
+
+  <hr class="sep" />
+  <p class="footnote">Scope and assumptions. The derivation assumes linear time-invariant behaviour, no saturation, no dead time, unity negative feedback, and $\tau_1, \tau_2, \tau_I, K, K_c > 0$. Time constants are in seconds, $s$ in s<sup>−1</sup>, and $\omega_0$ in rad/s. Numerical values in Section 6 are a chosen illustration.</p>
+
+    </main>
+  </div>
+</div>
+<!--KATEX_JS-->
+<script>
+(function(){
+  function renderMath(){
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+      });
+    }
+  }
+  if (document.readyState === 'complete') renderMath();
+  else window.addEventListener('load', function(){ setTimeout(renderMath, 30); });
+})();
+</script>
+<script>
+(function(){
+  var links = {};
+  document.querySelectorAll('nav.toc a[href^="#"]').forEach(function(a){
+    links[a.getAttribute('href').slice(1)] = a;
+    a.addEventListener('click', function(){ setCurrent(a.getAttribute('href').slice(1)); });
+  });
+  var sections = Object.keys(links).map(function(id){
+    return document.getElementById(id);
+  }).filter(Boolean);
+  function setCurrent(id){
+    Object.keys(links).forEach(function(k){
+      links[k].classList.toggle('current', k === id);
+    });
+  }
+  if ('IntersectionObserver' in window && sections.length) {
+    var visible = {};
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ visible[e.target.id] = e.isIntersecting; });
+      for (var i = 0; i < sections.length; i++) {
+        if (visible[sections[i].id]) { setCurrent(sections[i].id); break; }
+      }
+    }, {rootMargin: '-10% 0px -70% 0px'});
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>
