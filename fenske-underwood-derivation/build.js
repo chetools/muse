@@ -88,7 +88,7 @@ figcaption { font-size: 0.92em; color: #333; margin-top: 0.6em; }
 </head>
 <body>
 ${html}
-<div class="footer">Rendered ${new Date().toISOString().slice(0,10)}. KaTeX rendered server-side; this file has no external dependencies.</div>
+<div class="footer">${new Date().toISOString().slice(0,10)}</div>
 </body>
 </html>`;
 
