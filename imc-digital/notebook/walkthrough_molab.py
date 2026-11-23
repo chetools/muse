@@ -5,7 +5,7 @@
 
 import marimo
 
-__generated_with = "0.25.1"
+__generated_with = "0.25.2"
 app = marimo.App(width="medium")
 
 
@@ -290,16 +290,25 @@ def _(mo):
     The process gain is $K$ (dimensionless), the time constant is
     $\tau$ (s) and the dead time is $\theta$ (s). A digital
     controller holds its output constant between samples (a
-    zero-order hold), so over one sampling interval of length $T_s$
-    (s) the input to the lag is constant and the lag equation has an
-    exact solution: the output at the next sample keeps the fraction
+    zero-order hold). Over one sampling interval of length $T_s$
+    (s) the input to the lag is therefore constant, and the lag
+    equation has an exact solution: the output at the next sample keeps the fraction
     $a = e^{-T_s/\tau}$ (dimensionless) of its previous value and
     adds $b_1 = K(1 - a)$ (dimensionless) times the delayed input.
-    The dead time is $d = \theta/T_s$ whole samples (dimensionless).
-    The cell evaluates the coefficients for the default model of the
-    IMC page and plots the sampled step response against the
+    $d = \theta/T_s$ gives the dead time in whole samples
+    (dimensionless).
+    For the default model of the companion page, *Internal Model
+    Control*, the cell evaluates the coefficients and plots the
+    sampled step response against the
     continuous response $y(t) = K(1 - e^{-(t-\theta)/\tau})$ for
     $t \geq \theta$, zero before.
+
+    Figure: the open-loop unit step response of the default model
+    ($K = 1$, $\tau = 10$ s, $\theta = 2$ s, $T_s = 0.4$ s): the
+    continuous response and the sampled response at the sample
+    instants. Because the zero-order hold conversion is exact at
+    the sample instants, the samples fall on the continuous
+    curve; the cell prints $a = 0.960789$ and $b_1 = 0.039211$.
     """)
     return ()
 
@@ -332,14 +341,20 @@ def _(mo):
     With $\theta = 2.2$ s and $T_s = 0.4$ s, the dead time is
     $d = 5$ whole samples plus a fraction $f = 0.5$ of a sample
     (dimensionless). Over the interval in which the delayed signal
-    arrives, the delayed input takes two successive held values, so
-    the single input coefficient splits in two: $b_1$ on
+    arrives, the delayed input takes two successive held values, and
+    the single input coefficient thus splits in two: $b_1$ on
     $u[k-d-1]$ and $b_2$ on $u[k-d-2]$ (both dimensionless), with
     $b_1 + b_2 = K(1 - a)$. The cell evaluates the split for this
     case and compares the sampled step response against an
     independent fine-step simulation of the continuous process
     (Runge-Kutta at a step of 0.001 s), printing the maximum
     absolute difference over 200 samples.
+
+    Figure: the sampled step response for $\theta = 2.2$ s and
+    $T_s = 0.4$ s ($d = 5$, $f = 0.5$) against the fine-step
+    simulation of the continuous process. Over 200 samples the
+    largest difference is $7.44 \times 10^{-15}$, the value
+    printed by the cell.
     """)
     return ()
 
@@ -370,18 +385,19 @@ def _(mo):
     mo.md(r"""
     ## Step 3: The controller as a difference equation
 
-    The IMC controller is $Q(s) = (\tau s + 1)/(K(\lambda s + 1))$,
-    with the filter time constant $\lambda$ (s). Cross-multiplied
+    $Q(s) = (\tau s + 1)/(K(\lambda s + 1))$ is the IMC
+    controller, with the filter time constant $\lambda$ (s). Cross-multiplied
     and read in time it is a differential equation in the corrected
     set point $w$ and the manipulated variable $u$ (both
-    dimensionless deviations). The trapezoidal rule over one
-    interval — each rate of change replaced by the slope between
+    dimensionless deviations). Over one interval, the trapezoidal
+    rule — each rate of change replaced by the slope between
     the last two samples, each signal by the average of its last
     two values — turns it into $u[k] = p_0 w[k] + p_1 w[k-1] +
     p_2 u[k-1]$, with dimensionless coefficients $p_0$, $p_1$,
     $p_2$ computed from $K$, $\tau$, $\lambda$ and $T_s$. The
     cell evaluates them for the default values and checks the
-    steady-state (DC) identity $(p_0 + p_1)/(1 - p_2) = 1/K$.
+    steady-state (direct-current, DC) identity
+    $(p_0 + p_1)/(1 - p_2) = 1/K$.
     """)
     return ()
 
@@ -409,12 +425,19 @@ def _(mo):
     controller difference equation of Step 3, and sends the result
     to the process. With no output limits and no disturbance, the
     model and the process agree at every sample, the mismatch is
-    zero throughout, and the run reproduces Table 2 of the IMC
-    page: the first manipulated variable is $u[0] = 4.6364$ and
-    the output at $t = 4.0$ s is $y = 0.6333$. The cell runs that
-    case and prints those two values beside the integral of
-    absolute error (IAE, in s, since the signals are
+    zero throughout, and the run reproduces Table 2 of the
+    companion page, *Internal Model Control*: the first
+    manipulated variable is $u[0] = 4.6364$ and
+    the output at $t = 4.0$ s is $y = 0.6333$. Running that
+    case, the cell prints those two values beside the integral
+    of absolute error (IAE, in s, since the signals are
     dimensionless).
+
+    Figure: the nominal closed-loop response to a unit set-point
+    step, with no output limits and no disturbance: output $y$
+    and manipulated variable $u$, with $u[0] = 4.6364$,
+    $y = 0.6333$ at $t = 4.0$ s and IAE $= 4.201$ s printed by
+    the cell.
     """)
     return ()
 
@@ -441,18 +464,24 @@ def _(mo):
     ## Step 5: Output limits and the two anti-windup routings
 
     The manipulated variable is now limited to $u \leq 1.5$
-    (dimensionless), so the first commanded value, 4.6364, is
-    clipped. The process always receives the clipped value. The
-    question is what the model and the controller state are fed.
+    (dimensionless); the first commanded value, 4.6364, is
+    clipped. In both routings the process receives the clipped
+    value. At issue is what the model and the controller state
+    are fed.
     With anti-windup on, they are fed the delivered (clipped)
     value, and the mismatch continues to mean what it meant
     without limits. With anti-windup off, they are fed the
     commanded value: the model then integrates input the process
     never received, the mismatch picks up a spurious component
     equal to that model error, and the loop overshoots after the
-    limit releases. The cell runs both routings with no
-    disturbance and prints the overshoot (percent of the unit
-    step) and IAE (s) of each.
+    limit releases. Both routings run in the cell with no
+    disturbance, and the cell prints the overshoot (percent of
+    the unit step) and IAE (s) of each.
+
+    Figure: the output under the limit $u \leq 1.5$ for the two
+    anti-windup routings, with no disturbance. Overshoot is
+    0.0 % with anti-windup on and 16.18 % with it off; IAE is
+    11.100 s on and 9.216 s off, the values printed by the cell.
     """)
     return ()
 
@@ -485,15 +514,21 @@ def _(mo):
     mo.md(r"""
     ## Step 6: A disturbance step
 
-    The limits are removed again and a disturbance step of
+    With the limits removed again, a disturbance step of
     $+0.2$ (dimensionless) is applied at the process output at
     $t = 24$ s, which is sample $k = 60$. The model does not see
-    the disturbance, so the mismatch jumps to 0.2, the corrected
-    set point falls to 0.8, and the controller cuts its output at
-    once: $u[60] = 0.0727$. The loop then settles with the output
-    back at 1.0 and the manipulated variable held at 0.8, the
-    value that cancels the disturbance. The cell runs the case
-    and prints $u[60]$ and the settled values.
+    the disturbance; the mismatch therefore jumps to 0.2, the
+    corrected set point falls to 0.8, and the controller cuts
+    its output at once: $u[60] = 0.0727$. Afterwards the loop
+    settles with the output back at 1.0 and the manipulated
+    variable held at 0.8, the value that cancels the
+    disturbance. Running the case, the cell prints $u[60]$ and
+    the settled values.
+
+    Figure: the response to a disturbance step of $+0.2$ at
+    $t = 24$ s ($k = 60$), with the limits removed: output $y$
+    and mismatch $\hat{d}$, with $u[60] = 0.0727$ and settled
+    values $y = 1.0$, $u = 0.8$ printed by the cell.
     """)
     return ()
 

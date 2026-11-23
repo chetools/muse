@@ -1,4 +1,4 @@
-"""Build dist/imc-digital-standalone-v1.html.
+"""Build dist/imc-digital-standalone-v2.html.
 
 Single entry point: renders Theory from web/theory.md, the Code
 listings from the Python files on disk, the walkthrough from
@@ -22,7 +22,7 @@ PY = ROOT / "python"
 WEB = ROOT / "web"
 DIST = ROOT / "dist"
 TOOLS = ROOT / ".buildtools"
-OUT_NAME = "imc-digital-standalone-v1.html"
+OUT_NAME = "imc-digital-standalone-v2.html"
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/"
              "gh-pages/imc-digital/walkthrough_molab.py")
 

@@ -13,6 +13,12 @@ function resizeCharts() {
     if (el.offsetParent !== null && el.data) Plotly.Plots.resize(el);
   });
 }
+function refitPanel(name) {
+  document.querySelectorAll("#panel-" + name + " .chart, #panel-" +
+    name + " .walkfig").forEach((el) => {
+    if (el.data) Plotly.Plots.resize(el);
+  });
+}
 function plot(el, traces, layout) {
   el.data = true;
   const lay = Object.assign({ margin: { l: 55, r: 150, t: 30, b: 45 },
@@ -97,7 +103,7 @@ function showPanel(name, push) {
   document.querySelectorAll(".tabbtn").forEach((b) =>
     b.classList.toggle("active", b.dataset.tab === name));
   if (push) history.replaceState(null, "", "#" + name);
-  requestAnimationFrame(resizeCharts);
+  requestAnimationFrame(() => { resizeCharts(); refitPanel(name); });
 }
 document.querySelectorAll(".tabbtn").forEach((b) =>
   b.addEventListener("click", () => showPanel(b.dataset.tab, true)));

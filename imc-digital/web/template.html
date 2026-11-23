@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Digital internal model control: the zero-order hold conversion</title>
+<style>
+@@BASE_CSS@@
+@@KATEX_CSS@@
+</style>
+<script>@@PLOTLY_JS@@</script>
+<script id="prestart-data" type="application/json">@@PRESTART_JSON@@</script>
+</head>
+<body>
+<a class="skip-link" href="#panel-app">Skip to the app</a>
+<div class="col">
+<header class="head">
+<h1>Digital internal model control</h1>
+<p class="intro">Internal model control (IMC) implemented on a
+digital controller: the conversion of the process transfer
+function to discrete form by the zero-order hold (ZOH), the
+trapezoidal conversion of the controller, and the sampled
+closed loop with output limits and anti-windup. All signals
+are dimensionless deviations from a steady operating point;
+times are in seconds (s). Readers are assumed to know
+Laplace transforms and transfer functions; no digital-control
+background is assumed, and sampling, the hold and the
+difference equations are developed from the continuous
+forms. At the default model (process gain 1, time constant
+10 s, dead time 2 s, filter time constant 2 s, sampling
+period 0.4 s), the first commanded manipulated variable is
+4.6364, clipped to the delivered value 3 by the default
+output limit; the output first moves at sample 6, and the
+nominal cycle with the limits set wide reaches 0.6333 at
+t = 4.0 s. In the walkthrough's limited case (maximum
+output 1.5), anti-windup holds the overshoot at 0 % against
+16.18 % without it.</p>
+<p class="status" id="boot-status">Loading the Python runtime…</p>
+<p id="boot-progress-wrap"><label for="boot-progress">Runtime loading progress</label><br>
+<progress class="bootprog" id="boot-progress"></progress></p>
+</header>
+
+<nav class="tabs" id="tabbar" aria-label="Panels">
+<button data-tab="theory" class="tabbtn active">Theory</button>
+<button data-tab="app" class="tabbtn">App</button>
+<button data-tab="code" class="tabbtn">Code</button>
+</nav>
+
+<!-- ======================= APP ======================= -->
+<main>
+<section class="panel" id="panel-app" hidden aria-label="App">
+<div class="layout">
+<aside class="side">
+<h2>Process model</h2>
+<p class="note">The app runs the sampled IMC loop of the
+Theory panel for the model and controller set in these
+controls. Its default case is the worked instance of the
+companion page, <em>Internal Model Control</em>: process gain 1,
+time constant 10 s, dead time 2 s, filter time constant
+2 s, sampling period 0.4 s, output limits 0 to 3, and a
+disturbance step of +0.2 at 24 s.</p>
+<label>Process gain K (dimensionless)
+<input type="number" id="i-K" value="1.0" step="0.1" min="0.1" max="5"></label>
+<label>Time constant τ (s)
+<input type="number" id="i-tau" value="10" step="1" min="1" max="50"></label>
+<label>Dead time θ (s)
+<input type="number" id="i-theta" value="2" step="0.2" min="0" max="20"></label>
+<h2>Controller and sampling</h2>
+<label>Filter time constant λ (s)
+<input type="number" id="i-lam" value="2" step="0.2" min="0.2" max="10"></label>
+<label>Sampling period Tₛ (s)
+<input type="number" id="i-Ts" value="0.4" step="0.05" min="0.05" max="2"></label>
+<h2>Output limits and anti-windup</h2>
+<label>Minimum output u_min (dimensionless)
+<input type="number" id="i-umin" value="0" step="0.5" min="-10" max="10"></label>
+<label>Maximum output u_max (dimensionless)
+<input type="number" id="i-umax" value="3" step="0.5" min="-10" max="10"></label>
+<label>Anti-windup
+<select id="i-aw">
+<option value="on" selected>On — model and controller state fed the delivered output</option>
+<option value="off">Off — model and controller state fed the commanded output</option>
+</select></label>
+<h2>Disturbance</h2>
+<label>Output disturbance step size (dimensionless)
+<input type="number" id="i-dsize" value="0.2" step="0.05" min="-2" max="2"></label>
+<label>Disturbance step time (s)
+<input type="number" id="i-dtime" value="24" step="1" min="0" max="80"></label>
+<p><button id="a-run" class="run" disabled>Run</button></p>
+<p class="note" id="a-note"></p>
+<p class="stale" id="a-stale" hidden>Inputs differ from the displayed run.</p>
+<p class="note" id="prestart-note">The display below shows
+the precomputed run for the default inputs. It is replaced
+in place by a live run as soon as the Python runtime is
+ready.</p>
+</aside>
+<div class="main">
+<h2 id="app-y-h">Output and model output</h2>
+<div class="chart" id="c-y"></div>
+<h2 id="app-u-h">Manipulated variable</h2>
+<div class="chart" id="c-u"></div>
+<h2 id="app-d-h">Mismatch signal</h2>
+<div class="chart" id="c-d"></div>
+<h3>Measures<span id="metrics-state"></span></h3>
+<div id="a-table"></div>
+<h3>Discrete coefficients<span id="coeff-state"></span></h3>
+<div id="a-coeffs"></div>
+<p class="coeff-note">Coefficients of the difference
+equations: a, b1, b2 for the model (dead time d whole samples
+plus fraction f of a sample); p0, p1, p2 for the controller.
+All dimensionless.</p>
+</div>
+</div>
+</section>
+
+<!-- ======================= THEORY ======================= -->
+<section class="panel" id="panel-theory" aria-label="Theory">
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav id="theory-toc" aria-label="Theory contents">
+@@THEORY_TOC@@
+</nav></aside>
+<div class="main prose" id="theory-body">
+@@THEORY_HTML@@
+</div>
+</div>
+</section>
+
+<!-- ======================= CODE ======================= -->
+<section class="panel" id="panel-code" hidden aria-label="Code">
+<nav class="subtabs" aria-label="Code views">
+<button data-subtab="listings" class="subbtn active">Listings</button>
+<button data-subtab="walkthrough" class="subbtn">Walkthrough</button>
+</nav>
+<div class="subpanel" id="sub-listings">
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav aria-label="Listings contents">
+<a href="#code-core">imc_core.py — ZOH conversion, controller, loop</a>
+<a href="#code-driver">driver.py — page payloads</a>
+<a href="#code-notebook">Editable notebook</a>
+</nav></aside>
+<div class="main">
+<h2 id="code-core">imc_core.py</h2>
+@@LISTING_CORE@@
+<h2 id="code-driver">driver.py</h2>
+@@LISTING_DRIVER@@
+<h2 id="code-notebook">Editable notebook</h2>
+<p>The walkthrough is also an editable marimo notebook on
+MoLab: every value can be changed and the cells re-run
+there. Its in-page form (next sub-tab) is read-only.</p>
+<p>MoLab link: <a href="@@MOLAB_URL@@">@@MOLAB_URL@@</a></p>
+<p>Download: <a href="walkthrough_molab.py" download>walkthrough_molab.py</a>
+(the notebook file published beside this page).</p>
+</div>
+</div>
+</div>
+<div class="subpanel" id="sub-walkthrough" hidden>
+<div class="layout">
+<aside class="side toc"><h2>Contents</h2><nav id="walk-toc" aria-label="Walkthrough contents">
+@@WALK_TOC@@
+</nav></aside>
+<div class="main">
+<p class="note">Read-only walkthrough (WASM page panel).
+For the editable version, use the MoLab notebook linked
+under Listings.</p>
+@@WALK_HTML@@
+</div>
+</div>
+</div>
+</section>
+</main>
+
+<div class="sr-status" id="live-announcer" aria-live="polite" role="status" style="position:absolute;left:-9999px"></div>
+
+<footer>
+<p>Digital internal model control page. Computations in
+Python (Pyodide) in the browser, computed live once the
+runtime is ready.</p>
+</footer>
+</div>
+
+<script>@@WORKER_JS@@</script>
+<script>@@APP_JS@@</script>
+</body>
+</html>
