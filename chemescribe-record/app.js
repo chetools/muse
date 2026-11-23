@@ -20,16 +20,23 @@ const loadStatus = $('loadStatus'), runStatus = $('runStatus');
 const audioStatus = $('audioStatus'), metrics = $('metrics');
 const promptStatus = $('promptStatus');
 const errBox = $('errBox'), transcriptBox = $('transcript'), netlog = $('netlog');
+const loadErr = $('loadErr'), fileErr = $('fileErr'), recErr = $('recErr');
+const errBoxes = [errBox, loadErr, fileErr, recErr];
 const saveStatus = $('saveStatus');
 const liveProg = $('liveProg'), liveStatus = $('liveStatus'), liveBox = $('liveBox');
 const liveRaw = $('liveRaw'), liveMeta = $('liveMeta');
 
-function showError(message, err) {
-  errBox.textContent = message;
-  errBox.style.display = 'block';
+// Errors are shown beside the control that produced them: each call
+// site passes its own section's error box (the default is step 3's).
+function showError(message, err, box) {
+  const target = box || errBox;
+  target.textContent = message;
+  target.style.display = 'block';
   if (err) console.error(err);
 }
-function clearError() { errBox.style.display = 'none'; errBox.textContent = ''; }
+function clearError() {
+  for (const b of errBoxes) { b.style.display = 'none'; b.textContent = ''; }
+}
 
 // --- Network log: list every resource this page fetches, from the
 // browser's own resource timing records. ---
@@ -239,10 +246,11 @@ loadBtn.addEventListener('click', async () => {
   } catch (err) {
     loadStatus.textContent = 'Model did not load.';
     showError('The model could not be loaded. Check the connection and try again. ' +
-      'If this repeats, note the message in the browser console and report it.', err);
+      'If this repeats, note the message in the browser console and report it.', err, loadErr);
     loadBtn.disabled = false;
   } finally {
     clearInterval(tailTimer);
+    loadProg.hidden = true;
   }
   renderNetlog();
 });
@@ -291,7 +299,9 @@ $('audioFile').addEventListener('change', async (ev) => {
   } catch (err) {
     audioStatus.textContent = 'That file could not be decoded.';
     showError('The chosen file could not be decoded as audio by this browser. ' +
-      'A WAV, MP3, M4A or WebM recording is expected.', err);
+      'The page accepts any recording this browser can decode — WAV, MP3, M4A, WebM ' +
+      'and OGG are the common formats. Converting the file to WAV or MP3 and choosing ' +
+      'it again usually settles it.', err, fileErr);
   }
 });
 
@@ -368,6 +378,7 @@ runBtn.addEventListener('click', async () => {
     else transcriptBox.textContent = '(The model returned no text for this recording.)';
     if (segments.length) {
       liveProg.value = 1;
+      liveProg.hidden = true;
       liveStatus.textContent = 'Done — ' + segments.length + ' piece(s), ' + liveWords + ' words, shown above as they arrived.';
     }
     hasTranscript = segments.length > 0;
@@ -453,9 +464,9 @@ async function transcribeRecSegment(R, finalPiece) {
       R.doneUpTo = to;
       R.failStreak = 0;
       showError('One piece of the recording could not be transcribed after two tries ' +
-        'and was skipped. The rest of the transcript is unaffected.', err);
+        'and was skipped. The rest of the transcript is unaffected.', err, recErr);
     } else {
-      showError('A piece of the recording could not be transcribed; it will be tried again.', err);
+      showError('A piece of the recording could not be transcribed; it will be tried again.', err, recErr);
     }
   } finally {
     R.busy = false;
@@ -476,8 +487,9 @@ recBtn.addEventListener('click', async () => {
     if (activeMode === 'recording') activeMode = null;
     recBtn.disabled = false;
     updateRunEnabled();
+    recStatus.textContent = 'The microphone could not be opened.';
     showError('The microphone could not be opened. Allow microphone access for this page ' +
-      'in the browser settings, then try again.', err);
+      'in the browser settings, then try again.', err, recErr);
     return;
   }
   let ctx = null;
@@ -519,8 +531,9 @@ recBtn.addEventListener('click', async () => {
     updateRunEnabled();
     stream.getTracks().forEach((t) => t.stop());
     if (ctx) { try { await ctx.close(); } catch { /* ignore */ } }
+    recStatus.textContent = 'The audio recorder could not be started in this browser.';
     showError('The audio recorder could not be started in this browser. ' +
-      'The microphone has been released; try again or use a file instead.', err);
+      'The microphone has been released; try again or use a file instead.', err, recErr);
     return;
   }
   transcriptBox.textContent = '';
@@ -565,6 +578,7 @@ recStopBtn.addEventListener('click', async () => {
   else transcriptBox.textContent = '(The model returned no text for this recording.)';
   if (R.segments.length) {
     liveProg.value = 1;
+    liveProg.hidden = true;
     liveStatus.textContent = 'Done — ' + R.segments.length + ' piece(s), ' + liveWords + ' words, shown above as they arrived.';
   }
   hasTranscript = R.segments.length > 0;
