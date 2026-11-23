@@ -62,13 +62,17 @@
 - Version bump: build output v6 → v7 (`OUT_NAME`/`STUB_NAME` in
   build_page.py, `PAGE` in test_boot.py, README build line). The
   MoLab notebook was regenerated (`notebook/walkthrough_molab.py`)
-  and the WASM walkthrough re-exported with marimo 0.25.2
-  (`export html-wasm --mode run --execute`); the executed run
-  completed the walkthrough session and the export carries the
-  baked outputs and the corrected grid name. The re-export's
-  asset bundle is the 0.25.2 bundle and replaces the previous
-  export's wholesale (the previous export was made with an
-  earlier marimo build; its asset hashes do not carry over).
+  and the WASM walkthrough re-exported with marimo 0.25.1
+  (`export html-wasm --mode run --execute`), the version the
+  published export was made with — a marimo 0.25.1 environment
+  was created for this step because only 0.25.2 is installed on
+  this machine, and a 0.25.2 export's asset bundle differs
+  wholesale from the published one. The executed run completed
+  the walkthrough session (final weighted true score 1.036, as
+  before) and the export carries the baked outputs and the
+  corrected grid name; all 483 asset files are byte-identical
+  to the previously published export's, and only the
+  walkthrough's index.html changed.
 
 ## Recovered build inputs (flagged)
 
