@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/40.0",
-          "user agent bumped to 40.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/41.0",
+          "user agent bumped to 41.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3271,6 +3271,27 @@ def main():
     check(b"render(); setFracAll(f);" in wall40,
           "v40: Back from the zoom view rebuilds the tiles "
           "and seeks them all to the zoom player's fraction")
+
+    # ---------------------------------------------------------
+    # 20. v41: the zoom view scrubs by right-button drag,
+    # like the wall. The page must carry the zoom scrub
+    # binding (right button only, drag state from the video's
+    # own fraction and width), the document-level move/up
+    # handling for that state, the context-menu suppression
+    # on the video area, and the hint in the zoom header.
+    check(b"function seekZoomFrac" in wall40
+          and b"Math.min(1,Math.max(0,f))*zv.duration" in wall40
+          and b"ZSCRUB={x0:e.clientX, f0:frac(zv)," in wall40
+          and b"if(ZSCRUB){ seekZoomFrac(" in wall40
+          and b"if(ZSCRUB && e.button===2){" in wall40
+          and b'ZSCRUB=null; document.body.style.cursor="";'
+          in wall40
+          and b'$("zvwrap").addEventListener("contextmenu"'
+          in wall40
+          and b"Right-button drag on the video scrubs"
+          in wall40,
+          "v41: the zoom view carries the right-button drag "
+          "scrub, mirroring the wall, with its hint")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,

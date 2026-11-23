@@ -193,6 +193,14 @@ metadata has not loaded yet is remembered on the element
 and applied when loadedmetadata fires. The followed
 student's tile likewise resumes playing at that fraction
 once its metadata arrives, instead of from the start.
+
+v41: the zoom (single-video) view scrubs by right-button
+drag, like the wall. A right-button press on the zoom video
+starts the drag; horizontal motion moves the video to that
+fraction of its own length (one video width of travel =
+the whole take), the position bar follows, and the
+right-click menu is suppressed on the video area. The
+left button and the other zoom controls are untouched.
 """
 
 import argparse
@@ -4367,7 +4375,7 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 <main>
 <p id="werr" class="err"></p>
 <div id="zoom">
-  <p><button class="secondary" id="backbtn">← Back to wall</button> <button class="secondary" id="prevstu">← Prev student</button> <button class="secondary" id="nextstu">Next student →</button> <span id="zoomtitle"></span> <span class="mut" id="fpsinfo"></span> <span class="mut">Tab / Shift-Tab: next / previous student (a changed grade is saved on the way)</span></p>
+  <p><button class="secondary" id="backbtn">← Back to wall</button> <button class="secondary" id="prevstu">← Prev student</button> <button class="secondary" id="nextstu">Next student →</button> <span id="zoomtitle"></span> <span class="mut" id="fpsinfo"></span> <span class="mut">Tab / Shift-Tab: next / previous student (a changed grade is saved on the way) · Right-button drag on the video scrubs</span></p>
   <div id="zoomwrap">
     <div id="zoomvid">
       <div id="zvwrap"><video id="zv" playsinline disablepictureinpicture></video></div>
@@ -4445,7 +4453,7 @@ select{background:#39424e;color:#fff;border:1px solid #55606c;border-radius:5px;
 </div>
 <script>
 const $=id=>document.getElementById(id);
-let STUDENTS=[], page=0, zoomId=null, raf=null, MARKS={}, SCRUB=null;
+let STUDENTS=[], page=0, zoomId=null, raf=null, MARKS={}, SCRUB=null, ZSCRUB=null;
 // ---- Shared submission view (v29): select / sort / filter /
 // group by course, student, date, homework, examined and graded.
 // The same stored view drives the dashboard's submissions table;
@@ -4914,6 +4922,24 @@ $("scrub").oninput=e=>setFracAll(e.target.value/1000);
 // belongs to playback again without a further click.
 $("scrub").addEventListener("change",e=>e.target.blur());
 $("zseek").addEventListener("change",e=>e.target.blur());
+// Right-button drag on the zoom video scrubs it, like a tile
+// on the wall (v41): horizontal motion moves the video to
+// that fraction of its own length (one video width of travel
+// = the whole take), and the position bar follows through
+// syncZBar. The left button is untouched.
+function seekZoomFrac(f){
+  const zv=$("zv"); if(!zv.duration) return;
+  zv.currentTime=Math.min(1,Math.max(0,f))*zv.duration;
+}
+$("zv").addEventListener("mousedown",e=>{
+  if(e.button!==2) return;
+  e.preventDefault();
+  const zv=$("zv");
+  ZSCRUB={x0:e.clientX, f0:frac(zv),
+          w:Math.max(50, zv.getBoundingClientRect().width)};
+  document.body.style.cursor="ew-resize";
+});
+$("zvwrap").addEventListener("contextmenu",e=>e.preventDefault());
 $("playall").onclick=()=>{ vids().forEach(v=>v.play()); };
 $("pauseall").onclick=()=>{ vids().forEach(v=>v.pause()); };
 $("speed").onchange=setSpeed;
@@ -4927,11 +4953,15 @@ let resizeT=null;
 window.addEventListener("resize",()=>{ if(zoomId){ layoutPanels(); return; }
   clearTimeout(resizeT); resizeT=setTimeout(refit,200); });
 document.addEventListener("mousemove",e=>{
+  if(ZSCRUB){ seekZoomFrac(ZSCRUB.f0+(e.clientX-ZSCRUB.x0)/ZSCRUB.w); return; }
   if(!SCRUB) return;
   const f=Math.min(1, Math.max(0, SCRUB.f0+(e.clientX-SCRUB.x0)/SCRUB.w));
   setFracAll(f);
 });
 document.addEventListener("mouseup",e=>{
+  if(ZSCRUB && e.button===2){
+    seekZoomFrac(ZSCRUB.f0+(e.clientX-ZSCRUB.x0)/ZSCRUB.w);
+    ZSCRUB=null; document.body.style.cursor=""; return; }
   if(!SCRUB || e.button!==2) return;
   const f=Math.min(1, Math.max(0, SCRUB.f0+(e.clientX-SCRUB.x0)/SCRUB.w));
   setFracAll(f);
