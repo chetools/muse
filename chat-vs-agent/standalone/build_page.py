@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Build the standalone page "Numbers Without Calculation: Why Chemical
-Engineers Should Not Trust Chat AI for Numerical Work".
+"""Build the standalone page "Chat mode and agent mode for numerical
+work: a screening of 26 chemical-engineering problems".
 
 Reads python/{chatagent.py, walkthrough.py, runner.py, make_molab.py,
 test_chatagent.py}, standalone/{theory.md, template.html};
@@ -14,8 +14,8 @@ load, the page shows an explicit error; no calculation is
 reimplemented in JavaScript.
 
 Usage:
-  python3 build_page.py          -> dist/chat-vs-agent-v4.html
-  python3 build_page.py --stub   -> dist/chat-vs-agent-v4-stub.html
+  python3 build_page.py          -> dist/chat-vs-agent-v5.html
+  python3 build_page.py --stub   -> dist/chat-vs-agent-v5-stub.html
         (layout-verification build only; never published)
 """
 import base64
@@ -36,8 +36,8 @@ sys.path.insert(0, PYDIR)
 
 MOLAB_URL = ("https://molab.marimo.io/github/chetools/muse/blob/gh-pages/"
              "chat-vs-agent/walkthrough_molab.py")
-OUT_NAME = "chat-vs-agent-v4.html"
-STUB_NAME = "chat-vs-agent-v4-stub.html"
+OUT_NAME = "chat-vs-agent-v5.html"
+STUB_NAME = "chat-vs-agent-v5-stub.html"
 PYODIDE_MODULES = ["chatagent.py"]  # registered in the worker boot
 
 
@@ -456,6 +456,13 @@ def build(stub=False):
     assert theory_pairs, "Theory section has no headings for its contents"
     log(f"theory section fragment ids: {[i for i, _ in theory_pairs]}")
 
+    walk_fig_captions = {
+        (1, 0): "Fig. W1 | The executed fit reproduces the data; the failure of Example 1 is not in the curve but in the stated precision of its parameters. Measured concentrations of A (markers) and the fitted curve (line), C<sub>A</sub> in mol/L against t in min, for the 41-point experiment.",
+        (3, 0): "Fig. W2 | The executed fit of the 25-point pilot experiment. Measured concentrations of A (markers) and the fitted curve (line), C<sub>A</sub> in mol/L against t in min.",
+        (4, 0): "Fig. W3 | The two totals are indistinguishable at the scale of the components; the requested quantity is their difference. Stacked annual electricity cost and annualised capital cost, in dollars/yr, for D = 0.28 m (total 473,205.19 dollars/yr) and D = 0.30 m (total 473,366.27 dollars/yr), where D denotes the inside diameter.",
+        (5, 0): "Fig. W4 | The error in the difference grows with the rounding unit while the totals remain accurate. Magnitude of the relative error of the rounded difference, in percent, against the rounding unit in dollars/yr (both axes logarithmic), for the totals of Example 3. At the chat-mode unit of 100 dollars/yr the difference of the rounded executed totals is 200 dollars/yr, an error of 24 percent.",
+        (6, 0): "Fig. W5 | Six flows agree; the remainder flow does not. Signed flow in m<sup>3</sup>/s by pipe, chat mode (grey) against computed (blue); the sign denotes direction relative to the stated positive direction of each pipe. Only pipe EF differs materially, and it is the smallest flow in the network.",
+    }
     walk_html, walk_figs, walk_pairs = [], {}, []
     for i, (c, r) in enumerate(zip(CELLS, results)):
         wid = "walkthrough-" + _slugify(c["title"], set())
@@ -472,7 +479,11 @@ def build(stub=False):
         for k, fig in enumerate(r["figs"]):
             fid = f"walkfig-{i}-{k}"
             walk_figs[fid] = fig
-            walk_html.append(f"<figure><div class='figbox' id='{fid}'></div></figure>")
+            cap = walk_fig_captions.get((i, k))
+            if cap:
+                walk_html.append(f"<figure><div class='figbox' id='{fid}'></div><figcaption>{cap}</figcaption></figure>")
+            else:
+                walk_html.append(f"<figure><div class='figbox' id='{fid}'></div></figure>")
     assert walk_pairs, "walkthrough has no steps for its contents"
 
     listing_names = ["chatagent.py", "walkthrough.py", "runner.py",
