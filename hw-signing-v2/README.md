@@ -259,7 +259,17 @@ logic is Node-tested through `classifyDuration`.
   shows the webapp version string — the same string the submission
   package carries — set from `VERSIONS.webapp` at page load, so a
   screenshot or shared screen identifies an outdated copy.
-- **Component version strings**: webapp `hw-signing-webapp 2.5.1`;
+- **Reader-facing text corrections (2.5.2)**: the writing-skill
+  rewrite of the student page and the audit app's dashboard text.
+  Section 7 states the governing retention (an ungraded job is kept
+  for 7 days; once graded, the grade is kept for 180 days); the
+  SHA-256 quantity is named the recording hash at every student-page
+  site (the acoustic fingerprint keeps its own name); completeness
+  and accuracy are defined at their first student-facing use; the
+  Practice/Final choice framing is removed (the kind is derived
+  from whether a checked link was sent); the subtitle states the
+  actual flow. No behaviour, validation, payload or storage change.
+- **Component version strings**: webapp `hw-signing-webapp 2.5.2`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle

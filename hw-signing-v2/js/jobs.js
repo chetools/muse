@@ -113,19 +113,19 @@ export function validateJobPayload(body) {
   if (!body || typeof body !== 'object') return fail('No job to submit.');
   if (!body.pkg || String(body.pkg).length > 128) return fail('No prompt package in the configured link.');
   if (!SHA256_HEX.test(body.pkg_content_sha256 || '')) {
-    return fail('The configured link carries no valid package content hash (ph).');
+    return fail('This link is incomplete. Use the link your teacher put in Canvas.');
   }
   if (body.kind !== 'practice' && body.kind !== 'final') {
-    return fail('Choose Practice or Final.');
+    return fail('Job kind is missing.');
   }
   if (typeof body.transcript !== 'string' || !body.transcript.trim()) {
-    return fail('The transcript is empty.');
+    return fail('Your transcript is empty.');
   }
   if (body.transcript.length > TRANSCRIPT_MAX_CHARS) {
-    return fail('The transcript is longer than 200,000 characters.');
+    return fail('Your transcript is longer than 200,000 characters.');
   }
-  if (!SHA256_HEX.test(body.audio_sha256 || '')) return fail('The audio fingerprint is missing.');
-  if (!SHA256_HEX.test(body.transcript_sha256 || '')) return fail('The transcript checksum is missing.');
+  if (!SHA256_HEX.test(body.audio_sha256 || '')) return fail('Your recording’s hash is missing.');
+  if (!SHA256_HEX.test(body.transcript_sha256 || '')) return fail('Your transcript’s checksum is missing.');
   const v = body.versions || {};
   if (!v.webapp || !v.model || !v.glossary) return fail('Component versions are missing.');
   if (typeof body.retrieval_code !== 'string' ||
@@ -133,12 +133,12 @@ export function validateJobPayload(body) {
     return fail('Enter a retrieval code of at least 8 characters, using letters and numbers only.');
   }
   if (body.kind === 'final') {
-    if (!body.youtube_token) return fail('A final submission needs the YouTube link checked first.');
+    if (!body.youtube_token) return fail('A submission with a link needs the YouTube link checked first.');
     if (!body.youtube_video_id || !/^[A-Za-z0-9_-]{11}$/.test(body.youtube_video_id)) {
-      return fail('The checked YouTube video ID is missing.');
+      return fail('No video ID came back from the check.');
     }
     if (!body.youtube_checked_at || Number.isNaN(Date.parse(body.youtube_checked_at))) {
-      return fail('The YouTube check time is missing.');
+      return fail('No check time came back from the check.');
     }
   }
   return { ok: true };
