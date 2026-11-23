@@ -605,7 +605,7 @@ def main():
     check(b"sib.classList.contains(\"err\")" in wall
           and b"sib.scrollIntoView" in wall,
           "wall download errors appear beside the tile's button")
-    check(b'id="zcritique" class="privblock" style="font-size:13.5px;line-height:1.5;'
+    check(b'id="zcritique" style="font-size:13.5px;line-height:1.5;'
           b'margin-top:0;white-space:pre-line"' in wall,
           "wall zoom critique keeps its line breaks, so numbered "
           "points appear on separate lines")
@@ -3394,17 +3394,24 @@ def main():
           "IDs and grades")
 
     # ---------------------------------------------------------
-    # 25. v46: the critique panels and the Activity log are
-    # whole-block private (privblock): the critique is free
-    # text that can state the grades, and Activity lines
-    # name students.
-    check(b'id="activitylog" class="privblock"' in dash45
-          and b"html.privacy-on .privblock" in dash45
-          and b'id="zcritique" class="privblock"' in wall45
-          and b'id="hpcritique" class="privblock"' in wall45
-          and b"html.privacy-on .privblock" in wall45,
-          "v46: the Activity log and both critique panels "
-          "are whole-block private while privacy is on")
+    # 25. v47: partial redaction replaces the v46 whole
+    # blocks. The critiques render through critiqueHtml
+    # (numerical grades wrapped in priv spans, the rest of
+    # the text readable), and the Activity log keeps its
+    # raw entries and re-renders them through
+    # activityMsgNode with the roster's names and IDs
+    # wrapped. Neither page carries privblock any more.
+    check(b"function critiqueHtml" in wall45
+          and b"const GRADE_RE=" in wall45
+          and b'$("zcritique").innerHTML=critiqueHtml' in wall45
+          and b'$("hpcritique").innerHTML=critiqueHtml' in wall45
+          and b"privblock" not in wall45
+          and b"function activityMsgNode" in dash45
+          and b"function renderActivity" in dash45
+          and b"ACTENTRIES.push(e)" in dash45
+          and b"privblock" not in dash45,
+          "v47: critiques wrap only numerical grades and "
+          "the Activity log wraps only known names and IDs")
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,

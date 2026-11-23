@@ -292,6 +292,30 @@ the privblock class, and while privacy is on the whole
 block shows as a grey surface — every line of its text
 transparent and unselectable — and returns when
 privacy is turned off.
+
+v47: the teacher asked for the two v46 blocks to be
+redacted in part instead of hidden whole, and both
+mechanisms are now in place, replacing the privblock
+treatment (the privblock class and its CSS are gone).
+(1) Critique: the text is rendered through
+critiqueHtml, which wraps only numerical grades in
+priv spans — the fraction forms (4/5, 9/10, 4 out of
+5) wherever they appear, and a number that follows
+completeness, accuracy, score, grade, mark, earned or
+awarded within a short gap, with an optional /5, /10,
+out-of or % suffix. The rest of the critique, content
+numbers included, stays readable while privacy is on.
+A grade written as words is not caught. (2) Activity
+log: the page keeps the raw entries and re-renders
+them through activityMsgNode, which wraps exact
+occurrences of the known student names and IDs — the
+roster the submissions table already holds (each
+student's name, its "Last, First" form, and the
+student ID) — in priv spans, so the rest of each line
+stays readable. The log re-renders when the roster
+arrives or changes and when privacy is toggled, so a
+line written before the roster loaded is covered
+too. A name the roster does not hold is not caught.
 """
 
 import argparse
@@ -3623,8 +3647,6 @@ html.privacy-on .priv{color:transparent!important;background:#8b939b!important;b
 html.privacy-on .priv *{color:transparent!important;background:transparent!important;text-shadow:none!important}
 html.privacy-on input.priv{pointer-events:none}
 html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
-html.privacy-on .privblock{color:transparent!important;background:#8b939b!important;user-select:none!important;-webkit-user-select:none!important;text-shadow:none!important}
-html.privacy-on .privblock *{color:transparent!important;background:transparent!important;text-shadow:none!important;border-color:transparent!important}
 </style></head><body>
 <header><h1>Teacher Audit — HW Signing</h1>
 <p>Runs on this computer only (127.0.0.1). Canvas is read-only here; grades go back as a Gradebook CSV you upload.</p>
@@ -3641,7 +3663,7 @@ html.privacy-on .privblock *{color:transparent!important;background:transparent!
 </div><div class="col">
 <label>YouTube acoustic similarity threshold (0–1)</label><input type="number" id="acoustic_threshold" step="0.01" min="0" max="1">
 <h3>Activity</h3>
-<div id="activitylog" class="privblock" aria-live="off"></div>
+<div id="activitylog" aria-live="off"></div>
 <p class="mut">Package downloads, integrity checks and YouTube video downloads run in the background, in parallel, and are logged here as they happen. The automatic work starts as soon as a Canvas token is saved, then repeats every 10 minutes. Closing this page does not stop the work; if the app itself is closed, anything left incomplete is picked up again by the next pass after it restarts.</p>
 </div></div>
 <p><button id="savecfg">Save settings</button>
@@ -3745,6 +3767,7 @@ function applyPrivacy(){
     b.textContent=PRIV? "Privacy on — names & grades hidden · Show them"
                       : "Hide names & grades"; }
   document.querySelectorAll("input.fin").forEach(i=>{ i.disabled=PRIV; });
+  if(typeof renderActivity==="function") renderActivity();
 }
 window.addEventListener("storage",e=>{
   if(e.key===PRIVKEY){ PRIV=e.newValue==="1"; applyPrivacy(); } });
@@ -4374,25 +4397,87 @@ async function refreshCounts(){
       " · "+(st.ytdlp||"");
   }catch(e){ /* retried after the next pass */ }
 }
-let ACTSEQ=0, ACTBUSY=false;
+let ACTSEQ=0, ACTBUSY=false, ACTENTRIES=[];
+// ---- Activity name redaction (v47): log lines name
+// students (downloads, checks, video downloads). The
+// page keeps the raw entries and renders each message
+// through activityMsgNode, which wraps exact occurrences
+// of the known student names and IDs — the roster the
+// submissions table already holds: each student's name,
+// its "Last, First" form, and the student ID — in priv
+// spans, so the rest of each line stays readable. The
+// log re-renders when the roster arrives or changes and
+// when privacy is toggled, so a line written before the
+// roster loaded is covered too. A match flanked by more
+// letters (a name) or more digits (an ID) is not a
+// match, so byte counts and longer words are untouched.
+let ACTRE=null, ACTREKEY="";
+function activityRegex(){
+  const vals=new Set();
+  SUBS.forEach(s=>{ const nm=(s.user_name||"").trim();
+    if(nm){ vals.add(nm);
+      const parts=nm.split(/\s+/);
+      if(parts.length>1) vals.add(parts[parts.length-1]+", "+parts.slice(0,-1).join(" ")); }
+    if(s.user_id!=null && String(s.user_id)) vals.add(String(s.user_id)); });
+  const arr=[...vals].filter(v=>v.length>1)
+    .sort((a,b)=>b.length-a.length);
+  const key=arr.join("\n");
+  if(key!==ACTREKEY){ ACTREKEY=key;
+    ACTRE=arr.length? new RegExp(arr.map(v=>
+      v.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),"g") : null; }
+  return ACTRE;
+}
+function activityMsgNode(msg){
+  const frag=document.createDocumentFragment();
+  const re=activityRegex();
+  if(!re){ frag.appendChild(document.createTextNode(msg)); return frag; }
+  let last=0, m; re.lastIndex=0;
+  while((m=re.exec(msg))){
+    const before=msg[m.index-1]||"", after=msg[m.index+m[0].length]||"";
+    const bad=/^\d+$/.test(m[0])
+      ? (/\d/.test(before)||/\d/.test(after))
+      : (/[A-Za-z]/.test(before)||/[A-Za-z]/.test(after));
+    if(bad) continue;
+    if(m.index>last) frag.appendChild(
+      document.createTextNode(msg.slice(last,m.index)));
+    const sp=document.createElement("span");
+    sp.className="priv"; sp.textContent=m[0];
+    frag.appendChild(sp);
+    last=m.index+m[0].length;
+    if(m[0].length===0) re.lastIndex++;
+  }
+  if(last<msg.length) frag.appendChild(
+    document.createTextNode(msg.slice(last)));
+  return frag;
+}
+function renderActivity(){
+  const box=$("activitylog"); if(!box) return;
+  const stick=!box.children.length ||
+    box.scrollTop+box.clientHeight>=box.scrollHeight-30;
+  const top=box.scrollTop;
+  box.innerHTML="";
+  for(const e of ACTENTRIES){
+    const d=document.createElement("div");
+    const s=document.createElement("span");
+    s.className="k-"+e.kind; s.textContent=e.kind;
+    d.textContent=e.ts+"  ["; d.appendChild(s);
+    d.appendChild(document.createTextNode("] "));
+    d.appendChild(activityMsgNode(e.msg));
+    box.appendChild(d);
+  }
+  box.scrollTop=stick? box.scrollHeight : top;
+}
 async function pollActivity(){
   if(ACTBUSY) return; ACTBUSY=true;
   try{
     const r=await fetch("/api/activity?since="+ACTSEQ);
     const j=await r.json();
-    const box=$("activitylog");
-    const stick=box.scrollTop+box.clientHeight>=box.scrollHeight-30;
     for(const e of j.entries){
       ACTSEQ=Math.max(ACTSEQ,e.seq);
-      const d=document.createElement("div");
-      const s=document.createElement("span");
-      s.className="k-"+e.kind; s.textContent=e.kind;
-      d.textContent=e.ts+"  ["; d.appendChild(s);
-      d.appendChild(document.createTextNode("] "+e.msg));
-      box.appendChild(d);
+      ACTENTRIES.push(e);
     }
-    while(box.children.length>300) box.removeChild(box.firstChild);
-    if(stick&&j.entries.length) box.scrollTop=box.scrollHeight;
+    while(ACTENTRIES.length>300) ACTENTRIES.shift();
+    if(j.entries.length) renderActivity();
     if(j.entries.some(e=>e.kind==="auto"&&e.msg.indexOf("pass finished")===0)){
       refreshSubs(); refreshCounts(); updateCourseBadges();
     }
@@ -4501,8 +4586,6 @@ html.privacy-on .priv{color:transparent!important;background:#8b939b!important;b
 html.privacy-on .priv *{color:transparent!important;background:transparent!important;text-shadow:none!important}
 html.privacy-on input.priv{pointer-events:none}
 html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
-html.privacy-on .privblock{color:transparent!important;background:#8b939b!important;user-select:none!important;-webkit-user-select:none!important;text-shadow:none!important}
-html.privacy-on .privblock *{color:transparent!important;background:transparent!important;text-shadow:none!important;border-color:transparent!important}
 </style></head><body>
 <header><h1>Video Wall</h1><a href="/">← back to audit</a>
 <button id="privbtn" aria-pressed="false">Hide names &amp; grades</button>
@@ -4533,7 +4616,7 @@ html.privacy-on .privblock *{color:transparent!important;background:transparent!
       </section>
       <section class="panel" data-panel="critique" data-state="normal">
         <div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-expand title="expand / restore this panel">⤢</button><button class="pbtn" data-collapse title="collapse / expand this panel">▾</button></span></div>
-        <div class="panel-body"><p id="zcritique" class="privblock" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div>
+        <div class="panel-body"><p id="zcritique" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div>
       </section>
       <section class="panel" data-panel="transcript" data-state="normal">
         <div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-expand title="expand / restore this panel">⤢</button><button class="pbtn" data-collapse title="collapse / expand this panel">▾</button></span></div>
@@ -4569,7 +4652,7 @@ html.privacy-on .privblock *{color:transparent!important;background:transparent!
   <aside id="hoverpanel" aria-label="Selected take details">
     <div id="hpcard"></div>
     <section class="hpanel" data-hpanel="marks"><div class="panel-head"><h3>Time marks</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hpmarks"></div></div></section>
-    <section class="hpanel" data-hpanel="critique"><div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><p id="hpcritique" class="privblock" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div></section>
+    <section class="hpanel" data-hpanel="critique"><div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><p id="hpcritique" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div></section>
     <section class="hpanel" data-hpanel="transcript"><div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hptrans"></div></div></section>
   </aside>
   </div>
@@ -4732,6 +4815,22 @@ function bindViewW(){
   $("freset").onclick=()=>{ VIEW={...VIEWDEF}; saveView(); page=0; render(); };
 }
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+// ---- Critique grade redaction (v47): the critique is
+// free text that can itself state the grades. Only the
+// numerical grades are wrapped in priv spans — the
+// fraction forms (4/5, 9/10, 4 out of 5) wherever they
+// appear, and a number following completeness,
+// accuracy, score, grade, mark, earned or awarded
+// within a short gap, with an optional fraction, out-of
+// or % suffix. The rest of the text, content numbers
+// included, stays readable while privacy is on. A grade
+// written as words is not caught.
+const GRADE_RE=/\d+(?:\.\d+)?\s*(?:\/\s*(?:5|10)\b|out of\s+(?:5|10)\b)|((?:completeness|accuracy|score|grade|marks?|earned|awarded)\b[^0-9]{0,20}?)(\d+(?:\.\d+)?)(\s*(?:\/\s*(?:5|10)\b|out of\s+(?:5|10)\b|%))?/gi;
+function critiqueHtml(text){
+  return esc(text).replace(GRADE_RE,(m,pre,num,suf)=>{
+    if(num===undefined) return '<span class="priv">'+m+"</span>";
+    return pre+'<span class="priv">'+num+(suf||"")+"</span>"; });
+}
 function fmt(s){if(s==null||isNaN(s))return "--:--";s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");}
 let CAP=6;
 function capacity(){
@@ -4860,7 +4959,7 @@ function renderHoverPanel(){
   $("hpmarks").innerHTML= marks.length
     ? marks.map(m=>'<div class="chunk"><span class="t">'+fmt(m.t)+'</span>'+esc(m.note||"")+"</div>").join("")
     : '<p class="mut" style="margin:0">No time marks.</p>';
-  $("hpcritique").textContent=d.critique||"—";
+  $("hpcritique").innerHTML=critiqueHtml(d.critique||"—");
   HOVER.lastAct=-1;
   $("hptrans").innerHTML=(d.transcript&&d.transcript.length)
     ? d.transcript.map((c,i)=>'<div class="chunk" data-i="'+i+'"><span class="t">'+fmt(c.t)+'</span>'+esc(c.text)+"</div>").join("")
@@ -5403,7 +5502,7 @@ function openZoom(id, opts){
     zg.addEventListener("keydown",e=>{ e.stopPropagation(); });
     paintZ();
   }
-  $("zcritique").textContent=s.critique||"—";
+  $("zcritique").innerHTML=critiqueHtml(s.critique||"—");
   $("ztrans").innerHTML=
     (s.transcript||[]).map((c,i)=>'<div class="chunk" data-i="'+i+'" data-t="'+c.t+'"><span class="t">'+fmt(c.t)+'</span>'+esc(c.text)+"</div>").join("");
   document.querySelectorAll("#ztrans .chunk").forEach(ch=>ch.onclick=()=>{
