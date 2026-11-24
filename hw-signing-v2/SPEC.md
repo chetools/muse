@@ -56,8 +56,17 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   in IndexedDB under the key (audio_sha256, model version, glossary
   version) — course, assignment and package are NOT in the key. Chunks
   are cached as they complete (resume after interruption).
-- Retrieval (2.1.0): the student picks a retrieval code only — no
-  name. The code is kept in the browser's local storage (plus
+- Retrieval (2.1.0; 2.5.4): a retrieval code only — no name. Before
+  webapp 2.5.4 the student picked the code; since 2.5.4 the page
+  generates the code at send time
+  (24 characters, uniform over the code alphabet, from
+  crypto.getRandomValues) and shows it once as the job's recovery
+  code; the student no longer picks or types one in the normal flow,
+  and the manual box below section 7 — relabelled "Recovery code" —
+  is the only place a code is typed. The Worker protocol is
+  unchanged: the generated value is the retrieval code, and codes
+  students picked before 2.5.4 still retrieve their jobs through the
+  manual box. The code is kept in the browser's local storage (plus
   course/assignment labels and expiry) so return visits retrieve
   without typing; the typed code is the fallback for another browser.
   The Worker stores a lookup hash of the code (SHA-256 of

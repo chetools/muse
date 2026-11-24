@@ -34,6 +34,7 @@ import {
   loadJobEntries, addJobEntry, removeJobEntry, pruneExpiredEntries,
   submitJob, fetchJobStatus, finalizeJob,
   kindFromResultBundle, duplicateJobEntry, collapseSameJobEntries,
+  generateRetrievalToken, RECOVERY_TOKEN_LENGTH,
 } from '../js/jobs.js';
 import { encodeRawFingerprint, decodeRawFingerprint } from '../js/fingerprint.js';
 import { urlBase64ToUint8Array, uint8ArrayToUrlBase64 } from '../js/push.js';
@@ -379,7 +380,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.3');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.4');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -459,6 +460,64 @@ await test('retrieval code: rule matches the Worker', () => {
   assert.ok(!RETRIEVAL_CODE_RE.test('a b'));
   assert.ok(!RETRIEVAL_CODE_RE.test('code-1234'));
   assert.ok(!RETRIEVAL_CODE_RE.test('x'.repeat(129)));
+});
+
+await test('recovery token: generated tokens satisfy the code rule and differ', () => {
+  assert.equal(RECOVERY_TOKEN_LENGTH, 24);
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const t = generateRetrievalToken();
+    assert.equal(t.length, RECOVERY_TOKEN_LENGTH);
+    assert.ok(RETRIEVAL_CODE_RE.test(t), 'token passes the Worker code rule');
+    seen.add(t);
+  }
+  assert.equal(seen.size, 200, 'no repeats in 200 tokens');
+});
+
+await test('recovery token: byte mapping is uniform, with rejection of bytes >= 248', () => {
+  // Byte b maps to alphabet[b % 62]: 0 -> 'A', 25 -> 'Z',
+  // 26 -> 'a', 51 -> 'z', 52 -> '0', 61 -> '9', 62 -> 'A'.
+  const fixed = (seq) => (n) => {
+    const out = new Uint8Array(n);
+    for (let i = 0; i < n; i++) out[i] = i < seq.length ? seq[i] : 0;
+    return out;
+  };
+  const t = generateRetrievalToken(fixed([0, 25, 26, 51, 52, 61, 62]));
+  assert.equal(t.slice(0, 7), 'AZaz09A');
+  assert.equal(t.length, RECOVERY_TOKEN_LENGTH);
+  // A source that first offers only rejected bytes still completes.
+  let calls = 0;
+  const rejecting = (n) => {
+    calls += 1;
+    return new Uint8Array(n).fill(calls === 1 ? 255 : 0);
+  };
+  assert.equal(generateRetrievalToken(rejecting), 'A'.repeat(RECOVERY_TOKEN_LENGTH));
+});
+
+await test('wiring: the page generates the recovery code; no code input remains', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(main.includes('retrievalCode: generateRetrievalToken()'),
+    'the submit payload carries a freshly generated token');
+  assert.ok(main.includes('showRecoveryCode(payload.retrieval_code)'),
+    'a successful send shows the recovery code once');
+  assert.ok((main.match(/showRecoveryCode\(payload\.retrieval_code\)/g) || []).length === 2,
+    'the code is shown on exactly the two paths where it retrieves a job: new job and duplicate-with-alias');
+  const submitHandler = main.slice(main.indexOf("$('submitJobBtn').addEventListener('click'"));
+  assert.ok(submitHandler.indexOf("$('recoveryLine').textContent = '';") >= 0 &&
+    submitHandler.indexOf("$('recoveryLine').textContent = '';") <
+      submitHandler.indexOf('buildJobPayload({'),
+    'each send attempt clears any earlier recovery code before sending, so a failed or no-alias send leaves none displayed');
+  assert.ok(!main.includes("$('retrievalCode')"),
+    'no page code reads the removed code input');
+  assert.ok(!index.includes('id="retrievalCode"'),
+    'step 6 has no retrieval code input');
+  assert.ok(index.includes('id="recoveryLine"'),
+    'step 6 has the one-time recovery code display');
+  assert.ok(index.includes('id="manualCode"'),
+    'the manual recovery box remains for other browsers and pre-2.5.4 codes');
+  assert.ok(index.includes('Recovery code <input type="text" id="manualCode"'),
+    'the manual box is labelled Recovery code');
 });
 
 /* ---------------- job payload ---------------- */
@@ -926,7 +985,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.3');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.4');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -945,7 +1004,8 @@ await test('wiring: status expiry is stored back into the job entry (2.4.1)', ()
   assert.ok(main.includes("res.status === 'expired'"),
     'renderJobs drops an entry when the Worker reports the job expired');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(index.includes('at least 8'), 'the code help states the 8-character minimum');
+  assert.ok(index.includes('There is no code to pick'),
+    'the step-6 help states the page makes the recovery code (2.5.4)');
 });
 
 await test('wiring: jobs refresh never rebuilds the list under the student (2.4.5)', () => {

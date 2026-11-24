@@ -36,7 +36,7 @@ import { fromCachedChunk, recordingFirstWords } from './cachekey.js';
 import {
   parseYouTubeVideoId, canonicalWatchUrl, classifyDuration,
   verifyBundleContents,
-  validateJobPayload, buildJobPayload, loadJobEntries, addJobEntry,
+  validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry,
   removeJobEntry, saveJobEntries, kindFromResultBundle,
   duplicateJobEntry, collapseSameJobEntries,
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
@@ -507,7 +507,6 @@ function updateJobEnabled() {
   const linkOk = !ytCheck || durationGateOk(ytDur, $('ytConfirmChk'));
   $('submitJobBtn').disabled = !(base && linkOk);
 }
-$('retrievalCode').addEventListener('input', updateJobEnabled);
 $('ytConfirmChk').addEventListener('change', updateJobEnabled);
 
 // The duration verdict for the step-6 link, in its own status line
@@ -739,8 +738,34 @@ function duplicateStatusText(res) {
   return res.status || '';
 }
 
+// The one-time recovery code display (2.5.4). The page generates
+// the job's retrieval code at send time (generateRetrievalToken in
+// jobs.js); the student never picks or types one. The code is kept
+// in the job entry in this browser, so return visits here need
+// nothing — the display below exists for the one case the browser
+// cannot cover: retrieving the job on a different browser, where
+// the code is typed into the manual box. It is shown once, at send
+// time, and only when the code actually retrieves a job: a new job,
+// or a duplicate send whose code was stored as an alias for the
+// existing job. A duplicate send with no alias created stores
+// nothing under its code, so no code is shown for it.
+function showRecoveryCode(code) {
+  $('recoveryLine').textContent =
+    'Recovery code for the job just sent: ' + code + ' — save it ' +
+    'now; it is not shown again. You need it only to retrieve this ' +
+    'job on a different browser. Anyone with it can retrieve the ' +
+    'grade, so keep it private.';
+}
+
 $('submitJobBtn').addEventListener('click', async () => {
   clearError();
+  // A new send attempt supersedes any recovery code still on
+  // display from an earlier job: clear it now, so a failed send —
+  // or a duplicate send that stores no alias — never leaves a
+  // previous job's code standing under a "job just sent" label.
+  // showRecoveryCode sets it again on the paths where the new
+  // attempt's code retrieves a job.
+  $('recoveryLine').textContent = '';
   $('submitJobBtn').disabled = true;
   $('jobStatus').textContent = 'Preparing…';
   try {
@@ -768,7 +793,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       transcriptSha256: transcriptSha,
       chromaprint,
       versions: VERSIONS,
-      retrievalCode: $('retrievalCode').value,
+      retrievalCode: generateRetrievalToken(),
       youtubeToken: ytCheck ? ytCheck.token : null,
       youtubeVideoId: ytCheck ? ytCheck.videoId : null,
       youtubeCheckedAt: ytCheck ? ytCheck.checkedAt : null,
@@ -806,6 +831,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       });
       if (aliasEntry) {
         addJobEntry(aliasEntry);
+        showRecoveryCode(payload.retrieval_code);
         const key = jobKey(cfg.pkg, payload.retrieval_code);
         jobStates.set(key, { status: res.status, queue_ahead: res.queue_ahead });
         if (res.result) readyBundles.set(key, res.result);
@@ -829,6 +855,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       created_at: res.created_at,
       expires_at: res.expires_at,
     });
+    showRecoveryCode(payload.retrieval_code);
     $('jobStatus').textContent = sentText;
     renderJobs();
   } catch (err) {
@@ -1100,7 +1127,7 @@ function renderJobRow(container, entry, statusInfo) {
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
   let statusText;
   if (statusInfo === null) statusText = 'checking…';
-  else if (statusInfo.status === 'forbidden') statusText = 'not found under this code';
+  else if (statusInfo.status === 'forbidden') statusText = 'not found under this recovery code';
   else if (statusInfo.status === 'ready') statusText = 'ready';
   else if (statusInfo.status === 'claimed') statusText = 'being graded now';
   else if (statusInfo.status === 'queued') {
@@ -1648,7 +1675,7 @@ $('manualBtn').addEventListener('click', async () => {
       manualEntry = null;
     }
     if (res.status === 'forbidden') {
-      $('manualStatus').textContent = 'No job under that code.';
+      $('manualStatus').textContent = 'No job under that recovery code.';
       return;
     }
     $('manualStatus').textContent = 'Status: ' + res.status +
