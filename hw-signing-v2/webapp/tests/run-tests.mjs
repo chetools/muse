@@ -33,7 +33,7 @@ import {
   validateJobPayload, buildJobPayload,
   loadJobEntries, addJobEntry, removeJobEntry, pruneExpiredEntries,
   submitJob, fetchJobStatus, finalizeJob,
-  kindFromResultBundle, duplicateJobEntry,
+  kindFromResultBundle, duplicateJobEntry, collapseSameJobEntries,
 } from '../js/jobs.js';
 import { encodeRawFingerprint, decodeRawFingerprint } from '../js/fingerprint.js';
 import { urlBase64ToUint8Array, uint8ArrayToUrlBase64 } from '../js/push.js';
@@ -379,7 +379,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.2');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.3');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -683,6 +683,105 @@ await test('duplicate entry: alias_created false stores nothing', () => {
   assert.equal(kindFromResultBundle(null), 'practice');
 });
 
+await test('duplicate entry: the alias entry carries the existing job_id (2.5.3)', () => {
+  const submitted = {
+    pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3',
+    retrieval_code: 'newcode99', kind: 'final',
+    youtube_link: 'https://www.youtube.com/watch?v=abc123XYZ_-',
+    youtube_title: 'T', youtube_checked_at: '2026-11-10T09:00:00.000Z',
+  };
+  const entry = duplicateJobEntry({
+    duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
+    pkg: 'hw3 v2', status: 'ready', result: readyDupBundle, alias_created: true,
+  }, submitted);
+  assert.equal(entry.job_id, 'job-old');
+});
+
+/* ---------------- one row per underlying job (2.5.3) ---------------- */
+
+const collapseEntry = (code, over = {}) => ({
+  pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3', retrieval_code: code,
+  kind: 'final', youtube_link: '', youtube_title: '', youtube_checked_at: '',
+  created_at: '2026-11-10T00:00:00.000Z', expires_at: 't1', ...over,
+});
+
+await test('collapse: three codes for one job keep one entry — the one carrying the link', () => {
+  const items = [
+    { entry: collapseEntry('codeaaa1'), jobId: 'job-1' },
+    { entry: collapseEntry('codebbb2', {
+        youtube_link: 'https://www.youtube.com/watch?v=abc123XYZ_-',
+        youtube_title: 'T', youtube_checked_at: '2026-11-10T09:00:00.000Z',
+        created_at: '2026-11-10T01:00:00.000Z' }), jobId: 'job-1' },
+    { entry: collapseEntry('codeccc3', { created_at: '2026-11-10T02:00:00.000Z' }), jobId: 'job-1' },
+  ];
+  const kept = collapseSameJobEntries(items);
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0].entry.retrieval_code, 'codebbb2');
+  assert.equal(kept[0].entry.job_id, 'job-1');
+  assert.equal(kept[0].entry.youtube_link, 'https://www.youtube.com/watch?v=abc123XYZ_-');
+});
+
+await test('collapse: link fields merge onto the survivor from a dropped entry', () => {
+  // The linked entry wins on score even though its stored kind is
+  // a stale 'practice'; the dropped entry is the final one, so the
+  // survivor must gain kind 'final' from it (and keeps its link).
+  const items = [
+    { entry: collapseEntry('codeaaa1'), jobId: 'job-1' },
+    { entry: collapseEntry('codebbb2', { kind: 'practice',
+        youtube_link: 'https://www.youtube.com/watch?v=abc123XYZ_-',
+        youtube_title: 'T', youtube_checked_at: '2026-11-10T09:00:00.000Z',
+        created_at: '2026-11-10T01:00:00.000Z' }), jobId: 'job-1' },
+  ];
+  const kept = collapseSameJobEntries(items);
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0].entry.youtube_link, 'https://www.youtube.com/watch?v=abc123XYZ_-');
+  assert.equal(kept[0].entry.youtube_title, 'T');
+  assert.equal(kept[0].entry.kind, 'final');
+});
+
+await test('collapse: distinct jobs and unknown-job entries are all kept', () => {
+  const items = [
+    { entry: collapseEntry('codeaaa1'), jobId: 'job-1' },
+    { entry: collapseEntry('codebbb2'), jobId: 'job-2' },
+    { entry: collapseEntry('codeccc3'), jobId: null },
+    { entry: collapseEntry('codeddd4'), jobId: null },
+  ];
+  const kept = collapseSameJobEntries(items);
+  assert.equal(kept.length, 4);
+  // A lone entry with a known job gains job_id for later visits.
+  assert.equal(kept[0].entry.job_id, 'job-1');
+  assert.equal(kept[1].entry.job_id, 'job-2');
+});
+
+await test('wiring: one ZIP button per job — collapse in render, review replaces the button, manual guard', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('collapseSameJobEntries(live)'),
+    'renderJobsOnce collapses same-job entries before rendering');
+  assert.ok(main.includes('job_id: res.job_id'),
+    'a newly sent job entry carries its job_id');
+  assert.ok(main.includes('if (!reviewOpen)'),
+    'the Review button is rendered only when no review is open for the row');
+  assert.ok(main.includes("'Close review'"),
+    'the open review panel can be closed, restoring the Review button');
+  assert.ok(main.includes('alreadyListed'),
+    'manual retrieval checks whether the job is already in the list');
+  assert.ok(main.includes('That job is already in your jobs list above'),
+    'manual retrieval of a listed job points at the list row instead of rendering a second row');
+  assert.ok(main.includes('clearManualRowIfListed(survivors)'),
+    'every list render clears a manual row whose job has become listed (manual first, send second)');
+  assert.ok(main.includes('That job is now in your jobs list above'),
+    'the cleared manual row leaves a pointer to the list row');
+  const renderOnce = main.slice(main.indexOf('async function renderJobsOnce'),
+    main.indexOf('setInterval(refreshJobs'));
+  assert.ok(renderOnce.indexOf('clearManualRowIfListed(survivors)') >= 0 &&
+    renderOnce.indexOf('clearManualRowIfListed(survivors)') <
+      renderOnce.indexOf('renderJobRow(holder, entry,'),
+    'the manual row is cleared (and its review moved) before the list rows are rendered, so the transferred review is the panel the list row renders');
+  const manualSection = main.slice(main.indexOf('// Manual retrieval'));
+  assert.ok(!manualSection.includes("addEventListener('input'"),
+    'manual retrieval adds no per-retrieval input listener to the step-6 field');
+});
+
 await test('wiring: fingerprint computed after normalisation; duplicate handled in the submit path', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes("import { computeFingerprint } from './fingerprint.js'"),
@@ -827,7 +926,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.2');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.3');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');

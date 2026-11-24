@@ -38,7 +38,7 @@ import {
   verifyBundleContents,
   validateJobPayload, buildJobPayload, loadJobEntries, addJobEntry,
   removeJobEntry, saveJobEntries, kindFromResultBundle,
-  duplicateJobEntry,
+  duplicateJobEntry, collapseSameJobEntries,
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
   finalizeJob, reportDurationStat,
 } from './jobs.js';
@@ -821,6 +821,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       course: cfg.course,
       asg: cfg.asg,
       retrieval_code: payload.retrieval_code,
+      job_id: res.job_id || '',
       kind: payload.kind,
       youtube_link: payload.kind === 'final' ? $('ytLink').value.trim() : '',
       youtube_title: payload.kind === 'final' && ytCheck ? ytCheck.title : '',
@@ -1145,16 +1146,25 @@ function renderJobRow(container, entry, statusInfo) {
     });
     row.append(showBtn, detail);
     if (entry.kind === 'final' && bundle) {
-      const zipBtn = document.createElement('button');
-      zipBtn.className = 'primary';
-      zipBtn.textContent = 'Review and download submission ZIP';
-      zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle, zipBtn));
-      row.append(document.createTextNode(' '), zipBtn);
-      // The review panel from a completed verification (see
-      // downloadSubmissionZip): every item that will be packaged,
-      // identified and checked, with the actual download button.
+      // Exactly one ZIP button per job at any moment (2.5.3): before
+      // verification the row's button is the Review button; once the
+      // review panel is open, the panel's Download button REPLACES
+      // it — the Review button is not rendered alongside the panel.
+      // (Before this fix both were shown together, and students
+      // counted the still-visible Review button as a second,
+      // non-working "generate ZIP" button.)
       const review = zipReviews.get(key);
-      if (review && review.receipt === bundle.receipt) {
+      const reviewOpen = !!(review && review.receipt === bundle.receipt);
+      if (!reviewOpen) {
+        const zipBtn = document.createElement('button');
+        zipBtn.className = 'primary';
+        zipBtn.textContent = 'Review and download submission ZIP';
+        zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle, zipBtn));
+        row.append(document.createTextNode(' '), zipBtn);
+      } else {
+        // The review panel from a completed verification (see
+        // downloadSubmissionZip): every item that will be packaged,
+        // identified and checked, with the actual download button.
         const panel = document.createElement('div');
         panel.className = 'box';
         for (const line of review.lines) {
@@ -1166,7 +1176,16 @@ function renderJobRow(container, entry, statusInfo) {
         dlBtn.className = 'primary';
         dlBtn.textContent = 'Download submission ZIP';
         dlBtn.addEventListener('click', () => doDownloadZip(entry, bundle, review, dlBtn));
-        panel.append(dlBtn);
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Close review';
+        closeBtn.addEventListener('click', () => {
+          // Closing the review restores the row's Review button and
+          // lets the 5-second poll resume (it pauses while a review
+          // is open).
+          zipReviews.delete(key);
+          renderJobs();
+        });
+        panel.append(dlBtn, document.createTextNode(' '), closeBtn);
         row.append(panel);
       }
     }
@@ -1185,6 +1204,43 @@ function renderJobRow(container, entry, statusInfo) {
   });
   row.append(document.createTextNode(' '), forgetBtn);
   container.append(row);
+}
+
+// The manual-retrieval row and the jobs list must never show the
+// same job at once (2.5.3): the manual handler refuses to render a
+// job that is already listed, and this is the reverse direction —
+// when a render finds the manually retrieved job among the listed
+// entries (the student retrieved it by code, then sent the same
+// recording from this page and the Worker's duplicate path filed a
+// list entry for it), the manual row is cleared. A ZIP review open
+// on the manual row moves to the list row's key, as in the
+// same-job collapse above.
+function clearManualRowIfListed(keptEntries) {
+  if (!manualEntry) return;
+  const mKey = jobKey(manualEntry.pkg, manualEntry.retrieval_code);
+  const mBundle = readyBundles.get(mKey);
+  const mJobId = manualEntry.job_id || (mBundle && mBundle.job_id) || '';
+  const matches = (e) => {
+    if (jobKey(e.pkg, e.retrieval_code) === mKey) return true;
+    if (mJobId && e.job_id && e.job_id === mJobId) return true;
+    const b = readyBundles.get(jobKey(e.pkg, e.retrieval_code));
+    return !!(mJobId && b && b.job_id === mJobId);
+  };
+  const target = keptEntries.find(matches);
+  if (!target) return;
+  const review = zipReviews.get(mKey);
+  if (review) {
+    zipReviews.delete(mKey);
+    const tKey = jobKey(target.pkg, target.retrieval_code);
+    if (!zipReviews.has(tKey)) zipReviews.set(tKey, review);
+  }
+  if (finManualEntry === manualEntry) finManualEntry = null;
+  manualEntry = null;
+  const box = $('manualBox');
+  box.hidden = true;
+  box.textContent = '';
+  $('manualStatus').textContent = 'That job is now in your jobs list above — ' +
+    'use the ZIP button on its row there.';
 }
 
 // Rendering is serialised: every caller shares the one in-flight
@@ -1229,8 +1285,7 @@ async function renderJobsOnce() {
     } catch { /* offline or Worker error: keep the entry, render last known */ return null; }
   }));
   let entriesDirty = false;
-  const survivors = [];
-  const frag = document.createDocumentFragment();
+  const live = []; // { entry, jobId } for entries the Worker still holds
   entries.forEach((entry, i) => {
     const key = jobKey(entry.pkg, entry.retrieval_code);
     const res = results[i];
@@ -1244,7 +1299,6 @@ async function renderJobsOnce() {
       zipReviews.delete(key);
       return;
     }
-    survivors.push(entry);
     if (res) {
       // The Worker reports the job's current expiry (7 days while
       // ungraded, 180 days after grading); keep the stored entry in
@@ -1272,10 +1326,60 @@ async function renderJobsOnce() {
         queue_ahead: res.data ? res.data.queue_ahead : undefined,
       });
     }
-    const holder = document.createElement('div');
-    renderJobRow(holder, entry, jobStates.get(key) || null);
-    frag.append(holder);
+    const bundle = readyBundles.get(key);
+    live.push({ entry, jobId: entry.job_id || (bundle && bundle.job_id) || null });
   });
+  // One row per underlying job (2.5.3): entries filed under
+  // different retrieval codes can all retrieve the same job (the
+  // Worker's duplicate/alias path), and each such entry used to
+  // render its own row with its own ZIP button — only the entry
+  // carrying the locally kept YouTube link could actually build
+  // the ZIP. Collapse them to the single most usable entry, merge
+  // its locally kept link fields from the others, and persist the
+  // collapsed list so the duplicates do not return on the next
+  // visit. A ZIP review open on a collapsed-away entry moves to
+  // the surviving entry's key (same job, same receipt).
+  // collapseSameJobEntries fills in a missing job_id from the ready
+  // bundle; note any such entry first, so the filled value is
+  // persisted and later visits know the job's identity at once.
+  if (live.some(({ entry, jobId }) => jobId && !entry.job_id)) {
+    entriesDirty = true;
+  }
+  const kept = collapseSameJobEntries(live);
+  if (kept.length !== live.length) {
+    entriesDirty = true;
+    const keptKeys = new Set(kept.map(({ entry }) =>
+      jobKey(entry.pkg, entry.retrieval_code)));
+    for (const { entry, jobId } of live) {
+      const key = jobKey(entry.pkg, entry.retrieval_code);
+      if (keptKeys.has(key)) continue;
+      const review = zipReviews.get(key);
+      if (review) {
+        zipReviews.delete(key);
+        const target = kept.find((k) => k.jobId && k.jobId === jobId);
+        if (target) {
+          const tKey = jobKey(target.entry.pkg, target.entry.retrieval_code);
+          if (!zipReviews.has(tKey)) zipReviews.set(tKey, review);
+        }
+      }
+      readyBundles.delete(key);
+      jobStates.delete(key);
+    }
+  }
+  const survivors = kept.map(({ entry }) => entry);
+  // Clear a manual row for a now-listed job BEFORE the rows are
+  // rendered: its ZIP review must move to the list row's key first,
+  // or the list row would render its Review button instead of the
+  // review panel, leaving the transferred review displayed nowhere
+  // while the poll stays paused on it.
+  clearManualRowIfListed(survivors);
+  const frag = document.createDocumentFragment();
+  for (const entry of survivors) {
+    const holder = document.createElement('div');
+    renderJobRow(holder, entry,
+      jobStates.get(jobKey(entry.pkg, entry.retrieval_code)) || null);
+    frag.append(holder);
+  }
   // One synchronous swap, after every fetch has settled: no painted
   // frame ever shows an empty or half-built list, and a button's
   // position never moves while its row is being rebuilt.
@@ -1324,7 +1428,14 @@ function conversionCandidates() {
   if (finManualEntry && finManualEntry.kind === 'practice') {
     const key = jobKey(finManualEntry.pkg, finManualEntry.retrieval_code);
     const bundle = readyBundles.get(key);
-    if (bundle) out.push({ entry: finManualEntry, bundle });
+    // The manually retrieved job may be the same job as a stored
+    // entry (same key, or the same job_id under an alias code):
+    // list it once, or the picker would offer the same job twice.
+    const already = out.some((c) =>
+      jobKey(c.entry.pkg, c.entry.retrieval_code) === key ||
+      (bundle && c.bundle && c.bundle.job_id &&
+        c.bundle.job_id === bundle.job_id));
+    if (bundle && !already) out.push({ entry: finManualEntry, bundle });
   }
   return out;
 }
@@ -1548,16 +1659,42 @@ $('manualBtn').addEventListener('click', async () => {
       const entry = {
         pkg: cfg.pkg, course: cfg.course, asg: cfg.asg,
         retrieval_code: code,
+        job_id: res.data.result.job_id || '',
         kind: res.data.result.youtube_video_sha256 && res.data.result.youtube_video_sha256 !== 'none'
           ? 'final' : 'practice',
         youtube_link: '',
         created_at: '', expires_at: (res.data && res.data.expires_at) || '',
       };
+      // A job already in the jobs list above must not be rendered
+      // a second time here (2.5.3): the manual row is a full second
+      // row for the same job, with a second ZIP button — and it
+      // even inherited the list row's open review panel, for three
+      // or more ZIP buttons on the page for one job. "Already
+      // listed" means a stored entry under the same code, or a
+      // stored entry for the same underlying job (its stored
+      // job_id, or the job_id in the bundle the list last fetched
+      // for it — alias codes retrieve the same job).
+      const newJobId = res.data.result.job_id || '';
+      const alreadyListed = loadJobEntries().some((e) => {
+        if (e.pkg === entry.pkg && e.retrieval_code === entry.retrieval_code) return true;
+        if (newJobId && e.job_id && e.job_id === newJobId) return true;
+        const b = readyBundles.get(jobKey(e.pkg, e.retrieval_code));
+        return !!(newJobId && b && b.job_id === newJobId);
+      });
+      if (alreadyListed) {
+        $('manualStatus').textContent = 'That job is already in your jobs list above — ' +
+          'use the ZIP button on its row there.';
+        return;
+      }
       // A final job retrieved manually needs its YouTube link for the
       // HTML; it is not stored anywhere off the original browser, so
       // the student enters it in step 6 and the row reads the live
       // entry at click time (the signed video hash check in
       // downloadSubmissionZip verifies it is the checked video).
+      // No per-retrieval 'input' listener is added to the step-6
+      // field: the verification reads that field directly when the
+      // entry carries no link, and a listener added on every
+      // retrieval accumulated on the field for the page's lifetime.
       readyBundles.set(jobKey(entry.pkg, entry.retrieval_code), res.data.result);
       entry.manual = true;
       manualEntry = entry;
@@ -1567,9 +1704,6 @@ $('manualBtn').addEventListener('click', async () => {
         refreshFinPanel(jobKey(entry.pkg, entry.retrieval_code));
       }
       entry.youtube_link = $('ytLink').value.trim();
-      $('ytLink').addEventListener('input', () => {
-        entry.youtube_link = $('ytLink').value.trim();
-      });
       box.hidden = false;
       box.textContent = '';
       const note = document.createElement('p');
