@@ -64,8 +64,8 @@
   requirements. Transcription runs in this browser: the recording itself never
   leaves this page, and only the transcript is sent for grading — after you
   have removed names and words in step 3 and confirmed in step 5 that nothing
-  in it identifies you. You pick a retrieval code in step 6 and keep it; the
-  grade comes back to that code. Keep the recording file as well: after
+  in it identifies you. When you send in step 6, the page makes a
+  recovery code for the job and shows it once; save it. Keep the recording file as well: after
   grading, this page packages the recording and the grade into the ZIP file
   you upload to Canvas. A YouTube link to the same recording, set to Unlisted
   or Public, is optional when you send; it is required for the Canvas
@@ -179,21 +179,17 @@
   is never sent with the transcript; the grading side stores only the fact
   that the check passed and a hash of the video. The link is written into
   your submission file when you download it.</p>
-  <div class="row oneline">
-    <label>Retrieval code <input type="text" id="retrievalCode" size="12" autocomplete="off" spellcheck="false"></label>
-  </div>
-  <p class="note">Pick a code you will remember; do not use anything that
-  identifies you. The code is letters and numbers only, at least 8 and
-  at most 128 characters; anyone with the code can retrieve the grade, so do not
-  share it. It is shown as you type. It is kept in this browser, so
-  coming back to this page retrieves your grade without typing. On a
-  different browser, the code is how you retrieve it. A code can be
-  used only once per prompt package; if yours is already taken, pick
-  another.</p>
+  <p class="note">There is no code to pick. When you press Send, the page
+  makes a recovery code for this job and shows it once, below the button:
+  save it. The code is kept in this browser, so coming back to this page
+  retrieves your grade without typing anything. You need the saved code
+  only on a different browser, where it is how you retrieve the job.
+  Anyone with the code can retrieve the grade, so keep it private.</p>
   <div class="row">
     <button id="submitJobBtn" class="primary" disabled>Send for grading</button>
     <span class="status" id="jobStatus"></span>
   </div>
+  <p class="mono" id="recoveryLine" role="status"></p>
 
   <h2>7. Your grading jobs</h2>
   <p class="note">Jobs sent from this browser. The list updates every
@@ -243,11 +239,13 @@
     </div>
   </div>
   <h3>Retrieving on a different browser</h3>
-  <p class="note">Enter the retrieval code you picked. The audio for the
+  <p class="note">Enter the recovery code the page showed when the job was
+  sent. For a job sent before this page made the codes, enter the code you
+  picked at the time. The audio for the
   submission ZIP must be on this computer — choose the recording file above, or
   restore it from the saved recordings, before downloading the ZIP.</p>
   <div class="row oneline">
-    <label>Retrieval code <input type="text" id="manualCode" size="12" autocomplete="off" spellcheck="false"></label>
+    <label>Recovery code <input type="text" id="manualCode" size="28" autocomplete="off" spellcheck="false"></label>
     <button id="manualBtn">Retrieve</button>
   </div>
   <p class="status" id="manualStatus"></p>

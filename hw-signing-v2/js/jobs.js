@@ -21,6 +21,43 @@ export const TRANSCRIPT_MAX_CHARS = 200000;
 // retrievable.
 export const RETRIEVAL_CODE_RE = /^[A-Za-z0-9]{8,128}$/;
 
+/* ---------------- recovery token generation (2.5.4) ----------------
+ * Since 2.5.4 the student no longer picks a retrieval code: the
+ * page generates one at send time and keeps it in the job entry, as
+ * before. The generated value IS the retrieval code on the wire —
+ * the Worker protocol is unchanged, and codes students picked
+ * before 2.5.4 still retrieve their jobs through the manual box.
+ * The token is 24 characters drawn uniformly from the 62-character
+ * code alphabet (about 143 bits), so an unused token is not
+ * guessable and a collision with another job's code is not a
+ * practical event. Bytes are drawn from crypto.getRandomValues and
+ * mapped by rejection sampling (bytes >= 248 are discarded, since
+ * 248 is the largest multiple of 62 not exceeding 256), so every
+ * alphabet character is equally likely. The byte source is
+ * injectable so the mapping is testable without real randomness.
+ */
+export const RECOVERY_TOKEN_LENGTH = 24;
+const TOKEN_ALPHABET =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+export function generateRetrievalToken(randomBytes) {
+  const draw = randomBytes || ((n) => {
+    const buf = new Uint8Array(n);
+    globalThis.crypto.getRandomValues(buf);
+    return buf;
+  });
+  let out = '';
+  while (out.length < RECOVERY_TOKEN_LENGTH) {
+    const bytes = draw(RECOVERY_TOKEN_LENGTH - out.length);
+    for (const b of bytes) {
+      if (b >= 248) continue;
+      out += TOKEN_ALPHABET[b % 62];
+      if (out.length === RECOVERY_TOKEN_LENGTH) break;
+    }
+  }
+  return out;
+}
+
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 // Parse the video ID out of a YouTube URL in any of the forms the
@@ -130,7 +167,7 @@ export function validateJobPayload(body) {
   if (!v.webapp || !v.model || !v.glossary) return fail('Component versions are missing.');
   if (typeof body.retrieval_code !== 'string' ||
       !RETRIEVAL_CODE_RE.test(body.retrieval_code)) {
-    return fail('Enter a retrieval code of at least 8 characters, using letters and numbers only.');
+    return fail('The recovery code for this job could not be made. Reload the page and send again.');
   }
   if (body.kind === 'final') {
     if (!body.youtube_token) return fail('A submission with a link needs the YouTube link checked first.');
