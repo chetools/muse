@@ -269,7 +269,21 @@ logic is Node-tested through `classifyDuration`.
   Practice/Final choice framing is removed (the kind is derived
   from whether a checked link was sent); the subtitle states the
   actual flow. No behaviour, validation, payload or storage change.
-- **Component version strings**: webapp `hw-signing-webapp 2.5.2`;
+- **One ZIP button per job (2.5.3)**: entries are still keyed by
+  retrieval code in storage, but the jobs list now collapses
+  entries that retrieve the same underlying job (the Worker's
+  duplicate/alias path files one entry per submitted code) into a
+  single row — the entry most able to build the ZIP survives, the
+  locally kept YouTube link fields are merged onto it, and the
+  collapsed list is persisted. Entries filed from 2.5.3 on carry
+  the Worker's `job_id`; for older entries the ready bundle's
+  `job_id` identifies the job. While a ZIP review panel is open,
+  its Download button replaces the row's Review button instead of
+  appearing beside it, and the panel gains a Close review button.
+  Manual retrieval of a job already in the list no longer renders
+  a second row for it. (Student report, 2026-11-24: up to three
+  ZIP buttons for one job, only one of which worked.)
+- **Component version strings**: webapp `hw-signing-webapp 2.5.3`;
   model and glossary strings carried over from v1
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle

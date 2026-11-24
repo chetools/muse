@@ -235,6 +235,70 @@ export function pruneExpiredEntries(entries, nowMs) {
   });
 }
 
+/* ---------------- one row per underlying job (2.5.3) ----------------
+ * Local entries are keyed by retrieval code, but several codes can
+ * retrieve the SAME underlying job: the Worker's duplicate path
+ * (2.6.0) stores each submitted code as an alias for the existing
+ * job, and the page files one entry per alias code. Rendering one
+ * row per entry then showed one job two or three times, each row
+ * with its own ZIP button — and only the entry that happened to
+ * carry the locally kept YouTube link could pass ZIP verification,
+ * so the other rows' buttons always failed. (Student report,
+ * 2026-11-24: up to three ZIP buttons, only one of which worked.)
+ *
+ * collapseSameJobEntries(items) takes [{ entry, jobId }] — jobId is
+ * the Worker's job_id for the entry's job, from the entry itself
+ * (entries filed since 2.5.3 carry it) or from its ready result
+ * bundle, and may be null when neither is known yet — and returns
+ * the items to keep: at most one per distinct jobId. Entries with
+ * no known jobId are always kept (nothing proves they are the same
+ * job). Within a same-job group the survivor is the entry most
+ * able to build the ZIP — one carrying a YouTube link first, then
+ * a final entry, then the earliest created — and the locally kept
+ * YouTube fields (link, title, check time) are merged onto it from
+ * every group member that has them, so the surviving row is the
+ * working one. The survivor's entry gains job_id. Pure: the caller
+ * persists the kept entries, so the collapsed state is what the
+ * next visit loads.
+ */
+export function collapseSameJobEntries(items) {
+  const groups = new Map(); // jobId -> [indices]
+  (items || []).forEach((item, i) => {
+    if (!item || !item.jobId) return;
+    if (!groups.has(item.jobId)) groups.set(item.jobId, []);
+    groups.get(item.jobId).push(i);
+  });
+  const dropped = new Set();
+  for (const idxs of groups.values()) {
+    if (idxs.length < 2) {
+      const only = items[idxs[0]];
+      if (only.entry && !only.entry.job_id) only.entry.job_id = only.jobId;
+      continue;
+    }
+    const score = (entry) =>
+      (entry.youtube_link ? 4 : 0) + (entry.kind === 'final' ? 2 : 0) +
+      (entry.youtube_title ? 1 : 0);
+    const ranked = [...idxs].sort((a, b) => {
+      const d = score(items[b].entry) - score(items[a].entry);
+      if (d) return d;
+      const ta = Date.parse(items[a].entry.created_at || '') || 0;
+      const tb = Date.parse(items[b].entry.created_at || '') || 0;
+      return ta - tb || a - b;
+    });
+    const keep = items[ranked[0]];
+    for (const i of ranked.slice(1)) {
+      const e = items[i].entry;
+      for (const f of ['youtube_link', 'youtube_title', 'youtube_checked_at']) {
+        if (!keep.entry[f] && e[f]) keep.entry[f] = e[f];
+      }
+      if (e.kind === 'final') keep.entry.kind = 'final';
+      dropped.add(i);
+    }
+    keep.entry.job_id = keep.jobId;
+  }
+  return (items || []).filter((_, i) => !dropped.has(i));
+}
+
 /* ---------------- Worker calls (fetch injectable) ---------------- */
 
 async function postJson(workerBase, path, body, fetchFn) {
@@ -323,6 +387,7 @@ export function duplicateJobEntry(response, submitted) {
     course: submitted.course,
     asg: submitted.asg,
     retrieval_code: submitted.retrieval_code,
+    job_id: response.job_id || '',
     kind,
     youtube_link: isFinal ? (submitted.youtube_link || '') : '',
     youtube_title: isFinal ? (submitted.youtube_title || '') : '',
