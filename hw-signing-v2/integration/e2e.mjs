@@ -391,7 +391,8 @@ await step("grade_jobs result posts the simulated sub-agent result (4/5, tricky 
   writeFileSync(rf, JSON.stringify({
     completeness: 4, accuracy: 5, critique: CRITIQUE, injection_flags: [],
   }));
-  const out = JSON.parse(await runNode(gradeJobs, ["result", jobId, rf]));
+  const out = JSON.parse(await runNode(gradeJobs,
+    ["result", jobId, rf, "--claim", path.join(tmp, "claim.json")]));
   assert(out.ok === true && out.receipt, "result not accepted: " + JSON.stringify(out));
 });
 

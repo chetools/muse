@@ -110,7 +110,13 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   regrading is allowed. The version is the RESOLVED version: the
   Worker resolves the link to the newest open version first (2.5.0
   replacement check), and the dedup lookup runs after resolution,
-  scoped to the resolved pkg. The fingerprint is the Chromaprint of
+  scoped to the resolved pkg. The key has no semester component:
+  since 2.7.2 the lookup also searches the other semester
+  databases for a live job under the same resolved package text,
+  and a duplicate found there binds the new job's alias to that
+  database, so the same recording under the same package text is
+  not graded twice when the current-semester pointer moves. The
+  fingerprint is the Chromaprint of
   the normalised 16 kHz mono WAV (see `POST /jobs`); the exact SHA-256
   of the WAV bytes is the fast path, checked first. Chromaprint
   identifies one recording instance only, not a speaker and not the
@@ -409,12 +415,18 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
 - `POST /grading/claim` (GRADING_TOKEN) `{job_id, db?}` → if queued or claim
   expired: set status `claimed`, claim_expires = now + 15 min; return
   `{job_id, kind, transcript, audio_sha256, transcript_sha256, versions,
-  package:{pkg, text, content_sha256}}`. Else 409. (2.7.0: the
+  package:{pkg, text, content_sha256}, claimed_at}`. Else 409. (2.7.0: the
   optional `db` names the job's semester database; without it the
-  Worker finds the job by checking the databases.)
+  Worker finds the job by checking the databases. 2.7.2: the
+  response's `claimed_at` identifies this claim instance.)
 - `POST /grading/result` (GRADING_TOKEN) `{job_id, db?, completeness,
-  accuracy, critique, injection_flags}` → validate claim is live
-  (the optional `db` is as in claim);
+  accuracy, critique, injection_flags, claimed_at?}` → validate claim is live
+  (the optional `db` is as in claim); a result that names
+  `claimed_at` must name the live claim instance — a result from
+  a superseded claim is refused (409) and never stored (2.7.2;
+  the grading client always sends it, via the claim response it
+  holds; a result that does not name it keeps the pre-2.7.2
+  live-claim check only);
   scores are integers 0–5; critique non-empty ≤ 20,000 chars. Compute
   the result bundle, sign it (below), store, status `ready`,
   graded_at set, `expires_at` reset to graded_at + 180 days. The
@@ -456,7 +468,9 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   draft→retired. Store trial_json. (2.7.0: the optional `db` names
   the semester database holding the version; without it the version
   must exist in exactly one semester database, else 409 with the
-  candidate bindings.)
+  candidate bindings. 2.7.2: a `db` that holds no such version is
+  refused with 404 and changes nothing — it never falls back to
+  another semester's copy.)
 - `POST /test/push` is NOT an endpoint; push is tested via a job result.
 
 Result bundle and grade signing (format v2). Canonical signed text,
@@ -496,6 +510,30 @@ only on loopback), and stored job entries are polled only
 against the Worker that created them; the submission HTML
 escapes the two grades as it escapes every other field; a
 scrub entry also matches its separator variants.
+
+Further 2.7.2 changes (from the 2026-11-26 scenario campaign):
+the claim binding and cross-semester dedup above; the request
+body cap counts the bytes actually read (a streamed or chunked
+body without a Content-Length is capped the same way); a repeat
+proven duplicate whose alias insert fails because the alias
+already retrieves the job reports `alias_created: true`, matching
+the definition above. Webapp 2.6.15: the error box is never moved
+— an error anchored to a control is shown in the box at the top
+and copied beside the control; a cache record stored under an
+older model or glossary version is reset in place at load (fresh
+transcript state, stored WAV kept), so it can be transcribed
+again and restored; choosing an undecodable file clears the
+previous recording from the page; the file input is cleared after
+each choice, so the same file can be chosen again; a refused
+Restore leaves the YouTube link check standing; the restore note
+states whether the restored transcript is complete, partial or
+absent. The fingerprint-form ZIP verification tries the cache
+record first and falls back to the graded transcript
+`/jobs/status` returns when the cache reconstruction does not
+match the signed hash, as the fingerprint-form paragraph above
+already states. A stored job entry created by a different Worker
+is shown as sent to a different grading service, not as
+unreachable.
 `critique_sha256` = SHA-256 hex of the critique exactly as stored.
 receipt = base64url(HMAC-SHA-256(SIGNING_SECRET, canonical)).
 The bundle returned to the student and printed in the HTML is:
@@ -686,6 +724,30 @@ New/changed behaviour:
   edited grade in HTML, edited critique, wrong audio bytes, extra zip
   entry, traversal entry, v1-format HTML — each must fail the relevant
   check; a valid v2 fixture with a fake Worker verify passes fully.
+
+Audit app v56 (2026-11-26, from the scenario campaign): the local
+guard parses the Host and Origin authorities and compares
+hostnames exactly against the loopback set (127.0.0.1, localhost,
+::1, any letter case), so prefix-shaped hosts such as
+`127.0.0.1.evil.com` are refused; Origin is checked on every
+method when present, and its port must match the Host's when both
+carry one. Every section of the package that shows grades must
+agree with the signed pair, summary included; a duplicate grade
+span, a second verification section, or a critique block outside
+the grading section fails the package format. Grades outside
+0–5 fail the receipt check without a `/verify-grade` call, so a
+tampered package is flagged once instead of erroring on every
+pass. The YouTube link parser accepts exactly the forms the
+Worker's parser accepts. The gradebook CSV prefix test ignores
+leading whitespace and byte-order marks. Settings writes are
+validated field by field: URLs must be https (http only on
+loopback), tokens and ids must be of their proper types, the
+acoustic threshold must be a finite number within 0–1, and the
+appeal flag must be a real boolean or its string form; a final
+grade must be a whole number in range (a score, or completeness
+and accuracy summing to it) — fractions and booleans are refused,
+never truncated. A non-numeric declared Canvas ZIP size is
+ignored rather than aborting the download pass.
 
 ## Skills (staged in `skills/`, installed at integration)
 

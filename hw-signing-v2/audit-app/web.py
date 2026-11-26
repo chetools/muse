@@ -476,6 +476,27 @@ verification entries instead of hashing the last one, and
 a non-numeric grade span fails the package instead of
 raising. Gradebook CSV text cells that would open as
 spreadsheet formulas are quote-prefixed.
+
+v56: the 2026-11-26 scenario campaign. The local-server
+guard parses the Host and Origin authorities and compares
+hostnames exactly (the v55 prefix test passed
+127.0.0.1.evil.com and rebinding-shaped Host+Origin pairs),
+accepts any loopback spelling in an Origin, and checks an
+Origin on every method, since some GETs write files. The
+package parser counts sections and grade spans, counts a
+critique block in any section, and compares the grades in
+every section that shows them against the signed pair (a
+summary edited to 5/5 over a signed 4/4 passed before);
+shown grades outside 0-5 fail the receipt check instead of
+raising on the Worker's 400. The audit app's YouTube link
+parser mirrors the Worker's exactly, so a link form the
+Worker signed is no longer flagged as a different video.
+Settings and final-grade inputs are validated instead of
+coerced (no more "false" saved as true, 7.9 stored as 7, a
+NaN acoustic threshold, dict tokens, or arbitrary URL
+strings), the Gradebook CSV formula test looks past leading
+whitespace and control characters, and a non-numeric
+declared ZIP size no longer stops the download pass.
 """
 
 import argparse
@@ -485,6 +506,7 @@ import http.client
 import html
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -577,6 +599,67 @@ def save_web_config(cfg):
         os.chmod(CONFIG_PATH, 0o600)
     except OSError:
         pass
+
+
+# ------------------------------------------------------- settings input
+#
+# v56: the settings and final-grade routes used to coerce whatever
+# JSON arrived — bool("false") saved as true, int(7.9) stored as 7,
+# int(True) as 1, float("NaN") persisted as the acoustic threshold
+# (silently disabling every acoustic comparison), a dict stored as
+# a token, and URL fields accepting any string at all, including
+# a link-local address or a loopback URL that steals the app's own
+# port. These helpers accept the shapes the pages actually send
+# and refuse the rest, so a malformed or hostile body fails the
+# request instead of quietly rewriting the configuration.
+
+def _whole_number(value, what, lo, hi):
+    """A whole number in [lo, hi]: a JSON int, an exactly-whole
+    float, or a decimal string. Bools and fractions are refused —
+    int() would truncate or reinterpret them silently."""
+    if isinstance(value, bool):
+        raise ValueError(f"{what} must be a whole number {lo}-{hi}")
+    if isinstance(value, int):
+        n = value
+    elif isinstance(value, float) and value.is_integer():
+        n = int(value)
+    elif isinstance(value, str) and re.fullmatch(r"[+-]?\d+", value.strip()):
+        n = int(value.strip())
+    else:
+        raise ValueError(f"{what} must be a whole number {lo}-{hi}")
+    if not lo <= n <= hi:
+        raise ValueError(f"{what} must be a whole number {lo}-{hi}")
+    return n
+
+
+def _setting_bool(value, what):
+    """A boolean setting: a JSON bool, or the strings
+    "true"/"false". Anything else (including the string "false"
+    under Python truthiness) is refused."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in ("true", "false"):
+        return value.strip().lower() == "true"
+    raise ValueError(f"{what} must be true or false")
+
+
+def _setting_url(value, what):
+    """A service base URL: http(s) with a host, https anywhere
+    except a loopback address (local test Workers and a local
+    Canvas stub are loopback). The saved form has no trailing
+    slash, as before."""
+    if not isinstance(value, str):
+        raise ValueError(f"{what} must be a URL")
+    v = value.strip().rstrip("/")
+    u = urllib.parse.urlparse(v)
+    host = (u.hostname or "").lower()
+    if u.scheme not in ("http", "https") or not host:
+        raise ValueError(f"{what} must be an http(s) URL with a host")
+    if u.scheme != "https" and host not in ("127.0.0.1", "localhost", "::1"):
+        raise ValueError(
+            f"{what} must use https (http is allowed only for a "
+            f"loopback address)")
+    return v
 
 
 _YTDLP_STATE = {"status": "not checked yet (checked when the app starts)"}
@@ -3338,8 +3421,16 @@ def _csv_safe(value):
     # tab/CR is evaluated as a formula when the CSV is opened in a
     # spreadsheet. Student names come from Canvas and are not under
     # the teacher's control, so prefix such cells with a quote.
+    # v56: spreadsheet applications trim leading whitespace and
+    # control characters before deciding a cell is a formula, so
+    # the test is made on the cell with spaces, tabs, CR/LF, VT,
+    # FF and a BOM stripped from the front — " =2+5", a
+    # BOM-prefixed "@SUM(...)" and the | DDE form included —
+    # while the prefix is still applied to the original cell.
     v = str(value)
-    if v and v[0] in ("=", "+", "-", "@", "\t", "\r"):
+    stripped = v.lstrip(" \t\r\n\v\f\ufeff")
+    if v and (v[0] in ("=", "+", "-", "@", "\t", "\r")
+              or stripped[:1] in ("=", "+", "-", "@", "|")):
         return "'" + v
     return v
 
@@ -6762,6 +6853,22 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 remaining -= len(chunk)
 
+    @staticmethod
+    def _authority_parts(value):
+        # (hostname, port) of a Host or Origin authority, or
+        # (None, None) when it does not parse. Parsing with a "//"
+        # prefix makes urlparse treat the value as an authority:
+        # userinfo is separated (127.0.0.1@evil.com names
+        # evil.com), IPv6 brackets are handled, and the hostname
+        # comes back lowercased.
+        if not value:
+            return None, None
+        try:
+            u = urllib.parse.urlparse("//" + value)
+            return u.hostname, u.port
+        except ValueError:
+            return None, None
+
     def _guard_local(self):
         # v55: loopback binding alone does not stop a web page the
         # teacher visits from POSTing to this app (a cross-origin
@@ -6769,18 +6876,34 @@ class Handler(BaseHTTPRequestHandler):
         # host from reading it. Refuse any request whose Host is
         # not a loopback name, and any POST whose Origin (sent by
         # every browser POST) is not this app's own origin.
+        # v56: the v55 test prefix-matched the raw Host header, so
+        # 127.0.0.1.evil.com, localhost.evil.com, [::1]evil.com,
+        # 127.0.0.1@evil.com and 127.0.0.100 all passed, and a
+        # matching rebinding-shaped Host+Origin pair could POST
+        # settings — the first half of a chain that points the app
+        # at a forged Worker. The authority is now parsed and its
+        # hostname compared exactly against the loopback names.
+        # The Origin check applies on every method when an Origin
+        # is sent (some GETs write files — the gradebook CSV is
+        # saved before it is served), and it accepts any loopback
+        # spelling: localhost and 127.0.0.1 are the same service,
+        # and the v55 exact-string comparison refused the app's
+        # own pages when the two spellings differed.
         host = self.headers.get("host") or ""
-        if not (host.startswith("127.0.0.1") or host.startswith("localhost")
-                or host.startswith("[::1]")):
+        hostname, host_port = self._authority_parts(host)
+        if hostname not in ("127.0.0.1", "localhost", "::1"):
             self._send(403, {"error": "forbidden host"})
             return False
-        if self.command == "POST":
-            origin = self.headers.get("origin")
-            if origin:
-                oh = urllib.parse.urlparse(origin).netloc
-                if oh != host:
-                    self._send(403, {"error": "forbidden origin"})
-                    return False
+        origin = self.headers.get("origin")
+        if origin:
+            ou = urllib.parse.urlparse(origin)
+            o_host, o_port = self._authority_parts(ou.netloc)
+            if ou.scheme not in ("http", "https") \
+                    or o_host not in ("127.0.0.1", "localhost", "::1") \
+                    or (o_port is not None and host_port is not None
+                        and o_port != host_port):
+                self._send(403, {"error": "forbidden origin"})
+                return False
         return True
 
     def _body(self):
@@ -6976,24 +7099,44 @@ class Handler(BaseHTTPRequestHandler):
             old_token = cfg.get("canvas_token") or ""
             for k in ("canvas_base_url", "worker_base_url"):
                 if body.get(k):
-                    cfg[k] = str(body[k]).rstrip("/") if k.endswith("url") \
-                        else body[k]
+                    cfg[k] = _setting_url(body[k], k)
             if body.get("canvas_token"):
+                if not isinstance(body["canvas_token"], str):
+                    raise ValueError("the Canvas token must be text")
                 cfg["canvas_token"] = body["canvas_token"]
             for k in ("course_id", "assignment_id"):
                 if body.get(k) is not None:
-                    cfg[k] = int(body[k])
+                    cfg[k] = _whole_number(body[k], k, 0, 999999999999)
             if body.get("acoustic_threshold") is not None:
-                cfg["acoustic_threshold"] = float(body["acoustic_threshold"])
+                raw_thr = body["acoustic_threshold"]
+                if isinstance(raw_thr, bool):
+                    raise ValueError(
+                        "the acoustic threshold must be a number "
+                        "between 0 and 1")
+                try:
+                    thr = float(raw_thr)
+                except (TypeError, ValueError):
+                    raise ValueError(
+                        "the acoustic threshold must be a number "
+                        "between 0 and 1") from None
+                if not math.isfinite(thr) or not 0 <= thr <= 1:
+                    raise ValueError(
+                        "the acoustic threshold must be a number "
+                        "between 0 and 1")
+                cfg["acoustic_threshold"] = thr
             if body.get("appeal_period_passed") is not None:
-                cfg["appeal_period_passed"] = bool(body["appeal_period_passed"])
+                cfg["appeal_period_passed"] = _setting_bool(
+                    body["appeal_period_passed"], "appeal_period_passed")
             courses_changed = False
-            if body.get("courses_auto"):
+            if body.get("courses_auto") is not None and _setting_bool(
+                    body["courses_auto"], "courses_auto"):
                 if isinstance(cfg.get("course_ids"), list):
                     courses_changed = True
                 cfg.pop("course_ids", None)
             elif isinstance(body.get("course_ids"), list):
-                new_ids = sorted({int(x) for x in body["course_ids"]})
+                new_ids = sorted({_whole_number(x, "course_ids",
+                                                0, 999999999999)
+                                  for x in body["course_ids"]})
                 if cfg.get("course_ids") != new_ids:
                     courses_changed = True
                 cfg["course_ids"] = new_ids
@@ -7021,8 +7164,9 @@ class Handler(BaseHTTPRequestHandler):
             if body.get("clear"):
                 cfg["grading_admin_token"] = ""
             elif body.get("grading_admin_token"):
-                cfg["grading_admin_token"] = str(
-                    body["grading_admin_token"])
+                if not isinstance(body["grading_admin_token"], str):
+                    raise ValueError("the admin token must be text")
+                cfg["grading_admin_token"] = body["grading_admin_token"]
             else:
                 raise ValueError(
                     "a blank field keeps the saved token — enter the "
@@ -7230,12 +7374,12 @@ class Handler(BaseHTTPRequestHandler):
                             f"expects {_exp}, so no final grade is "
                             "accepted for it here")
             if body.get("score") is not None:
-                score = int(body["score"])
+                score = _whole_number(body["score"], "the final grade",
+                                      0, 10)
             else:  # earlier pair shape, kept for compatibility
-                score = int(body["completeness"]) + int(body["accuracy"])
-            if not (0 <= score <= 10):
-                raise ValueError(
-                    "the final grade must be a whole number 0-10")
+                score = _whole_number(body["completeness"],
+                                      "completeness", 0, 5) \
+                    + _whole_number(body["accuracy"], "accuracy", 0, 5)
             finals = finals_store(cfg)
             finals[uid] = {"score": score, "source": "teacher",
                            "updated": datetime.now(timezone.utc).isoformat()}

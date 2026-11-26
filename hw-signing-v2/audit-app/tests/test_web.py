@@ -3719,6 +3719,117 @@ def main():
             check("not a YouTube video link" in str(e),
                   f"v55: yt-dlp link rejected: {bad_link}")
 
+    # ---- v56: guard parsing, CSV whitespace forms, validated
+    # settings and final grades (scenario campaign).
+    port56 = urllib.parse.urlparse(BASE).port
+
+    def raw_req(path, method="GET", headers=None, data=None):
+        req = urllib.request.Request(BASE + path, data=data,
+                                     method=method, headers=headers or {})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return resp.status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    for bad_host in ("127.0.0.1.evil.example", "localhost.evil.example",
+                     "[::1]evil.example", "127.0.0.100",
+                     "127.0.0.1@evil.example"):
+        check(raw_req("/", headers={"Host": bad_host}) == 403,
+              f"v56: rebinding-shaped Host refused: {bad_host}")
+    check(raw_req("/", headers={"Host": f"LOCALHOST:{port56}"}) == 200,
+          "v56: an uppercase LOCALHOST Host is accepted")
+    check(raw_req("/api/settings", method="POST", data=b"{}",
+                  headers={"content-type": "application/json",
+                           "Origin": f"http://localhost:{port56}"})
+          == 200,
+          "v56: a POST whose Origin spells the loopback differently "
+          "from the Host is accepted")
+    check(raw_req("/api/settings", method="POST", data=b"{}",
+                  headers={"content-type": "application/json",
+                           "Origin": "http://127.0.0.1.evil.example"})
+          == 403,
+          "v56: a POST from a rebinding-shaped Origin is refused")
+    check(raw_req("/api/status",
+                  headers={"Origin": "http://evil.example"}) == 403,
+          "v56: an Origin is checked on GET routes too")
+    built56 = {"header": ["Student", "ID", "SIS User ID",
+                          "SIS Login ID", "Section", "HW1 (202)"],
+               "points_possible": 10, "assignment_name": "HW1",
+               "rows": [{"Student": " =2+5", "ID": "1",
+                         "SIS User ID": "", "SIS Login ID": "",
+                         "Section": "001", "score": 9},
+                        {"Student": "\ufeff@SUM(1)", "ID": "2",
+                         "SIS User ID": "", "SIS Login ID": "",
+                         "Section": "001", "score": 8},
+                        {"Student": "|DDE", "ID": "3",
+                         "SIS User ID": "", "SIS Login ID": "",
+                         "Section": "001", "score": 7},
+                        {"Student": "Plain Name", "ID": "4",
+                         "SIS User ID": "", "SIS Login ID": "",
+                         "Section": "001", "score": 6}]}
+    csv56 = web.gradebook_csv_text(built56)
+    check("' =2+5" in csv56 and "'\ufeff@SUM(1)" in csv56
+          and "'|DDE" in csv56
+          and any(line.startswith("Plain Name,")
+                  for line in csv56.splitlines()),
+          "v56: formula cells are prefixed past leading whitespace, "
+          "BOM and the | form; plain names are untouched")
+    status, _ = call("POST", "/api/settings",
+                     {"appeal_period_passed": "false"})
+    saved = json.loads(web.CONFIG_PATH.read_text())
+    check(status == 200 and saved["appeal_period_passed"] is False,
+          "v56: the string \"false\" saves as false, not true")
+    status, _ = call("POST", "/api/settings",
+                     {"appeal_period_passed": True})
+    saved = json.loads(web.CONFIG_PATH.read_text())
+    check(status == 200 and saved["appeal_period_passed"] is True,
+          "v56: a boolean true saves as true")
+    call("POST", "/api/settings", {"appeal_period_passed": False})
+    thr_before = json.loads(
+        web.CONFIG_PATH.read_text())["acoustic_threshold"]
+    status, _ = call("POST", "/api/settings",
+                     {"acoustic_threshold": "NaN"})
+    saved = json.loads(web.CONFIG_PATH.read_text())
+    check(status == 400
+          and saved["acoustic_threshold"] == thr_before,
+          "v56: a NaN acoustic threshold is refused, not persisted")
+    status, _ = call("POST", "/api/settings",
+                     {"canvas_token": {"x": 1}})
+    check(status == 400,
+          "v56: a non-text Canvas token is refused")
+    status, _ = call("POST", "/api/settings", {"course_id": True})
+    check(status == 400, "v56: a boolean course id is refused")
+    status, _ = call("POST", "/api/settings",
+                     {"worker_base_url": "http://169.254.169.254/latest"})
+    check(status == 400,
+          "v56: a link-local http Worker address is refused")
+    status, _ = call("POST", "/api/settings",
+                     {"worker_base_url": "12345"})
+    check(status == 400, "v56: a non-URL Worker address is refused")
+    status, _ = call("POST", "/api/settings",
+                     {"canvas_base_url": "http://example.com"})
+    check(status == 400,
+          "v56: a non-loopback http Canvas address is refused")
+    status, _ = call("POST", "/api/hw-packages/token",
+                     {"grading_admin_token": {"x": 1}})
+    check(status == 400, "v56: a non-text admin token is refused")
+    status, _ = call("POST", "/api/final-grade",
+                     {"user_id": "111", "score": 7.9})
+    check(status == 400,
+          "v56: a fractional final grade is refused, not truncated")
+    status, _ = call("POST", "/api/final-grade",
+                     {"user_id": "111", "score": True})
+    check(status == 400, "v56: a boolean final grade is refused")
+    status, _ = call("POST", "/api/final-grade",
+                     {"user_id": "111", "completeness": 4.9,
+                      "accuracy": 4.9})
+    check(status == 400,
+          "v56: fractional pair grades are refused, not truncated")
+    status, _ = call("POST", "/api/final-grade",
+                     {"user_id": "111", "score": 7})
+    check(status == 200, "v56: a whole final grade still saves")
+
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
      web.fetch_roster_maps) = _keep35

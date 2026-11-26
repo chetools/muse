@@ -1222,6 +1222,113 @@ def main():
           "v55: a second transcript block fails the package format "
           "check instead of being silently ignored")
 
+    # 9c. v56 scenario-campaign fixes: every shown grade is
+    # verified, duplicated structure fails the format check,
+    # out-of-range grades fail closed, the link parser matches
+    # the Worker's, and a bad declared ZIP size stops nothing.
+    p = tmp / "tamper-summary-grade.html"
+    p.write_text(html_text.replace(
+        '<span data-grade="completeness">4</span>',
+        '<span data-grade="completeness">5</span>', 1), encoding="utf-8")
+    rep = audit.check_package(audio_path, p, cfg,
+                              post_fn=transport_for(TEST_SECRET))
+    check(rep["grades_match"] is False
+          and rep["internally_consistent"] is False,
+          "v56: a grade edited in the summary section only fails "
+          "the package (summary grades are compared too)")
+    p = tmp / "dup-grade-span.html"
+    p.write_text(html_text.replace(
+        '<span data-grade="completeness">4</span>',
+        '<span data-grade="completeness">5</span>'
+        '<span data-grade="completeness">4</span>', 1), encoding="utf-8")
+    rep = audit.check_package(audio_path, p, cfg,
+                              post_fn=transport_for(TEST_SECRET))
+    check(rep["format_ok"] is False
+          and rep["internally_consistent"] is False,
+          "v56: a duplicated grade span fails the format check "
+          "instead of the last value winning")
+    p = tmp / "summary-critique.html"
+    p.write_text(html_text.replace(
+        "</section>\n<section id=\"grading\">",
+        '<p class="critique">planted</p></section>\n'
+        '<section id="grading">'), encoding="utf-8")
+    rep = audit.check_package(audio_path, p, cfg,
+                              post_fn=transport_for(TEST_SECRET))
+    check(rep["format_ok"] is False
+          and rep["internally_consistent"] is False,
+          "v56: a critique block in the summary section fails "
+          "the format check")
+    p = tmp / "second-verification.html"
+    p.write_text(html_text.replace(
+        "</body>",
+        '<section id="verification"><dl>'
+        "<dt>Session</dt><dd>disjoint</dd></dl></section></body>"),
+        encoding="utf-8")
+    rep = audit.check_package(audio_path, p, cfg,
+                              post_fn=transport_for(TEST_SECRET))
+    check(rep["format_ok"] is False
+          and rep["internally_consistent"] is False,
+          "v56: a second verification section fails the format "
+          "check even with disjoint labels")
+    calls56 = []
+    p = tmp / "grade-six.html"
+    p.write_text(build_html_v2(CHUNKS, audio_sha, completeness=6),
+                 encoding="utf-8")
+    rep = audit.check_package(audio_path, p, cfg,
+                              post_fn=transport_for(TEST_SECRET,
+                                                    calls56))
+    check(rep["grade_receipt_ok"] is False
+          and rep["internally_consistent"] is False
+          and not calls56,
+          "v56: shown grades outside 0-5 fail the receipt check "
+          "without a /verify-grade call (no 400, no raised error)")
+    check(audit.youtube_video_id(
+        f"https://music.youtube.com/watch?v={VIDEO_ID}") == VIDEO_ID
+        and audit.youtube_video_id(
+            f"https://www.youtu.be/{VIDEO_ID}") == VIDEO_ID
+        and audit.youtube_video_id(
+            f"https://youtu.be/{VIDEO_ID}/extra") == VIDEO_ID
+        and audit.youtube_video_id(
+            f"https://www.youtube.com/shorts/{VIDEO_ID}/extra")
+        == VIDEO_ID
+        and audit.youtube_video_id(
+            f"https://www.youtube.com/v/{VIDEO_ID}") == VIDEO_ID
+        and audit.youtube_video_id(
+            f"https://www.youtube-nocookie.com/embed/{VIDEO_ID}")
+        is None
+        and audit.youtube_video_id(
+            f"https://studio.youtube.com/video/{VIDEO_ID}/edit")
+        is None,
+        "v56: the link parser matches the Worker's forms "
+        "(music, www.youtu.be, trailing segments, /v/) and its "
+        "rejections (nocookie, Studio)")
+
+    def bad_size_submissions(_cfg):
+        return [{
+            "id": 9101, "user_id": 901, "attempt": 1,
+            "workflow_state": "submitted",
+            "submitted_at": "2026-11-09T06:00:00Z",
+            "user": {"id": 901, "name": "Bad Size Student"},
+            "attachments": [
+                {"filename": "submission.zip", "url": "fixture://zip",
+                 "size": "not-a-number"},
+            ],
+        }, {
+            "id": 9102, "user_id": 902, "attempt": 1,
+            "workflow_state": "submitted",
+            "submitted_at": "2026-11-09T06:05:00Z",
+            "user": {"id": 902, "name": "Second Student"},
+            "attachments": [
+                {"filename": "submission.zip", "url": "fixture://zip"},
+            ],
+        }]
+
+    recs = audit.download_packages(cfg, bad_size_submissions, fake_bytes)
+    check(len(recs) == 2
+          and all("error" not in r for r in recs),
+          "v56: a non-numeric declared ZIP size is ignored and "
+          "the download pass reaches every later student")
+
     # 10. Cleanup refuses without confirmation, and deletes with it.
     try:
         audit.cleanup(cfg, confirm=False)

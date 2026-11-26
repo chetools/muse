@@ -529,14 +529,25 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
             # v55: refuse an oversize ZIP on its declared size
             # before its bytes are fetched into memory; the
             # extraction limits below can only act after the fetch.
+            # v56: a declared size that is not a number is ignored
+            # (the fetch and extraction limits still act on the
+            # real bytes) — before, int() raised and the whole
+            # download pass died on one student's bad listing,
+            # skipping every remaining student.
             declared = zip_att.get("size")
-            if declared and int(declared) > MAX_ZIP_TOTAL_BYTES + (1 << 20):
+            try:
+                declared_n = int(declared) if declared is not None else None
+            except (TypeError, ValueError):
+                declared_n = None
+            if declared_n is not None and \
+                    declared_n > MAX_ZIP_TOTAL_BYTES + (1 << 20):
                 rec = {"user_id": user_id,
                        "user_name": user.get("name"),
                        "zip_path": str(zip_path),
                        "error": (f"package ZIP rejected: declared size "
-                                 f"{int(declared)} bytes, over the "
-                                 f"{MAX_ZIP_TOTAL_BYTES} byte limit"),
+                                 f"{declared_n} bytes, over the "
+                                 f"{MAX_ZIP_TOTAL_BYTES + (1 << 20)} byte "
+                                 f"limit (250 MB plus a 1 MB allowance)"),
                        "fetched_bytes": 0,
                        "current_attempt": is_current, **listing}
                 if not is_current:
@@ -902,6 +913,15 @@ class PackageParser(html.parser.HTMLParser):
         self.transcript_blocks = 0
         self.critique_blocks = 0
         self.duplicate_labels = set()
+        # v56: the v55 duplicate detection was per item — a second
+        # verification section with disjoint labels merged
+        # silently, a duplicated grade span overwrote the first
+        # value (last wins), and a critique block outside the
+        # grading section was not counted at all. Sections and
+        # grade spans are now counted too, and critique blocks
+        # count wherever they appear (see parse_package).
+        self.section_counts = {}
+        self.grade_span_counts = {}
         self._dt = None
         self._dd = None
         self._grade_span = None
@@ -915,16 +935,23 @@ class PackageParser(html.parser.HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if tag == "section":
-            self.section_stack.append(attrs.get("id") or attrs.get("class"))
+            key = attrs.get("id") or attrs.get("class")
+            self.section_stack.append(key)
+            if key:
+                self.section_counts[key] = \
+                    self.section_counts.get(key, 0) + 1
         elif tag == "pre" and "transcript" in (attrs.get("class") or ""):
             self.in_transcript = True
             self.transcript_blocks += 1
             self._buf = []
-        elif tag == "p" and "critique" in (attrs.get("class") or "") \
-                and self._section() == "grading":
-            self._in_critique = True
+        elif tag == "p" and "critique" in (attrs.get("class") or ""):
+            # Counted in any section (v56); the text is captured
+            # only from the grading section's block, which is the
+            # one the signed critique hash covers.
             self.critique_blocks += 1
-            self._critique_buf = []
+            if self._section() == "grading":
+                self._in_critique = True
+                self._critique_buf = []
         elif tag == "dt":
             self._dt = []
         elif tag == "dd":
@@ -954,6 +981,9 @@ class PackageParser(html.parser.HTMLParser):
             self._dd = None
         elif tag == "span" and self._grade_span:
             value = "".join(self._buf).strip()
+            span_key = (self._section(), self._grade_span)
+            self.grade_span_counts[span_key] = \
+                self.grade_span_counts.get(span_key, 0) + 1
             if self._section() == "summary":
                 self.summary_grades[self._grade_span] = value
             elif self._section() == "grading":
@@ -999,6 +1029,11 @@ def parse_package(html_text):
             "transcript_blocks": p.transcript_blocks,
             "critique_blocks": p.critique_blocks,
             "verification_labels": sorted(p.duplicate_labels),
+            "sections": sorted(k for k, c in p.section_counts.items()
+                               if c > 1),
+            "grade_spans": sorted(
+                f"{s}:{g}" for (s, g), c in p.grade_span_counts.items()
+                if c > 1),
         },
         "transcript_lines": lines,
         "timed_lines": timed,  # [(start_s or None, text)]
@@ -1040,25 +1075,34 @@ YOUTUBE_VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 
 def youtube_video_id(link):
-    """The video ID of a YouTube link (watch, youtu.be, shorts, live
-    and embed forms), or None when the link is not one of those."""
+    """The video ID of a YouTube link, or None when the link does
+    not carry one. Mirrors the Worker's parseVideoId exactly
+    (v56): the Worker signed the hash of the ID it parsed from
+    the student's link, so a form the Worker accepts must parse
+    to the same ID here — music.youtube.com, www.youtu.be, the
+    /v/ form, and extra path segments after the ID included —
+    and a form it rejects (the nocookie hosts) must not parse
+    here either. Before this the two parsers disagreed in both
+    directions, and a genuine package whose link took a
+    Worker-only form was flagged as an ID mismatch and never
+    downloaded for the acoustic cross-check."""
     if not link:
         return None
     try:
         u = urllib.parse.urlparse(str(link).strip())
     except ValueError:
         return None
-    host = (u.netloc or "").lower().split(":")[0]
+    host = (u.hostname or "").lower()
     parts = [p for p in (u.path or "").split("/") if p]
     vid = None
-    if host in ("youtube.com", "www.youtube.com", "m.youtube.com",
-                "www.youtube-nocookie.com", "youtube-nocookie.com"):
-        if parts == ["watch"]:
+    if host in ("youtu.be", "www.youtu.be"):
+        vid = parts[0] if parts else None
+    elif host in ("youtube.com", "www.youtube.com", "m.youtube.com",
+                  "music.youtube.com"):
+        if (u.path or "") == "/watch":
             vid = (urllib.parse.parse_qs(u.query).get("v") or [None])[0]
-        elif len(parts) == 2 and parts[0] in ("shorts", "live", "embed"):
+        elif len(parts) >= 2 and parts[0] in ("shorts", "live", "embed", "v"):
             vid = parts[1]
-    elif host == "youtu.be" and len(parts) == 1:
-        vid = parts[0]
     if vid and YOUTUBE_VIDEO_ID_RE.match(vid):
         return vid
     return None
@@ -1179,8 +1223,9 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
     grade receipt is verified with the Worker's /verify-grade over
     the bundle whose grade values are the grades shown in the HTML,
     so the signed completeness/accuracy must equal the shown grades
-    (and the verification section's own grade lines must match them
-    too — grades_match). A package whose format version is not 2 is
+    in every section that shows them, summary included, and the
+    verification section's own grade lines must match them too
+    (grades_match). A package whose format version is not 2 is
     not internally consistent (format_ok False) and its receipt is
     never offered to /verify-grade.
 
@@ -1202,7 +1247,9 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
     format_ok = str(ver.get("v") or "") == "2" and \
         dup.get("transcript_blocks", 1) <= 1 and \
         dup.get("critique_blocks", 1) <= 1 and \
-        not dup.get("verification_labels")
+        not dup.get("verification_labels") and \
+        not dup.get("sections") and \
+        not dup.get("grade_spans")
     if form == "fingerprint":
         audio_ok = bool(ver.get("chromaprint_sha256")) and \
             sha256_file(media_path) == ver["chromaprint_sha256"]
@@ -1218,16 +1265,40 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
         signed_grades["completeness"] = ver["completeness"]
     if ver.get("accuracy") is not None:
         signed_grades["accuracy"] = ver["accuracy"]
+
+    def _grades_agree(shown):
+        return (shown.get("completeness") is not None
+                and shown.get("accuracy") is not None
+                and signed_grades.get("completeness")
+                == shown.get("completeness")
+                and signed_grades.get("accuracy") == shown.get("accuracy"))
+
+    # Every section that shows grades must agree with the signed
+    # pair (v56): before, the summary section's grades were never
+    # compared when the grading section carried its own, so a
+    # summary edited to 5/5 over a signed 4/4 passed as fully
+    # consistent.
+    shown_sections = [g for g in (parsed["grading_grades"],
+                                   parsed["summary_grades"]) if g]
     grades_match = bool(
-        format_ok
-        and html_grades.get("completeness") is not None
-        and html_grades.get("accuracy") is not None
-        and signed_grades.get("completeness") == html_grades.get("completeness")
-        and signed_grades.get("accuracy") == html_grades.get("accuracy"))
+        format_ok and shown_sections
+        and all(_grades_agree(g) for g in shown_sections))
     grade_receipt_ok = False
+    # The Worker signs whole grades 0-5 only; shown grades outside
+    # that range are not the signed grades, and offering them to
+    # /verify-grade earns a 400 that used to raise out of this
+    # check and leave the package in a perpetual error state
+    # instead of failing its signature (v56). The receipt simply
+    # does not verify.
+    shown_in_range = all(
+        isinstance(html_grades.get(k), int)
+        and not isinstance(html_grades.get(k), bool)
+        and 0 <= html_grades.get(k) <= 5
+        for k in ("completeness", "accuracy"))
     if format_ok and ver.get("grade_receipt") and ver.get("graded_at") \
             and html_grades.get("completeness") is not None \
-            and html_grades.get("accuracy") is not None:
+            and html_grades.get("accuracy") is not None \
+            and shown_in_range:
         grade_receipt_ok = worker_verify_grade(
             cfg, ver, html_grades, post_fn=post_fn)
     # The package's YouTube video SHA-256 is the hash of the video ID
