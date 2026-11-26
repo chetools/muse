@@ -1458,8 +1458,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/53.0",
-          "user agent bumped to 53.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/54.0",
+          "user agent bumped to 54.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3540,6 +3540,35 @@ def main():
           "v52: a deferred play waits for the seek to "
           "complete, a stalled tile is revived by the wall "
           "loop, and the wall fills the screen")
+    # v54: every page's script blocks must parse as
+    # JavaScript. One syntax error disables a page's whole
+    # script block while every Python-side check still
+    # passes — v53 shipped one (a mismatched quote in the
+    # Expected-package selector's empty-list line) and the
+    # dashboard rendered but loaded nothing: no settings,
+    # no submissions, no activity. Checked with node where
+    # node exists; the app itself never needs node.
+    import re as _re54
+    import subprocess as _sp54
+    _node54 = shutil.which("node")
+    if _node54:
+        _bad54 = []
+        for _name54, _html54 in (("dashboard", web.PAGE),
+                                 ("wall", web.WALL_PAGE),
+                                 ("cleanup", web.CLEANUP_PAGE),
+                                 ("packages", web.PACKAGES_PAGE)):
+            for _js54 in _re54.findall(
+                    r"<script>(.*?)</script>", _html54, _re54.S):
+                with tempfile.NamedTemporaryFile(
+                        "w", suffix=".js", delete=False,
+                        encoding="utf-8") as _f54:
+                    _f54.write(_js54)
+                if _sp54.run([_node54, "--check", _f54.name],
+                             capture_output=True).returncode != 0:
+                    _bad54.append(_name54)
+        check(not _bad54,
+              "every page's script blocks parse as "
+              "JavaScript (v54)")
 
     # ---------------------------------------------------------
     # 24. v45: the Privacy toggle. Both pages carry the

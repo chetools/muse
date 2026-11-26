@@ -447,6 +447,17 @@ unchanged: every version of the selected package's name
 is accepted. There is no off state; an assignment whose
 submissions show no majority yet is ungated until one
 exists. A stored "" left by v52 reads as no stored choice.
+
+v54: a one-character repair with a new guard. The v53
+selector's empty-list line opened its string with a single
+quote and closed it with a double quote; the dashboard's
+whole script block then failed to parse in the browser,
+so the page rendered but loaded nothing — no settings, no
+submissions, no activity — while every Python-side check
+passed, the string checks included. The line is fixed,
+and the web test suite now parses every page's script
+blocks with node --check where node is available, so a
+JavaScript syntax error fails the suite from here on.
 """
 
 import argparse
@@ -4238,7 +4249,7 @@ function expkgOptions(t){
   const cur=t.stored_pkg||t.expected_pkg||"";
   const opts=(window.PKGOPTS||[]).slice();
   if(cur && !opts.includes(cur)) opts.push(cur);
-  if(!opts.length) return '<option value="">—</option>";
+  if(!opts.length) return '<option value="">—</option>';
   return opts.map(p=>'<option value="'+esc(p)+'"'+(p===cur?" selected":"")+">"+esc(p)+"</option>").join("");
 }
 async function loadTargets(){

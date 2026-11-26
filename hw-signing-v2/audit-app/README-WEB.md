@@ -18,6 +18,18 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v54 (2026-11-26) — repair: the dashboard loaded no data under v53
+
+- v53 shipped with a mismatched quote in one line of the
+  dashboard's script (the Expected-package selector's
+  empty-list line). The browser refused the page's whole
+  script, so the dashboard opened but stayed empty: no
+  settings, no submissions, no activity. Your config and
+  data were never touched. This release fixes that one
+  character; the test suite now also parses every page's
+  script before a release, so this class of error is
+  caught here rather than on your computer.
+
 ## v53 (2026-11-26) — the Expected package selector: no Auto, no Not set
 
 - The selector now lists the grading Worker's packages only.
