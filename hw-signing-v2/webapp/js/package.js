@@ -44,7 +44,7 @@
 
 export const FORMAT_VERSION = '2';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 2.6.4',
+  webapp: 'hw-signing-webapp 2.6.5',
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };

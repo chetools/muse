@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.4');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.5');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1001,7 +1001,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.4');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.5');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1695,6 +1695,19 @@ await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () =
     'the opening paragraph does not tie the fingerprint form to a checked link (2.6.3)');
   assert.ok(main.includes('Verifying the fingerprint and the transcript'),
     'the ZIP progress line names the fingerprint form\u2019s verification (2.6.3)');
+});
+
+await test('wiring: job rows sit on one line and copy the recovery code in one click (2.6.5)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(main.includes("line.className = 'jobline'"),
+    'each job row builds a single-line summary container');
+  assert.ok(index.includes('.jobline { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }'),
+    'the summary line never wraps; the label shortens with an ellipsis instead');
+  assert.ok(main.includes('navigator.clipboard.writeText(entry.retrieval_code)'),
+    'the Copy button copies the stored recovery code in one click');
+  assert.ok(main.includes("copyBtn.textContent = 'Copied'"),
+    'a successful copy is confirmed on the button');
 });
 
 await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
