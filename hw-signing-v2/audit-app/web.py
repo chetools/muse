@@ -407,6 +407,33 @@ whose package is unknown (not downloaded, not checked) is
 never mismatched: the gate acts on what is known. Display
 and gate only: no check changes, and the check schema
 stays 2.
+
+v52: the gate matches by package name, and its default is
+the majority. The comparison ignores the version: a
+submission graded under an earlier or later version of the
+same package is the same homework, not a mismatch (the
+teacher's choice). The selector gains a third state: Auto,
+which is where an assignment with no stored choice sits —
+the package most of the assignment's downloaded submissions
+were graded under (counted by name; a tie means no
+majority and no gate) is in force, and the selector shows
+it. "Not set" is now an explicit stored choice that
+switches the gate off, distinct from Auto. Everything the
+gate touches reads the package in force — stored choice,
+majority, or none — through effective_expected_package.
+Also in v52: table headers never wrap mid-word (the
+overflow-wrap rule no longer applies to th, which is
+nowrap at a smaller size, on the dashboard, Packages and
+Cleanup pages); the wall page fills the screen at 100%
+zoom (its centred 1500px cap is gone); and the wall's
+deferred play waits for the seek to complete before
+playing (a play issued while the seek was in flight could
+be cancelled by the seek landing, leaving the tile stopped
+or black on a long take), the deferred seek also lands on
+durationchange, and the wall loop revives a tile whose
+frame fetch has stopped with no frame to show. Display,
+gate and playback only: no check changes, and the check
+schema stays 2.
 """
 
 import argparse
@@ -2640,7 +2667,7 @@ def wall_attempts(cfg, key):
     idx = package_index(cfg).get(key) or {}
     state = read_json_file(_state_file(cfg, "download-state.json"), {})
     checks = results_store(cfg)
-    exp = expected_package(cfg, cid, aid)
+    exp = effective_expected_package(cfg, cid, aid)[0]
     name = idx.get("user_name") or f"Student {uid}"
     context = " · ".join(x for x in (idx.get("course_name"),
                                      idx.get("assignment_name")) if x)
@@ -3034,37 +3061,98 @@ def auto_loop():
 # ------------------------------------------------------- package gate (v51)
 
 def expected_packages(cfg):
-    """The per-assignment expected prompt packages: a map
-    "course_id_assignment_id" -> "name vN", set by the teacher
-    in the Grades back to Canvas section. An assignment with
-    no entry is not gated."""
+    """The per-assignment expected prompt packages, as stored:
+    a map "course_id_assignment_id" -> "name vN" (the teacher's
+    explicit choice), "" (the gate switched off for that
+    assignment), or no entry at all (automatic — the majority
+    package of the assignment's submissions is in force).
+    Set by the teacher in the Grades back to Canvas section."""
     return read_json_file(
         _state_file(cfg, "expected-packages.json"), {})
 
 
 def expected_package(cfg, course_id, assignment_id):
+    """The stored choice only: "name vN", "" (off), or None
+    when no choice is stored (automatic)."""
     return expected_packages(cfg).get(
         f"{course_id}_{assignment_id}")
 
 
 def save_expected_package(cfg, course_id, assignment_id, pkg):
+    """Store the teacher's choice: "name vN" (explicit), ""
+    (gate off), or None (automatic — the entry is removed)."""
     store = expected_packages(cfg)
     key = f"{course_id}_{assignment_id}"
-    if pkg:
-        store[key] = pkg
-    else:
+    if pkg is None:
         store.pop(key, None)
+    else:
+        store[key] = pkg
     _state_file(cfg, "expected-packages.json").write_text(
         json.dumps(store, indent=2), encoding="utf-8")
     return store
 
 
+def pkg_name(pkg):
+    """A prompt package's name without its version. Packages
+    are "name vN", and the gate matches on the name alone
+    (v52, the teacher's choice): a submission graded under an
+    earlier or later version of the same package is the same
+    homework, not a mismatch."""
+    m = re.match(r"^(.*) v\d+$", pkg or "")
+    return m.group(1) if m else (pkg or "")
+
+
 def pkg_mismatch(expected, pkg):
-    """True when an expected package is set and the submission's
-    known package differs. An unknown package (not downloaded,
-    not checked) never mismatches: the gate acts on what is
-    known."""
-    return bool(expected and pkg and pkg != expected)
+    """True when an expected package is in force and the
+    submission's known package is a different package (names
+    compared, versions ignored). An unknown package (not
+    downloaded, not checked) never mismatches: the gate acts
+    on what is known."""
+    return bool(expected and pkg
+                and pkg_name(pkg) != pkg_name(expected))
+
+
+def majority_package(cfg, course_id, assignment_id):
+    """The package most of this assignment's downloaded
+    submissions were graded under: the full "name vN" of the
+    largest group, with groups counted by package name (v52).
+    A tie for the largest group means no majority. Each
+    downloaded package counts once, by its known package
+    (its stored check's, else its own parsed value)."""
+    checks = results_store(cfg)
+    counts, exemplars = {}, {}
+    for p in downloaded_packages(cfg):
+        if str(p.get("course_id")) != str(course_id) \
+                or str(p.get("assignment_id")) != str(assignment_id):
+            continue
+        check = store_get(checks, p["key"], p["user_id"]) or {}
+        pkg = check.get("pkg") or _package_pkg(p)
+        if not pkg:
+            continue
+        name = pkg_name(pkg)
+        counts[name] = counts.get(name, 0) + 1
+        exemplars.setdefault(name, pkg)
+    if not counts:
+        return None
+    top = max(counts.values())
+    winners = [n for n, c in counts.items() if c == top]
+    return exemplars[winners[0]] if len(winners) == 1 else None
+
+
+def effective_expected_package(cfg, course_id, assignment_id):
+    """The expected package actually in force for an
+    assignment, as (pkg, source): the teacher's stored choice
+    (source "set"), the majority package when no choice is
+    stored (source "majority"), or (None, "off") when the
+    gate is switched off, (None, "none") when automatic but
+    no majority exists yet."""
+    stored = expected_package(cfg, course_id, assignment_id)
+    if stored:
+        return stored, "set"
+    if stored == "":
+        return None, "off"
+    pkg = majority_package(cfg, course_id, assignment_id)
+    return (pkg, "majority") if pkg else (None, "none")
 
 
 def submission_pkg(cfg, key, uid, check=None):
@@ -3105,7 +3193,8 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
     roster = fetch_roster_maps(cfg, course_id)
     checks = results_store(cfg)
     finals = finals_store(cfg)
-    exp = expected_package(cfg, course_id, assignment_id)
+    exp = effective_expected_package(cfg, course_id,
+                                     assignment_id)[0]
     local = {p["key"]: p for p in downloaded_packages(cfg)} \
         if exp else {}
     rows, warnings = [], []
@@ -3620,6 +3709,20 @@ def wall_students(cfg, local_only=False):
                 rosters[cid] = roster_map_cached(cfg, cid)
             except Exception:  # noqa: BLE001 - email is decoration for marks
                 rosters[cid] = {}
+    _exp_cache = {}
+
+    def _exp_for(split):
+        # The gate's effective package per assignment,
+        # computed once per assignment per call (the majority
+        # count scans the downloaded packages).
+        if not split:
+            return None
+        ck = (split[0], split[1])
+        if ck not in _exp_cache:
+            _exp_cache[ck] = effective_expected_package(
+                cfg, split[0], split[1])[0]
+        return _exp_cache[ck]
+
     for pkg in pkgs:
         uid = pkg["user_id"]
         key = pkg["key"]
@@ -3631,8 +3734,7 @@ def wall_students(cfg, local_only=False):
         check = store_get(checks, key, uid) or {}
         integrity = _integrity_text(check)
         _split = _split_unit_key(key)
-        exp = expected_package(cfg, _split[0], _split[1]) \
-            if _split else None
+        exp = _exp_for(_split)
         local = youtube_video_file(cfg, key, uid)
         out.append({
             "id": key, "user_id": uid,
@@ -3820,7 +3922,8 @@ input.fin{width:52px}
 td.fincell.diff{background:#f7ecd2}
 input.fin.diff{background:#f7ecd2}
 #zgrade.diff{background:#f7ecd2}
-td,th,pre,.mut{overflow-wrap:anywhere}
+td,pre,.mut{overflow-wrap:anywhere}
+th{white-space:nowrap;font-size:12px}
 #spinner{display:none;color:#243b53;font-weight:600}
 #activitylog{background:#14181d;color:#d7e0d7;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55;height:190px;overflow-y:auto;padding:8px 10px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
 #activitylog .k-download{color:#9ecbff}#activitylog .k-check{color:#ffd98a}#activitylog .k-video{color:#c3a6ff}#activitylog .k-auto{color:#8fd0a0}
@@ -4088,24 +4191,37 @@ function renderTargets(ts){
       out+="<p>"+esc(t.assignment_name)+" <span class='mut'>"+t.submissions+" submission(s)"+(t.pending? " · "+t.pending+" new to download":"")+"</span> "+
       '<button class="secondary" onclick="gbPreview('+i+')">Preview gradebook rows</button> '+
       '<button class="secondary" onclick="gbDownload('+i+')">Download Gradebook CSV</button>'+
-      '<br><label class="mut">Expected package <select class="expkg" data-i="'+i+'">'+expkgOptions(t.expected_pkg)+'</select></label></p>';
+      '<br><label class="mut">Expected package <select class="expkg" data-i="'+i+'">'+expkgOptions(t)+'</select></label></p>';
     });
     $("gbtargets").innerHTML = ts.length ? out : '<p class="mut">No assignments holding submissions for this system in the scanned courses yet.</p>';
     document.querySelectorAll(".expkg").forEach(sel=>{
       sel.onchange=async ()=>{
         const t=window.GBTARGETS[Number(sel.dataset.i)];
         try{
-          const r=await api("/api/expected-package",{course_id:t.course_id,assignment_id:t.assignment_id,pkg:sel.value||null});
-          t.expected_pkg=r.expected_pkg;
+          const r=await api("/api/expected-package",{course_id:t.course_id,assignment_id:t.assignment_id,pkg:sel.value});
+          t.stored_pkg=r.stored_pkg; t.expected_pkg=r.expected_pkg;
+          t.expected_source=r.expected_source;
+          sel.innerHTML=expkgOptions(t);
           await refreshSubs();
         }catch(e){ loadTargets(); }
       };
     });
 }
-function expkgOptions(cur){
-  const opts=[""].concat(window.PKGOPTS||[]);
-  if(cur && !opts.includes(cur)) opts.push(cur);
-  return opts.map(p=>'<option value="'+esc(p)+'"'+(p===(cur||"")?" selected":"")+">"+(p? esc(p):"Not set")+"</option>").join("");
+function expkgOptions(t){
+  // The gate's three states (v52): Auto (the majority package
+  // of the assignment's submissions is in force), an explicit
+  // package (matched by name, any version), or Not set (no
+  // check). t.stored_pkg is null for Auto, "" for Not set.
+  const stored=t.stored_pkg;
+  const autoLabel=(t.expected_source==="majority" && t.expected_pkg)
+    ? "Auto — majority: "+t.expected_pkg
+    : "Auto — majority of submissions";
+  let out='<option value="__auto__"'+(stored==null?" selected":"")+">"+esc(autoLabel)+"</option>";
+  out+='<option value=""'+(stored===""?" selected":"")+">Not set — no package check</option>";
+  const opts=(window.PKGOPTS||[]).slice();
+  if(stored && !opts.includes(stored)) opts.push(stored);
+  out+=opts.map(p=>'<option value="'+esc(p)+'"'+(p===stored?" selected":"")+">"+esc(p)+"</option>").join("");
+  return out;
 }
 async function loadTargets(){
   try{
@@ -4736,7 +4852,7 @@ WALL_PAGE = r"""<!doctype html>
 body{font-family:system-ui,sans-serif;margin:0;background:#14181d;color:#eceff1}
 header{background:#243b53;color:#fff;padding:12px 18px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
 header h1{font-size:18px;margin:0} header a{color:#bcd}
-main{padding:14px 16px 120px;max-width:1500px;margin:0 auto}
+main{padding:14px 16px 120px;max-width:none;margin:0}
 .grid{display:grid;gap:12px}
 .tile{background:#1e242c;border:1px solid #39424e;border-radius:8px;padding:8px;cursor:pointer}
 .tile video{width:100%;aspect-ratio:16/9;background:#000;border-radius:5px;display:block}
@@ -5385,6 +5501,22 @@ function renderAttemptTiles(){
   syncHoverSelection();
   applyPrivacy();
 }
+function playAfterSeek(v){
+  // Play once no seek is in flight (v52): a seek that lands
+  // while a play() request is pending cancels the request
+  // (the promise rejects with AbortError) and leaves the
+  // video paused — and on a long take, whose seek takes
+  // seconds of range fetching, the cancelled play can take
+  // the frame fetch with it, leaving the tile black. The
+  // v42 fix played as soon as the deferred seek was
+  // assigned, which is still inside that window: the seek
+  // has then only just started. Deferring to the seeked
+  // event closes it.
+  if(!v.seeking){ const p=v.play(); if(p) p.catch(()=>{}); return; }
+  v.addEventListener("seeked",()=>{
+    if(v.seeking){ playAfterSeek(v); return; }
+    const p=v.play(); if(p) p.catch(()=>{}); }, {once:true});
+}
 function seekFrac(v,f){
   // A freshly rendered tile has no metadata yet (duration 0),
   // so a seek aimed at it is remembered on the element and
@@ -5397,27 +5529,37 @@ function seekFrac(v,f){
   v._wantFrac=f;
   if(v._fracHook) return;
   v._fracHook=true;
-  v.addEventListener("loadedmetadata",()=>{
+  const land=()=>{
     if(v._wantFrac!==undefined && v.duration){
-      v.currentTime=v._wantFrac*v.duration; v._wantFrac=undefined; }
-    // A play requested while the seek was still pending is
-    // honoured only now, after the seek has landed: a seek
-    // that lands while a play() request is still pending
-    // cancels that request and leaves the video paused
-    // (v42 — this is why the followed student's tile, and
-    // the wall's other playing tiles, came back stopped
-    // after Back from the zoom view, some of them black at
-    // a frame that then had no reason to load).
-    if(v._autoplay){ v._autoplay=false;
-      const p=v.play(); if(p) p.catch(()=>{}); } });
+      const want=v._wantFrac; v._wantFrac=undefined;
+      v.currentTime=want*v.duration;
+      // A play requested while the seek was pending is
+      // honoured once the seek has completed, not when it
+      // is assigned (v52; the v42 form played at assignment
+      // and the seek landing cancelled it — the followed
+      // student's tile, and the wall's other playing tiles,
+      // came back stopped after Back from the zoom view,
+      // some of them black at a frame that then had no
+      // reason to load).
+      if(v._autoplay){ v._autoplay=false; playAfterSeek(v); }
+    } else if(v._wantFrac===undefined && v._autoplay){
+      v._autoplay=false; playAfterSeek(v); }
+  };
+  // durationchange as well as loadedmetadata: a file whose
+  // duration only arrives with durationchange would
+  // otherwise keep its deferred seek — and every play
+  // deferred behind it — for ever (v52).
+  v.addEventListener("loadedmetadata",land);
+  v.addEventListener("durationchange",land);
 }
 function playTile(v){
-  // Play a wall tile without racing a pending deferred
-  // seek (see seekFrac): if the seek has not landed yet,
-  // record the intent and let the metadata listener play
-  // once it has; otherwise play at once.
+  // Play a wall tile without racing a pending seek (see
+  // seekFrac): if a deferred seek has not been assigned
+  // yet, record the intent and let its landing play; if a
+  // seek is in flight, wait for it to complete; otherwise
+  // play at once.
   if(v._wantFrac!==undefined){ v._autoplay=true; return; }
-  const p=v.play(); if(p) p.catch(()=>{});
+  playAfterSeek(v);
 }
 function tileVideo(id){
   // The video element of one student's tile, found by id:
@@ -5441,7 +5583,25 @@ function updateMaster(){
   showing().forEach((s,i)=>{ const el=$("pct_"+s.id); if(el&&vs[i]) el.textContent=Math.round(frac(vs[i])*100)+"% · "+fmt(vs[i].currentTime)+" / "+fmt(vs[i].duration||s.duration_s); });
   $("syncinfo").textContent=vs.length+" videos · lengths "+vs.map(v=>fmt(v.duration||0)).join(", ");
 }
-function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); } else syncHoverTranscript(); raf=requestAnimationFrame(loop); }
+let stallTick=0;
+function reviveStalledTiles(){
+  // A tile that never got its frame (v52): the browser has
+  // stopped fetching (network idle) with no frame to show —
+  // the state a cancelled seek/play sequence can leave
+  // behind on a long take, whose frame sits deep in a large
+  // file. Re-assigning the position restarts the fetch.
+  // Runs every few seconds from loop(), at most one nudge
+  // per element per five seconds.
+  const now=performance.now();
+  vids().forEach(v=>{
+    if(!v.src || v.readyState>=2 || v.seeking) return;
+    if(v.networkState!==1 || !v.duration) return;
+    if(v._stallNudge && now-v._stallNudge<5000) return;
+    v._stallNudge=now;
+    v.currentTime=v.currentTime;
+  });
+}
+function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); } else { syncHoverTranscript(); if(++stallTick>=150){ stallTick=0; reviveStalledTiles(); } } raf=requestAnimationFrame(loop); }
 function syncZBar(){
   // The zoom position bar lives in the page layout under the video
   // (not as a video overlay), so it never fades or disappears.
@@ -6016,7 +6176,8 @@ button.danger{background:#8f2d2d}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{border-bottom:1px solid #e3e3de;padding:5px 7px;text-align:left}
 th{background:#f0f0ec}
-td,th{overflow-wrap:anywhere}
+td{overflow-wrap:anywhere}
+th{white-space:nowrap;font-size:12px}
 </style></head><body>
 <header><h1>Cleanup — Teacher Audit</h1>
 <p><a href="/">← Back to the dashboard</a> · Deleting here removes local working material only; nothing on Canvas is touched.</p></header>
@@ -6172,7 +6333,8 @@ th{background:#f0f0ec}
 .ok{background:#dcefe0}.bad{background:#f6dcdc}.warn{background:#f7ecd2}
 .mut{color:#666;font-size:12px}.err{color:#8f2d2d;white-space:pre-wrap}
 pre.pkgtext{white-space:pre-wrap;background:#fafaf7;border:1px solid #e3e3de;padding:10px;max-height:520px;overflow:auto;font-size:12.5px}
-td,th,pre,.mut{overflow-wrap:anywhere}
+td,pre,.mut{overflow-wrap:anywhere}
+th{white-space:nowrap;font-size:12px}
 .hash{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px}
 #spinner{display:none;color:#243b53;font-weight:600}
 .panel{border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:10px 0;background:#fbfbf9}
@@ -6646,12 +6808,20 @@ class Handler(BaseHTTPRequestHandler):
                 if r["key"] not in local_keys:
                     slot["pending"] += 1
             expected = expected_packages(cfg)
-            self._send(200, [
-                {**t, **counts[(t["course_id"], t["assignment_id"])],
-                 "expected_pkg": expected.get(
-                     f"{t['course_id']}_{t['assignment_id']}")}
-                for t in targets
-                if counts.get((t["course_id"], t["assignment_id"]))])
+            rows = []
+            for t in targets:
+                slot = counts.get((t["course_id"], t["assignment_id"]))
+                if not slot:
+                    continue
+                eff, src = effective_expected_package(
+                    cfg, t["course_id"], t["assignment_id"])
+                rows.append({
+                    **t, **slot,
+                    "stored_pkg": expected.get(
+                        f"{t['course_id']}_{t['assignment_id']}"),
+                    "expected_pkg": eff,
+                    "expected_source": src})
+            self._send(200, rows)
         elif u.path == "/api/package":
             self._send(200, package_detail(cfg, q["user_id"][0]))
         elif u.path == "/api/gradebook/preview":
@@ -6935,14 +7105,22 @@ class Handler(BaseHTTPRequestHandler):
             aid = str(body.get("assignment_id") or "")
             if not cid or not aid:
                 raise ValueError("a course and assignment are required")
-            pkg = str(body.get("pkg") or "").strip() or None
+            # The selector sends "__auto__" for the automatic
+            # (majority) default, "" for off, or "name vN" for
+            # an explicit choice (v52).
+            raw = str(body.get("pkg") or "").strip()
+            pkg = None if raw == "__auto__" else raw
             save_expected_package(cfg, cid, aid, pkg)
-            self._send(200, {"expected_pkg": pkg})
+            eff, src = effective_expected_package(cfg, cid, aid)
+            self._send(200, {"stored_pkg": pkg,
+                             "expected_pkg": eff,
+                             "expected_source": src})
         elif u.path == "/api/final-grade":
             uid = str(body["user_id"])
             _split = _split_unit_key(uid)
             if _split:
-                _exp = expected_package(cfg, _split[0], _split[1])
+                _exp = effective_expected_package(
+                    cfg, _split[0], _split[1])[0]
                 if _exp:
                     _pkg = submission_pkg(
                         cfg, uid, _split[2],
@@ -7213,7 +7391,8 @@ def submissions_view(cfg, local_only=False, attempts=False):
         if student is None:
             student = grades_total(grades_of(key))
         _split = _split_unit_key(key)
-        _exp = expected_package(cfg, _split[0], _split[1]) \
+        _exp = effective_expected_package(cfg, _split[0],
+                                          _split[1])[0] \
             if _split else None
         _pkg = (check or {}).get("pkg") or pkg_of(key)
         return {"check": check,

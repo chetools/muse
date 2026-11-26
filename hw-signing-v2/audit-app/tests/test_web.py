@@ -15,6 +15,7 @@ import hashlib
 import hmac as hmac_mod
 import io
 import json
+import shutil
 import sys
 import tempfile
 import threading
@@ -670,7 +671,9 @@ def main():
     status, out51 = call("POST", "/api/expected-package",
                          {"course_id": 101, "assignment_id": 202,
                           "pkg": "other-pkg v1"})
-    check(status == 200 and out51.get("expected_pkg") == "other-pkg v1",
+    check(status == 200 and out51.get("expected_pkg") == "other-pkg v1"
+          and out51.get("stored_pkg") == "other-pkg v1"
+          and out51.get("expected_source") == "set",
           "expected package saved for the assignment (v51)")
     status, subs51 = call("GET", "/api/submissions")
     row51 = next(r for r in subs51 if r["user_id"] == "111")
@@ -708,7 +711,9 @@ def main():
     web.fetch_submissions_for = _keep_fs51
     web._SCAN["subs"] = {}
     trow51 = next(t for t in tg51 if t["assignment_id"] == 202)
-    check(trow51.get("expected_pkg") == "other-pkg v1",
+    check(trow51.get("expected_pkg") == "other-pkg v1"
+          and trow51.get("stored_pkg") == "other-pkg v1"
+          and trow51.get("expected_source") == "set",
           "targets carry the expected package for the selector (v51)")
     status, dash51 = call("GET", "/", raw=True)
     check(b"expkg" in dash51 and b"Expected package" in dash51,
@@ -730,7 +735,86 @@ def main():
     row51 = next(r for r in subs51 if r["user_id"] == "111")
     check(row51.get("pkg_mismatch") is False
           and row51.get("expected_pkg") is None,
-          "cleared expected package: the gate is off (v51)")
+          "expected package set to Not set: the gate is off (v52)")
+    check(web.expected_package(web.load_web_config(), 101, 202) == "",
+          "Not set is stored as off, distinct from automatic (v52)")
+
+    # v52: the gate matches by package name, any version.
+    call("POST", "/api/expected-package",
+         {"course_id": 101, "assignment_id": 202, "pkg": "pkg-test v9"})
+    status, subs52 = call("GET", "/api/submissions")
+    row52 = next(r for r in subs52 if r["user_id"] == "111")
+    check(row52.get("pkg_mismatch") is False
+          and row52.get("expected_pkg") == "pkg-test v9",
+          "same package, different version: no mismatch (v52)")
+    status, out52 = call("POST", "/api/final-grade",
+                         {"user_id": KEY111, "score": 7})
+    check(status == 200 and out52.get("saved") == KEY111,
+          "final grade accepted for another version of the "
+          "same package (v52)")
+    check(web.pkg_name("pkg-test v9") == "pkg-test"
+          and web.pkg_mismatch("pkg-test v9", "pkg-test v2") is False
+          and web.pkg_mismatch("pkg-test v9", "other-pkg v1") is True,
+          "package names compare without their versions (v52)")
+
+    # v52: with no stored choice the majority package of the
+    # assignment's submissions is in force. A scratch
+    # assignment (101/999) keeps the fixture counts of the
+    # real assignments untouched; its folders are removed
+    # again at the end of this block.
+    _cfg52 = web.load_web_config()
+    _root52 = Path(_cfg52["data_dir"]) / "downloads" / "101" / "999"
+    _saved_pkg52 = globals()["PKG"]
+    try:
+        for _uid52, _pkg52 in (("301", "pkg-test v2"),
+                               ("302", "pkg-test v1"),
+                               ("303", "other-pkg v1")):
+            globals()["PKG"] = _pkg52
+            _dir52 = _root52 / _uid52
+            _dir52.mkdir(parents=True)
+            _wav52 = _dir52 / "audio.wav"
+            make_wav(_wav52)
+            (_dir52 / "submission.html").write_text(
+                build_html(audit.sha256_file(_wav52)),
+                encoding="utf-8")
+        globals()["PKG"] = _saved_pkg52
+        check(web.majority_package(_cfg52, 101, 999) == "pkg-test v2",
+              "majority package counted by name across versions (v52)")
+        check(web.effective_expected_package(_cfg52, 101, 999)
+              == ("pkg-test v2", "majority"),
+              "no stored choice: the majority is in force (v52)")
+        check(web.pkg_mismatch("pkg-test v2", "other-pkg v1") is True
+              and web.pkg_mismatch("pkg-test v2", "pkg-test v1") is False,
+              "the majority gates other packages, not other "
+              "versions (v52)")
+        globals()["PKG"] = "other-pkg v1"
+        _dir52 = _root52 / "304"
+        _dir52.mkdir(parents=True)
+        _wav52 = _dir52 / "audio.wav"
+        make_wav(_wav52)
+        (_dir52 / "submission.html").write_text(
+            build_html(audit.sha256_file(_wav52)), encoding="utf-8")
+        globals()["PKG"] = _saved_pkg52
+        check(web.majority_package(_cfg52, 101, 999) is None
+              and web.effective_expected_package(_cfg52, 101, 999)
+              == (None, "none"),
+              "a tied count means no majority and no gate (v52)")
+    finally:
+        globals()["PKG"] = _saved_pkg52
+        shutil.rmtree(_root52, ignore_errors=True)
+    status, out52 = call("POST", "/api/expected-package",
+                         {"course_id": 101, "assignment_id": 202,
+                          "pkg": "__auto__"})
+    check(status == 200 and out52.get("stored_pkg") is None
+          and out52.get("expected_source") == "majority"
+          and out52.get("expected_pkg") == PKG,
+          "automatic restores the majority default (v52)")
+    status, subs52 = call("GET", "/api/submissions")
+    row52 = next(r for r in subs52 if r["user_id"] == "111")
+    check(row52.get("pkg_mismatch") is False
+          and row52.get("expected_pkg") == PKG,
+          "under automatic, the row carries the majority "
+          "package (v52)")
     status, out = call("POST", "/api/final-grade",
                        {"user_id": "demo-t", "score": 7})
     status, walldata = call("GET", "/api/wall")
@@ -1374,8 +1458,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/51.0",
-          "user agent bumped to 51.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/52.0",
+          "user agent bumped to 52.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3441,13 +3525,21 @@ def main():
           and b"if(k.playing){ if(k.audible){ claimAudio(v);"
           in wall40
           and b"function syncHoverTranscript" in wall40
-          and b"else syncHoverTranscript();" in wall40
+          and b"else { syncHoverTranscript();" in wall40
           and b"if(body && body.clientHeight===0) return;"
           in wall40
           and b'HOVER.lastAct=-1;' in wall40,
           "v44: a tile-size drag cannot reset the wall, a "
           "capacity rebuild restores each tile, and the "
           "panel transcript follows the playing tile")
+    check(b"function playAfterSeek" in wall40
+          and b'"seeked"' in wall40
+          and b"durationchange" in wall40
+          and b"function reviveStalledTiles" in wall40
+          and b"max-width:none" in wall40,
+          "v52: a deferred play waits for the seek to "
+          "complete, a stalled tile is revived by the wall "
+          "loop, and the wall fills the screen")
 
     # ---------------------------------------------------------
     # 24. v45: the Privacy toggle. Both pages carry the

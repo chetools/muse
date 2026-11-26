@@ -18,6 +18,29 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v52 (2026-11-26) — the gate matches by name, defaults to the majority; wall and table fixes
+
+- **Package matching is by name.** A submission graded under a
+  different *version* of the same prompt package (v2 where v3 is
+  expected) is the same homework and grades normally; only a
+  different package counts as a mismatch.
+- **The Expected package selector defaults to Auto.** With no
+  choice stored, the package most of the assignment's downloaded
+  submissions were graded under is the expected one, and the
+  selector shows it ("Auto — majority: ⟨package⟩"). Choosing a
+  package from the list still sets it explicitly; "Not set — no
+  package check" now switches the gate off deliberately, as its
+  own stored choice.
+- **Table headers no longer split words across lines** ("Downloaded",
+  "Grade", "Examined" broke mid-word at some window widths).
+- **The video wall fills the screen** at 100% zoom instead of
+  sitting in a centred column.
+- **Wall playback after the single view is hardened:** a tile's
+  play now waits until its seek has completed (a play issued
+  while the seek was still running could be cancelled by the
+  seek landing, leaving the tile stopped or black on a long
+  take), and the wall revives a tile whose frame never arrived.
+
 ## v51 (2026-11-26) — the package-match gate: grade entry only when the package matches
 
 - In section 3 (Grades back to Canvas), each assignment now has
