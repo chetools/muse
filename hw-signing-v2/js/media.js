@@ -42,6 +42,19 @@ export function wavDurationS(wavBytes) {
   return dataBytes / 2 / SAMPLE_RATE;
 }
 
+// The inverse of encodeWavPcm16: the Float32 samples stored in a
+// WAV produced by it (44-byte header, 16-bit PCM). A recording
+// restored from the browser's store holds only its WAV, and this
+// decode is what makes it transcribable again without the source
+// file. Pure; Node-tested.
+export function pcmFromWavBytes(wavBytes) {
+  const n = Math.max(0, Math.floor((wavBytes.length - 44) / 2));
+  const view = new DataView(wavBytes.buffer, wavBytes.byteOffset, wavBytes.byteLength);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) out[i] = view.getInt16(44 + i * 2, true) / 32767;
+  return out;
+}
+
 // Mix one Float32Array per channel down to a single mono array, by
 // the mean of the channels at each frame. Pure; Node-tested.
 export function channelsToMono(channelArrays) {
