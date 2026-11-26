@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.5');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.6');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1001,7 +1001,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.5');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.6');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1708,6 +1708,28 @@ await test('wiring: job rows sit on one line and copy the recovery code in one c
     'the Copy button copies the stored recovery code in one click');
   assert.ok(main.includes("copyBtn.textContent = 'Copied'"),
     'a successful copy is confirmed on the button');
+});
+
+await test('wiring: the 5-second poll is not blocked by focus in the jobs list (2.6.6)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const poll = main.slice(main.indexOf('async function refreshJobs'),
+    main.indexOf('setInterval(refreshJobs'));
+  assert.ok(!poll.includes('activeElement'),
+    'refreshJobs does not skip a poll because focus sits inside the jobs list');
+  assert.ok(main.includes('row.dataset.jobKey = jobKey(entry.pkg, entry.retrieval_code)'),
+    'each job row carries its job key for focus restoration');
+  assert.ok(main.includes("ae.dataset.act && box.contains(ae)"),
+    'the render notes the focused control before the swap');
+  assert.ok(main.includes('target.focus({ preventScroll: true })'),
+    'the render restores focus to the matching control in the rebuilt row');
+  assert.ok(main.includes('shownCodes.has(row.dataset.jobKey)'),
+    'a shown recovery code stays shown across a refresh rebuild');
+  const download = main.slice(main.indexOf('async function doDownloadZip'),
+    main.indexOf('function renderJobRow'));
+  assert.ok(!download.includes('removeJobEntry'),
+    'downloading a submission ZIP keeps the job row, so the ZIP can be downloaded again');
+  assert.ok(download.includes('you can download '),
+    'the Done line tells the student the ZIP can be downloaded again');
 });
 
 await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
