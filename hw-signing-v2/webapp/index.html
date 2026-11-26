@@ -32,6 +32,7 @@
   input[type="text"], input[type="url"], input[type="password"] { font: inherit; padding: 6px 8px; }
   #ytLink, #finLink { max-width: calc(100vw - 50px); box-sizing: border-box; }
   .note { color: #555; font-size: 0.88rem; }
+  .fine { font-size: 0.78rem; color: #666; }
   label.check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; }
   #liveBox .lbl { font-weight: 600; font-size: 0.88rem; color: #444; }
   #liveRaw { color: #555; }
@@ -91,13 +92,14 @@
 
   <h2>1. The transcription model</h2>
   <div class="row">
-    <button id="loadBtn" class="primary">Load model (about 670 MB, first time only)</button>
-    <span class="status" id="loadStatus">Model not loaded.</span>
+    <button id="loadBtn" class="primary" hidden>Load model (about 670 MB, first time only)</button>
+    <span class="status" id="loadStatus">Loading model…</span>
   </div>
   <progress id="loadProg" value="0" max="1" hidden></progress>
-  <p class="note">Nothing is downloaded until you press the button. Transcription runs
-  entirely in this browser (NVIDIA Parakeet TDT 0.6B v2, int8). If the recording is
-  already saved on this computer (step 2), the model is not needed.</p>
+  <p class="note fine">The model loads automatically when this page opens. It is about
+  670 MB the first time, and is then kept in this browser. Transcription runs entirely
+  in this browser (NVIDIA Parakeet TDT 0.6B v2, int8; WebAssembly, one thread). If the
+  recording is already saved on this computer (step 2), the model is not needed.</p>
 
   <h2>2. The recording file</h2>
   <div class="row">

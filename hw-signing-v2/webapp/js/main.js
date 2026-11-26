@@ -211,23 +211,32 @@ function onDownloadProgress({ loaded, total, file }) {
       (sumLoaded / 1048576).toFixed(0) + ' MB of ' + (sumTotal / 1048576).toFixed(0) + ' MB…';
   }
 }
-$('loadBtn').addEventListener('click', async () => {
+// The model loads automatically when the page opens (2.6.4); the
+// button remains only as the retry after a failed load, and in
+// teacher setup mode, where nothing loads on its own.
+let modelLoading = false;
+async function startModelLoad() {
+  if (model || modelLoading) return;
+  modelLoading = true;
   clearError();
-  $('loadBtn').disabled = true;
+  $('loadBtn').hidden = true;
   $('loadProg').hidden = false;
-  $('loadStatus').textContent = 'Downloading model files from Hugging Face…';
+  $('loadStatus').textContent = 'Loading model…';
   try {
     model = await loadModel(onDownloadProgress);
     $('loadProg').hidden = true;
-    $('loadStatus').textContent = 'Model loaded. Transcription runs on WebAssembly, one thread.';
+    $('loadStatus').textContent = 'Model loaded.';
     updateRunEnabled();
   } catch (err) {
     $('loadProg').hidden = true;
     $('loadStatus').textContent = 'Model did not load.';
+    $('loadBtn').hidden = false;
     showError('Model loading failed. Check the connection and try again.', err, $('loadBtn'));
-    $('loadBtn').disabled = false;
+  } finally {
+    modelLoading = false;
   }
-});
+}
+$('loadBtn').addEventListener('click', startModelLoad);
 
 // --- Media stage + cache ---
 function updateRunEnabled() { $('runBtn').disabled = !(model && pcm); }
@@ -1946,3 +1955,9 @@ renderConfig();
 refreshDerived();
 renderCacheList();
 renderJobs();
+if (cfg.setup) {
+  $('loadBtn').hidden = false;
+  $('loadStatus').textContent = 'Model not loaded.';
+} else {
+  startModelLoad();
+}

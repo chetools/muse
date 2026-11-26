@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.3');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.4');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -978,6 +978,21 @@ await test('wiring: the section-7 critique keeps its line breaks', () => {
     'page description is the current one');
 });
 
+await test('wiring: the model loads automatically on page open (2.6.4)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(main.includes('startModelLoad();'),
+    'page init starts the model load without a click');
+  assert.ok(main.includes("$('loadStatus').textContent = 'Model loaded.';"),
+    'a finished load leaves only the brief loaded line');
+  assert.ok(index.includes('loads automatically when this page opens'),
+    'the section-1 note states the load is automatic');
+  assert.ok(index.includes('note fine'),
+    'the section-1 technical detail is set in small print');
+  assert.ok(!index.includes('Nothing is downloaded until you press the button'),
+    'the press-to-download wording is gone');
+});
+
 await test('wiring: no separate download button for the extracted audio', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
@@ -986,7 +1001,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.3');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.4');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
