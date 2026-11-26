@@ -75,7 +75,7 @@ const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
 // the same status response (Worker 2.7.0): the stored transcript text and the
 // raw fingerprint as base64, kept in memory only, for the fingerprint-form ZIP
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
-const expandedJobs = new Set(); // "pkg|code" with grades shown (kept across refreshes)
+const expandedJobs = new Set(); // "pkg|code" with the detail panel open (kept across refreshes)
 const shownCodes = new Set();   // "pkg|code" with recovery code shown (kept across refreshes)
 
 // Errors belong beside the control that was used, in the part
@@ -1197,33 +1197,38 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
   }
   if (!parts) return;
   const words = scrubWords();
-  const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
   const recName = parts.record && parts.record.source_name
     ? scrubMetadata(parts.record.source_name, words) + ' · ' : '';
   const firstWords = parts.record
     ? recordingFirstWords(parts.record.chunks) : '';
   const durationS = parts.form === 'fingerprint'
     ? parts.durationS : parts.record.duration_s;
+  // Compact review lines (2.6.7): the row and panel already carry
+  // the label and the grades, so the review states only what the
+  // verification established — the three checks on one line, the
+  // recording and YouTube identity in small print, and the
+  // instruction. No verified fact is dropped: the recording line
+  // still names the file, the duration, the hash, the opening words
+  // and which signed checksum the audio matched.
   const lines = [
-    label + ' — ' + entry.pkg,
-    'Grades: Completeness ' + bundle.completeness + '/5 · Accuracy ' +
-      bundle.accuracy + '/5',
+    'Checks: recording ✓ · transcript ✓ · YouTube ✓',
     'Recording: ' + recName + formatDuration(durationS) +
-      ' · recording hash ' + bundle.audio_sha256.slice(0, 12) + '…' +
+      ' · hash ' + bundle.audio_sha256.slice(0, 12) + '…' +
       (firstWords
-        ? ' · starts “' + scrubMetadata(firstWords, words) + '…”' : ''),
-    parts.form === 'fingerprint'
-      ? 'Audio: the recording fingerprint matches the checksum signed with the grade ✓'
-      : 'Audio: matches the recording hash signed with the grade ✓',
-    'Transcript: matches the checksum signed with the grade ✓',
+        ? ' · starts “' + scrubMetadata(firstWords, words) + '…”' : '') +
+      (parts.form === 'fingerprint'
+        ? ' · fingerprint matches the checksum signed with the grade'
+        : ' · matches the recording hash signed with the grade'),
     'YouTube: ' + (entry.youtube_title ? '“' + entry.youtube_title + '” · ' : '') +
-      canonicalWatchUrl(parts.videoId) +
-      ' · the video checked for this job ✓',
+      canonicalWatchUrl(parts.videoId),
     'Check the recording and the video title are yours, then download.',
   ];
   zipReviews.set(jobKey(entry.pkg, entry.retrieval_code), {
     receipt: bundle.receipt, parts, lines,
   });
+  // The review renders inside the job's panel: open the panel so
+  // the student sees it at once.
+  expandedJobs.add(jobKey(entry.pkg, entry.retrieval_code));
   renderJobs();
 }
 
@@ -1307,54 +1312,58 @@ function renderJobRow(container, entry, statusInfo) {
         : 'waiting — ' + ahead + (ahead === 1 ? ' job' : ' jobs') + ' ahead')
       : 'waiting';
   } else statusText = statusInfo.status;
-  // The row's summary and its controls sit on one line that never
-  // wraps (2.6.5): the label takes the slack and shortens with an
-  // ellipsis, and the buttons and the recovery code keep their full
-  // width. Panels (grades, ZIP review) open below the line.
+  // One line per job (2.6.7): the line carries the label, the kind
+  // in plain words (Final or Practice), the status, the grades when
+  // ready, the panel toggle, and the one primary button; the label
+  // takes the slack and shortens with an ellipsis. Everything else —
+  // the critique, the ZIP review, the recovery code, Remove — lives
+  // in the single panel below the line, so a collapsed job is
+  // exactly one line. That a final job's link was checked is carried
+  // by the YouTube check in the ZIP review, not by the label.
   const line = document.createElement('div');
   line.className = 'jobline';
   const labelSpan = document.createElement('span');
   labelSpan.className = 'joblabel';
   labelSpan.textContent =
-    label + (entry.kind === 'final' ? ' (sent with a checked link): '
-      : ' (sent without a link): ') + statusText;
+    label + ' · ' + (entry.kind === 'final' ? 'Final' : 'Practice') +
+    ' · ' + statusText;
   labelSpan.title = labelSpan.textContent;
   line.append(labelSpan);
+  const key = jobKey(entry.pkg, entry.retrieval_code);
+  const bundle = statusInfo && statusInfo.status === 'ready'
+    ? readyBundles.get(key) : null;
+  if (bundle) {
+    const grades = document.createElement('span');
+    grades.className = 'jobgrades';
+    grades.textContent = 'Completeness ' + bundle.completeness +
+      '/5 · Accuracy ' + bundle.accuracy + '/5';
+    line.append(grades);
+  }
+  const detail = document.createElement('div');
+  detail.className = 'jobdetail';
+  detail.hidden = !expandedJobs.has(key);
+  const detailBtn = document.createElement('button');
+  detailBtn.dataset.act = 'grades';
+  detailBtn.textContent = 'Show details';
+  if (expandedJobs.has(key)) detailBtn.textContent = 'Hide details';
+  detailBtn.addEventListener('click', () => {
+    detail.hidden = !detail.hidden;
+    if (detail.hidden) expandedJobs.delete(key); else expandedJobs.add(key);
+    detailBtn.textContent = detail.hidden ? 'Show details' : 'Hide details';
+  });
+  line.append(detailBtn);
   row.append(line);
+  if (bundle) {
+    // The critique is a numbered list, one point per line: keep the
+    // line breaks when it is shown (the submission HTML does the
+    // same with white-space: pre-line).
+    const crit = document.createElement('div');
+    crit.className = 'box';
+    crit.style.whiteSpace = 'pre-line';
+    crit.textContent = bundle.critique || '';
+    detail.append(crit);
+  }
   if (statusInfo && statusInfo.status === 'ready') {
-    const bundle = readyBundles.get(jobKey(entry.pkg, entry.retrieval_code));
-    const key = jobKey(entry.pkg, entry.retrieval_code);
-    const showBtn = document.createElement('button');
-    showBtn.dataset.act = 'grades';
-    showBtn.textContent = expandedJobs.has(key) ? 'Hide grades and critique' : 'Show grades and critique';
-    const detail = document.createElement('div');
-    detail.hidden = !expandedJobs.has(key);
-    if (bundle) {
-      detail.innerHTML = '';
-      const p = document.createElement('p');
-      p.textContent = 'Completeness: ' + bundle.completeness + '/5 · Accuracy: ' +
-        bundle.accuracy + '/5';
-      const rec = document.createElement('p');
-      rec.textContent = 'Recording hash: ' +
-        (bundle.audio_sha256 || '').slice(0, 12) + '…' +
-        (entry.youtube_title ? ' · YouTube: “' + entry.youtube_title + '”' : '');
-
-      const crit = document.createElement('div');
-      crit.className = 'box';
-      // The critique is a numbered list, one point per line:
-      // keep the line breaks when it is shown (the submission
-      // HTML does the same with white-space: pre-line).
-      crit.style.whiteSpace = 'pre-line';
-      crit.textContent = bundle.critique || '';
-      detail.append(p, rec, crit);
-    }
-    showBtn.addEventListener('click', () => {
-      detail.hidden = !detail.hidden;
-      if (detail.hidden) expandedJobs.delete(key); else expandedJobs.add(key);
-      showBtn.textContent = detail.hidden ? 'Show grades and critique' : 'Hide grades and critique';
-    });
-    line.append(showBtn);
-    row.append(detail);
     if (entry.kind === 'final' && bundle && entry.pkg !== cfg.pkg) {
       // Guard (2.6.2): the jobs list is browser-wide, but a submission
       // ZIP is built only from the link of the job's own assignment.
@@ -1381,20 +1390,17 @@ function renderJobRow(container, entry, statusInfo) {
         const zipBtn = document.createElement('button');
         zipBtn.dataset.act = 'zip-review';
         zipBtn.className = 'primary';
-        zipBtn.textContent = 'Review and download submission ZIP';
+        zipBtn.textContent = 'Review and download';
         zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle, zipBtn));
         line.append(zipBtn);
       } else {
-        // The review panel from a completed verification (see
-        // downloadSubmissionZip): every item that will be packaged,
-        // identified and checked, with the actual download button.
+        // The review section from a completed verification (see
+        // downloadSubmissionZip), inside the job's one panel: the
+        // download button first, then the compact lines — the checks
+        // on one line, the recording and YouTube identity in small
+        // print, and the instruction.
         const panel = document.createElement('div');
-        panel.className = 'box';
-        for (const line of review.lines) {
-          const p = document.createElement('p');
-          p.textContent = line;
-          panel.append(p);
-        }
+        panel.className = 'box reviewbox';
         const dlBtn = document.createElement('button');
         dlBtn.dataset.act = 'zip-download';
         dlBtn.className = 'primary';
@@ -1402,6 +1408,7 @@ function renderJobRow(container, entry, statusInfo) {
         dlBtn.addEventListener('click', () => doDownloadZip(entry, bundle, review, dlBtn));
         const closeBtn = document.createElement('button');
         closeBtn.dataset.act = 'zip-close';
+        closeBtn.className = 'quiet';
         closeBtn.textContent = 'Close review';
         closeBtn.addEventListener('click', () => {
           // Closing the review restores the row's Review button and
@@ -1410,8 +1417,17 @@ function renderJobRow(container, entry, statusInfo) {
           zipReviews.delete(key);
           renderJobs();
         });
-        panel.append(dlBtn, document.createTextNode(' '), closeBtn);
-        row.append(panel);
+        const btnRow = document.createElement('div');
+        btnRow.className = 'houserow';
+        btnRow.append(dlBtn, closeBtn);
+        panel.append(btnRow);
+        review.lines.forEach((text, i) => {
+          const p = document.createElement('p');
+          if (i > 0 && i < review.lines.length - 1) p.className = 'small';
+          p.textContent = text;
+          panel.append(p);
+        });
+        detail.append(panel);
       }
     }
     // No per-row conversion button: the conversion panel's picker is
@@ -1419,6 +1435,7 @@ function renderJobRow(container, entry, statusInfo) {
   }
   const codeBtn = document.createElement('button');
   codeBtn.dataset.act = 'code';
+  codeBtn.className = 'quiet';
   const codeShown = shownCodes.has(row.dataset.jobKey);
   codeBtn.textContent = 'Show recovery code';
   if (codeShown) codeBtn.textContent = 'Hide recovery code';
@@ -1432,6 +1449,7 @@ function renderJobRow(container, entry, statusInfo) {
   // unavailable it selects the code instead, ready for Ctrl+C.
   const copyBtn = document.createElement('button');
   copyBtn.dataset.act = 'copy';
+  copyBtn.className = 'quiet';
   copyBtn.textContent = 'Copy';
   copyBtn.hidden = !codeShown;
   copyBtn.addEventListener('click', async () => {
@@ -1460,20 +1478,27 @@ function renderJobRow(container, entry, statusInfo) {
     codeBtn.textContent = codeLine.hidden
       ? 'Show recovery code' : 'Hide recovery code';
   });
-  line.append(codeBtn, codeLine, copyBtn);
   const forgetBtn = document.createElement('button');
   forgetBtn.dataset.act = 'remove';
+  forgetBtn.className = 'quiet';
   forgetBtn.textContent = 'Remove from this browser';
   forgetBtn.addEventListener('click', () => {
     // A review open on this row is abandoned with the job: its
     // zipReviews entry goes too, or the poll would stay paused on a
     // review that no longer exists.
-    zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
-    shownCodes.delete(jobKey(entry.pkg, entry.retrieval_code));
+    zipReviews.delete(key);
+    shownCodes.delete(key);
+    expandedJobs.delete(key);
     removeJobEntry(entry.pkg, entry.retrieval_code);
     renderJobs();
   });
-  line.append(forgetBtn);
+  // Housekeeping sits at the foot of the panel (2.6.7): the recovery
+  // code and Remove are not part of the job's one line.
+  const houseRow = document.createElement('div');
+  houseRow.className = 'houserow';
+  houseRow.append(codeBtn, codeLine, copyBtn, forgetBtn);
+  detail.append(houseRow);
+  row.append(detail);
   container.append(row);
 }
 
@@ -2028,9 +2053,9 @@ $('manualBtn').addEventListener('click', async () => {
       note.className = 'note';
       note.textContent = entry.kind === 'final'
         ? (bundleChromaprintSha(res.data.result)
-          ? 'This job was sent with a checked link. Its grade record has the recording’s fingerprint, so the submission ZIP can be built on this computer without the recording file. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
-          : 'This job was sent with a checked link. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.')
-        : 'This job was sent without a link. To make the Canvas submission, add the YouTube link in the conversion panel above (Turn a graded job into your Canvas submission).';
+          ? 'This job is a final job. Its grade record has the recording’s fingerprint, so the submission ZIP can be built on this computer without the recording file. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download here.'
+          : 'This job is a final job. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download here.')
+        : 'This job is a practice job. To make the Canvas submission, add the YouTube link in the conversion panel above (Turn a graded job into your Canvas submission).';
       box.append(note);
       renderJobRow(box, entry, { status: 'ready' });
     }

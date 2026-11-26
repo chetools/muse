@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.6');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.7');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1001,7 +1001,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.6');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.7');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1730,6 +1730,29 @@ await test('wiring: the 5-second poll is not blocked by focus in the jobs list (
     'downloading a submission ZIP keeps the job row, so the ZIP can be downloaded again');
   assert.ok(download.includes('you can download '),
     'the Done line tells the student the ZIP can be downloaded again');
+});
+
+await test('wiring: section 7 redesign — one line collapsed, one panel, compact review (2.6.7)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const rowFn = main.slice(main.indexOf('function renderJobRow'),
+    main.indexOf('// The manual-retrieval row'));
+  assert.ok(!rowFn.includes('checked link') && !rowFn.includes('sent without a link'),
+    'the row label no longer carries the checked-link wording');
+  assert.ok(main.includes("(entry.kind === 'final' ? 'Final' : 'Practice')"),
+    'the row label names the kind in plain words');
+  assert.ok(main.includes("'Show details'") && main.includes("'Hide details'"),
+    'one toggle opens and closes the job\u2019s single panel');
+  assert.ok(main.includes('houseRow.append(codeBtn, codeLine, copyBtn, forgetBtn)'),
+    'the recovery code and Remove live in the panel, not on the row\u2019s line');
+  assert.ok(main.includes("'Checks: recording \u2713 \u00b7 transcript \u2713 \u00b7 YouTube \u2713'"),
+    'the ZIP review opens with the three checks on one line');
+  assert.ok(!main.includes('Grades: Completeness'),
+    'the ZIP review no longer repeats the grades the row already shows');
+  assert.ok(main.includes('expandedJobs.add(jobKey(entry.pkg, entry.retrieval_code))'),
+    'a completed verification opens the panel so the review is visible');
+  assert.ok(html.includes('.jobline .jobgrades'),
+    'the grades sit on the row\u2019s line in their own span');
 });
 
 await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
