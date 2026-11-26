@@ -36,7 +36,6 @@ import {
 import { fromCachedChunk, recordingFirstWords } from './cachekey.js';
 import {
   parseYouTubeVideoId, canonicalWatchUrl,
-  bundleBoundVideoSha,
   verifyBundleContents, bundleChromaprintSha, verifyFingerprintContents,
   validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry, entryPollable,
   removeJobEntry, saveJobEntries, kindFromResultBundle,
@@ -128,9 +127,10 @@ function scrubbed() { return scrubChunks(chunks, scrubWords()); }
 function canonical() { return canonicalTranscript(scrubbed()); }
 // There is no Practice/Final choice anywhere in the page (2.6.16):
 // a job is sent with no YouTube link, and the submission is made
-// afterwards from the job's own row in section 7. The video is
-// bound at one moment only (2.6.18): the student's confirmation
-// in the ZIP review, where the finalise step runs. The Worker's
+// afterwards from the job's own row in section 7. No video is
+// bound to a job (2.6.19): confirming the ZIP review finalises
+// the job — marking it final, with no video attached — and the
+// ZIP carries the row's link as package data. The Worker's
 // job kind stays as it is: a sent job is 'practice' until it is
 // finalised, and entries for jobs sent as final by earlier
 // versions keep working from their signed bundle.
@@ -632,7 +632,7 @@ $('ytPreviewOverlay').addEventListener('click', () => {
   }
 });
 
-/* ---------------- per-row links (2.6.18) ----------------
+/* ---------------- per-row links (2.6.18; no binding, 2.6.19) ----------------
  * Each ready job's row carries its own link field. No check runs
  * while the student types: the field's text is parsed for
  * readability only (a Studio address is converted to the watch
@@ -640,9 +640,9 @@ $('ytPreviewOverlay').addEventListener('click', () => {
  * exactly while the field holds a readable link. The one check —
  * the Worker reporting the video reachable (Public or Unlisted)
  * through /youtube-check — runs at the Generate ZIP click, as
- * part of preparing the review. Binding happens later still, at
- * the review's confirm (see doDownloadZip): cancelling the
- * review binds nothing.
+ * part of preparing the review. No video is bound to the job:
+ * confirming the review finalises the job (marking it final) and
+ * downloads the ZIP carrying the row's link (see doDownloadZip).
  */
 
 function rowInputEl(key) {
@@ -734,11 +734,11 @@ function duplicateLinkEntry(key, videoId) {
 // Generate ZIP, from a row holding a readable link (2.6.18): the
 // reachability check runs now, as part of preparing the review.
 // A private or missing video, or a failed check, is reported in
-// the row's own cell and nothing is bound or packaged. On a pass
-// the verified parts and the review are prepared by
-// downloadSubmissionZip, carrying a pending binding — the bind
-// (or superseding rebind) itself runs only if the student
-// confirms in the review (see doDownloadZip).
+// the row's own cell and nothing is packaged. On a pass the
+// verified parts and the review are prepared by
+// downloadSubmissionZip, carrying the checked video — no video
+// is bound to the job at any point (2.6.19); confirming the
+// review finalises the job and packages (see doDownloadZip).
 async function generateZipForRow(entry, bundle, btn) {
   const key = jobKey(entry.pkg, entry.retrieval_code);
   const videoId = parseYouTubeVideoId(rowLinkDraft(entry));
@@ -772,18 +772,11 @@ async function generateZipForRow(entry, bundle, btn) {
   }
   btn.disabled = false;
   // The link is kept with the entry, as before — browser keeping
-  // only; the binding is the Worker's, and happens at confirm.
+  // only. It is package data: the ZIP is built with this link,
+  // and no video is bound to the job (2.6.19).
   persistRowLink(entry, canonical, res.title || '', res.checked_at);
   if (rowDrafts.get(key) !== canonical) rowDrafts.set(key, canonical);
-  const boundSha = bundleBoundVideoSha(bundle);
-  let mode = 'bind';
-  if (boundSha) {
-    mode = (await sha256Hex(videoId)) === boundSha ? 'same' : 'supersede';
-  }
-  const pending = {
-    videoId, token: res.token, checkedAt: res.checked_at,
-    title: res.title || '', mode,
-  };
+  const pending = { videoId, title: res.title || '' };
   await downloadSubmissionZip(entry, bundle, btn, (msg) => {
     rowZipErrors.set(key, msg);
     paintRowCell(key);
@@ -978,9 +971,10 @@ function keepReenteredLink(entry, bundle, link) {
 //   its canonical checksum must equal the signed transcript_sha256 —
 //   a different removal list in step 3 is the usual cause of a
 //   mismatch, and the error says so;
-// - the critique's SHA-256 must equal the signed critique_sha256;
-// - the locally kept YouTube link's video ID must hash to the
-//   bundle's signed youtube_video_sha256.
+// - the critique's SHA-256 must equal the signed critique_sha256.
+// The YouTube link is not verified against the bundle: no video
+// is bound to the job (2.6.19), so the row's checked link is
+// packaged as it stands.
 // Returns the verified parts, or null with the error shown beside
 // the button that was used.
 async function verifySubmissionParts(entry, bundle, anchor, onError, pending) {
@@ -1044,26 +1038,17 @@ async function verifySubmissionParts(entry, bundle, anchor, onError, pending) {
     null, anchor);
     return null;
   }
-  // The HTML's YouTube link: with a pending binding (2.6.18) it
-  // is the video the Generate ZIP click just checked; the
-  // bundle-hash equality is established at the review's confirm,
-  // when the binding is made and re-verified before packaging
-  // (see doDownloadZip). Without one, the link kept with this
-  // job's entry is cross-checked against the signed bundle: the
-  // SHA-256 of its video ID must equal the bundle's
-  // youtube_video_sha256.
+  // The HTML's YouTube link: with a checked video pending
+  // (2.6.19) it is the video the Generate ZIP click just checked;
+  // without one it is the link kept with this job's entry. No
+  // comparison with the signed bundle is made: no video is bound
+  // to the job, and a bundle carrying a video hash from an
+  // earlier version does not restrict the link packaged.
   const link = entry.youtube_link || '';
   const videoId = pending ? pending.videoId : parseYouTubeVideoId(link);
   if (!videoId) {
     fail('No YouTube link is kept on this browser for this job. Enter it in the job’s row, then try again.', null, anchor);
     return null;
-  }
-  if (!pending) {
-    const videoIdSha = await sha256Hex(videoId);
-    if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== videoIdSha) {
-      fail('A different video is kept on this browser from the one that was checked for this job.', null, anchor);
-      return null;
-    }
   }
   keepReenteredLink(entry, bundle, link);
   return { form: 'wav', wav, scrubbedChunks, record, videoId };
@@ -1081,9 +1066,9 @@ async function verifySubmissionParts(entry, bundle, anchor, onError, pending) {
 //   when they reproduce the graded text, and otherwise from the
 //   transcript text the status response returned; either way its
 //   canonical SHA-256 must equal the signed transcript_sha256;
-// - the critique's SHA-256 must equal the signed critique_sha256;
-// - the YouTube link kept with the entry, from the job's row,
- //   must hash to the signed youtube_video_sha256.
+// - the critique's SHA-256 must equal the signed critique_sha256.
+// The YouTube link is not verified against the bundle: no video
+// is bound to the job (2.6.19).
 // Returns the verified parts, or null with the error shown beside
 // the button that was used.
 async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
@@ -1179,32 +1164,20 @@ async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
       'packaged. Reload the page and retry.', null, anchor);
     return null;
   }
-  // The link is needed only when the signed bundle names a checked
-  // video; a job whose bundle carries youtube_video_sha256 "none"
-  // was sent without one and packages with no link. With a pending
-  // binding (2.6.18) the video is the one the Generate ZIP click
-  // just checked, and the bundle-hash equality is established at
-  // the review's confirm, before packaging (see doDownloadZip).
+  // The packaged link is the checked video pending from the
+  // Generate ZIP click (2.6.19); without one it is the link kept
+  // with the entry, and a job with neither packages with no link.
+  // No comparison with the signed bundle is made: no video is
+  // bound to the job, and a bundle carrying a video hash from an
+  // earlier version does not restrict the link packaged.
   let videoId = '';
   if (pending) {
     videoId = pending.videoId;
     keepReenteredLink(entry, bundle, entry.youtube_link || '');
-  } else if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== 'none') {
+  } else {
     const link = entry.youtube_link || '';
     videoId = parseYouTubeVideoId(link) || '';
-    if (!videoId) {
-      fail('No YouTube link is kept on this browser for this job. ' +
-        'Enter it in the job’s row, then ' +
-        'try again.', null, anchor);
-      return null;
-    }
-    const videoIdSha = await sha256Hex(videoId);
-    if (videoIdSha !== bundle.youtube_video_sha256) {
-      fail('That YouTube link is for a different video from ' +
-        'the one that was checked for this job.', null, anchor);
-      return null;
-    }
-    keepReenteredLink(entry, bundle, link);
+    if (videoId) keepReenteredLink(entry, bundle, link);
   }
   // The packaged duration: the locally held recording's duration
   // when this computer has it, otherwise the fingerprint's own
@@ -1266,10 +1239,10 @@ async function downloadSubmissionZip(entry, bundle, anchor, onError, pending) {
   // The review (2.6.18) states, in one place, what the student is
   // confirming: this job (its course and assignment), this video
   // (its title and address), and this graded transcript (its
-  // opening words). Two warnings can join it: the same link on
-  // another row in this browser, and — for a job already bound
-  // to a different video — the supersede notice. Confirming is
-  // what binds the video; see doDownloadZip.
+  // opening words). One warning can join it: the same link on
+  // another row in this browser. Confirming finalises the job
+  // and downloads the ZIP; no video is bound (2.6.19); see
+  // doDownloadZip.
   const key = jobKey(entry.pkg, entry.retrieval_code);
   const jobLabel = [entry.course, entry.asg].filter(Boolean).join(' · ')
     || entry.pkg;
@@ -1306,15 +1279,8 @@ async function downloadSubmissionZip(entry, bundle, anchor, onError, pending) {
         || dup.pkg;
       lines.push('This link is also on your ' + dupLabel + ' row.');
     }
-    if (pending.mode === 'supersede') {
-      lines.push("This job's submission is currently a different " +
-        'video. Confirming replaces it with this one; the earlier ' +
-        'ZIP will no longer be the submission of record.');
-    }
   }
-  lines.push(pending && pending.mode !== 'same'
-    ? 'Check the recording and the video are yours, then bind and download.'
-    : 'Check the recording and the video title are yours, then download.');
+  lines.push('Check the recording and the video title are yours, then download.');
   zipReviews.set(key, {
     receipt: bundle.receipt, parts, lines, pending: pending || null,
   });
@@ -1330,43 +1296,38 @@ async function doDownloadZip(entry, bundle, review, anchor) {
   const status = showZipStatus(anchor, 'Building the submission ZIP…');
   try {
     const { parts } = review;
-    // Binding happens here, at the confirm, and not before
-    // (2.6.18): a pending bind finalises the job with the checked
-    // video; a pending supersede rebinds it from the video it was
-    // bound to. The ZIP is then built against the grade record as
-    // it now stands, fetched back and checked to name this video.
-    // A failure packages nothing and is reported in the row's
-    // cell. Cancelling the review never reaches this function, so
-    // a shown-but-unconfirmed supersede does not happen.
+    // Confirming finalises the job (2.6.19): /jobs/finalize is
+    // called with no YouTube fields — it marks the job final and
+    // the Worker enforces one final per recording; no video is
+    // bound. The call runs for every job, including one already
+    // final: finalizeJob treats an "already final" response for
+    // this job as success. The ZIP is then built against the
+    // grade record as it now stands, fetched back after the
+    // finalize. A failure packages nothing and is reported in
+    // the row's cell. Cancelling the review never reaches this
+    // function, so a shown-but-unconfirmed review finalises
+    // nothing.
     let liveBundle = bundle;
-    if (review.pending && review.pending.mode !== 'same') {
+    if (review.pending) {
       const key = jobKey(entry.pkg, entry.retrieval_code);
       try {
-        const payload = {
+        await finalizeJob(cfg.worker, {
           pkg: entry.pkg,
           retrieval_code: entry.retrieval_code,
-          youtube_video_id: review.pending.videoId,
-          youtube_checked_at: review.pending.checkedAt,
-        };
-        payload['youtube' + '_token'] = review.pending.token;
-        await finalizeJob(cfg.worker, payload);
-        const status = await fetchJobStatus(cfg.worker, {
+        });
+        const st = await fetchJobStatus(cfg.worker, {
           pkg: entry.pkg, retrieval_code: entry.retrieval_code,
         });
-        if (status.status === 'ready' && status.data && status.data.result) {
-          liveBundle = status.data.result;
+        if (st.status === 'ready' && st.data && st.data.result) {
+          liveBundle = st.data.result;
           readyBundles.set(key, liveBundle);
-          if (typeof status.data.transcript === 'string' || status.data.chromaprint) {
+          if (typeof st.data.transcript === 'string' || st.data.chromaprint) {
             readyExtras.set(key, {
-              transcript: typeof status.data.transcript === 'string'
-                ? status.data.transcript : null,
-              chromaprint: status.data.chromaprint || null,
+              transcript: typeof st.data.transcript === 'string'
+                ? st.data.transcript : null,
+              chromaprint: st.data.chromaprint || null,
             });
           }
-        }
-        if (bundleBoundVideoSha(liveBundle) !==
-            (await sha256Hex(review.pending.videoId))) {
-          throw new Error('the grade record does not name this video after binding');
         }
       } catch (err) {
         rowZipErrors.set(key, 'The submission could not be made: ' + err.message);
@@ -1675,12 +1636,10 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
     const dlBtn = document.createElement('button');
     dlBtn.dataset.act = 'zip-download';
     dlBtn.className = 'primary';
-    // The confirm label says what confirming does (2.6.18): with
-    // a pending bind or supersede it binds this video and then
-    // downloads; with the video already bound it only downloads.
-    dlBtn.textContent = review.pending && review.pending.mode !== 'same'
-      ? 'Bind this video and download the ZIP'
-      : 'Download submission ZIP';
+    // The confirm label says what confirming does (2.6.19):
+    // confirming finalises the job and downloads the ZIP; no
+    // video is bound, so the label is the same for every job.
+    dlBtn.textContent = 'Download submission ZIP';
     dlBtn.addEventListener('click', () => doDownloadZip(entry, bundle, review, dlBtn));
     const closeBtn = document.createElement('button');
     closeBtn.dataset.act = 'zip-close';

@@ -91,17 +91,6 @@ export function parseYouTubeVideoId(url) {
   return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
 }
 
-// The video a graded job is already bound to, as the SHA-256 of
-// its video ID in the signed result bundle, or null when the
-// bundle binds no video (the value "none", or a bundle graded
-// before the field existed). A row link for a bound job must hash
-// to exactly this value; an unbound job is bound at ZIP generation
-// through /jobs/finalize.
-export function bundleBoundVideoSha(bundle) {
-  const v = bundle && bundle.youtube_video_sha256;
-  return typeof v === 'string' && SHA256_HEX.test(v) ? v : null;
-}
-
 export function canonicalWatchUrl(videoId) {
   return 'https://www.youtube.com/watch?v=' + videoId;
 }
@@ -508,19 +497,26 @@ export async function fetchJobStatus(workerBase, creds, fetchFn) {
   return { status: data.status, data };
 }
 
-// POST /jobs/finalize → turns an existing job into the final
-// (Canvas submission) job by attaching a fresh YouTube check. The
-// Worker verifies the check token exactly as at intake, enforces
-// one final per recording, and re-signs a graded job's result bundle
-// with the video hash. Throws with the Worker's error message.
+// POST /jobs/finalize → marks an existing job final (the Canvas
+// submission job). Since 2.6.19 the call carries no YouTube fields:
+// no video is bound to the job, and any youtube fields a caller
+// still passes are dropped here rather than sent. The Worker
+// enforces one final per recording. Throws with the Worker's error
+// message — except an "already final" 409 for this job, which is
+// success: the job already stands final, and the caller proceeds
+// to fetch its status and package. That response is recognised by
+// its 409 status and an error text naming the job already final;
+// any other 409 (for example a different job already final for the
+// same recording) still throws.
 export async function finalizeJob(workerBase, payload, fetchFn) {
   const { status, ok, data } = await postJson(workerBase, '/jobs/finalize', {
     pkg: payload.pkg,
     retrieval_code: payload.retrieval_code,
-    youtube_token: payload.youtube_token,
-    youtube_video_id: payload.youtube_video_id,
-    youtube_checked_at: payload.youtube_checked_at,
   }, fetchFn);
+  if (status === 409 && data &&
+      /already final/i.test(String(data.error || data.code || ''))) {
+    return { ...data, ok: true, already_final: true };
+  }
   if (!ok || !data || !data.ok) {
     throw new Error((data && data.error) || ('finalize failed (HTTP ' + status + ')'));
   }
