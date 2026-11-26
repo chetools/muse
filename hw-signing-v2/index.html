@@ -43,6 +43,20 @@
                        text-overflow: ellipsis; white-space: nowrap; }
   .jobline button { flex: 0 0 auto; white-space: nowrap; }
   .jobline .mono { flex: 0 0 auto; white-space: nowrap; }
+  .jobline .jobgrades { flex: 0 0 auto; white-space: nowrap; font-size: 0.92rem; color: #333; }
+  @media (max-width: 620px) {
+    .jobline .jobgrades { display: none; }
+    /* On a phone the buttons alone fill the width, and a one-line
+       row would shrink the label to nothing: the label takes its
+       own full line and the controls sit under it. */
+    .jobline { flex-wrap: wrap; }
+    .jobline .joblabel { flex: 1 1 100%; white-space: normal; }
+  }
+  button.quiet { background: none; border-color: #ccc; color: #444; }
+  .jobdetail { margin-top: 8px; }
+  .jobdetail .houserow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .reviewbox p { margin: 4px 0; }
+  .reviewbox .small { font-size: 0.88rem; color: #444; }
   .jobline .guardnote { flex: 1 1 auto; min-width: 0; overflow: hidden;
                         text-overflow: ellipsis; white-space: nowrap; }
   .recrow { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
@@ -203,11 +217,15 @@
   <h2>7. Your grading jobs</h2>
   <p class="note">Jobs sent from this browser. The list updates every
   5 seconds while this page is open (and pauses while a submission
-  review below is open): a waiting job shows how many jobs
-  are ahead of it in the grading queue, and grades and critique appear
-  here when they are ready. An ungraded job is kept for 7 days; once
-  graded, the grade is kept for 180 days. Jobs from your other assignments are listed too — a job’s submission ZIP is built only from its own assignment’s link.</p>
-  <p class="note">Grades are two scores out of 5: Completeness — how much of the question your explanation covers; Accuracy — how much of it is right. Each grade has a signed grade record that this page checks before anything is packaged. For a ready submission, Review and download first verifies the recording — or its fingerprint — and the transcript against the signed grade record, and shows exactly what will be packaged, before the ZIP is built.</p>
+  review below is open). A waiting job shows how many jobs are ahead
+  of it. An ungraded job is kept for 7 days; once graded, the grade
+  is kept for 180 days. Jobs from your other assignments are listed
+  too — a job’s submission ZIP is built only from its own assignment’s link.</p>
+  <p class="note">Grades are two scores out of 5: Completeness — how
+  much of the question your explanation covers; Accuracy — how much
+  of it is right. Review and download checks the recording — or its
+  fingerprint — and the transcript against the signed grade record
+  before the ZIP is built.</p>
   <div class="status" id="zipDone" role="status"></div>
   <div class="box" id="jobsBox">No jobs sent from this browser yet.</div>
 
