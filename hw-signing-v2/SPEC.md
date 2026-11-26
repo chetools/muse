@@ -45,18 +45,20 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   by a separate Worker call that stores nothing about the link
   (see /youtube-check). The page keeps the link and its title
   locally, with the job's entry, and writes the link into the HTML
-  at ZIP creation. A job whose signed bundle already binds a video
-  (a job sent as final by an earlier webapp version) accepts only
-  that video in its row; a job with no bound video is bound when
-  its ZIP is generated, through /jobs/finalize. The duration
-  comparison has three bands: a difference of at most 1 s passes;
-  up to max(2 s, 2% of the audio) the link may be used; beyond
-  that it cannot be used for that job. A comparison whose video
-  length could not be read does not bar use — the Worker
-  reachability check is the requirement, and sameness of recording
-  is established by the audit's acoustic cross-check. Each
-  reported comparison is also sent to the Worker as an anonymous
-  duration statistic (see /stats/duration).
+  at ZIP creation. (2.6.18) Binding happens only when the
+  student confirms the ZIP review: a job with no bound video is
+  bound then, through /jobs/finalize; a job already bound to a
+  different video is rebound by the same confirmation, through
+  the superseding finalize (Worker 2.7.3), which records the
+  supersession in the job's binding history — the earlier ZIP is
+  then no longer the submission of record, and the audit app
+  reports it as superseded. There is no duration comparison and
+  no check of any kind when a link is pasted or edited: the
+  reachability check runs when Generate ZIP is clicked, as part
+  of preparing the review, and a private or missing video stops
+  there with its reason in the row's cell. The Worker keeps the
+  /stats/duration endpoint; the page no longer classifies
+  durations or reports duration statistics.
 - Audio handling: video or audio input is normalised to the 16 kHz mono
   WAV. The WAV and the corrected (pre-scrub) transcript chunks are cached
   in IndexedDB under the key (audio_sha256, model version, glossary
@@ -305,7 +307,8 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
 - `GET /admin/duration-stats` (ADMIN_TOKEN) → `{count, abs_diff_s:
   {p50, p90, p95, p99, max}, bands:{pass_le_1s,
   confirm_within_tolerance, beyond_tolerance}}` over the stored
-  comparisons, for recalibrating the page's duration bands.
+  comparisons. The endpoint is retained; the page no longer
+  reports comparisons since 2.6.18 removed its length check.
 - `POST /jobs` — body: `{pkg, pkg_content_sha256, kind, transcript,
   audio_sha256, transcript_sha256, chromaprint?, versions:{webapp,model,glossary},
   retrieval_code, youtube_token?, youtube_video_id?,
@@ -385,6 +388,9 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   since 2.7.0 the ready response also carries the job's `transcript`
   and `chromaprint` (the stored base64 fingerprint, or null), which
   the fingerprint submission form is built from.
+  Since 2.7.3 the ready response also carries `binding`: the
+  job's current bound video hash (or `none`) and its binding
+  history (sequence, action, video hashes, timestamps).
   Every wrong code returns the same 403 body.
 - `POST /jobs/retrieved` `{pkg, retrieval_code}` → find the job as
   in `/jobs/status` (alias lookup included, 2.6.0); mark
@@ -403,6 +409,28 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   resubmits (a new job under the resolved version) and finalizes that
   one instead.
   → `{ok:true, receipt}`.
+  (2.7.3) Superseding rebind: finalising a job that is already
+  final with a bound video, with a different video whose fresh
+  check token verifies exactly as at intake, rebinds instead of
+  refusing: the bundle is re-signed with the new video's hash
+  (every other signed field unchanged) and the supersession is
+  recorded in the job's binding history (a `job_bindings` table:
+  sequence, action, previous and new video hashes, timestamp).
+  A stale or invalid token is refused before any rebind. The
+  one-final-per-recording rule and dedup are unchanged: a
+  supersede applies to the same job and the same recording only.
+  → `{ok:true, receipt, superseded:true}`.
+- `POST /jobs/binding` `{job_id}` → the job's current bound video
+  hash and binding history, for the teacher audit app (2.7.3):
+  `{job_id, current_sha256, history:[{seq, action, video_sha256,
+  prev_video_sha256, created_at}]}`. Hashes only; no code or
+  token is involved, as the audit names jobs by job_id.
+- `POST /admin/jobs/release-binding` (ADMIN_TOKEN) `{job_id}` →
+  the teacher backstop (2.7.3): the job's current binding is
+  cleared back to unbound — a graded bundle is re-signed with
+  `none`, the job returns to the unbound (practice) state, and
+  the release is recorded in the binding history. The student's
+  next finalize then binds fresh. 409 when the job is unbound.
 - `GET /grading/pending` (GRADING_TOKEN) → queued jobs and jobs whose
   claim expired, merged across all semester databases in created_at
   order: `[{job_id, pkg, kind, created_at, transcript_chars, db}]`
@@ -542,6 +570,17 @@ the duration classification and gating are unchanged, and only
 the block band still shows text, as the cell's failure reason —
 “Video … s, recording … s — the lengths differ too much for the
 same recording.”
+Further 2.7.3 changes: the superseding finalize, the binding
+history, `/jobs/binding` and the teacher release route above.
+Webapp 2.6.18: no check runs when a link is pasted or edited,
+and the length check is removed from the page entirely (the
+“Link checks out.” message goes with it); Generate ZIP is
+present while the field holds a readable link; the reachability
+check runs at the click, inside the review's preparation;
+binding happens only at the review's confirmation, with the
+supersede notice and the duplicate-link warning in the review;
+clearing or editing the link that loaded the preview player
+clears the player back to its placeholder.
 `critique_sha256` = SHA-256 hex of the critique exactly as stored.
 receipt = base64url(HMAC-SHA-256(SIGNING_SECRET, canonical)).
 The bundle returned to the student and printed in the HTML is:
@@ -621,29 +660,26 @@ New/changed behaviour:
   cards on phone widths; the critique and the ZIP review sit in a
   details row under each job, and Remove from this browser sits in
   Actions. Each ready row carries its own YouTube link field (no
-  label): pasting or editing a link checks it automatically after
-  a short pause, and any edit voids the standing check. A Studio
-  edit address is converted to the canonical watch form in the
-  field; other readable forms (watch, youtu.be, shorts, live,
-  embed) are likewise shown canonically. The check is POST
-  /youtube-check to the Worker (the video must be reachable —
-  Public or Unlisted), a duration comparison against THAT job's
-  audio (from the loaded recording or its cache record, under the
-  three bands above; only the block band bars use), and, for a job
-  whose signed bundle binds a video, a hash match against the
-  bound video. A failed check states its reason in small red text
-  in the row's cell — an unreadable link, a private or missing
-  video, a duration beyond the tolerance, or not the video bound
-  to this job. Before a check passes the row has no ZIP button,
-  only the line "Add a YouTube link to download the ZIP."; a × at
-  the field's right end clears the field and the kept link and
-  voids the check. A passed check produces the row's Generate ZIP
-  button. The check response's video title is shown at check time
-  and kept in the local job entry. The duration comparison and
-  preview are the page's pre-packaging consistency checks; a true
-  acoustic fingerprint comparison cannot run in the browser,
-  because the page cannot read the video's audio track — sameness
-  of recording is established by the audit's acoustic cross-check
+  label). (2.6.18) Pasting or editing a link runs no check and
+  shows no status: while the field holds no readable link the
+  cell shows only the line "Add a YouTube link to download the
+  ZIP.", and as soon as it holds a readable link the row's
+  Generate ZIP button is present. A Studio edit address is
+  converted to the canonical watch form in the field; other
+  readable forms (watch, youtu.be, shorts, live, embed) are
+  likewise shown canonically. A × at the field's right end clears
+  the field and the kept link. Clicking Generate ZIP runs the
+  reachability check (POST /youtube-check to the Worker; the
+  video must be reachable — Public or Unlisted) while preparing
+  the review: a private or missing video, or a failed check,
+  opens no review, binds nothing and packages nothing, and its
+  reason appears in small red text in the row's cell. The review
+  itself is described in the Retrieval paragraph below; binding
+  happens only at its confirmation. The preview is the page's
+  only pre-packaging view of the video; a true acoustic
+  fingerprint comparison cannot run in the browser, because the
+  page cannot read the video's audio track — sameness of
+  recording is established by the audit's acoustic cross-check
   on the submitted ZIP.
 - Preview player (section 7, 2.6.16): a fixed player area, 16:9
   and about 400 px wide, sticky directly above the jobs table,
@@ -653,7 +689,14 @@ New/changed behaviour:
   every play; audible autoplay is never attempted); leaving the
   cell pauses it and leaves the last video in place. Clicking the
   link text under a field, or the player area, opens the video on
-  YouTube in a new tab. Only one video plays at a time.
+  YouTube in a new tab. Only one video plays at a time. (2.6.18)
+  The page tracks which row's link loaded the player: clearing
+  that link (×), or editing it into a different or unreadable
+  link, stops and unloads the player — the IFrame API has no
+  unload, so the player is destroyed and its mount recreated —
+  hides the click overlay, and restores the placeholder text.
+  Clearing or editing a different row's link leaves the player
+  untouched.
 - Submit → POST /jobs; on success save the localStorage entry and show
   the queued state. On a duplicate response (2.6.0): save the entry
   under the submitted code (the alias) and show the existing job
@@ -667,10 +710,10 @@ New/changed behaviour:
   adds no text about dedup, regrading, or this change.
 - Retrieval: when a job is `ready`, show grades and critique (status is
   shown automatically; grades display after a click, per the earlier
-  decision) and, once the row's link check has passed, offer
-  **Generate ZIP** (2.6.16): a job with no bound video is finalised
-  first (POST /jobs/finalize re-signs the grade record with the
-  video hash), and the review then recomputes the SHA-256 of the exact
+  decision) and offer **Generate ZIP** whenever the row's field
+  holds a readable link (2.6.18). The click runs the reachability
+  check and opens the review; the review first recomputes the
+  SHA-256 of the exact
   WAV bytes and of the canonical transcript built from the job
   recording's own cached chunks — with no fallback to the transcript
   on the page — plus the critique hash, and blocks unless all equal
@@ -678,8 +721,25 @@ New/changed behaviour:
   removal list as the usual cause); it then shows a panel identifying
   what will be packaged (course/assignment, grades, recording file
   name, duration, fingerprint and opening words, video title and
-  link, each marked verified), whose button builds `submission.html`
-  v2 and zips it with the WAV.
+  link, each marked verified). The review also warns, when the
+  entered link is the same link as on another row in the same
+  browser: "This link is also on your <course> · <assignment>
+  row."; and, when the job is bound to a different video, it
+  states: "This job's submission is currently a different video.
+  Confirming replaces it with this one; the earlier ZIP will no
+  longer be the submission of record." Confirming the review is
+  what binds: an unbound job is finalised (POST /jobs/finalize
+  re-signs the grade record with the video hash), a job bound to
+  a different video is rebound through the superseding finalize,
+  a job bound to the same video needs no call; the status is then
+  fetched back and the ZIP is built against the bundle as it now
+  stands. The confirm button reads "Bind this video and download
+  the ZIP" when a binding will be made or replaced. Cancelling
+  the review binds nothing and leaves a standing binding
+  untouched. (Resolution recorded for 2.6.18: the earlier
+  bound-mismatch hard stop in the row is removed entirely — a
+  bound job with a different readable link is handled wholly
+  inside the review by the supersede notice and confirmation.)
 - `js/package.js` — HTML format v2: same three sections as v1, with the
   verification section extended by labelled lines: `Format version: 2`,
   `Job: <job_id>`, `Prompt package content SHA-256: <hash>`,
@@ -769,6 +829,22 @@ grade must be a whole number in range (a score, or completeness
 and accuracy summing to it) — fractions and booleans are refused,
 never truncated. A non-numeric declared Canvas ZIP size is
 ignored rather than aborting the download pass.
+
+Audit app v57 (2026-11-26): `check_package` also verifies
+binding currency — the package's video hash against the
+Worker's current binding for its job (POST /jobs/binding). A
+hash displaced by a later binding is reported as superseded:
+its own headline in the wall's integrity text and in the
+gradebook warnings, a badge in the dashboard's integrity cell,
+and no suggested grade — but not an integrity failure. A hash
+in no binding is an integrity failure. An unreachable Worker
+(or one without the route) is reported as "binding currency
+not checked (Worker unreachable)", never silently passed. The
+dashboard's integrity cell carries a "Release video binding"
+action for a checked job, calling the Worker's admin release
+route with the grading admin token; the release is recorded in
+the binding history, and the student's next Generate ZIP binds
+fresh.
 
 ## Skills (staged in `skills/`, installed at integration)
 

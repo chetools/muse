@@ -1039,6 +1039,19 @@ def hw_package_status(cfg, pkg, status, trial=None, override_reason=None):
         raise
 
 
+def release_video_binding(cfg, job_id):
+    """Teacher backstop (v57): clear one job's video binding on
+    the Worker (POST /admin/jobs/release-binding, Worker 2.7.3),
+    through the same admin-token channel as the package actions.
+    The Worker re-signs the job's bundle in its unbound form,
+    returns the job to unbound, and records the release in the
+    job's binding history; the student's next Generate ZIP then
+    binds a fresh video."""
+    require_admin_token(cfg)
+    return worker_admin(cfg, "POST", "/admin/jobs/release-binding",
+                        {"job_id": job_id})
+
+
 def hw_package_meta(cfg, pkg):
     """One package version's record without its text: status,
     content hash, trial, job counts. A one-character slice of the
@@ -1765,6 +1778,11 @@ def suggested_final(check):
         return None
     if check.get("youtube_id_ok") is False:
         return None
+    if check.get("binding_status") in ("superseded", "unknown"):
+        # A superseded ZIP is not the submission of record, and a
+        # binding in no record is an integrity failure: neither
+        # contributes a suggested grade (v57).
+        return None
     if check.get("injection_suspected"):
         return None
     if check.get("youtube", {}).get("youtube_flag"):
@@ -2278,6 +2296,12 @@ def _integrity_text(check):
         flags = check.get("injection_flags") or []
         return ("injection flag @ " + audit.mmss(flags[0]["at_s"])
                 if flags else "injection flag")
+    if check.get("binding_status") == "superseded":
+        # The headline for a displaced binding (v57): not a pass,
+        # not an integrity failure — the video in this ZIP was
+        # replaced by a later binding.
+        at = check.get("binding_superseded_at") or ""
+        return "superseded" + (" — video replaced " + at[:10] if at else "")
     if check and (not check.get("internally_consistent", True)
                   or check.get("youtube_id_ok") is False):
         return "integrity FAILED"
@@ -3388,6 +3412,16 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
             warnings.append(f"{student}: YouTube video ID mismatch — "
                             "the link in the submission is not the "
                             "video checked before grading")
+        if _check.get("binding_status") == "superseded":
+            _at = _check.get("binding_superseded_at") or ""
+            warnings.append(f"{student}: superseded submission — "
+                            "the video in this ZIP was replaced by a "
+                            f"later binding{(' on ' + _at[:10]) if _at else ''}; "
+                            "it is not the submission of record")
+        if _check.get("binding_status") == "unknown":
+            warnings.append(f"{student}: video binding not on record — "
+                            "the video in this ZIP appears in no binding "
+                            "for its job")
         # Preview-only fields (v35): the signed grade from the
         # check's estimated grades, and whether a teacher entry
         # differs from it, so the preview can highlight the
@@ -4616,7 +4650,26 @@ function integCell(c, downloaded){
     c.youtube.available ? '<br><span class="mut">YouTube: acoustic check not available (ffmpeg/chromaprint)</span>' :
     '<br><span class="mut">YouTube: video not downloaded yet</span>';
   const flg = flags ? '<br><span class="badge warn">'+esc(flags)+"</span>" : "";
-  return integ+gsig+yt+flg;
+  const bnd = !downloaded || !c.binding_status ? "" :
+    c.binding_status==="superseded" ? '<br><span class="badge warn">superseded — video replaced'+(c.binding_superseded_at? " "+esc(String(c.binding_superseded_at).slice(0,10)) : "")+'; not the submission of record</span>' :
+    c.binding_status==="unchecked" ? '<br><span class="badge warn">binding currency not checked (Worker unreachable)</span>' :
+    c.binding_status==="unknown" ? '<br><span class="badge bad">video binding not on record</span>' : "";
+  const rel = downloaded && c.job_id && c.binding_status && c.binding_status!=="unchecked" ?
+    '<br><button class="quiet" onclick="releaseBinding(\''+esc(c.job_id)+'\', this)">Release video binding</button>' : "";
+  return integ+gsig+yt+flg+bnd+rel;
+}
+async function releaseBinding(jobId, btn){
+  if(!confirm("Release this job's video binding? The job returns to unbound, and the student's next Generate ZIP binds a fresh video. The release is recorded in the job's binding history.")) return;
+  btn.disabled = true;
+  try{
+    const r = await fetch("/api/release-binding", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({job_id: jobId})});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error || ("HTTP "+r.status));
+    btn.textContent = "Binding released — re-run checks";
+  }catch(e){
+    btn.disabled = false;
+    alert("Release failed: "+e.message);
+  }
 }
 // Final-grade auto-save and difference shading (v35). The
 // field's rendered value is kept in dataset.init: leaving a
@@ -7177,6 +7230,14 @@ class Handler(BaseHTTPRequestHandler):
                                       else "saved")
                                    + " (Packages page)")
             self._send(200, public_status(cfg))
+        elif u.path == "/api/release-binding":
+            job_id = str(body.get("job_id") or "")
+            if not job_id:
+                raise ValueError("the release needs a job id")
+            rec = release_video_binding(cfg, job_id)
+            log_activity("system",
+                         f"video binding released for job {job_id}")
+            self._send(200, rec)
         elif u.path == "/api/hw-packages/status":
             pkg = str(body.get("pkg") or "")
             target = str(body.get("status") or "")

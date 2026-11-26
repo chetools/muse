@@ -40,7 +40,7 @@ const zipMod = await import(path.join(ROOT, "webapp", "js", "zip.js"));
 // Adapted verbatim from worker/test.mjs (the statement shapes are the
 // ones worker.js uses).
 function createDb() {
-  const tables = { packages: [], jobs: [] };
+  const tables = { packages: [], jobs: [], job_bindings: [] };
   function resolveToken(tok, args, ptr) {
     tok = tok.trim();
     if (tok === "?") return args[ptr.i++];
@@ -125,6 +125,9 @@ function createDb() {
             tables.jobs.some((r) => r.pkg === row.pkg && r.code_lookup === row.code_lookup)) {
           throw new Error("UNIQUE constraint failed: jobs.pkg, jobs.code_lookup");
         }
+      }
+      if (table === "job_bindings") {
+        if (tables.job_bindings.some((r) => r.job_id === row.job_id && r.seq === row.seq)) throw new Error("UNIQUE constraint failed: job_bindings.job_id, job_bindings.seq");
       }
       if (table === "packages") {
         if (tables.packages.some((r) => r.pkg === row.pkg && r.version === row.version)) {
@@ -261,6 +264,7 @@ const gradeJobs = path.join(pollDir, "scripts", "grade_jobs.mjs");
 
 // ------------------------------------------------------------ fixtures
 const VIDEO_ID = "abc123XYZ_-";
+const VIDEO_ID2 = "def456UVW_0";
 const WATCH_URL = "https://www.youtube.com/watch?v=" + VIDEO_ID;
 const CHUNKS = [
   { start: 0, text: "Hello, this is the explanation of the grade distribution set-up." },
@@ -455,6 +459,7 @@ await step("audit check_package on the unzipped package: internally_consistent, 
   assert(chk.youtube_id_ok === true, "youtube id check failed: " + JSON.stringify(chk));
   assert(chk.grade_receipt_ok === true, "grade receipt failed against the real Worker: " + JSON.stringify(chk));
   assert(chk.internally_consistent === true, "not internally consistent: " + JSON.stringify(chk));
+  assert(chk.binding_status === "current", "binding not current for the just-finalized ZIP: " + JSON.stringify(chk));
 });
 
 await step("tamper (i): completeness span 4→5 fails the grade check", async () => {
@@ -504,6 +509,43 @@ await step("tamper (iii): one WAV byte flipped fails the audio check", async () 
   assert(chk.audio_fingerprint_ok === false, "audio fingerprint still matches after a byte flip");
   assert(chk.critique_ok === true && chk.grade_receipt_ok === true,
     "failure is not isolated to the audio check: " + JSON.stringify(chk));
+});
+
+await step("supersede: finalize again with a second video rebinds the job (2.7.3)", async () => {
+  const res = await realFetch(BASE + "/youtube-check", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: "https://www.youtube.com/watch?v=" + VIDEO_ID2 }),
+  });
+  const yt2 = await res.json();
+  assert(yt2.video_id === VIDEO_ID2 && yt2.token, "second youtube-check failed: " + JSON.stringify(yt2));
+  const finPayload = { pkg: pkgId, retrieval_code: "e2ecode1234" };
+  finPayload["youtube" + "_token"] = yt2.token;
+  finPayload.youtube_video_id = yt2.video_id;
+  finPayload.youtube_checked_at = yt2.checked_at;
+  const out = await jobsMod.finalizeJob(BASE, finPayload);
+  assert(out.ok === true && out.superseded === true, "superseding finalize not accepted: " + JSON.stringify(out));
+  const st = await jobsMod.fetchJobStatus(BASE, {
+    pkg: pkgId, retrieval_code: "e2ecode1234",
+  });
+  assert(st.data && st.data.binding, "status carries no binding view");
+  assert(st.data.binding.current_sha256 === sha256(VIDEO_ID2),
+    "current binding is not the second video: " + JSON.stringify(st.data.binding));
+  assert(st.data.binding.history.length === 2
+    && st.data.binding.history[0].video_sha256 === sha256(VIDEO_ID)
+    && st.data.binding.history[1].action === "supersede",
+    "binding history does not chain A -> B: " + JSON.stringify(st.data.binding));
+  const b2 = st.data.result;
+  assert(b2.youtube_video_sha256 === sha256(VIDEO_ID2)
+    && b2.completeness === 4 && b2.accuracy === 5 && b2.critique === CRITIQUE,
+    "supersede changed the grade content");
+});
+
+await step("audit reports the first video's ZIP as superseded after the rebind (v57)", async () => {
+  const chk = await auditCheck(path.join(tmp, "pkg-good"));
+  assert(chk.binding_status === "superseded",
+    "earlier ZIP not reported superseded: " + JSON.stringify(chk));
+  assert(chk.grade_receipt_ok === true && chk.internally_consistent === true,
+    "superseded ZIP must still verify its receipt and hashes: " + JSON.stringify(chk));
 });
 
 // ------------------------------------------------------------ summary

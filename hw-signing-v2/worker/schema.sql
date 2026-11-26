@@ -115,6 +115,29 @@ CREATE TABLE IF NOT EXISTS job_code_aliases (
   PRIMARY KEY (pkg, code_lookup)
 );
 
+-- Video binding history (2.7.3): one row per binding event for a
+-- job — the initial bind, each superseding rebind (a finalize of
+-- an already-final job with a different video), and each teacher
+-- release of the binding. The current binding lives on the jobs
+-- row (youtube_video_sha256) and in the signed bundle; this log
+-- is how the audit tells a superseded submission (its video hash
+-- appears here as an earlier binding, displaced by a later
+-- event) from the current one. seq orders the events per job.
+-- action: bind / supersede / release. For a release,
+-- video_sha256 is NULL and prev_video_sha256 names the cleared
+-- binding. released_by is not a column: the only release route
+-- is the admin route, so a release event is a teacher release
+-- by construction.
+CREATE TABLE IF NOT EXISTS job_bindings (
+  job_id TEXT,
+  seq INTEGER,
+  action TEXT,
+  video_sha256 TEXT,
+  prev_video_sha256 TEXT,
+  created_at TEXT,
+  PRIMARY KEY (job_id, seq)
+);
+
 -- Anonymous duration comparisons reported by the student page
 -- (POST /stats/duration): the page's audio duration and the YouTube
 -- player's duration for a checked link. No video ID, no link and no

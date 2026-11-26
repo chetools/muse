@@ -1,4 +1,21 @@
-# Teacher audit app — HW Signing v2 (audit app v27)
+# Teacher audit app — HW Signing v2 (audit app v57)
+
+**v57 (2026-11-26).** Package checks now also verify binding
+currency against the grading Worker (2.7.3): the video hash in
+a submission ZIP is compared with the job's current binding
+(POST /jobs/binding). A ZIP whose video was replaced by a later
+binding is reported as SUPERSEDED — its own headline in the
+wall and the dashboard, with no suggested grade, but not an
+integrity failure; a video in no binding is an integrity
+failure; an unreachable Worker is reported as “binding
+currency not checked (Worker unreachable)”, never silently
+passed. The dashboard's integrity cell gains a “Release video
+binding” action per checked job, calling the Worker's admin
+release route with the grading admin token; the release is
+recorded in the job's binding history, and the student's next
+Generate ZIP binds fresh. Versions between v27 and v56 are
+recorded in the SPEC's audit notes. Everything else is as in
+the previous version.
 
 **v27 (2026-11-09).** One display fix: the video wall's zoom
 view preserves the critique's line breaks, so its numbered

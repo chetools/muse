@@ -27,6 +27,8 @@ def main():
         "grades_match",
         "youtube_id_ok",
         "internally_consistent",
+        "binding_status",
+        "binding_superseded_at",
     ]
     print(json.dumps({k: res.get(k) for k in keys}))
 

@@ -135,7 +135,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/54.0"
+USER_AGENT = "HWSigning-Teacher-Audit/57.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -1208,9 +1208,44 @@ def worker_verify_grade(cfg, ver, grades, post_fn=None):
     return bool(result.get("valid"))
 
 
+def worker_binding(cfg, job_id, post_fn=None):
+    """Fetch a job's current video binding and its binding history
+    from the Worker (POST /jobs/binding, Worker 2.7.3): the audit
+    names jobs by job_id and holds no retrieval code, and the
+    Worker answers with hashes only. Transport injectable, like
+    worker_verify_grade."""
+    post_fn = post_fn or http_post_json
+    url = cfg["worker_base_url"].rstrip("/") + "/jobs/binding"
+    return post_fn(url, {"job_id": job_id})
+
+
+def classify_binding(claimed, binding):
+    """Classify a package's claimed video hash against the
+    Worker's binding view for its job. Returns (status,
+    superseded_at): 'current' when the hash is the job's current
+    binding; 'superseded' when the job once held it and a later
+    binding event displaced it (superseded_at is that event's
+    time); 'unknown' when it appears in no binding, current or
+    past."""
+    claimed = (claimed or "").lower()
+    current = (binding.get("current_sha256") or "none").lower()
+    if claimed and claimed != "none" and claimed == current:
+        return "current", None
+    history = binding.get("history") or []
+    if claimed and any(
+            (h.get("video_sha256") or "").lower() == claimed
+            for h in history):
+        displaced = [h for h in history
+                     if (h.get("prev_video_sha256") or "").lower()
+                     == claimed]
+        at = displaced[-1].get("created_at") if displaced else None
+        return "superseded", at
+    return "unknown", None
+
+
 # ---------------------------------------------------------------- package checks
 
-def check_package(audio_path, html_path, cfg, post_fn=None):
+def check_package(audio_path, html_path, cfg, post_fn=None, binding_fn=None):
     """Recompute fingerprints and verify the grade receipt for one
     v2 package. audio_path is the package's media entry: the WAV
     (audio form) or submission-fingerprint.bin (fingerprint form,
@@ -1316,6 +1351,34 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
             youtube_id_ok = youtube_video_sha256(link) == claimed
         else:
             youtube_id_ok = False    # link and claim disagree in kind
+    # Binding currency (v57, Worker 2.7.3): the video hash signed
+    # into the bundle must still be the job's current binding on
+    # the Worker. A hash displaced by a later binding is reported
+    # as superseded — not a pass, and not an integrity failure:
+    # the earlier ZIP is simply no longer the submission of
+    # record. A hash in no binding at all is an integrity
+    # failure, through internally_consistent below. When the
+    # binding cannot be fetched, the package is reported as not
+    # currency-checked rather than silently passed.
+    binding_status = None
+    binding_superseded_at = None
+    binding_note = None
+    claimed_sha = (ver.get("youtube_video_sha256") or "").lower()
+    if format_ok and claimed_sha and claimed_sha != "none" \
+            and ver.get("job_id"):
+        fetch_binding = binding_fn or (
+            lambda jid: worker_binding(cfg, jid, post_fn=post_fn))
+        try:
+            binding = fetch_binding(ver["job_id"])
+            binding_status, binding_superseded_at = classify_binding(
+                claimed_sha, binding or {})
+            if binding_status == "superseded":
+                binding_note = (
+                    "the video in this ZIP was replaced by a later "
+                    "binding; it is no longer the submission of record")
+        except Exception:
+            binding_status = "unchecked"
+            binding_note = "binding currency not checked (Worker unreachable)"
     injection_matches = scan_injection(parsed["canonical_transcript"])
     return {
         "format_ok": format_ok,
@@ -1332,9 +1395,13 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
         "injection_flags": injection_flag_times(
             parsed["timed_lines"], injection_matches),
         "injection_suspected": bool(injection_matches),
+        "binding_status": binding_status,
+        "binding_superseded_at": binding_superseded_at,
+        "binding_note": binding_note,
         "internally_consistent": bool(
             format_ok and audio_ok and transcript_ok and critique_ok
-            and grade_receipt_ok and grades_match),
+            and grade_receipt_ok and grades_match
+            and binding_status != "unknown"),
         "estimated_grades": html_grades,
         "session": ver.get("session"),
         "job_id": ver.get("job_id"),

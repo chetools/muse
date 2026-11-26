@@ -76,6 +76,7 @@ def _stub_pkg(name, version, text, status, trial=None):
 
 class WorkerStub(BaseHTTPRequestHandler):
     seen_ua = []
+    release_calls = []
     # Stateful admin-API fixture (v24): two prompt packages.
     admin_pkgs = {
         "open-fixture v1": _stub_pkg(
@@ -142,6 +143,16 @@ class WorkerStub(BaseHTTPRequestHandler):
         type(self).seen_ua.append(self.headers.get("User-Agent"))
         n = int(self.headers.get("content-length") or 0)
         raw = self.rfile.read(n)
+        if self.path == "/admin/jobs/release-binding":
+            if not self._admin_ok():
+                return self._reply(401, {"error": "unauthorized"})
+            body = json.loads(raw or b"{}")
+            type(self).release_calls.append(
+                {"token": self.headers.get("X-Admin-Token"),
+                 "body": body})
+            return self._reply(200, {"ok": True,
+                                     "job_id": body.get("job_id"),
+                                     "released": True})
         if self.path.startswith("/admin/packages"):
             if not self._admin_ok():
                 return self._reply(401, {"error": "unauthorized"})
@@ -189,6 +200,18 @@ class WorkerStub(BaseHTTPRequestHandler):
                     rec["override_reason"] = body["override_reason"]
             rec["status"] = target
             return self._reply(200, self._meta(rec))
+        if self.path == "/jobs/binding":
+            # Worker 2.7.3 binding view for the fixture job: the
+            # fixture video is the current binding.
+            body = json.loads(raw or b"{}")
+            claimed = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
+            return self._reply(200, {
+                "job_id": body.get("job_id"),
+                "current_sha256": claimed,
+                "history": [{"seq": 1, "action": "bind",
+                             "video_sha256": claimed,
+                             "prev_video_sha256": None,
+                             "created_at": GRADED_AT}]})
         data = json.dumps({"valid": True}).encode()
         self.send_response(200)
         self.send_header("content-type", "application/json")
@@ -1458,8 +1481,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/54.0",
-          "user agent bumped to 54.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/57.0",
+          "user agent bumped to 57.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -1841,6 +1864,30 @@ def main():
                        {"pkg": "created-fixture v1", "status": "open"})
     check(status == 400 and "cannot move" in out["error"],
           "a retired package takes no further lifecycle step")
+    # Release video binding (v57): the audit route posts the job
+    # id to the Worker admin route with the admin token, and the
+    # wrapper refuses without one.
+    WorkerStub.release_calls = []
+    status, rec = call("POST", "/api/release-binding",
+                       {"job_id": "job-release-1"})
+    check(status == 200 and rec.get("released") is True
+          and WorkerStub.release_calls
+          and WorkerStub.release_calls[-1]["body"]
+          == {"job_id": "job-release-1"}
+          and WorkerStub.release_calls[-1]["token"] == ADMIN_TOKEN,
+          "release binding: the Worker admin route receives the "
+          "job id and the admin token")
+    status, out = call("POST", "/api/release-binding", {})
+    check(status == 400,
+          "release binding without a job id is refused")
+    try:
+        web.release_video_binding(
+            {"worker_base_url": "https://worker.invalid",
+             "grading_admin_token": ""}, "job-release-1")
+        raised = False
+    except Exception:
+        raised = True
+    check(raised, "release binding requires the grading admin token")
     # The urllib fallback retries a response body cut short
     # mid-read (IncompleteRead): live, the Worker's show response
     # carries a whole package text, and connections to the Worker

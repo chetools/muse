@@ -73,6 +73,16 @@ def transport_for(secret, capture=None):
     def post(url, body):
         if capture is not None:
             capture.append((url, dict(body)))
+        if url.endswith("/jobs/binding"):
+            # Worker 2.7.3 binding view for the fixture job: the
+            # fixture video is the current binding.
+            claimed = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
+            return {"job_id": body.get("job_id"),
+                    "current_sha256": claimed,
+                    "history": [{"seq": 1, "action": "bind",
+                                 "video_sha256": claimed,
+                                 "prev_video_sha256": None,
+                                 "created_at": GRADED_AT}]}
         expected = grade_receipt(secret, body)
         return {"valid": hmac_mod.compare_digest(expected,
                                                  body["receipt"])}
@@ -104,6 +114,16 @@ def transport_for2(secret, capture=None):
     def post(url, body):
         if capture is not None:
             capture.append((url, dict(body)))
+        if url.endswith("/jobs/binding"):
+            # Worker 2.7.3 binding view for the fixture job: the
+            # fixture video is the current binding.
+            claimed = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
+            return {"job_id": body.get("job_id"),
+                    "current_sha256": claimed,
+                    "history": [{"seq": 1, "action": "bind",
+                                 "video_sha256": claimed,
+                                 "prev_video_sha256": None,
+                                 "created_at": GRADED_AT}]}
         expected = grade_receipt2(secret, body)
         return {"valid": hmac_mod.compare_digest(expected,
                                                  body["receipt"])}
@@ -362,13 +382,75 @@ def main():
     check(rep["estimated_grades"] == {"completeness": 4, "accuracy": 4}
           and rep["signed_grades"] == {"completeness": 4, "accuracy": 4},
           "good package: shown and signed grades parsed")
-    url, body = capture[-1]
+    url, body = [c for c in capture
+                 if c[0].endswith("/verify-grade")][-1]
     check(url.endswith("/verify-grade") and body["job_id"] == JOB_ID
           and body["completeness"] == 4
           and body["pkg_content_sha256"] == PKG_CONTENT_SHA
           and body["t"] == GRADED_AT,
           "verify-grade body carries the bundle fields, grades taken "
           "from the HTML")
+    check(any(u.endswith("/jobs/binding") and b.get("job_id") == JOB_ID
+              for u, b in capture),
+          "the binding currency check posts the job id to "
+          "/jobs/binding (v57)")
+
+    # 2c. Binding currency (v57): the package's video hash
+    # against the Worker's current binding and history.
+    claimed_sha = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
+    other_sha = hashlib.sha256(b"aDifferentVid").hexdigest()
+
+    def binding_view(current, history):
+        return lambda jid: {"job_id": jid, "current_sha256": current,
+                            "history": history}
+
+    rep = audit.check_package(
+        audio_path, html_path, cfg,
+        post_fn=transport_for(TEST_SECRET, []),
+        binding_fn=binding_view(claimed_sha, [
+            {"seq": 1, "action": "bind", "video_sha256": claimed_sha,
+             "prev_video_sha256": None, "created_at": GRADED_AT}]))
+    check(rep["binding_status"] == "current"
+          and rep["internally_consistent"],
+          "binding: the ZIP's video is the current binding")
+    rep = audit.check_package(
+        audio_path, html_path, cfg,
+        post_fn=transport_for(TEST_SECRET, []),
+        binding_fn=binding_view(other_sha, [
+            {"seq": 1, "action": "bind", "video_sha256": claimed_sha,
+             "prev_video_sha256": None, "created_at": GRADED_AT},
+            {"seq": 2, "action": "supersede",
+             "video_sha256": other_sha,
+             "prev_video_sha256": claimed_sha,
+             "created_at": "2026-11-26T21:05:00Z"}]))
+    check(rep["binding_status"] == "superseded"
+          and rep["binding_superseded_at"] == "2026-11-26T21:05:00Z"
+          and rep["internally_consistent"]
+          and rep["grade_receipt_ok"],
+          "binding: a displaced video is superseded — reported, "
+          "not failed")
+    rep = audit.check_package(
+        audio_path, html_path, cfg,
+        post_fn=transport_for(TEST_SECRET, []),
+        binding_fn=binding_view(other_sha, [
+            {"seq": 1, "action": "bind", "video_sha256": other_sha,
+             "prev_video_sha256": None, "created_at": GRADED_AT}]))
+    check(rep["binding_status"] == "unknown"
+          and not rep["internally_consistent"],
+          "binding: a video in no binding is an integrity failure")
+
+    def binding_boom(jid):
+        raise RuntimeError("worker unreachable")
+
+    rep = audit.check_package(
+        audio_path, html_path, cfg,
+        post_fn=transport_for(TEST_SECRET, []),
+        binding_fn=binding_boom)
+    check(rep["binding_status"] == "unchecked"
+          and rep["internally_consistent"]
+          and "not checked" in (rep["binding_note"] or ""),
+          "binding: an unreachable Worker is reported as not "
+          "checked, never silently passed")
 
     # 2b. A package from webapp 2.4.2, whose signed transcript
     # checksum covers the canonical form with [mm:ss] markers,
@@ -1078,15 +1160,18 @@ def main():
           "v48: fingerprint-form package passes — the fingerprint "
           "hash matches the signed value and the receipt verifies "
           "over the new canonical form")
-    check(capture_fp
-          and capture_fp[-1][1].get("chromaprint_sha256") == fp_sha,
+    vg_fp = [c for c in capture_fp if c[0].endswith("/verify-grade")]
+    check(vg_fp
+          and vg_fp[-1][1].get("chromaprint_sha256") == fp_sha,
           "v48: the /verify-grade payload carries chromaprint_sha256")
     capture_old = []
     rep = audit.check_package(audio_path, html_path, cfg,
                               post_fn=transport_for(TEST_SECRET,
                                                     capture_old))
+    vg_old = [c for c in capture_old if c[0].endswith("/verify-grade")]
     check(rep["package_form"] == "audio"
-          and "chromaprint_sha256" not in capture_old[-1][1],
+          and vg_old
+          and "chromaprint_sha256" not in vg_old[-1][1],
           "v48: an old package reports the audio form and its "
           "/verify-grade payload carries no chromaprint field")
 
@@ -1279,7 +1364,8 @@ def main():
                                                     calls56))
     check(rep["grade_receipt_ok"] is False
           and rep["internally_consistent"] is False
-          and not calls56,
+          and not [c for c in calls56
+                   if c[0].endswith("/verify-grade")],
           "v56: shown grades outside 0-5 fail the receipt check "
           "without a /verify-grade call (no 400, no raised error)")
     check(audit.youtube_video_id(
