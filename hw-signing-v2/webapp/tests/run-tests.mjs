@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.7');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.8');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1001,7 +1001,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.7');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.8');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1137,9 +1137,13 @@ await test('duration stat: posts the two durations and the package label only', 
 
 await test('wiring: duration gate and review elements present in the page', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  for (const id of ['ytDurStatus', 'ytConfirmRow', 'ytConfirmChk',
-    'finDurStatus', 'finConfirmRow', 'finConfirmChk']) {
+  for (const id of ['ytDurStatus', 'finDurStatus']) {
     assert.ok(index.includes('id="' + id + '"'), 'index has ' + id);
+  }
+  for (const id of ['ytConfirmRow', 'ytConfirmChk',
+    'finConfirmRow', 'finConfirmChk', 'ytCheckBtn', 'finCheckBtn']) {
+    assert.ok(!index.includes('id="' + id + '"'),
+      'index no longer has ' + id + ' (2.6.8: automatic check, no confirmation)');
   }
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes('clearYtCheck()'), 'recording change voids the link check');
@@ -1730,6 +1734,25 @@ await test('wiring: the 5-second poll is not blocked by focus in the jobs list (
     'downloading a submission ZIP keeps the job row, so the ZIP can be downloaded again');
   assert.ok(download.includes('you can download '),
     'the Done line tells the student the ZIP can be downloaded again');
+});
+
+await test('wiring: link check is automatic and needs no played-preview confirmation (2.6.8)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('ytCheckTimer = setTimeout(runYtCheck, 700)'),
+    'step 6 checks the link by itself after a short pause');
+  assert.ok(main.includes('finCheckTimer = setTimeout(runFinCheck, 700)'),
+    'the conversion panel checks the link by itself after a short pause');
+  assert.ok(!main.includes('ytConfirmChk') && !main.includes('finConfirmChk'),
+    'no confirmation checkbox is read anywhere');
+  assert.ok(main.includes("return band !== 'block';"),
+    'only the block band bars a checked link');
+  assert.ok(main.includes('replaced while checking'),
+    'a result for a replaced link is discarded');
+  assert.ok(main.includes('ytCheckRearms >= 40') && main.includes('finCheckRearms >= 40'),
+    're-arms behind an in-flight check are capped in both flows');
+  assert.ok(main.includes('if (ytCheck && ytCheck.videoId === videoId) return;') &&
+    main.includes('if (finCheck && finCheck.videoId === videoId) return;'),
+    'a link with a standing check is not checked twice');
 });
 
 await test('wiring: section 7 redesign — one line collapsed, one panel, compact review (2.6.7)', () => {
