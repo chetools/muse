@@ -25,6 +25,31 @@ export function cacheHit(record, model, glossary) {
     record.glossary === glossary;
 }
 
+// The reset for a record made by a different model or glossary
+// version (2.6.15): its chunks can never be served (cacheHit
+// refuses them), and a fresh transcription run must not append to
+// them or resume from their window count — the mixed record
+// would keep the old version stamps and stay unrestorable for
+// ever. Returns the record reset to a fresh transcript state
+// under the current versions, or null when the record is current
+// (or absent). The WAV bytes are identical by fingerprint and
+// are kept; a newly supplied blob, duration or source name wins.
+export function resetStaleRecord(existing, { model, glossary, wavBlob, duration_s, source_name }) {
+  if (!existing) return null;
+  if (existing.model === model && existing.glossary === glossary) return null;
+  return {
+    ...existing,
+    model,
+    glossary,
+    chunks: [],
+    windows_done: 0,
+    complete: false,
+    wavBlob: wavBlob || existing.wavBlob || null,
+    duration_s: duration_s || existing.duration_s || 0,
+    source_name: source_name || existing.source_name || '',
+  };
+}
+
 // The shape a cached chunk is stored in: pipeline timestamps in
 // seconds, raw model text, and the glossary-corrected text BEFORE
 // scrubbing. Scrubbing is never cached — it is re-applied fresh on
