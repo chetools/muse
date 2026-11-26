@@ -1,4 +1,22 @@
-# Teacher audit app — HW Signing v2 (audit app v59)
+# Teacher audit app — HW Signing v2 (audit app v60)
+
+**v60 (2026-11-26).** One fix, to the video wall: tiles no
+longer come back black and refusing to play after a round
+trip to the zoom view. Returning with Back now keeps the
+wall's tile elements alive — their decoded frames and
+buffered ranges survive — instead of rebuilding the wall
+from scratch; the wall is rebuilt on return only when its
+data was replaced while the zoom view was open, and the
+followed student's grade badge (the one thing a zoom visit
+can change) is refreshed in place. Two recovery paths are
+completed: a tile whose seek has run for over three seconds
+with no frame is treated as stalled and its seek is
+re-issued (a bounded number of times), where the stall
+watchdog previously skipped a tile for being in that state;
+and a play asked for during a seek is waited on for at most
+1.5 seconds before it goes ahead anyway, where it
+previously waited for the seek to complete, for ever if the
+seek never did. Everything else is as in v59, below.
 
 **v59 (2026-11-26).** Two removals. (1) There is no binding:
 package checks make no binding call to the Worker, no status

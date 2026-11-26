@@ -113,10 +113,14 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v59 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v60 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v59: there is no binding — package checks make no
+  installs). v60: the video wall keeps its tiles alive across
+  a trip to the zoom view and back (no black, unplayable
+  tiles on return), a seek stalled for over three seconds
+  with no frame is re-issued, and a play asked for during a
+  seek goes ahead after at most 1.5 seconds. v59: there is no binding — package checks make no
   binding call to the Worker, no page reports a submission as
   displaced by a later one, and there is no release action;
   a legacy bundle's video hash is compared only within its

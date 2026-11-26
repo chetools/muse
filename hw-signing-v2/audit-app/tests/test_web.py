@@ -1526,8 +1526,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/59.0",
-          "user agent bumped to 59.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/60.0",
+          "user agent bumped to 60.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3617,6 +3617,36 @@ def main():
           "v52: a deferred play waits for the seek to "
           "complete, a stalled tile is revived by the wall "
           "loop, and the wall fills the screen")
+    # ---------------------------------------------------------
+    # 23b. v60: the wall survives the zoom round trip. Back
+    # keeps the tile elements alive unless the data was
+    # replaced while the zoom was open (WALLDIRTY); the
+    # stall watchdog rescues a tile stuck IN a seek (the
+    # v52 form returned early for exactly that state) by
+    # re-issuing it after three seconds, capped per tile;
+    # and playAfterSeek time-boxes its seeked wait.
+    check(b"let WALLDIRTY=false;" in wall40
+          and b"if(zoomId) WALLDIRTY=true;" in wall40
+          and b"if(WALLDIRTY){" in _back
+          and b"refreshTileGrade(id);" in _back
+          and b"function refreshTileGrade" in wall40
+          and b"data-gradebadge" in wall40,
+          "v60: Back keeps the wall's tiles alive unless "
+          "the data changed under the open zoom view, and "
+          "refreshes the followed tile's grade badge in "
+          "place")
+    check(b"setTimeout(()=>finish(true),1500)" in wall40
+          and b"_playWait" in wall40
+          and b'addEventListener("seeking"' in wall40
+          and b"_seekSince" in wall40
+          and b"now-v._seekSince<3000" in wall40
+          and b"_stallRetries" in wall40
+          and b"v.readyState>=2 || v.seeking) return"
+          not in wall40,
+          "v60: a seek stalled over three seconds with no "
+          "frame is re-issued by the watchdog (bounded per "
+          "tile), and a play during a seek proceeds after "
+          "a 1.5 s time-box instead of waiting for ever")
     # v54: every page's script blocks must parse as
     # JavaScript. One syntax error disables a page's whole
     # script block while every Python-side check still

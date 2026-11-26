@@ -5277,6 +5277,12 @@ window.addEventListener("storage",e=>{
 // when the zoom view opened; Back restores exactly that set,
 // so the wall comes back as it was.
 let WALLPLAY=new Set();
+// WALLDIRTY (v60): the full load replaced the wall's data
+// while the zoom view was open (load() does not render
+// then). Back rebuilds the wall in that case only; on an
+// ordinary return the tiles are kept alive, frames and
+// buffered ranges intact.
+let WALLDIRTY=false;
 // ---- Shared submission view (v29): select / sort / filter /
 // group by course, student, date, homework, examined and graded.
 // The same stored view drives the dashboard's submissions table;
@@ -5454,6 +5460,11 @@ function bindTiles(){
   document.querySelectorAll(".tile").forEach(t=>t.onclick=e=>{
     if(e.target.dataset.dl) return; openZoom(t.dataset.id);});
   document.querySelectorAll(".tile video").forEach(v=>{
+    // Seek timing for the stall watchdog (v60): when the
+    // current seek began, cleared when one completes; a
+    // completed seek also restores the tile's retry budget.
+    v.addEventListener("seeking",()=>{ v._seekSince=performance.now(); });
+    v.addEventListener("seeked",()=>{ v._seekSince=0; v._stallRetries=0; });
     v.addEventListener("mouseenter",()=>{ if(SCRUB) return;
       claimAudio(v); v.muted=false;
       markExamined(v.closest(".tile").dataset.id,"hover");
@@ -5718,7 +5729,7 @@ function render(){
     '<span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
     (s.pkg_mismatch? '<span class="badge bad">package mismatch</span>':"")+
-    '<span class="badge priv">grade '+g+fin+'</span>'+
+    '<span class="badge priv" data-gradebadge="'+esc(s.id)+'">grade '+g+fin+'</span>'+
     '<span data-exam="'+esc(s.id)+'">'+(s.examined? '<span class="badge ok">examined ✓</span>' : '')+'</span>'+
     '<span class="badge pct" id="pct_'+esc(s.id)+'">0% · '+fmt(s.duration_s)+'</span>'+
     (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
@@ -5769,9 +5780,25 @@ function playAfterSeek(v){
   // has then only just started. Deferring to the seeked
   // event closes it.
   if(!v.seeking){ const p=v.play(); if(p) p.catch(()=>{}); return; }
-  v.addEventListener("seeked",()=>{
-    if(v.seeking){ playAfterSeek(v); return; }
-    const p=v.play(); if(p) p.catch(()=>{}); }, {once:true});
+  // The wait is time-boxed (v60): a seek whose range fetch
+  // has stalled never fires seeked at all, and an unboxed
+  // wait left the tile refusing to play until a reload.
+  // After 1.5 s the play goes ahead anyway — the browser
+  // starts playback when the frame arrives, and the stall
+  // watchdog (reviveStalledTiles) re-issues the seek
+  // behind it. One wait per element at a time.
+  if(v._playWait) return;
+  v._playWait=true;
+  let done=false;
+  const finish=(timedOut)=>{
+    if(done) return; done=true;
+    v._playWait=false;
+    v.removeEventListener("seeked",onSeeked);
+    if(!timedOut && v.seeking){ playAfterSeek(v); return; }
+    const p=v.play(); if(p) p.catch(()=>{}); };
+  const onSeeked=()=>finish(false);
+  v.addEventListener("seeked",onSeeked);
+  setTimeout(()=>finish(true),1500);
 }
 function seekFrac(v,f){
   // A freshly rendered tile has no metadata yet (duration 0),
@@ -5826,6 +5853,18 @@ function tileVideo(id){
     .find(x=>x.dataset.id===id);
   return t? t.querySelector("video") : null;
 }
+function refreshTileGrade(id){
+  // A final grade saved in the zoom view changes the tile's
+  // grade badge; refresh it in place (v60), the way the
+  // examined badge already flips in place, so returning
+  // from the zoom view needs no wall rebuild for it.
+  const s=STUDENTS.find(x=>x.id===id); if(!s) return;
+  const b=document.querySelector('[data-gradebadge="'+id+'"]');
+  if(!b) return;
+  const g= s.score==null? "—" : s.score+" / 10";
+  const fin= s.final_score!=null? ' · final '+s.final_score+" / 10" : "";
+  b.textContent="grade "+g+fin;
+}
 function setFracAll(f){
   vids().forEach(v=>seekFrac(v,f));
   $("scrub").value=Math.round(f*1000); $("pctlabel").textContent=Math.round(f*100)+"%";
@@ -5848,10 +5887,43 @@ function reviveStalledTiles(){
   // file. Re-assigning the position restarts the fetch.
   // Runs every few seconds from loop(), at most one nudge
   // per element per five seconds.
+  //
+  // A tile stuck IN a seek is rescued too (v60): the v52
+  // form returned early for exactly that state, so a seek
+  // whose range fetch stalled or was aborted — seeking
+  // stays true, readyState stays 1, the frame stays black —
+  // had no recovery but a page reload. A seek that has run
+  // for over three seconds with no frame data counts as
+  // stalled and is re-issued. The re-issue reloads the
+  // element and re-seeks through the deferred-seek path:
+  // re-assigning the same currentTime starts no new fetch
+  // while a seek to that position is already in flight
+  // (measured in the v60 browser regression: the watchdog
+  // fired, and the request count never rose), while load()
+  // discards the stuck fetch outright. The tile has no
+  // frame to lose — readyState < 2 is the entry condition.
+  // Re-issues are capped per element (a completed seek
+  // restores the budget); past the cap the watchdog leaves
+  // the tile alone, and pressing play still works because
+  // playAfterSeek no longer waits for seeked for ever.
   const now=performance.now();
   vids().forEach(v=>{
-    if(!v.src || v.readyState>=2 || v.seeking) return;
-    if(v.networkState!==1 || !v.duration) return;
+    if(!v.src || v.readyState>=2 || !v.duration) return;
+    if(v.seeking){
+      if(!v._seekSince){ v._seekSince=now; return; }
+      if(now-v._seekSince<3000) return;
+      if((v._stallRetries||0)>=3) return;
+      if(v._stallNudge && now-v._stallNudge<5000) return;
+      v._stallNudge=now;
+      v._stallRetries=(v._stallRetries||0)+1;
+      v._seekSince=now;
+      const f=(v._wantFrac!==undefined) ? v._wantFrac
+        : v.currentTime/v.duration;
+      v.load();
+      seekFrac(v, f);
+      return;
+    }
+    if(v.networkState!==1) return;
     if(v._stallNudge && now-v._stallNudge<5000) return;
     v._stallNudge=now;
     v.currentTime=v.currentTime;
@@ -6328,16 +6400,28 @@ $("backbtn").onclick=()=>{
   const wasPlaying=!zv.paused, id=zoomId;
   zv.pause(); zv.removeAttribute("src"); zv.load();
   zoomId=null; $("zoom").style.display="none"; $("wall").style.display="block"; $("master").style.display="block";
-  render();
-  // Opening the zoom view marked the followed student
-  // examined, and render() sorts unexamined students
-  // first, so the followed student can rotate off this
-  // screen and a different, paused tile rotate in (v42).
-  // Land on the screen that holds the followed student.
-  if(!ATT.on && id){
-    const vi=VIEWLIST.findIndex(x=>x.id===id);
-    if(vi>=0 && Math.floor(vi/pageSize())!==page){
-      page=Math.floor(vi/pageSize()); render(); }
+  if(WALLDIRTY){
+    // The wall's data was replaced while the zoom view was
+    // open: rebuild once, and land on the screen that holds
+    // the followed student (v42 — a rebuild re-sorts, and
+    // the followed student can rotate off this screen).
+    WALLDIRTY=false; render();
+    if(!ATT.on && id){
+      const vi=VIEWLIST.findIndex(x=>x.id===id);
+      if(vi>=0 && Math.floor(vi/pageSize())!==page){
+        page=Math.floor(vi/pageSize()); render(); }
+    }
+  } else {
+    // Keep the wall's tiles alive (v60): a rebuild discards
+    // every tile's decoded frame and buffered ranges, and
+    // each tile's recovery then depended on one burst seek
+    // completing — the failure behind the black wall after
+    // zoom, scrub, Back. The examined badge already flips
+    // in place and the order does not change under the
+    // mouse, so the only stale tile content is the followed
+    // student's grade badge (a final grade saved in the
+    // zoom view); refresh that one in place.
+    refreshTileGrade(id);
   }
   setFracAll(f);
   // The speaker keeps speaking back on the wall: the followed
@@ -6396,6 +6480,7 @@ async function load(){
   const r=await fetch("/api/wall"); const j=await r.json();
   if(!r.ok){ $("werr").textContent=j.error; return; }
   STUDENTS=j.students;
+  if(zoomId) WALLDIRTY=true;
   if(!zoomId) render();
   const mr=await fetch("/api/marks");
   if(mr.ok){ MARKS=await mr.json(); updateMarkCount(); }

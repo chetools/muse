@@ -18,6 +18,24 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v60 (2026-11-26) — the wall survives the zoom round trip
+
+- **Back keeps the tiles alive.** Returning from the zoom
+  view no longer rebuilds the wall: each tile keeps its
+  element, its decoded frame and its buffered ranges, and
+  the wall comes back as it was, at the zoom view's
+  position. The wall is rebuilt on return only when its
+  data was replaced while the zoom view was open. A final
+  grade saved in the zoom view is refreshed on the tile in
+  place, as the examined badge already was.
+- **A stalled seek recovers.** A tile whose seek has run
+  for over three seconds with no frame to show is treated
+  as stalled: the wall re-issues its seek, a bounded number
+  of times, instead of skipping it for being mid-seek.
+- **Play is never dead.** A play asked for while a seek is
+  in flight waits at most 1.5 seconds for the seek to land
+  before going ahead anyway.
+
 ## v59 (2026-11-26) — no binding; the YouTube check is the similarity only
 
 - **There is no binding.** Package checks make no binding call
