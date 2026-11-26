@@ -729,15 +729,27 @@ def main():
                          {"user_id": KEY111, "score": 7})
     check(status == 200 and out51.get("saved") == KEY111,
           "final grade accepted when the package matches (v51)")
-    call("POST", "/api/expected-package",
-         {"course_id": 101, "assignment_id": 202, "pkg": ""})
+    status, out53 = call("POST", "/api/expected-package",
+                         {"course_id": 101, "assignment_id": 202,
+                          "pkg": ""})
+    check(status == 200 and out53.get("stored_pkg") is None
+          and out53.get("expected_source") == "majority"
+          and out53.get("expected_pkg") == PKG,
+          "clearing the choice returns to the majority "
+          "default (v53)")
     status, subs51 = call("GET", "/api/submissions")
     row51 = next(r for r in subs51 if r["user_id"] == "111")
     check(row51.get("pkg_mismatch") is False
-          and row51.get("expected_pkg") is None,
-          "expected package set to Not set: the gate is off (v52)")
-    check(web.expected_package(web.load_web_config(), 101, 202) == "",
-          "Not set is stored as off, distinct from automatic (v52)")
+          and row51.get("expected_pkg") == PKG,
+          "with no stored choice the row carries the majority "
+          "package (v53)")
+    check(web.expected_package(web.load_web_config(), 101, 202)
+          is None,
+          "no stored choice is kept for the assignment (v53)")
+    status, dash53 = call("GET", "/", raw=True)
+    check(b"__auto__" not in dash53
+          and "Not set — no package check".encode() not in dash53,
+          "the selector offers neither Auto nor Not set (v53)")
 
     # v52: the gate matches by package name, any version.
     call("POST", "/api/expected-package",
@@ -766,8 +778,8 @@ def main():
     _root52 = Path(_cfg52["data_dir"]) / "downloads" / "101" / "999"
     _saved_pkg52 = globals()["PKG"]
     try:
-        for _uid52, _pkg52 in (("301", "pkg-test v2"),
-                               ("302", "pkg-test v1"),
+        for _uid52, _pkg52 in (("301", "pkg-test v1"),
+                               ("302", "pkg-test v2"),
                                ("303", "other-pkg v1")):
             globals()["PKG"] = _pkg52
             _dir52 = _root52 / _uid52
@@ -779,7 +791,8 @@ def main():
                 encoding="utf-8")
         globals()["PKG"] = _saved_pkg52
         check(web.majority_package(_cfg52, 101, 999) == "pkg-test v2",
-              "majority package counted by name across versions (v52)")
+              "majority package: the latest version of the "
+              "name most submissions used (v53)")
         check(web.effective_expected_package(_cfg52, 101, 999)
               == ("pkg-test v2", "majority"),
               "no stored choice: the majority is in force (v52)")
@@ -802,19 +815,6 @@ def main():
     finally:
         globals()["PKG"] = _saved_pkg52
         shutil.rmtree(_root52, ignore_errors=True)
-    status, out52 = call("POST", "/api/expected-package",
-                         {"course_id": 101, "assignment_id": 202,
-                          "pkg": "__auto__"})
-    check(status == 200 and out52.get("stored_pkg") is None
-          and out52.get("expected_source") == "majority"
-          and out52.get("expected_pkg") == PKG,
-          "automatic restores the majority default (v52)")
-    status, subs52 = call("GET", "/api/submissions")
-    row52 = next(r for r in subs52 if r["user_id"] == "111")
-    check(row52.get("pkg_mismatch") is False
-          and row52.get("expected_pkg") == PKG,
-          "under automatic, the row carries the majority "
-          "package (v52)")
     status, out = call("POST", "/api/final-grade",
                        {"user_id": "demo-t", "score": 7})
     status, walldata = call("GET", "/api/wall")
@@ -1458,8 +1458,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/52.0",
-          "user agent bumped to 52.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/53.0",
+          "user agent bumped to 53.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"

@@ -18,6 +18,17 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v53 (2026-11-26) — the Expected package selector: no Auto, no Not set
+
+- The selector now lists the grading Worker's packages only.
+  There is no "Auto" entry and no "Not set" entry.
+- The selection it opens on is the **latest version of the
+  package most of the assignment's submissions used** (counted
+  by package name), unless you have picked a package for that
+  assignment yourself — your pick is kept.
+- Matching is unchanged: grading accepts **any version** of
+  the selected package; only a different package is a mismatch.
+
 ## v52 (2026-11-26) — the gate matches by name, defaults to the majority; wall and table fixes
 
 - **Package matching is by name.** A submission graded under a

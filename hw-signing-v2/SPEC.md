@@ -200,12 +200,13 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   exports no gradebook score, with the mismatch flagged in the
   table, on the wall and in the gradebook preview warnings. The
   comparison is by package name, versions ignored: another version
-  of the same package is the same homework. With no stored choice,
-  the expected package is automatic: the package most of the
-  assignment's downloaded submissions were graded under (counted
-  by name; a tie means no majority and no gate). "Not set" is an
-  explicit stored choice that switches the gate off. An unknown
-  package never mismatches.
+  of the same package is the same homework. The selector lists the
+  Worker's packages only — no automatic entry and no off entry
+  (v53). With no stored choice, the selection defaults to the
+  latest version of the package most of the assignment's
+  downloaded submissions were graded under (counted by name; a
+  tie means no majority, and the assignment is ungated until a
+  majority exists). An unknown package never mismatches.
 
 ## Worker interface
 

@@ -434,6 +434,19 @@ durationchange, and the wall loop revives a tile whose
 frame fetch has stopped with no frame to show. Display,
 gate and playback only: no check changes, and the check
 schema stays 2.
+
+v53: the selector loses its Auto and Not set entries (the
+teacher's direction). It lists the Worker's packages only,
+and the selection it opens on is the stored choice or —
+with none stored — the default in force: the latest
+version of the package most of the assignment's downloaded
+submissions were graded under (the majority count is by
+name, as in v52, and the exemplar is now that name's
+latest version rather than the first seen). Matching is
+unchanged: every version of the selected package's name
+is accepted. There is no off state; an assignment whose
+submissions show no majority yet is ungated until one
+exists. A stored "" left by v52 reads as no stored choice.
 """
 
 import argparse
@@ -3063,24 +3076,24 @@ def auto_loop():
 def expected_packages(cfg):
     """The per-assignment expected prompt packages, as stored:
     a map "course_id_assignment_id" -> "name vN" (the teacher's
-    explicit choice), "" (the gate switched off for that
-    assignment), or no entry at all (automatic — the majority
-    package of the assignment's submissions is in force).
-    Set by the teacher in the Grades back to Canvas section."""
+    explicit choice). An assignment with no entry takes the
+    default: the latest version of the package most of its
+    submissions were graded under. Set by the teacher in the
+    Grades back to Canvas section."""
     return read_json_file(
         _state_file(cfg, "expected-packages.json"), {})
 
 
 def expected_package(cfg, course_id, assignment_id):
-    """The stored choice only: "name vN", "" (off), or None
-    when no choice is stored (automatic)."""
+    """The stored choice only: "name vN", or None when no
+    choice is stored (the majority default applies)."""
     return expected_packages(cfg).get(
         f"{course_id}_{assignment_id}")
 
 
 def save_expected_package(cfg, course_id, assignment_id, pkg):
-    """Store the teacher's choice: "name vN" (explicit), ""
-    (gate off), or None (automatic — the entry is removed)."""
+    """Store the teacher's choice: "name vN", or None to clear
+    the entry (the majority default applies again)."""
     store = expected_packages(cfg)
     key = f"{course_id}_{assignment_id}"
     if pkg is None:
@@ -3112,15 +3125,24 @@ def pkg_mismatch(expected, pkg):
                 and pkg_name(pkg) != pkg_name(expected))
 
 
+def pkg_version(pkg):
+    """A prompt package's version number: the N in "name vN",
+    or 0 when the string carries no version."""
+    m = re.match(r"^.* v(\d+)$", pkg or "")
+    return int(m.group(1)) if m else 0
+
+
 def majority_package(cfg, course_id, assignment_id):
     """The package most of this assignment's downloaded
-    submissions were graded under: the full "name vN" of the
-    largest group, with groups counted by package name (v52).
+    submissions were graded under: groups are counted by
+    package name, and the result is the latest version of
+    the winning name found among the submissions (v53 — the
+    selector's default; matching itself ignores versions).
     A tie for the largest group means no majority. Each
     downloaded package counts once, by its known package
     (its stored check's, else its own parsed value)."""
     checks = results_store(cfg)
-    counts, exemplars = {}, {}
+    counts, latest = {}, {}
     for p in downloaded_packages(cfg):
         if str(p.get("course_id")) != str(course_id) \
                 or str(p.get("assignment_id")) != str(assignment_id):
@@ -3131,26 +3153,25 @@ def majority_package(cfg, course_id, assignment_id):
             continue
         name = pkg_name(pkg)
         counts[name] = counts.get(name, 0) + 1
-        exemplars.setdefault(name, pkg)
+        if pkg_version(pkg) >= pkg_version(latest.get(name, "")):
+            latest[name] = pkg
     if not counts:
         return None
     top = max(counts.values())
     winners = [n for n, c in counts.items() if c == top]
-    return exemplars[winners[0]] if len(winners) == 1 else None
+    return latest[winners[0]] if len(winners) == 1 else None
 
 
 def effective_expected_package(cfg, course_id, assignment_id):
     """The expected package actually in force for an
     assignment, as (pkg, source): the teacher's stored choice
-    (source "set"), the majority package when no choice is
-    stored (source "majority"), or (None, "off") when the
-    gate is switched off, (None, "none") when automatic but
-    no majority exists yet."""
+    (source "set"), or the majority default when no choice is
+    stored (source "majority"), or (None, "none") when no
+    majority exists yet. There is no off state (v53): the
+    gate always has the majority default behind it."""
     stored = expected_package(cfg, course_id, assignment_id)
     if stored:
         return stored, "set"
-    if stored == "":
-        return None, "off"
     pkg = majority_package(cfg, course_id, assignment_id)
     return (pkg, "majority") if pkg else (None, "none")
 
@@ -4018,7 +4039,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 </section>
 
 <section><h2>3. Grades back to Canvas</h2>
-<p>One CSV per assignment, in Canvas Gradebook import format (Student, ID, SIS User ID, SIS Login ID, Section, then the assignment column with its Canvas ID, and a Points Possible row). The preview table is grouped by course and, when a course has more than one section, by section. The button beside each course heading downloads all of that course's CSVs at once — as separate files inside one ZIP, since a browser cannot save several files from one click; unzip it and import each file in turn. In Canvas: Grades → Import → choose the file → Upload Data → review → Save Changes. The CSV import sets scores only — it cannot post comments or change posting policy. Beside each assignment, Expected package names the prompt package its submissions must have been graded under: set it, and a submission graded under a different package takes no final grade and exports no score — the mismatch is flagged in section 2, on the wall and in the preview warnings below. Leave it at Not set for no gate.</p>
+<p>One CSV per assignment, in Canvas Gradebook import format (Student, ID, SIS User ID, SIS Login ID, Section, then the assignment column with its Canvas ID, and a Points Possible row). The preview table is grouped by course and, when a course has more than one section, by section. The button beside each course heading downloads all of that course's CSVs at once — as separate files inside one ZIP, since a browser cannot save several files from one click; unzip it and import each file in turn. In Canvas: Grades → Import → choose the file → Upload Data → review → Save Changes. The CSV import sets scores only — it cannot post comments or change posting policy. Beside each assignment, Expected package names the prompt package its submissions must have been graded under: it opens on the latest version of the package most of the assignment's submissions used, and grading accepts any version of that package — only a different package is a mismatch. A submission graded under a different package takes no final grade and exports no score; the mismatch is flagged in section 2, on the wall and in the preview warnings below.</p>
 <div id="gbtargets"><p class="mut">The assignment list appears here once a Canvas token is saved.</p></div>
 <div id="gb"></div>
 </section>
@@ -4208,20 +4229,17 @@ function renderTargets(ts){
     });
 }
 function expkgOptions(t){
-  // The gate's three states (v52): Auto (the majority package
-  // of the assignment's submissions is in force), an explicit
-  // package (matched by name, any version), or Not set (no
-  // check). t.stored_pkg is null for Auto, "" for Not set.
-  const stored=t.stored_pkg;
-  const autoLabel=(t.expected_source==="majority" && t.expected_pkg)
-    ? "Auto — majority: "+t.expected_pkg
-    : "Auto — majority of submissions";
-  let out='<option value="__auto__"'+(stored==null?" selected":"")+">"+esc(autoLabel)+"</option>";
-  out+='<option value=""'+(stored===""?" selected":"")+">Not set — no package check</option>";
+  // The selector lists the Worker's packages only (v53):
+  // no Auto entry and no Not set entry. The selection shown
+  // is the teacher's stored choice, or — with none stored —
+  // the default in force: the latest version of the package
+  // most of the assignment's submissions used. Grading
+  // accepts every version of the selected package's name.
+  const cur=t.stored_pkg||t.expected_pkg||"";
   const opts=(window.PKGOPTS||[]).slice();
-  if(stored && !opts.includes(stored)) opts.push(stored);
-  out+=opts.map(p=>'<option value="'+esc(p)+'"'+(p===stored?" selected":"")+">"+esc(p)+"</option>").join("");
-  return out;
+  if(cur && !opts.includes(cur)) opts.push(cur);
+  if(!opts.length) return '<option value="">—</option>";
+  return opts.map(p=>'<option value="'+esc(p)+'"'+(p===cur?" selected":"")+">"+esc(p)+"</option>").join("");
 }
 async function loadTargets(){
   try{
@@ -7105,11 +7123,11 @@ class Handler(BaseHTTPRequestHandler):
             aid = str(body.get("assignment_id") or "")
             if not cid or not aid:
                 raise ValueError("a course and assignment are required")
-            # The selector sends "__auto__" for the automatic
-            # (majority) default, "" for off, or "name vN" for
-            # an explicit choice (v52).
+            # The selector sends a "name vN" choice; an empty
+            # value (or the retired "__auto__") clears back to
+            # the majority default (v53).
             raw = str(body.get("pkg") or "").strip()
-            pkg = None if raw == "__auto__" else raw
+            pkg = raw if raw and raw != "__auto__" else None
             save_expected_package(cfg, cid, aid, pkg)
             eff, src = effective_expected_package(cfg, cid, aid)
             self._send(200, {"stored_pkg": pkg,
