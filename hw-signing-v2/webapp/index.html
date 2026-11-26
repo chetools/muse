@@ -30,35 +30,51 @@
   #transcriptBox { white-space: pre-wrap; font-size: 1rem; }
   textarea { width: 100%; box-sizing: border-box; font: inherit; }
   input[type="text"], input[type="url"], input[type="password"] { font: inherit; padding: 6px 8px; }
-  #ytLink, #finLink { max-width: calc(100vw - 50px); box-sizing: border-box; }
+  .jobstable { width: 100%; border-collapse: collapse; }
+  .jobstable th { text-align: left; font-size: 0.85rem; color: #444;
+                  padding: 4px 10px 4px 0; border-bottom: 1px solid #ccc; }
+  .jobstable td { padding: 10px 10px 10px 0; vertical-align: top;
+                  border-top: 1px solid #ddd; }
+  .jobstable tbody tr:first-child td { border-top: none; }
+  .jobstable .jobgrades { white-space: nowrap; font-size: 0.92rem; color: #333; }
+  .jobactions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+  .jobactions button { white-space: nowrap; }
+  .ytlinkwrap { display: flex; gap: 6px; align-items: center; }
+  .ytlinkwrap input { flex: 1 1 auto; min-width: 0; width: 100%; box-sizing: border-box; }
+  button.ytclear { padding: 2px 9px; flex: 0 0 auto; }
+  .ytreason { color: #b00020; font-size: 0.8rem; margin-top: 4px; }
+  .ytneed { color: #444; font-size: 0.85rem; margin-top: 4px; }
+  .ytok { color: #205c20; font-size: 0.85rem; margin-top: 4px; }
+  .ytdur { color: #555; font-size: 0.82rem; margin-top: 2px; }
+  .ytopen { font-size: 0.82rem; word-break: break-all; }
+  #ytPreviewArea { position: sticky; top: 8px; z-index: 5; background: #fff;
+                   width: min(400px, 100%); margin: 0 0 10px; }
+  #ytPreviewSlot { width: 100%; aspect-ratio: 16 / 9; background: #f4f4f4; position: relative;
+                   border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;
+                   display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #ytPreviewOverlay { position: absolute; inset: 0; cursor: pointer; }
+  #ytPreviewSlot iframe { flex: 1 1 auto; width: 100%; height: 100%; border: 0; display: block; }
+  #ytPreviewHint { color: #555; font-size: 0.9rem; padding: 0 12px; text-align: center; }
+  @media (max-width: 620px) {
+    .jobstable, .jobstable tbody, .jobstable tr, .jobstable td { display: block; width: 100%; box-sizing: border-box; }
+    .jobstable thead { display: none; }
+    .jobstable td { border-top: none; padding: 4px 0; }
+    .jobstable tbody tr.jobrow { border-top: 1px solid #ddd; padding: 8px 0; }
+    .jobstable tbody tr:first-child { border-top: none; }
+    .jobactions { flex-direction: row; flex-wrap: wrap; }
+  }
   .note { color: #555; font-size: 0.88rem; }
   .fine { font-size: 0.78rem; color: #666; }
   label.check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; }
   #liveBox .lbl { font-weight: 600; font-size: 0.88rem; color: #444; }
   #liveRaw { color: #555; }
-  .jobrow, .recrow { border-top: 1px solid #ddd; padding: 8px 0; }
-  .jobrow:first-child, .recrow:first-child { border-top: none; }
-  .jobline { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-  .jobline .joblabel { flex: 1 1 auto; min-width: 0; overflow: hidden;
-                       text-overflow: ellipsis; white-space: nowrap; }
-  .jobline button { flex: 0 0 auto; white-space: nowrap; }
-  .jobline .mono { flex: 0 0 auto; white-space: nowrap; }
-  .jobline .jobgrades { flex: 0 0 auto; white-space: nowrap; font-size: 0.92rem; color: #333; }
-  @media (max-width: 620px) {
-    .jobline .jobgrades { display: none; }
-    /* On a phone the buttons alone fill the width, and a one-line
-       row would shrink the label to nothing: the label takes its
-       own full line and the controls sit under it. */
-    .jobline { flex-wrap: wrap; }
-    .jobline .joblabel { flex: 1 1 100%; white-space: normal; }
-  }
+  .recrow { border-top: 1px solid #ddd; padding: 8px 0; }
+  .recrow:first-child { border-top: none; }
   button.quiet { background: none; border-color: #ccc; color: #444; }
-  .jobdetail { margin-top: 8px; }
   .jobdetail .houserow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
   .reviewbox p { margin: 4px 0; }
   .reviewbox .small { font-size: 0.88rem; color: #444; }
-  .jobline .guardnote { flex: 1 1 auto; min-width: 0; overflow: hidden;
-                        text-overflow: ellipsis; white-space: nowrap; }
+  .guardnote { font-size: 0.9rem; color: #444; }
   .recrow { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
   .recrow .recmeta { flex: 1 1 auto; min-width: 0; overflow: hidden;
                      text-overflow: ellipsis; white-space: nowrap; }
@@ -68,7 +84,6 @@
                        white-space: nowrap; }
   .row.oneline input { min-width: 0; }
   .row.oneline button { flex: 0 0 auto; }
-  #ytPlayerWrap { margin: 10px 0; }
 </style>
 <script type="importmap">
 {
@@ -156,15 +171,9 @@
   <div class="box" id="suspectsBox">No transcript yet.</div>
 
   <h2>6. Sending for grading</h2>
-  <div class="row">
-    <label>YouTube link (this same recording, set to Unlisted or Public) — optional now; required for the Canvas submission
-    <input type="url" id="ytLink" size="46" placeholder="https://www.youtube.com/watch?v=…"></label>
-  </div>
-  <div class="row">
-    <span class="status" id="ytStatus"></span>
-  </div>
-  <div id="ytPlayerWrap" hidden><div id="ytPlayer"></div></div>
-  <p class="status" id="ytDurStatus"></p>
+  <p class="note">Sending takes no YouTube link. When the grade is back,
+  the link is added in the job’s own row in section 7, where the
+  Canvas submission ZIP is made.</p>
   <div class="row">
     <button id="submitJobBtn" class="primary" disabled>Send for grading</button>
     <span class="status" id="jobStatus"></span>
@@ -176,29 +185,8 @@
   <p class="note">Completeness — how much of the question your explanation
   covers. Accuracy — how much of it is right.</p>
   <div class="status" id="zipDone" role="status"></div>
+  <div id="ytPreviewArea"><div id="ytPreviewSlot"><div id="ytPreviewPlayer"></div><span id="ytPreviewHint">Hover a YouTube link to play it here</span><div id="ytPreviewOverlay" hidden></div></div></div>
   <div class="box" id="jobsBox">No jobs sent from this browser yet.</div>
-
-  <div id="finPanel" hidden>
-    <h3>Turn a graded job into your Canvas submission</h3>
-    <p class="note">It must be the job for this same recording — one
-    submission per recording. Paste the link and the check runs by
-    itself.</p>
-    <div class="row">
-      <label>Graded job <select id="finJobSel"></select></label>
-    </div>
-    <div class="row">
-      <label>YouTube link <input type="url" id="finLink" size="46" placeholder="https://www.youtube.com/watch?v=…"></label>
-    </div>
-    <div class="row">
-      <span class="status" id="finStatus"></span>
-    </div>
-    <div id="finPlayerWrap" hidden><div id="finPlayer"></div></div>
-    <p class="status" id="finDurStatus"></p>
-    <div class="row">
-      <button id="finConfirmBtn" class="primary" disabled>Turn into my submission</button>
-      <span class="status" id="finDone"></span>
-    </div>
-  </div>
 </div>
 <script type="module" src="./js/main.js"></script>
 </body>

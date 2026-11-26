@@ -35,6 +35,7 @@ import {
   submitJob, fetchJobStatus, finalizeJob,
   bundleChromaprintSha, verifyFingerprintContents,
   kindFromResultBundle, duplicateJobEntry, collapseSameJobEntries,
+  bundleBoundVideoSha,
   generateRetrievalToken, RECOVERY_TOKEN_LENGTH, entryPollable,
 } from '../js/jobs.js';
 import { encodeRawFingerprint, decodeRawFingerprint } from '../js/fingerprint.js';
@@ -508,7 +509,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.15');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.16');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -569,6 +570,10 @@ await test('youtube id: all accepted forms parse; others rejected', () => {
   assert.equal(parseYouTubeVideoId('https://www.youtube.com/live/' + id + '?x=1'), id);
   assert.equal(parseYouTubeVideoId('https://www.youtube.com/embed/' + id), id);
   assert.equal(parseYouTubeVideoId('https://m.youtube.com/watch?v=' + id + '&t=5'), id);
+  // 2.6.16: a YouTube Studio edit address parses to the same ID, so
+  // the row field can convert it to the canonical watch form.
+  assert.equal(parseYouTubeVideoId('https://studio.youtube.com/video/' + id + '/edit'), id);
+  assert.equal(parseYouTubeVideoId('https://studio.youtube.com/video/' + id), id);
   assert.equal(parseYouTubeVideoId('https://www.youtube.com/watch?v=short'), null);
   assert.equal(parseYouTubeVideoId('https://example.com/watch?v=' + id), null);
   assert.equal(parseYouTubeVideoId('not a url'), null);
@@ -576,8 +581,13 @@ await test('youtube id: all accepted forms parse; others rejected', () => {
   assert.equal(canonicalWatchUrl(id), 'https://www.youtube.com/watch?v=' + id);
 });
 
-/* ---------------- retrieval code ---------------- */
-
+await test('bound video: the signed bundle decides which video a row accepts (2.6.16)', () => {
+  const sha = 'a'.repeat(64);
+  assert.equal(bundleBoundVideoSha({ youtube_video_sha256: sha }), sha);
+  assert.equal(bundleBoundVideoSha({ youtube_video_sha256: 'none' }), null);
+  assert.equal(bundleBoundVideoSha({}), null);
+  assert.equal(bundleBoundVideoSha(null), null);
+});
 await test('retrieval code: rule matches the Worker', () => {
   assert.ok(!RETRIEVAL_CODE_RE.test('7'));
   assert.ok(!RETRIEVAL_CODE_RE.test('abc123'));
@@ -641,15 +651,20 @@ await test('wiring: the page generates the job token internally; the student nev
     'step 6 has no retrieval code input');
 });
 
-await test('wiring: an unreadable YouTube link is pointed out in step 6 and in the conversion panel (2.6.13)', () => {
+await test('wiring: an unreadable YouTube link is pointed out in the row cell (2.6.13, 2.6.16)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   const msg = 'That is not a YouTube link this page can read.';
-  assert.equal(main.split(msg).length - 1, 2,
-    'both link fields carry the unreadable-link message');
-  assert.ok(main.includes("$('ytStatus').textContent =\n        'That is not a YouTube link"),
-    'step 6 writes the message to its status line');
-  assert.ok(main.includes("$('finStatus').textContent =\n        'That is not a YouTube link"),
-    'the conversion panel writes the message to its status line');
+  assert.equal(main.split(msg).length - 1, 1,
+    'the one link field (the row field) carries the unreadable-link message');
+  assert.ok(main.includes("reason: 'That is not a YouTube link this page can read. '"),
+    'runRowCheck writes the message as the row check error');
+  assert.ok(main.includes("reason: 'Not the video bound to this job."),
+    'a bound job rejects a different video with its own cell reason');
+  assert.ok(main.includes('private or missing'),
+    'a private or missing video has its own cell reason');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(!index.includes('id="ytLink"') && !index.includes('id="finLink"'),
+    'no step-6 or panel link field remains');
 });
 
 /* ---------------- job payload ---------------- */
@@ -950,8 +965,8 @@ await test('wiring: one ZIP button per job — collapse in render, review replac
     'renderJobsOnce collapses same-job entries before rendering');
   assert.ok(main.includes('job_id: res.job_id'),
     'a newly sent job entry carries its job_id');
-  assert.ok(main.includes('if (!reviewOpen)'),
-    'the Review button is rendered only when no review is open for the row');
+  assert.ok(main.includes('if (!reviewOpen && st && st.state === \'ok\')'),
+    'the Generate ZIP button is rendered only on a passed check with no review open');
   assert.ok(main.includes("'Close review'"),
     'the open review panel can be closed, restoring the Review button');
   assert.ok(!main.includes('manualBtn') && !main.includes('clearManualRowIfListed'),
@@ -981,33 +996,31 @@ await test('wiring: fingerprint computed after normalisation; duplicate handled 
     'submitJob returns a duplicate response instead of throwing');
 });
 
-await test('wiring: ZIP review falls back to the step-6 link field for a final entry with no stored link', () => {
+await test('wiring: ZIP verification uses the link kept with the entry, from its row (2.6.16)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes("entry.youtube_link || $('ytLink').value.trim()"),
-    'verifySubmissionParts falls back to the live step-6 link field');
+  assert.ok(main.includes("const link = entry.youtube_link || '';"),
+    'both ZIP verifications read the entry link only — no page-level field remains');
+  assert.ok(!main.includes("$('ytLink')"), 'no step-6 link field is read anywhere');
   assert.ok(main.includes('Keep the re-entered link with the entry'),
     're-entered link is kept with the stored entry');
-  assert.ok(main.includes('ytCheck.audioSha256 === bundle.audio_sha256'),
-    'step-6 check title/time kept only when the check was for this job');
+  assert.ok(main.includes('rc.videoId === parseYouTubeVideoId(link)'),
+    'row check title/time kept only when the check was for this job’s video');
 });
-
-await test('wiring: conversion panel present; no practice/final radios', () => {
+await test('wiring: conversion panel and step-6 link field removed; finalise runs from the row (2.6.16)', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(index.includes('id="finPanel"'), 'conversion panel present');
-  assert.ok(index.includes('id="finJobSel"'), 'graded-job picker present');
+  assert.ok(!index.includes('id="finPanel"'), 'conversion panel removed');
+  assert.ok(!index.includes('id="finJobSel"'), 'graded-job picker removed');
+  assert.ok(!index.includes('id="ytLink"'), 'step 6 link field removed');
   assert.ok(!index.includes('kindPractice'), 'no practice radio');
   assert.ok(!index.includes('kindFinal'), 'no final radio');
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes('finalizeJob('), 'page calls finalize');
-  assert.ok(main.includes('refreshFinPanel'), 'panel refresh wired');
-  assert.ok(!main.includes('convBtn'), 'no per-row conversion button (the picker is the route)');
-  assert.ok(!main.includes("textContent = 'Turn into my submission'"),
-    'row buttons do not carry the conversion label');
-  assert.ok(main.includes('finPrevSelKey'), 'picker selection change tracking wired');
-  assert.ok(main.includes('if (finPrevSelKey !== null && sel.value !== finPrevSelKey) finResetCheck();'),
-    'stale link check reset when a rebuild changes the selected job');
+  assert.ok(main.includes('await downloadSubmissionZip(entry, liveBundle, btn,'),
+    'Generate ZIP runs the review flow after finalising');
+  assert.ok(!main.includes('refreshFinPanel'), 'no conversion panel refresh remains');
+  assert.ok(!main.includes('finCheck'), 'no conversion-panel check state remains');
+  assert.ok(main.includes("kind: 'practice',"), 'sending always sends without a link');
 });
-
 /* ---------------- localStorage job entries ---------------- */
 
 function fakeStorage() {
@@ -1078,7 +1091,7 @@ await test('wiring: errors are shown beside the control that was used', () => {
     'the error is scrolled into view where it lands');
   for (const a of ["$('loadBtn')", "$('mediaFile')", 'restoreBtn',
                    "$('runBtn')", "$('submitJobBtn')",
-                   'downloadSubmissionZip(entry, bundle, zipBtn)']) {
+                   'generateZipForRow(entry, bundle, zipBtn)']) {
     assert.ok(main.includes(a), 'anchored error call site: ' + a);
   }
 });
@@ -1117,7 +1130,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.15');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.16');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1248,22 +1261,26 @@ await test('duration stat: posts the two durations and the package label only', 
   }, down), false);
 });
 
-await test('wiring: duration gate and review elements present in the page', () => {
+await test('wiring: duration gate and preview elements present in the page (2.6.16)', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  for (const id of ['ytDurStatus', 'finDurStatus']) {
-    assert.ok(index.includes('id="' + id + '"'), 'index has ' + id);
-  }
+  assert.ok(index.includes('id="ytPreviewArea"'), 'index has the fixed preview area');
+  assert.ok(index.includes('Hover a YouTube link to play it here'),
+    'the preview area carries its idle placeholder text');
+  assert.ok(!index.includes('id="ytDurStatus"') && !index.includes('id="finDurStatus"'),
+    'the old per-field duration lines are gone; the verdict sits in the row cell');
   for (const id of ['ytConfirmRow', 'ytConfirmChk',
     'finConfirmRow', 'finConfirmChk', 'ytCheckBtn', 'finCheckBtn']) {
     assert.ok(!index.includes('id="' + id + '"'),
       'index no longer has ' + id + ' (2.6.8: automatic check, no confirmation)');
   }
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes('clearYtCheck()'), 'recording change voids the link check');
+  assert.ok(main.includes('classifyDuration(dur, videoS || 0)'),
+    'the row check classifies the video length against the job’s audio');
+  assert.ok(main.includes("return band !== 'block';"),
+    'only the block band bars a checked link');
   assert.ok(!main.includes(': chunks;'), 'no fallback to the on-page transcript at ZIP time');
   assert.ok(main.includes('verifyBundleContents'), 'ZIP contents verified against the bundle');
 });
-
 await test('media tier 2: MP4-family detection by name and by MIME type', () => {
   assert.equal(isMp4FamilyFile({ name: 'WIN_20261119_Pro.mp4', type: '' }), true);
   assert.equal(isMp4FamilyFile({ name: 'clip.MOV', type: '' }), true);
@@ -1768,21 +1785,18 @@ await test('fresh computer: a retrieved job builds the fingerprint ZIP once the 
     ['submission.html', 'submission-fingerprint.bin']);
 });
 
-await test('wiring: cross-assignment guard on ZIP buttons and the conversion picker (2.6.2)', () => {
+await test('wiring: cross-assignment guard on the row Generate ZIP button (2.6.2, 2.6.16)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes("entry.kind === 'final' && bundle && entry.pkg !== cfg.pkg"),
-    'a final job of another assignment gets no ZIP button on this page');
-  assert.ok(main.includes('open its assignment\\u2019s link in Canvas'),
+  assert.ok(main.includes("if (bundle && entry.pkg !== cfg.pkg)"),
+    'a job of another assignment gets no Generate ZIP button on this page');
+  assert.ok(main.includes('open its assignment\u2019s link in Canvas'),
     'the guarded row says where its ZIP is built');
-  assert.ok(main.includes('if (entry.pkg !== cfg.pkg) continue;'),
-    'the conversion picker offers only this assignment\u2019s jobs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(html.includes('Turn a graded job into your Canvas submission'),
-    'the conversion panel heading names its purpose');
+  assert.ok(!html.includes('Turn a graded job into your Canvas submission'),
+    'the conversion panel heading is gone with the panel');
   assert.ok(html.includes('A job\u2019s ZIP is built only from its own assignment\u2019s link'),
     'section 7 states the guard');
 });
-
 await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
@@ -1812,26 +1826,28 @@ await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () =
     'the ZIP progress line names the fingerprint form\u2019s verification (2.6.3)');
 });
 
-await test('wiring: job rows sit on one line; no recovery-code control on the row (2.6.5, 2.6.11)', () => {
+await test('wiring: jobs render as a table; no recovery-code control on the row (2.6.16)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(main.includes("line.className = 'jobline'"),
-    'each job row builds a single-line summary container');
-  assert.ok(index.includes('.jobline { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }'),
-    'the summary line never wraps; the label shortens with an ellipsis instead');
+  assert.ok(main.includes("table.className = 'jobstable'"),
+    'the jobs list builds a table');
+  assert.ok(main.includes("for (const h of ['Job', 'Grades', 'YouTube link', 'Actions'])"),
+    'the table carries the four approved columns');
+  assert.ok(index.includes('.jobstable'), 'the table styles are in the page');
+  assert.ok(index.includes('@media (max-width: 620px)'),
+    'the table stacks on phone widths');
   assert.ok(!main.includes('Copy recovery code') && !main.includes('codeBtn'),
     'the row carries no recovery-code control (2.6.11)');
   assert.ok(main.includes("forgetBtn.textContent = 'Remove from this browser'"),
-    'Remove is the row panel\u2019s only housekeeping control');
+    'Remove sits in the row’s Actions cell');
 });
-
 await test('wiring: the 5-second poll is not blocked by focus in the jobs list (2.6.6)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   const poll = main.slice(main.indexOf('async function refreshJobs'),
     main.indexOf('setInterval(refreshJobs'));
   assert.ok(!poll.includes('activeElement'),
     'refreshJobs does not skip a poll because focus sits inside the jobs list');
-  assert.ok(main.includes('row.dataset.jobKey = jobKey(entry.pkg, entry.retrieval_code)'),
+  assert.ok(main.includes('row.dataset.jobKey = key;'),
     'each job row carries its job key for focus restoration');
   assert.ok(main.includes("ae.dataset.act && box.contains(ae)"),
     'the render notes the focused control before the swap');
@@ -1862,48 +1878,53 @@ await test('wiring: no step-5 confirmation box; stuck rows say the service canno
     'the row states the failure instead of sitting at checking\u2026');
 });
 
-await test('wiring: link check is automatic and needs no played-preview confirmation (2.6.8)', () => {
+await test('wiring: the row link check is automatic and needs no played-preview confirmation (2.6.8, 2.6.16)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes('ytCheckTimer = setTimeout(runYtCheck, 700)'),
-    'step 6 checks the link by itself after a short pause');
-  assert.ok(main.includes('finCheckTimer = setTimeout(runFinCheck, 700)'),
-    'the conversion panel checks the link by itself after a short pause');
+  assert.ok(main.includes('rowTimers.set(key, setTimeout(() => {'),
+    'the row field checks the link by itself after a short pause');
+  assert.ok(main.includes('runRowCheck(key);'), 'the debounce runs the row check');
   assert.ok(!main.includes('ytConfirmChk') && !main.includes('finConfirmChk'),
     'no confirmation checkbox is read anywhere');
   assert.ok(main.includes("return band !== 'block';"),
     'only the block band bars a checked link');
   assert.ok(main.includes('replaced while checking'),
     'a result for a replaced link is discarded');
-  assert.ok(main.includes('ytCheckRearms >= 40') && main.includes('finCheckRearms >= 40'),
-    're-arms behind an in-flight check are capped in both flows');
-  assert.ok(main.includes('if (ytCheck && ytCheck.videoId === videoId) return;') &&
-    main.includes('if (finCheck && finCheck.videoId === videoId) return;'),
+  assert.ok(main.includes('(rowRearms.get(key) || 0) + 1'),
+    're-arms behind an in-flight check are counted per row');
+  assert.ok(main.includes("standing.state === 'ok' && standing.videoId === videoId"),
     'a link with a standing check is not checked twice');
+  assert.ok(main.includes('if (rowChecks.delete(key))'),
+    'any edit voids the standing check at once');
 });
-
-await test('wiring: section 7 redesign — one line collapsed, one panel, compact review (2.6.7)', () => {
+await test('wiring: section 7 redesign — table rows, details row, compact review (2.6.7, 2.6.16)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const rowFn = main.slice(main.indexOf('function renderJobRow'),
     main.indexOf('// Rendering is serialised'));
-  assert.ok(!rowFn.includes('checked link') && !rowFn.includes('sent without a link'),
-    'the row label no longer carries the checked-link wording');
-  assert.ok(main.includes("(entry.kind === 'final' ? 'Final' : 'Practice')"),
-    'the row label names the kind in plain words');
+  assert.ok(rowFn.includes("labelSpan.textContent = label + ' · ' + statusText"),
+    'the row label is the course/assignment label plus the status — no kind, no link wording');
+  assert.ok(!main.includes("? 'Final' : 'Practice'"),
+    'no Practice/Final label anywhere in the page (2.6.16)');
   assert.ok(main.includes("'Show details'") && main.includes("'Hide details'"),
-    'one toggle opens and closes the job\u2019s single panel');
-  assert.ok(main.includes('houseRow.append(forgetBtn)'),
-    'Remove lives in the panel, not on the row\u2019s line (2.6.11)');
+    'one toggle opens and closes the job’s details row');
+  assert.ok(rowFn.includes('actions.append(forgetBtn)'),
+    'Remove lives in the Actions cell (2.6.16)');
   assert.ok(main.includes("'Checks: recording \u2713 \u00b7 transcript \u2713 \u00b7 YouTube \u2713'"),
     'the ZIP review opens with the three checks on one line');
   assert.ok(!main.includes('Grades: Completeness'),
     'the ZIP review no longer repeats the grades the row already shows');
   assert.ok(main.includes('expandedJobs.add(jobKey(entry.pkg, entry.retrieval_code))'),
     'a completed verification opens the panel so the review is visible');
-  assert.ok(html.includes('.jobline .jobgrades'),
-    'the grades sit on the row\u2019s line in their own span');
+  assert.ok(html.includes('.jobstable .jobgrades'),
+    'the grades sit in the table’s Grades column');
+  assert.ok(rowFn.includes("'Add a YouTube link to download the ZIP.'") ||
+    main.includes("'Add a YouTube link to download the ZIP.'"),
+    'a row with no passed check carries the one succinct line');
+  assert.ok(rowFn.includes("zipBtn.textContent = 'Generate ZIP'"),
+    'a passed check produces the Generate ZIP button');
+  assert.ok(rowFn.includes("clearBtn.textContent = '×'"),
+    'a populated field carries the × clear control');
 });
-
 await test('wiring: no recovery-code control anywhere on the page (2.6.11)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(!main.includes('Copy recovery code') && !main.includes('Show recovery code'),
@@ -1919,21 +1940,23 @@ await test('wiring: no recovery-code control anywhere on the page (2.6.11)', () 
     'the send-time line no longer claims the code is never shown again');
 });
 
-await test('wiring: practice jobs carry the add-link button (2.6.10)', () => {
+await test('wiring: no add-link button; the row field is the link route (2.6.16)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes("entry.kind === 'practice' && entry.pkg === cfg.pkg"),
-    'the add-link button is gated to this assignment\u2019s practice jobs');
-  assert.ok(main.includes("'Add a YouTube link \u2014 make this your submission'"),
-    'a graded practice job\u2019s panel carries the add-link button');
-  assert.ok(main.includes('refreshFinPanel(key)'),
-    'the button selects the job in the conversion panel');
+  assert.ok(!main.includes('addlink'), 'no per-row add-link button remains');
+  assert.ok(!main.includes('make this your submission'),
+    'the conversion wording is gone');
+  assert.ok(main.includes("input.dataset.act = 'ytlink'"),
+    'each ready row carries its own link field');
+  assert.ok(main.includes("setTimeout(() => previewLoad(id, true, null), 400)"),
+    'dwelling on a populated link cell plays its video in the preview area');
+  assert.ok(main.includes('previewPlayer.mute()') || main.includes('ev.target.mute()'),
+    'the preview is muted before it plays — no audible autoplay');
 });
-
 await test('wiring: fingerprint-form ZIP path is wired into the review and download steps (2.6.0)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes('bundleChromaprintSha(bundle)'),
     'the signed bundle decides the ZIP form at verification time');
-  assert.ok(main.includes('verifyFingerprintParts(entry, bundle, anchor)'),
+  assert.ok(main.includes('verifyFingerprintParts(entry, bundle, anchor, onError)'),
     'the fingerprint verification step is the branch taken for that form');
   assert.ok(main.includes('verifyFingerprintContents(bundle, {'),
     'fingerprint contents are checked against the signed hashes');

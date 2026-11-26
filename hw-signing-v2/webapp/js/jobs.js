@@ -25,8 +25,9 @@ export const RETRIEVAL_CODE_RE = /^[A-Za-z0-9]{8,128}$/;
  * Since 2.5.4 the student no longer picks a retrieval code: the
  * page generates one at send time and keeps it in the job entry, as
  * before. The generated value IS the retrieval code on the wire —
- * the Worker protocol is unchanged, and codes students picked
- * before 2.5.4 still retrieve their jobs through the manual box.
+ * the Worker protocol is unchanged. The page offers no manual
+ * retrieval: a job is listed only on the browser that sent it (or
+ * that holds an entry for it).
  * The token is 24 characters drawn uniformly from the 62-character
  * code alphabet (about 143 bits), so an unused token is not
  * guessable and a collision with another job's code is not a
@@ -61,9 +62,14 @@ export function generateRetrievalToken(randomBytes) {
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 // Parse the video ID out of a YouTube URL in any of the forms the
-// Worker accepts (watch, youtu.be, shorts, live, embed). Returns the
-// 11-character ID, or null. Mirrors the Worker's parser; the Worker
-// re-parses on /youtube-check and is the authority.
+// Worker accepts (watch, youtu.be, shorts, live, embed), and, since
+// 2.6.16, out of a YouTube Studio edit address
+// (studio.youtube.com/video/<id>/edit): the student sets the video
+// to Unlisted in Studio, so the Studio address is the one in their
+// browser, and the page converts it to the canonical watch form
+// instead of refusing it. Returns the 11-character ID, or null.
+// The Worker re-parses the canonical watch URL on /youtube-check
+// and is the authority.
 export function parseYouTubeVideoId(url) {
   let u;
   try { u = new URL(String(url || '').trim()); } catch { return null; }
@@ -72,6 +78,9 @@ export function parseYouTubeVideoId(url) {
   let id = null;
   if (host === 'youtu.be') {
     id = u.pathname.split('/').filter(Boolean)[0] || null;
+  } else if (host === 'studio.youtube.com') {
+    const m = u.pathname.match(/^\/video\/([^/?#]+)/);
+    if (m) id = m[1];
   } else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
     if (u.pathname === '/watch') id = u.searchParams.get('v');
     else {
@@ -80,6 +89,17 @@ export function parseYouTubeVideoId(url) {
     }
   }
   return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+}
+
+// The video a graded job is already bound to, as the SHA-256 of
+// its video ID in the signed result bundle, or null when the
+// bundle binds no video (the value "none", or a bundle graded
+// before the field existed). A row link for a bound job must hash
+// to exactly this value; an unbound job is bound at ZIP generation
+// through /jobs/finalize.
+export function bundleBoundVideoSha(bundle) {
+  const v = bundle && bundle.youtube_video_sha256;
+  return typeof v === 'string' && SHA256_HEX.test(v) ? v : null;
 }
 
 export function canonicalWatchUrl(videoId) {

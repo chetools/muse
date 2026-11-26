@@ -37,42 +37,42 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   identifier control.) The job sent to Cloudflare holds the
   scrubbed transcript and no name, Canvas identity, or YouTube
   link.
-- YouTube: a submission (final job) requires a checked link; a job
-  sent without one is graded the same and can be turned into the
-  submission afterwards (2.2.0 — there is no Practice/Final choice at
-  send time; the decision is made after the grade is seen). The
-  link is checked by a separate Worker call that stores nothing about the
-  link (see /youtube-check). The page keeps the link and its title
-  locally and writes the link into the HTML at ZIP creation.
-  The check is bound to the recording loaded when it is made
-  (2.4.0): the page records that recording's audio fingerprint with
-  the check, and choosing or restoring a different recording voids
-  it. The preview's duration comparison has three bands (2.4.0):
-  a difference of at most 1 s passes; up to max(2 s, 2% of the
-  audio) the link may be used only after the student plays the
-  preview and explicitly confirms it is the same recording; beyond
-  that it cannot be used for that recording. A comparison whose
-  video length could not be read is treated as the confirm band.
-  Each reported comparison is also sent to the Worker as an
-  anonymous duration statistic (see /stats/duration).
+- YouTube: a submission requires a checked link, and the link is
+  attached after grading, in the job's own row in section 7
+  (2.6.16 — sending takes no link, and there is no Practice/Final
+  choice or label anywhere in the page; the decision to make a
+  submission is made after the grade is seen). The link is checked
+  by a separate Worker call that stores nothing about the link
+  (see /youtube-check). The page keeps the link and its title
+  locally, with the job's entry, and writes the link into the HTML
+  at ZIP creation. A job whose signed bundle already binds a video
+  (a job sent as final by an earlier webapp version) accepts only
+  that video in its row; a job with no bound video is bound when
+  its ZIP is generated, through /jobs/finalize. The duration
+  comparison has three bands: a difference of at most 1 s passes;
+  up to max(2 s, 2% of the audio) the link may be used; beyond
+  that it cannot be used for that job. A comparison whose video
+  length could not be read does not bar use — the Worker
+  reachability check is the requirement, and sameness of recording
+  is established by the audit's acoustic cross-check. Each
+  reported comparison is also sent to the Worker as an anonymous
+  duration statistic (see /stats/duration).
 - Audio handling: video or audio input is normalised to the 16 kHz mono
   WAV. The WAV and the corrected (pre-scrub) transcript chunks are cached
   in IndexedDB under the key (audio_sha256, model version, glossary
   version) — course, assignment and package are NOT in the key. Chunks
   are cached as they complete (resume after interruption).
-- Retrieval (2.1.0; 2.5.4): a retrieval code only — no name. Before
-  webapp 2.5.4 the student picked the code; since 2.5.4 the page
-  generates the code at send time
+- Retrieval (2.1.0; 2.5.4): a retrieval code only — no name. The
+  page generates the code at send time
   (24 characters, uniform over the code alphabet, from
-  crypto.getRandomValues) and shows it at send time as the job's
-  recovery code; since webapp 2.6.1 the job's row in section 7 has a
-  Show recovery code button that reveals the stored code again, for
-  use on a different browser. Webapp 2.6.2 adds the cross-assignment
+  crypto.getRandomValues) and keeps it in the job's entry; the
+  student never sees or types a code, and the page has no manual
+  retrieval control (2.6.16): a job is listed on the browser that
+  holds its entry. Webapp 2.6.2 adds the cross-assignment
   guard: the section 7 list stays browser-wide across the student's
-  courses, but a final job's submission ZIP is built only from the
+  courses, but a job's submission ZIP is built only from the
   link of the job's own assignment — on another assignment's page
-  the row carries a note instead of the ZIP button — and the
-  conversion picker offers only the open link's assignment's jobs.
+  the row carries a note instead of the Generate ZIP button.
   Webapp 2.6.3 corrects the ZIP-contents wording to the rule the
   Worker has applied since 2.7.0: every graded job's bundle signs
   its chromaprint_sha256, so the fingerprint form is the form of
@@ -81,15 +81,11 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   bundles keep the WAV form) — the step 2 note and the opening
   paragraph now say the fingerprint goes into the ZIP, and the
   ZIP progress line names the form being verified.
-  The student no longer picks or types
-  one in the normal flow,
-  and the manual box below section 7 — relabelled "Recovery code" —
-  is the only place a code is typed. The Worker protocol is
-  unchanged: the generated value is the retrieval code, and codes
-  students picked before 2.5.4 still retrieve their jobs through the
-  manual box. The code is kept in the browser's local storage (plus
-  course/assignment labels and expiry) so return visits retrieve
-  without typing; the typed code is the fallback for another browser.
+  The Worker protocol is
+  unchanged: the generated value is the retrieval code. The code
+  is kept in the browser's local storage (plus course/assignment
+  labels and expiry) so return visits retrieve without typing;
+  there is no fallback entry on another browser.
   The Worker stores a lookup hash of the code (SHA-256 of
   `"<pkg>\n<code>"`), which is also the uniqueness key: one job per
   code per package. Jobs created before 2.1.0 carry no lookup value
@@ -533,7 +529,13 @@ record first and falls back to the graded transcript
 match the signed hash, as the fingerprint-form paragraph above
 already states. A stored job entry created by a different Worker
 is shown as sent to a different grading service, not as
-unreachable.
+unreachable. Webapp 2.6.16: section 7 becomes a table with a
+per-row YouTube link column and a fixed muted hover-preview
+player, as the Job section UI and Preview player paragraphs
+above state; the step 6 link field and the section 7 conversion
+panel are removed, sending takes no link, the submission is made
+from the row (finalise inside Generate ZIP), and no Practice/
+Final label remains. The Worker and the audit app are unchanged.
 `critique_sha256` = SHA-256 hex of the critique exactly as stored.
 receipt = base64url(HMAC-SHA-256(SIGNING_SECRET, canonical)).
 The bundle returned to the student and printed in the HTML is:
@@ -597,8 +599,9 @@ New/changed behaviour:
 - `js/jobs.js` — localStorage key `hw-signing.jobs.v2`: a list of
   `{pkg, course, asg, retrieval_code, kind, youtube_link, created_at,
   expires_at}`. On page load, for each unexpired entry, POST
-  /jobs/status and show the queue state or `ready`. Entries are removed on
-  ZIP download or expiry. Each status response carries the job's
+  /jobs/status and show the queue state or `ready`. Entries stay
+  after a ZIP download (the ZIP can be downloaded again); they are
+  removed on expiry or by the student's Remove control. Each status response carries the job's
   current `expires_at`, and the page stores it back into the entry, so
   an entry's lifetime follows the governing expiry (7 days ungraded,
   180 days after grading) rather than the value stamped at creation. The
@@ -606,34 +609,45 @@ New/changed behaviour:
   Worker about every entry — including one whose stored expiry has
   passed, as a pre-2.4.1 entry's will at 48 h — and drops the entry
   only when the Worker reports the job expired.
-- Job section UI (2.2.0): no kind choice. The YouTube link field is
-  optional at send: an embedded player preview (IFrame API) with a
-  duration comparison against the loaded audio, and a Check link
-  button → POST /youtube-check to the Worker. A job sent with an `ok`
-  check is a final job
-  (submission-ready when graded); a job sent without one is graded
-  identically and can be converted later. Retrieval code field only.
-  Duration bands and the recording binding (2.4.0): the comparison
-  passes at a difference of at most 1 s; up to max(2 s, 2% of the
-  audio) it needs the student's played-and-confirmed tick; beyond
-  that the link cannot be used for this recording and Send stays
-  disabled until the link is fixed or cleared. The check carries the
-  loaded recording's fingerprint, and changing the recording voids
-  it. The check response's video title is shown at check time and
-  kept in the local job entry. The duration comparison and preview
-  are the page's pre-packaging
-  consistency checks; a true acoustic fingerprint comparison cannot
-  run in the browser, because the page cannot read the video's audio
-  track — sameness of recording is established by the audit's
-  acoustic cross-check on the submitted ZIP.
-- Conversion UI (section 7): a panel listing the graded non-final
-  jobs (the latest selected by default; each option shows its
-  grades and recording fingerprint). The student picks the
-  job for the same recording, enters the link, checks it (preview +
-  duration comparison against THAT job's audio, from its cache
-  record, under the same three bands), and confirms → POST
-  /jobs/finalize; the row then offers
-  the submission ZIP.
+- Job section UI (2.6.16): no kind choice and no Practice/Final
+  label. Step 6 sends the job with no YouTube link. Section 7 is a
+  table — Job | Grades | YouTube link | Actions — stacking into
+  cards on phone widths; the critique and the ZIP review sit in a
+  details row under each job, and Remove from this browser sits in
+  Actions. Each ready row carries its own YouTube link field (no
+  label): pasting or editing a link checks it automatically after
+  a short pause, and any edit voids the standing check. A Studio
+  edit address is converted to the canonical watch form in the
+  field; other readable forms (watch, youtu.be, shorts, live,
+  embed) are likewise shown canonically. The check is POST
+  /youtube-check to the Worker (the video must be reachable —
+  Public or Unlisted), a duration comparison against THAT job's
+  audio (from the loaded recording or its cache record, under the
+  three bands above; only the block band bars use), and, for a job
+  whose signed bundle binds a video, a hash match against the
+  bound video. A failed check states its reason in small red text
+  in the row's cell — an unreadable link, a private or missing
+  video, a duration beyond the tolerance, or not the video bound
+  to this job. Before a check passes the row has no ZIP button,
+  only the line "Add a YouTube link to download the ZIP."; a × at
+  the field's right end clears the field and the kept link and
+  voids the check. A passed check produces the row's Generate ZIP
+  button. The check response's video title is shown at check time
+  and kept in the local job entry. The duration comparison and
+  preview are the page's pre-packaging consistency checks; a true
+  acoustic fingerprint comparison cannot run in the browser,
+  because the page cannot read the video's audio track — sameness
+  of recording is established by the audit's acoustic cross-check
+  on the submitted ZIP.
+- Preview player (section 7, 2.6.16): a fixed player area, 16:9
+  and about 400 px wide, sticky directly above the jobs table,
+  reading "Hover a YouTube link to play it here" when idle.
+  Hovering a populated row's link cell for about 400 ms plays that
+  video in the area without sound (the player is muted before
+  every play; audible autoplay is never attempted); leaving the
+  cell pauses it and leaves the last video in place. Clicking the
+  link text under a field, or the player area, opens the video on
+  YouTube in a new tab. Only one video plays at a time.
 - Submit → POST /jobs; on success save the localStorage entry and show
   the queued state. On a duplicate response (2.6.0): save the entry
   under the submitted code (the alias) and show the existing job
@@ -641,15 +655,16 @@ New/changed behaviour:
   queued or claimed, the grades and critique when it is ready — so
   finalize and ZIP work from the alias entry exactly as from the
   original entry. An alias entry for an existing final job filed by
-  a practice resubmission carries no YouTube link (none was sent);
-  the ZIP review then falls back to the link field in step 6, which
-  the student re-enters there, still checked against the signed
-  video hash, and keeps the re-entered link with the entry. The page
+  a resubmission carries no YouTube link (none was sent); the link
+  is entered in the job's row, checked against the signed video
+  hash there, and kept with the entry. The page
   adds no text about dedup, regrading, or this change.
 - Retrieval: when a job is `ready`, show grades and critique (status is
   shown automatically; grades display after a click, per the earlier
-  decision) and offer **Review and download submission ZIP** (final
-  jobs, 2.4.0): the review first recomputes the SHA-256 of the exact
+  decision) and, once the row's link check has passed, offer
+  **Generate ZIP** (2.6.16): a job with no bound video is finalised
+  first (POST /jobs/finalize re-signs the grade record with the
+  video hash), and the review then recomputes the SHA-256 of the exact
   WAV bytes and of the canonical transcript built from the job
   recording's own cached chunks — with no fallback to the transcript
   on the page — plus the critique hash, and blocks unless all equal

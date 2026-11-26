@@ -36,6 +36,7 @@ import {
 import { fromCachedChunk, recordingFirstWords } from './cachekey.js';
 import {
   parseYouTubeVideoId, canonicalWatchUrl, classifyDuration,
+  bundleBoundVideoSha,
   verifyBundleContents, bundleChromaprintSha, verifyFingerprintContents,
   validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry, entryPollable,
   removeJobEntry, saveJobEntries, kindFromResultBundle,
@@ -60,15 +61,22 @@ let chunks = [];            // pipeline chunks: {start, end, raw, corrected, ...
 let windowsDoneBase = 0;    // windows already cached before this run (resume)
 let transcriptionComplete = false;
 let vocabulary = null;
-let ytCheck = null;         // { videoId, token, checkedAt, title, audioSha256 } after an ok check
 let chromaprint = null;     // raw Chromaprint as base64 (2.6.0), or null when none computed
 let chromaprintSha = null;  // audioSha the stored fingerprint was computed from
 let chromaprintPending = null; // in-flight computeFingerprint promise, if any
-let ytDur = null;           // duration comparison for the step-6 check:
-// { band, diffS, tolS, audioS, videoS } once the preview reports the
-// video's length; null until then (treated as band 'unknown').
-let finDur = null;          // the same, for the conversion panel
 let ytApiPromise = null;
+// Per-row YouTube link state for the section-7 table (2.6.16):
+// jobKey -> the row's standing check, its field text as typed (so a
+// list rebuild never loses what the student is typing), its pending
+// debounce timer, and the last ZIP failure for the row, which is
+// shown in the row's own cell.
+const rowChecks = new Map();  // { state: 'checking'|'ok'|'error', videoId,
+// token, checkedAt, title, dur, reason }
+const rowDrafts = new Map();  // jobKey -> field text
+const rowTimers = new Map();  // jobKey -> debounce timer id
+const rowBusy = new Set();    // jobKeys with a link check in flight
+const rowRearms = new Map();  // jobKey -> re-arms behind an in-flight check
+const rowZipErrors = new Map(); // jobKey -> ZIP failure text for the cell
 const readyBundles = new Map(); // "pkg|code" -> result bundle from /jobs/status
 const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
 // the same status response (Worker 2.7.0): the stored transcript text and the
@@ -121,26 +129,13 @@ function clearError() {
 function scrubWords() { return parseScrubWords($('scrubField').value); }
 function scrubbed() { return scrubChunks(chunks, scrubWords()); }
 function canonical() { return canonicalTranscript(scrubbed()); }
-// There is no Practice/Final choice at send time: a job sent with a
-// checked YouTube link is submission-ready when graded ("final"); a
-// job sent without one can be turned into the submission afterwards
-// (section 7), which is when most students decide.
-function kind() { return ytCheck ? 'final' : 'practice'; }
-
-// A link check stands only for the recording that was loaded when
-// the check was made. Changing the recording — choosing another
-// file, or restoring a saved one — voids it, because the checked
-// video was compared with the previous recording's length and the
-// job would otherwise carry the wrong video's token.
-function clearYtCheck() {
-  if (!ytCheck) return;
-  ytCheck = null;
-  ytDur = null;
-  $('ytStatus').textContent =
-    'Recording changed: the earlier link check no longer stands. Paste the link to check it again.';
-  refreshYtDurationUi();
-  updateJobEnabled();
-}
+// There is no Practice/Final choice anywhere in the page (2.6.16):
+// a job is sent with no YouTube link, and the submission is made
+// afterwards from the job's own row in section 7 — the row's link
+// check, and the finalise step inside Generate ZIP, are where the
+// video is bound. The Worker's job kind stays as it is: a sent job
+// is 'practice' until it is finalised, and entries for jobs sent as
+// final by earlier versions keep working from their signed bundle.
 
 // Whether a checked link may be used, given its duration band
 // (2.6.8: no played-preview confirmation — the length comparison
@@ -325,7 +320,6 @@ async function adoptCacheRecord(record, note) {
 
 $('mediaFile').addEventListener('change', async (ev) => {
   clearError();
-  clearYtCheck();
   const file = ev.target.files && ev.target.files[0];
   // Clear the input's value at once (2.6.15): a file input fires
   // no change event when the same file is chosen twice in a row,
@@ -429,8 +423,7 @@ async function renderCacheList() {
         // The link check is voided only once the restore is known
         // to proceed (2.6.15): a refused restore changes no
         // recording, so a check that was standing must stand.
-        clearYtCheck();
-        audioSha = entry.audio_sha256;
+              audioSha = entry.audio_sha256;
         sourceName = record.source_name || '';
         pcm = null;
         chromaprint = null; chromaprintSha = null; chromaprintPending = null;
@@ -461,8 +454,7 @@ async function renderCacheList() {
         chromaprint = null; chromaprintSha = null; chromaprintPending = null;
         chunks = []; windowsDoneBase = 0;
         transcriptionComplete = false;
-        clearYtCheck();
-        $('mediaStatus').textContent = 'Recording deleted from this computer.';
+              $('mediaStatus').textContent = 'Recording deleted from this computer.';
         setAudioMeta();
         updateRunEnabled();
         refreshDerived();
@@ -580,92 +572,38 @@ function renderSuspects(sc) {
 // --- Job section ---
 function updateJobEnabled() {
   const base = !!(cfg.worker && cfg.pkg && cfg.ph && transcriptionComplete);
-  // With a checked link, the duration gate also applies: a blocked
-  // link (length beyond the tolerance) disables Send until the link
-  // is fixed or cleared.
-  const linkOk = !ytCheck || durationGateOk(ytDur);
-  $('submitJobBtn').disabled = !(base && linkOk);
+  $('submitJobBtn').disabled = !base;
 }
 
-// The duration verdict for the step-6 link, in its own status line
-// beside the preview (2.6.8: a statement, not a gate — within the
-// tolerance the link may be used, beyond it it may not).
-function refreshYtDurationUi() {
-  const el = $('ytDurStatus');
-  if (!ytCheck) { el.textContent = ''; return; }
-  const band = ytDur ? ytDur.band : 'unknown';
+// The duration verdict for a row's checked link, as a short line
+// for the row's cell (2.6.8: a statement, not a gate — within the
+// tolerance the link may be used, beyond it it may not; only the
+// 'block' band bars use, and runRowCheck turns it into the row's
+// error). Returns '' when there is nothing to say.
+function durationLineText(dur) {
+  if (!dur) return '';
+  const band = dur.band || 'unknown';
   if (band === 'pass') {
-    el.textContent = 'Lengths match: video ' + ytDur.videoS.toFixed(1) +
-      ' s, audio ' + ytDur.audioS.toFixed(1) + ' s (difference ' +
-      ytDur.diffS.toFixed(1) + ' s).';
-  } else if (band === 'confirm') {
-    el.textContent = 'Video ' + ytDur.videoS.toFixed(1) +
-      ' s, audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
-      ytDur.diffS.toFixed(1) + ' s, within the allowed ' +
-      ytDur.tolS.toFixed(1) + ' s.';
-  } else if (band === 'block') {
-    el.textContent = 'Video ' + ytDur.videoS.toFixed(1) +
-      ' s, audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
-      ytDur.diffS.toFixed(1) + ' s, beyond the allowed ' + ytDur.tolS.toFixed(1) +
-      ' s. This link cannot be used for this recording: enter the link for ' +
-      'this recording, or clear the link and send without it.';
-  } else {
-    el.textContent = 'No length has been reported by the preview, so ' +
-      'the lengths could not be compared. The link check above is what counts.';
+    return 'Lengths match: video ' + dur.videoS.toFixed(1) +
+      ' s, audio ' + dur.audioS.toFixed(1) + ' s (difference ' +
+      dur.diffS.toFixed(1) + ' s).';
   }
-  updateJobEnabled();
-}
-
-// The same verdict for the conversion panel's link.
-function refreshFinDurationUi() {
-  const el = $('finDurStatus');
-  if (!finCheck) { el.textContent = ''; updateFinConfirmEnabled(); return; }
-  const band = finDur ? finDur.band : 'unknown';
-  if (band === 'pass') {
-    el.textContent = 'Lengths match: video ' + finDur.videoS.toFixed(1) +
-      ' s, audio ' + finDur.audioS.toFixed(1) + ' s (difference ' +
-      finDur.diffS.toFixed(1) + ' s).';
-  } else if (band === 'confirm') {
-    el.textContent = 'Video ' + finDur.videoS.toFixed(1) +
-      ' s, selected job’s audio ' + finDur.audioS.toFixed(1) +
-      ' s — a difference of ' + finDur.diffS.toFixed(1) + ' s, within the ' +
-      'allowed ' + finDur.tolS.toFixed(1) + ' s.';
-  } else if (band === 'block') {
-    el.textContent = 'Video ' + finDur.videoS.toFixed(1) +
-      ' s, selected job’s audio ' + finDur.audioS.toFixed(1) +
-      ' s — a difference of ' + finDur.diffS.toFixed(1) + ' s, beyond the ' +
-      'allowed ' + finDur.tolS.toFixed(1) + ' s. This link cannot be used ' +
-      'for this job.';
-  } else {
-    el.textContent = 'No length has been reported by the preview, so ' +
-      'the lengths could not be compared. The link check above is what counts.';
+  if (band === 'confirm') {
+    return 'Video ' + dur.videoS.toFixed(1) +
+      ' s, audio ' + dur.audioS.toFixed(1) + ' s — a difference of ' +
+      dur.diffS.toFixed(1) + ' s, within the allowed ' +
+      dur.tolS.toFixed(1) + ' s.';
   }
-  updateFinConfirmEnabled();
+  if (band === 'block') {
+    return 'Video ' + dur.videoS.toFixed(1) +
+      ' s, audio ' + dur.audioS.toFixed(1) + ' s — a difference of ' +
+      dur.diffS.toFixed(1) + ' s, beyond the allowed ' + dur.tolS.toFixed(1) +
+      ' s. This link cannot be used for this job: enter the link for ' +
+      'this job’s recording.';
+  }
+  return 'No length has been reported by the preview, so ' +
+    'the lengths could not be compared. The link check above is what counts.';
 }
-
-function updateFinConfirmEnabled() {
-  $('finConfirmBtn').disabled =
-    !(finCheck && durationGateOk(finDur));
-}
-
-// YouTube: the link invalidates any earlier check when it changes,
-// and a recognisable link is checked by itself (2.6.8) — the check
-// runs after a short pause following the last keystroke, so typing
-// a link does not fire a check per character, and pasting fires one.
-let ytCheckTimer = null;
-let ytCheckBusy = false;
-let ytCheckRearms = 0;
-$('ytLink').addEventListener('input', () => {
-  ytCheck = null;
-  ytDur = null;
-  ytCheckRearms = 0;
-  $('ytStatus').textContent = '';
-  $('ytPlayerWrap').hidden = true;
-  refreshYtDurationUi();
-  updateJobEnabled();
-  if (ytCheckTimer) clearTimeout(ytCheckTimer);
-  ytCheckTimer = setTimeout(runYtCheck, 700);
-});
 
 function loadYouTubeApi() {
   if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
@@ -684,137 +622,363 @@ function loadYouTubeApi() {
   return ytApiPromise;
 }
 
-// Preview the video in the embedded player and compare its duration
-// with the relevant audio's — the loaded recording for the send form,
-// the selected job's audio for the conversion panel. The comparison
-// result goes to onDuration(videoS|null) once the player reports a
-// length, or after a wait of about 12 s with none: classifyDuration
-// turns it into the pass / confirm / block bands the send and
-// conversion flows gate on (only 'block' bars use). A true acoustic
-// fingerprint comparison cannot run here, because the browser
-// cannot read the video's audio track (YouTube serves it only
-// inside its own player); sameness of recording is established by
-// the teacher audit's acoustic cross-check on the submitted ZIP. A
-// preview failure (embedding disabled, sign-in required) leaves the
-// band 'unknown', which does not bar use; the Worker reachability
-// check remains a requirement throughout.
-const ytPlayers = {};
-const durWatches = new Map(); // player element id -> interval timer
-function watchPlayerDuration(playerId, onDuration) {
-  if (durWatches.has(playerId)) clearInterval(durWatches.get(playerId));
+/* ---------------- the fixed preview player (2.6.16) ----------------
+ * One player, in the sticky area directly above the jobs table.
+ * It plays only without sound: it is muted before every play, and
+ * no audible autoplay is ever attempted (a browser refuses sound
+ * on hover in any case, since hovering is not a user activation).
+ * Hovering a populated row's link cell plays that row's video
+ * here; clicking the player area, or the link text under a row's
+ * field, opens the video on YouTube in a new tab. A true acoustic
+ * fingerprint comparison cannot run here, because the browser
+ * cannot read the video's audio track (YouTube serves it only
+ * inside its own player); sameness of recording is established by
+ * the teacher audit's acoustic cross-check on the submitted ZIP.
+ */
+let previewPlayer = null;   // the YT.Player, once created
+let previewVideoId = null;  // the video loaded in it, if any
+const durWatches = new Map(); // 'preview' -> interval timer
+
+function watchPreviewDuration(onDuration) {
+  if (durWatches.has('preview')) clearInterval(durWatches.get('preview'));
   let tries = 0;
   const timer = setInterval(() => {
     tries += 1;
     let d = 0;
-    try {
-      const p = ytPlayers[playerId];
-      d = p && p.getDuration ? p.getDuration() : 0;
-    } catch { d = 0; }
+    try { d = previewPlayer && previewPlayer.getDuration ? previewPlayer.getDuration() : 0; } catch { d = 0; }
     if (d > 0 || tries >= 24) {
       clearInterval(timer);
-      durWatches.delete(playerId);
+      durWatches.delete('preview');
       onDuration(d > 0 ? d : null);
     }
   }, 500);
-  durWatches.set(playerId, timer);
+  durWatches.set('preview', timer);
 }
-async function previewYouTube(videoId, els, onDuration) {
+
+async function previewLoad(videoId, play, onDuration) {
   try {
     const YT = await loadYouTubeApi();
-    $(els.wrap).hidden = false;
-    if (ytPlayers[els.player]) {
-      ytPlayers[els.player].loadVideoById(videoId);
+    $('ytPreviewHint').hidden = true;
+    $('ytPreviewOverlay').hidden = false;
+    previewVideoId = videoId;
+    if (previewPlayer) {
+      previewPlayer.mute();
+      if (play) previewPlayer.loadVideoById(videoId);
+      else previewPlayer.cueVideoById(videoId);
     } else {
-      ytPlayers[els.player] = new YT.Player(els.player, {
-        width: '480', height: '270', videoId,
+      previewPlayer = new YT.Player('ytPreviewPlayer', {
+        width: '400', height: '225', videoId,
+        playerVars: { autoplay: play ? 1 : 0, mute: 1 },
         events: {
-          onError: () => {
-            $(els.status).textContent +=
-              ' The preview could not play this video here (it may have embedding turned off); the link check above is what counts.';
-          },
+          onReady: (ev) => { ev.target.mute(); if (play) ev.target.playVideo(); },
         },
       });
     }
-    if (onDuration) watchPlayerDuration(els.player, onDuration);
+    if (onDuration) watchPreviewDuration(onDuration);
   } catch { if (onDuration) onDuration(null); /* preview is best-effort */ }
 }
 
-async function runYtCheck() {
-  const url = $('ytLink').value.trim();
-  const videoId = parseYouTubeVideoId(url);
-  if (!videoId) {
-    // A non-empty entry that is not a readable YouTube link is
-    // pointed out, not passed over in silence (2.6.13): the Studio
-    // edit address is the common case.
-    if (url) {
-      $('ytStatus').textContent =
-        'That is not a YouTube link this page can read. Paste the ' +
-        'watch address, https://www.youtube.com/watch?v=… — the ' +
-        'Studio edit address cannot be used.';
+function previewPause() {
+  try { if (previewPlayer && previewPlayer.pauseVideo) previewPlayer.pauseVideo(); } catch { /* best effort */ }
+}
+
+$('ytPreviewOverlay').addEventListener('click', () => {
+  if (previewVideoId) {
+    window.open(canonicalWatchUrl(previewVideoId), '_blank', 'noopener');
+  }
+});
+
+/* ---------------- per-row link checks (2.6.16) ----------------
+ * Each ready job's row carries its own link field. The check is
+ * the chain the page's earlier link fields used to run, now in
+ * the row: the link must be readable (a Studio address is
+ * converted to the watch form automatically), the Worker must
+ * report the video reachable (Public or Unlisted) through
+ * /youtube-check, the video's length is compared with the job's
+ * recording where that recording is on this browser, and a job
+ * whose signed grade record already binds a video accepts only
+ * that video. Checking is automatic: it runs after a short pause
+ * following the last keystroke, and any edit voids the standing
+ * check at once.
+ */
+
+// The job's recording length, for the duration comparison: the
+// loaded recording when it is this job's, else the saved record's.
+async function rowJobAudioDurationS(bundle) {
+  if (audioSha && audioSha === bundle.audio_sha256 && durationS > 0) return durationS;
+  const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
+    .catch(() => null);
+  return record && record.duration_s ? record.duration_s : 0;
+}
+
+function rowInputEl(key) {
+  const box = $('jobsBox');
+  if (!box) return null;
+  for (const r of box.querySelectorAll('[data-job-key]')) {
+    if (r.dataset.jobKey !== key) continue;
+    const input = r.querySelector('[data-act="ytlink"]');
+    if (input) return input;
+  }
+  return null;
+}
+
+// What the row's cell says, from its standing state. Returns
+// { text, cls, durText, openId }: the message line and its class,
+// the duration line under it, and the video whose link text is
+// shown under the field.
+function rowCellBits(key) {
+  const st = rowChecks.get(key);
+  const zipErr = rowZipErrors.get(key);
+  const draft = rowDrafts.get(key) || '';
+  const parsed = parseYouTubeVideoId(draft);
+  const bits = { text: '', cls: 'ytneed', durText: '', openId: parsed };
+  if (zipErr) { bits.text = zipErr; bits.cls = 'ytreason'; return bits; }
+  if (!st) {
+    bits.text = 'Add a YouTube link to download the ZIP.';
+    return bits;
+  }
+  if (st.state === 'checking') { bits.text = 'Checking…'; return bits; }
+  if (st.state === 'error') { bits.text = st.reason; bits.cls = 'ytreason'; return bits; }
+  bits.text = 'Link checks out: the video is reachable (Unlisted or Public).' +
+    (st.title ? ' Video title: “' + st.title + '”.' : '');
+  bits.cls = 'ytok';
+  bits.durText = st.dur ? durationLineText(st.dur) : '';
+  return bits;
+}
+
+// Repaint one row's cell message, link text, and duration line in
+// place, without rebuilding the list (a rebuild would drop the
+// student's place in the field while a check settles).
+function paintRowCell(key) {
+  const box = $('jobsBox');
+  if (!box) return;
+  for (const r of box.querySelectorAll('[data-job-key]')) {
+    if (r.dataset.jobKey !== key) continue;
+    const msg = r.querySelector('.ytmsg');
+    if (!msg) continue;
+    const bits = rowCellBits(key);
+    msg.textContent = bits.text;
+    msg.className = 'ytmsg ' + bits.cls;
+    const dur = r.querySelector('.ytdur');
+    if (dur) dur.textContent = bits.durText;
+    const open = r.querySelector('.ytopen');
+    if (open) {
+      if (bits.openId) {
+        open.hidden = false;
+        open.textContent = canonicalWatchUrl(bits.openId);
+        open.href = canonicalWatchUrl(bits.openId);
+      } else open.hidden = true;
     }
     return;
   }
-  if (ytCheckBusy) {
+}
+
+function persistRowLink(entry, link, title, checkedAt) {
+  const entries = loadJobEntries();
+  const e = entries.find((x) => x.pkg === entry.pkg &&
+    x.retrieval_code === entry.retrieval_code);
+  if (!e) return;
+  e.youtube_link = link;
+  e.youtube_title = title || '';
+  e.youtube_checked_at = checkedAt || '';
+  entry.youtube_link = link;
+  entry.youtube_title = title || '';
+  entry.youtube_checked_at = checkedAt || '';
+  saveJobEntries(entries);
+}
+
+async function runRowCheck(key) {
+  const entry = loadJobEntries().find(
+    (e) => jobKey(e.pkg, e.retrieval_code) === key);
+  const bundle = readyBundles.get(key);
+  if (!entry || !bundle) return;
+  const input = rowInputEl(key);
+  const url = (input ? input.value : (rowDrafts.get(key) || '')).trim();
+  const videoId = parseYouTubeVideoId(url);
+  if (!videoId) {
+    // A non-empty entry that is not a readable YouTube link is
+    // pointed out in the cell, not passed over in silence (2.6.13).
+    if (url) {
+      rowChecks.set(key, { state: 'error',
+        reason: 'That is not a YouTube link this page can read. ' +
+          'Paste the address of the video on YouTube.' });
+    } else {
+      rowChecks.delete(key);
+    }
+    paintRowCell(key);
+    return;
+  }
+  // A Studio address, or any other readable form, is shown in the
+  // field in its canonical watch form once recognised.
+  const canonical = canonicalWatchUrl(videoId);
+  if (input && input.value.trim() !== canonical) {
+    input.value = canonical;
+    rowDrafts.set(key, canonical);
+    const clearBtn = input.closest('.ytlinkwrap')
+      ? input.closest('.ytlinkwrap').querySelector('.ytclear') : null;
+    if (clearBtn) clearBtn.hidden = false;
+  }
+  const standing = rowChecks.get(key);
+  if (standing && standing.state === 'ok' && standing.videoId === videoId) {
+    return; // already checked
+  }
+  // A job whose signed grade record binds a video accepts only
+  // that video: the SHA-256 of the entered video's ID must equal
+  // the signed youtube_video_sha256.
+  const boundSha = bundleBoundVideoSha(bundle);
+  if (boundSha) {
+    const sha = await sha256Hex(videoId);
+    if (sha !== boundSha) {
+      rowChecks.set(key, { state: 'error',
+        reason: 'Not the video bound to this job. Enter the link ' +
+          'for the video that was checked for this job.' });
+      paintRowCell(key);
+      return;
+    }
+  }
+  if (rowBusy.has(key)) {
     // A check for an earlier link is still in flight; its result
     // will be discarded as stale. Re-arm so this link is checked
     // once that flight ends, instead of never being checked. The
     // re-arms are capped: a flight that never settles must not
     // leave a timer running with nothing on screen.
-    if (ytCheckRearms >= 40) {
-      $('ytStatus').textContent = 'The link check is taking a long time; edit the link to try again.';
+    const rearms = (rowRearms.get(key) || 0) + 1;
+    if (rearms >= 40) {
+      rowChecks.set(key, { state: 'error',
+        reason: 'The link check is taking a long time; edit the link to try again.' });
+      paintRowCell(key);
       return;
     }
-    ytCheckRearms += 1;
-    $('ytStatus').textContent = 'Checking…';
-    if (ytCheckTimer) clearTimeout(ytCheckTimer);
-    ytCheckTimer = setTimeout(runYtCheck, 700);
+    rowRearms.set(key, rearms);
+    rowChecks.set(key, { state: 'checking' });
+    paintRowCell(key);
+    if (rowTimers.has(key)) clearTimeout(rowTimers.get(key));
+    rowTimers.set(key, setTimeout(() => {
+      rowTimers.delete(key);
+      runRowCheck(key);
+    }, 700));
     return;
   }
-  if (ytCheck && ytCheck.videoId === videoId) return; // already checked
-  ytCheckRearms = 0;
+  rowRearms.set(key, 0);
   if (!cfg.worker) {
-    $('ytStatus').textContent = 'Open this page from the link your teacher put in Canvas to check the link.';
+    rowChecks.set(key, { state: 'error',
+      reason: 'Open this page from the link your teacher put in Canvas to check the link.' });
+    paintRowCell(key);
     return;
   }
-  ytCheckBusy = true;
-  $('ytStatus').textContent = 'Checking…';
+  rowBusy.add(key);
+  rowChecks.set(key, { state: 'checking' });
+  paintRowCell(key);
+  let checked = null;
   try {
-    const res = await requestYouTubeCheck(cfg.worker, canonicalWatchUrl(videoId));
-    if ($('ytLink').value.trim() !== url) return; // replaced while checking
+    const res = await requestYouTubeCheck(cfg.worker, canonical);
+    const nowInput = rowInputEl(key);
+    const nowUrl = (nowInput ? nowInput.value : (rowDrafts.get(key) || '')).trim();
+    if (nowUrl !== canonical) return; // replaced while checking
     if (res.status === 'ok' && res.video_id === videoId && res.token) {
-      // The check is bound to the recording loaded right now: its
-      // fingerprint travels with the check, and changing the
-      // recording voids the check (clearYtCheck).
-      ytCheck = {
-        videoId, token: res.token, checkedAt: res.checked_at,
-        title: res.title || '', audioSha256: audioSha,
+      checked = {
+        state: 'ok', videoId, token: res.token, checkedAt: res.checked_at,
+        title: res.title || '', dur: null,
       };
-      $('ytStatus').textContent = 'Link checks out: the video is reachable (Unlisted or Public).' +
-        (res.title ? ' Video title: “' + res.title + '”.' : '');
+      rowChecks.set(key, checked);
+      persistRowLink(entry, canonical, checked.title, checked.checkedAt);
     } else {
-      $('ytStatus').textContent =
-        'YouTube reports this video as private or missing. Set it to Unlisted or Public and check again.';
+      rowChecks.set(key, { state: 'error',
+        reason: 'YouTube reports this video as private or missing. ' +
+          'Set it to Unlisted or Public and check again.' });
     }
   } catch (err) {
-    $('ytStatus').textContent = 'Could not complete the check. Try again.';
+    rowChecks.set(key, { state: 'error',
+      reason: 'Could not complete the check. Try again.' });
     console.error(err);
   } finally {
-    ytCheckBusy = false;
+    rowBusy.delete(key);
   }
-  refreshYtDurationUi();
-  if (ytCheck) {
-    const checkedSha = ytCheck.audioSha256;
-    previewYouTube(videoId,
-      { wrap: 'ytPlayerWrap', player: 'ytPlayer', status: 'ytStatus' },
-      (videoS) => {
-        if (!ytCheck || ytCheck.videoId !== videoId) return; // stale
-        const cls = classifyDuration(durationS, videoS || 0);
-        ytDur = { ...cls, audioS: durationS, videoS };
-        refreshYtDurationUi();
-        if (videoS) reportDurationOnce('send', checkedSha, videoId, durationS, videoS);
+  paintRowCell(key);
+  renderJobs(); // the Generate ZIP button appears on a passed check
+  if (checked) {
+    const dur = await rowJobAudioDurationS(bundle);
+    previewLoad(videoId, false, (videoS) => {
+      const now = rowChecks.get(key);
+      if (!now || now.state !== 'ok' || now.videoId !== videoId) return; // stale
+      const cls = classifyDuration(dur, videoS || 0);
+      const d = { ...cls, audioS: dur, videoS };
+      if (cls.band === 'block') {
+        rowChecks.set(key, { state: 'error', reason: durationLineText(d) });
+      } else {
+        now.dur = d;
+      }
+      paintRowCell(key);
+      renderJobs();
+      if (videoS) reportDurationOnce('row', bundle.audio_sha256, videoId, dur, videoS);
+    });
+  }
+}
+
+// Generate ZIP, from a row whose link check has passed (2.6.16):
+// a job with no bound video is finalised first — the Worker
+// verifies the check token and re-signs the grade record with the
+// video's hash — and only then does the existing review-and-download
+// flow run, with all its verifications before packaging. A failure
+// at any step is shown in the row's own cell and packages nothing.
+async function generateZipForRow(entry, bundle, btn) {
+  const key = jobKey(entry.pkg, entry.retrieval_code);
+  const st = rowChecks.get(key);
+  if (!st || st.state !== 'ok') return;
+  if (!durationGateOk(st.dur)) {
+    rowZipErrors.set(key, durationLineText(st.dur));
+    paintRowCell(key);
+    return;
+  }
+  rowZipErrors.delete(key);
+  paintRowCell(key);
+  let liveBundle = bundle;
+  if (!bundleBoundVideoSha(bundle)) {
+    btn.disabled = true;
+    try {
+      const payload = {
+        pkg: entry.pkg,
+        retrieval_code: entry.retrieval_code,
+        youtube_video_id: st.videoId,
+        youtube_checked_at: st.checkedAt,
+      };
+      payload['youtube' + '_token'] = st.token;
+      await finalizeJob(cfg.worker, payload);
+      persistRowLink(entry, canonicalWatchUrl(st.videoId),
+        st.title, st.checkedAt);
+      entry.kind = 'final';
+      const entries = loadJobEntries();
+      const e = entries.find((x) => x.pkg === entry.pkg &&
+        x.retrieval_code === entry.retrieval_code);
+      if (e) { e.kind = 'final'; saveJobEntries(entries); }
+      // The grade record has been re-signed with the video bound:
+      // fetch it back, so the ZIP is verified against the record
+      // as it now stands.
+      const status = await fetchJobStatus(cfg.worker, {
+        pkg: entry.pkg, retrieval_code: entry.retrieval_code,
       });
+      if (status.status === 'ready' && status.data && status.data.result) {
+        liveBundle = status.data.result;
+        readyBundles.set(key, liveBundle);
+        if (typeof status.data.transcript === 'string' || status.data.chromaprint) {
+          readyExtras.set(key, {
+            transcript: typeof status.data.transcript === 'string'
+              ? status.data.transcript : null,
+            chromaprint: status.data.chromaprint || null,
+          });
+        }
+      }
+    } catch (err) {
+      rowZipErrors.set(key, 'The submission could not be made: ' + err.message);
+      btn.disabled = false;
+      paintRowCell(key);
+      return;
+    }
   }
-  updateJobEnabled();
+  await downloadSubmissionZip(entry, liveBundle, btn, (msg) => {
+    rowZipErrors.set(key, msg);
+    paintRowCell(key);
+  });
 }
 
 // The queue state or grades of a duplicate response, for the
@@ -841,12 +1005,6 @@ $('submitJobBtn').addEventListener('click', async () => {
   $('submitJobBtn').disabled = true;
   $('jobStatus').textContent = 'Preparing…';
   try {
-    if (ytCheck && ytCheck.audioSha256 !== audioSha) {
-      throw new Error('the YouTube link was checked against a different recording. Check the link again for this recording.');
-    }
-    if (ytCheck && !durationGateOk(ytDur)) {
-      throw new Error('the checked video’s length differs from this recording’s by more than the allowed tolerance. Enter the link for this recording, or clear the link and send without it.');
-    }
     const transcript = canonical();
     const transcriptSha = await sha256Hex(transcript);
     // The fingerprint is computed in the background after
@@ -857,26 +1015,25 @@ $('submitJobBtn').addEventListener('click', async () => {
     const payload = buildJobPayload({
       pkg: cfg.pkg,
       pkgContentSha256: cfg.ph,
-      kind: kind(),
+      kind: 'practice',
       transcript,
       audioSha256: audioSha,
       transcriptSha256: transcriptSha,
       chromaprint,
       versions: VERSIONS,
       retrievalCode: generateRetrievalToken(),
-      youtubeToken: ytCheck ? ytCheck.token : null,
-      youtubeVideoId: ytCheck ? ytCheck.videoId : null,
-      youtubeCheckedAt: ytCheck ? ytCheck.checkedAt : null,
+      youtubeToken: null,
+      youtubeVideoId: null,
+      youtubeCheckedAt: null,
     });
     const check = validateJobPayload(payload);
     if (!check.ok) throw new Error(check.reason);
     $('jobStatus').textContent = 'Sending for grading…';
     const res = await submitJob(cfg.worker, payload);
     const sentText =
-      'Sent' + (payload.kind === 'final'
-        ? ' with the checked link — submission-ready as soon as it is graded.'
-        : ' — when the grade is back, turn it into your Canvas submission from the list below.') +
-      ' The list below updates every 5 seconds while this page is open. ' +
+      'Sent — when the grade is back, add the YouTube link in the ' +
+      'job’s row below to make your Canvas submission. ' +
+      'The list below updates every 5 seconds while this page is open. ' +
       'An ungraded job is kept for 7 days; once graded, the grade is kept for 180 days.';
     if (res.duplicate) {
       // The recording already has a live job under this prompt
@@ -896,9 +1053,9 @@ $('submitJobBtn').addEventListener('click', async () => {
         asg: cfg.asg,
         retrieval_code: payload.retrieval_code,
         kind: payload.kind,
-        youtube_link: payload.kind === 'final' ? $('ytLink').value.trim() : '',
-        youtube_title: payload.kind === 'final' && ytCheck ? ytCheck.title : '',
-        youtube_checked_at: payload.kind === 'final' && ytCheck ? ytCheck.checkedAt : '',
+        youtube_link: '',
+        youtube_title: '',
+        youtube_checked_at: '',
       });
       if (aliasEntry) {
         addJobEntry(aliasEntry);
@@ -920,9 +1077,9 @@ $('submitJobBtn').addEventListener('click', async () => {
       retrieval_code: payload.retrieval_code,
       job_id: res.job_id || '',
       kind: payload.kind,
-      youtube_link: payload.kind === 'final' ? $('ytLink').value.trim() : '',
-      youtube_title: payload.kind === 'final' && ytCheck ? ytCheck.title : '',
-      youtube_checked_at: payload.kind === 'final' && ytCheck ? ytCheck.checkedAt : '',
+      youtube_link: '',
+      youtube_title: '',
+      youtube_checked_at: '',
       created_at: res.created_at,
       expires_at: res.expires_at,
     });
@@ -984,10 +1141,9 @@ function clearZipStatus(anchor) {
 
 // Keep a re-entered YouTube link with the job's stored entry, so
 // the next click does not need it again. Only a stored entry is
-// updated in place. The
-// title and check time come from the step-6 check when it was made
-// for this job's recording. Shared by the WAV and fingerprint ZIP
-// paths.
+// updated in place. The title and check time come from the row's
+// link check (rowChecks) when it was made for this job's video.
+// Shared by the WAV and fingerprint ZIP paths.
 function keepReenteredLink(entry, bundle, link) {
   if (entry.youtube_link) return;
   // Keep the re-entered link with the entry so the next click does
@@ -998,11 +1154,13 @@ function keepReenteredLink(entry, bundle, link) {
   if (e) {
     entry.youtube_link = link;
     e.youtube_link = link;
-    if (ytCheck && ytCheck.audioSha256 === bundle.audio_sha256) {
-      entry.youtube_title = ytCheck.title || '';
-      entry.youtube_checked_at = ytCheck.checkedAt;
-      e.youtube_title = ytCheck.title || '';
-      e.youtube_checked_at = ytCheck.checkedAt;
+    const rc = rowChecks.get(jobKey(entry.pkg, entry.retrieval_code));
+    if (rc && rc.state === 'ok' &&
+        rc.videoId === parseYouTubeVideoId(link)) {
+      entry.youtube_title = rc.title || '';
+      entry.youtube_checked_at = rc.checkedAt;
+      e.youtube_title = rc.title || '';
+      e.youtube_checked_at = rc.checkedAt;
     }
     saveJobEntries(entries);
   }
@@ -1023,19 +1181,23 @@ function keepReenteredLink(entry, bundle, link) {
 //   bundle's signed youtube_video_sha256.
 // Returns the verified parts, or null with the error shown beside
 // the button that was used.
-async function verifySubmissionParts(entry, bundle, anchor) {
+async function verifySubmissionParts(entry, bundle, anchor, onError) {
+  // A failure is reported through onError — in the row's own cell,
+  // beside the field and button that were used (2.6.16) — or, with
+  // no sink given, through the page's error box as before.
+  const fail = onError || ((m) => showError(m, null, anchor));
   const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
     .catch(() => null);
   const wav = await wavBytesForBundle(bundle);
   if (!wav || !record) {
-    showError('This job’s audio is not on this computer. Its recording ' +
+    fail('This job’s audio is not on this computer. Its recording ' +
       'hash is ' + bundle.audio_sha256.slice(0, 12) + '… — ' +
       'choose that recording’s file in step 2, or restore it from the saved ' +
       'recordings list there, then try again.', null, anchor);
     return null;
   }
   if (!record.chunks || !record.chunks.length) {
-    showError('This computer does not hold the transcript pieces for ' +
+    fail('This computer does not hold the transcript pieces for ' +
       'this job’s recording, so the packaged transcript cannot be verified ' +
       'against the graded one. Restore the recording in step 2 (recording ' +
       'hash ' + bundle.audio_sha256.slice(0, 12) + '…) and try again.', null, anchor);
@@ -1060,43 +1222,40 @@ async function verifySubmissionParts(entry, bundle, anchor) {
     critiqueSha256: critiqueSha,
   });
   if (failures.includes('audio')) {
-    showError('Audio on this computer does not match the audio this ' +
+    fail('Audio on this computer does not match the audio this ' +
       'job was graded on (recording hash mismatch). Restore the recording ' +
       'with recording hash ' + bundle.audio_sha256.slice(0, 12) + '… in step 2 ' +
       'and try again.', null, anchor);
     return null;
   }
   if (failures.includes('transcript')) {
-    showError('Packaging would use a transcript that does not match the ' +
+    fail('Packaging would use a transcript that does not match the ' +
       'transcript that was graded (checksum mismatch). The usual cause is ' +
       'the removal list in step 3: re-enter the same names and words you ' +
       'used when you sent this job, then try again.', null, anchor);
     return null;
   }
   if (failures.includes('critique')) {
-    showError('Critique check failed: the critique in the grade record ' +
+    fail('Critique check failed: the critique in the grade record ' +
       'does not match its signed checksum, so nothing was packaged. ' +
-      'Retrieve the job again and retry.',
+      'Reload the page and retry.',
     null, anchor);
     return null;
   }
-  // The HTML's YouTube link comes from local keeping only; cross-check
-  // it against the signed bundle: the SHA-256 of its video ID must
-  // equal the bundle's youtube_video_sha256. A stored entry normally
-  // carries the link from send time, but an alias entry filed for an
-  // existing final job by a practice resubmission has none — no link
-  // was sent — so fall back to the link field in step 6, which the
-  // student re-enters there. The signed check below still proves it
-  // is the video checked for this job.
-  const link = entry.youtube_link || $('ytLink').value.trim() || '';
+  // The HTML's YouTube link comes from local keeping only — the
+  // link kept with this job's entry, entered and checked in the
+  // job's own row; cross-check it against the signed bundle: the
+  // SHA-256 of its video ID must equal the bundle's
+  // youtube_video_sha256.
+  const link = entry.youtube_link || '';
   const videoId = parseYouTubeVideoId(link);
   if (!videoId) {
-    showError('No YouTube link is kept on this browser. Re-enter it in step 6 and download again from the job list after re-checking.', null, anchor);
+    fail('No YouTube link is kept on this browser for this job. Enter it in the job’s row and let the check pass, then try again.', null, anchor);
     return null;
   }
   const videoIdSha = await sha256Hex(videoId);
   if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== videoIdSha) {
-    showError('A different video is kept on this browser from the one that was checked for this job.', null, anchor);
+    fail('A different video is kept on this browser from the one that was checked for this job.', null, anchor);
     return null;
   }
   keepReenteredLink(entry, bundle, link);
@@ -1116,19 +1275,20 @@ async function verifySubmissionParts(entry, bundle, anchor) {
 //   transcript text the status response returned; either way its
 //   canonical SHA-256 must equal the signed transcript_sha256;
 // - the critique's SHA-256 must equal the signed critique_sha256;
-// - the YouTube link (the entry's kept link, or the one in the
-//   step-6 field) must hash to the signed youtube_video_sha256.
+// - the YouTube link kept with the entry, from the job's row,
+ //   must hash to the signed youtube_video_sha256.
 // Returns the verified parts, or null with the error shown beside
 // the button that was used.
-async function verifyFingerprintParts(entry, bundle, anchor) {
+async function verifyFingerprintParts(entry, bundle, anchor, onError) {
+  const fail = onError || ((m) => showError(m, null, anchor));
   const key = jobKey(entry.pkg, entry.retrieval_code);
   const extras = readyExtras.get(key);
   const items = extras && extras.chromaprint
     ? decodeRawFingerprint(extras.chromaprint) : null;
   if (!items) {
-    showError('The grading record for this job did not include its ' +
+    fail('The grading record for this job did not include its ' +
       'recording fingerprint, so the fingerprint submission cannot ' +
-      'be built. Retrieve the job again and try again.', null, anchor);
+      'be built. Reload the page and try again.', null, anchor);
     return null;
   }
   const fingerprintBytes = new Uint8Array(
@@ -1178,9 +1338,9 @@ async function verifyFingerprintParts(entry, bundle, anchor) {
     transcriptSha = cacheMarkedSha;
   }
   if (!scrubbedChunks) {
-    showError('The grading record for this job did not include its ' +
-      'transcript, so the submission cannot be built. Retrieve the ' +
-      'job again and try again.', null, anchor);
+    fail('The grading record for this job did not include its ' +
+      'transcript, so the submission cannot be built. Reload the ' +
+      'page and try again.', null, anchor);
     return null;
   }
   const [fingerprintSha, critiqueSha] = await Promise.all([
@@ -1192,14 +1352,14 @@ async function verifyFingerprintParts(entry, bundle, anchor) {
     critiqueSha256: critiqueSha,
   });
   if (failures.includes('fingerprint')) {
-    showError('The recording fingerprint that came back with this ' +
+    fail('The recording fingerprint that came back with this ' +
       'grade does not match the fingerprint checksum signed with ' +
-      'the grade, so nothing was packaged. Retrieve the job again ' +
+      'the grade, so nothing was packaged. Reload the page ' +
       'and retry.', null, anchor);
     return null;
   }
   if (failures.includes('transcript')) {
-    showError('Packaging would use a transcript that does not match ' +
+    fail('Packaging would use a transcript that does not match ' +
       'the transcript that was graded (checksum mismatch). The usual ' +
       'cause is the removal list in step 3: re-enter the same names ' +
       'and words you used when you sent this job, then try again.',
@@ -1207,9 +1367,9 @@ async function verifyFingerprintParts(entry, bundle, anchor) {
     return null;
   }
   if (failures.includes('critique')) {
-    showError('Critique check failed: the critique in the grade ' +
+    fail('Critique check failed: the critique in the grade ' +
       'record does not match its signed checksum, so nothing was ' +
-      'packaged. Retrieve the job again and retry.', null, anchor);
+      'packaged. Reload the page and retry.', null, anchor);
     return null;
   }
   // The link is needed only when the signed bundle names a checked
@@ -1217,18 +1377,17 @@ async function verifyFingerprintParts(entry, bundle, anchor) {
   // was sent without one and packages with no link.
   let videoId = '';
   if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== 'none') {
-    const link = entry.youtube_link || $('ytLink').value.trim() || '';
+    const link = entry.youtube_link || '';
     videoId = parseYouTubeVideoId(link) || '';
     if (!videoId) {
-      showError('No YouTube link is kept on this browser. Enter the ' +
-        'link for this recording in step 6 above, then download ' +
-        'again — it is checked against the signed grade record ' +
-        'before anything is packaged.', null, anchor);
+      fail('No YouTube link is kept on this browser for this job. ' +
+        'Enter it in the job’s row and let the check pass, then ' +
+        'try again.', null, anchor);
       return null;
     }
     const videoIdSha = await sha256Hex(videoId);
     if (videoIdSha !== bundle.youtube_video_sha256) {
-      showError('That YouTube link is for a different video from ' +
+      fail('That YouTube link is for a different video from ' +
         'the one that was checked for this job.', null, anchor);
       return null;
     }
@@ -1245,12 +1404,12 @@ async function verifyFingerprintParts(entry, bundle, anchor) {
   };
 }
 
-// First click on a ready final job's ZIP button: verify, then show
+// Generate ZIP, verification step: verify, then show
 // the review panel in the job's row (renderJobRow renders it from
 // zipReviews; the 5-second refresh pauses while a review is open, so
 // the panel and its button are never rebuilt under the student). The
 // panel's own button performs the download from the verified parts.
-async function downloadSubmissionZip(entry, bundle, anchor) {
+async function downloadSubmissionZip(entry, bundle, anchor, onError) {
   clearError();
   zipBusy = true;
   anchor.disabled = true;
@@ -1269,8 +1428,8 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
     // chromaprint_sha256 means the fingerprint form, verified
     // without reading any audio; anything else is the WAV form.
     parts = bundleChromaprintSha(bundle)
-      ? await verifyFingerprintParts(entry, bundle, anchor)
-      : await verifySubmissionParts(entry, bundle, anchor);
+      ? await verifyFingerprintParts(entry, bundle, anchor, onError)
+      : await verifySubmissionParts(entry, bundle, anchor, onError);
   } finally {
     zipBusy = false;
     anchor.disabled = false;
@@ -1373,13 +1532,10 @@ async function doDownloadZip(entry, bundle, review, anchor) {
   }
 }
 
-function renderJobRow(container, entry, statusInfo, unreachable) {
-  const row = document.createElement('div');
-  row.className = 'jobrow';
-  // The row and each of its controls carry stable identities, so a
-  // refresh rebuild can put the student's focus back on the control
-  // that had it (see renderJobsOnce) instead of dropping it.
-  row.dataset.jobKey = jobKey(entry.pkg, entry.retrieval_code);
+function renderJobRow(tbody, entry, statusInfo, unreachable) {
+  const key = jobKey(entry.pkg, entry.retrieval_code);
+  const bundle = statusInfo && statusInfo.status === 'ready'
+    ? readyBundles.get(key) : null;
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
   let statusText;
   if (statusInfo === null && unreachable) {
@@ -1403,64 +1559,194 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
         : 'waiting — ' + ahead + (ahead === 1 ? ' job' : ' jobs') + ' ahead')
       : 'waiting';
   } else statusText = statusInfo.status;
-  // One line per job (2.6.7): the line carries the label, the kind
-  // in plain words (Final or Practice), the status, the grades when
-  // ready, the panel toggle, and the one primary button; the label
-  // takes the slack and shortens with an ellipsis. Everything else —
-  // the critique, the ZIP review, Remove — lives
-  // in the single panel below the line, so a collapsed job is
-  // exactly one line. That a final job's link was checked is carried
-  // by the YouTube check in the ZIP review, not by the label.
-  const line = document.createElement('div');
-  line.className = 'jobline';
+  // One table row per job (2.6.16): Job | Grades | YouTube link |
+  // Actions. No Practice/Final label: a job is a job, and a row
+  // with no checked link is one the student has not made a
+  // submission from. The critique and the ZIP review live in the
+  // details row below, opened by the row's one toggle. Both rows
+  // carry the job key, so a refresh rebuild can put the student's
+  // focus back on the control that had it (see renderJobsOnce).
+  const row = document.createElement('tr');
+  row.className = 'jobrow';
+  row.dataset.jobKey = key;
+  const tdJob = document.createElement('td');
   const labelSpan = document.createElement('span');
   labelSpan.className = 'joblabel';
-  labelSpan.textContent =
-    label + ' · ' + (entry.kind === 'final' ? 'Final' : 'Practice') +
-    ' · ' + statusText;
+  labelSpan.textContent = label + ' · ' + statusText;
   labelSpan.title = labelSpan.textContent;
-  line.append(labelSpan);
-  const key = jobKey(entry.pkg, entry.retrieval_code);
-  const bundle = statusInfo && statusInfo.status === 'ready'
-    ? readyBundles.get(key) : null;
-  if (bundle) {
-    const grades = document.createElement('span');
-    grades.className = 'jobgrades';
-    grades.textContent = 'Completeness ' + bundle.completeness +
-      '/5 · Accuracy ' + bundle.accuracy + '/5';
-    line.append(grades);
+  tdJob.append(labelSpan);
+  row.append(tdJob);
+  const tdGrades = document.createElement('td');
+  tdGrades.className = 'jobgrades';
+  tdGrades.textContent = bundle
+    ? 'Completeness ' + bundle.completeness + '/5 · Accuracy ' + bundle.accuracy + '/5'
+    : '—';
+  row.append(tdGrades);
+
+  /* ---- the YouTube link cell ---- */
+  const tdYt = document.createElement('td');
+  tdYt.className = 'ytcell';
+  if (!bundle) {
+    const note = document.createElement('div');
+    note.className = 'ytneed';
+    note.textContent = statusInfo && statusInfo.status === 'foreign'
+      ? 'Sent to a different grading service.'
+      : 'The YouTube link goes here once the grade is back.';
+    tdYt.append(note);
+  } else {
+    const wrap = document.createElement('div');
+    wrap.className = 'ytlinkwrap';
+    const input = document.createElement('input');
+    input.type = 'url';
+    input.dataset.act = 'ytlink';
+    input.placeholder = 'https://www.youtube.com/watch?v=…';
+    input.value = rowDrafts.has(key) ? rowDrafts.get(key)
+      : (entry.youtube_link || '');
+    if (input.value && !rowDrafts.has(key)) rowDrafts.set(key, input.value);
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.dataset.act = 'ytclear';
+    clearBtn.className = 'quiet ytclear';
+    clearBtn.textContent = '×';
+    clearBtn.title = 'Clear the YouTube link';
+    clearBtn.setAttribute('aria-label', 'Clear the YouTube link');
+    clearBtn.hidden = !input.value;
+    wrap.append(input, clearBtn);
+    const open = document.createElement('a');
+    open.className = 'ytopen';
+    open.target = '_blank';
+    open.rel = 'noopener';
+    open.hidden = true;
+    const msg = document.createElement('div');
+    const dur = document.createElement('div');
+    dur.className = 'ytdur';
+    tdYt.append(wrap, open, msg, dur);
+    // The row is not in the document yet, so paintRowCell cannot
+    // reach it: set the cell's message, duration line, and link
+    // text from the standing state directly.
+    const bits = rowCellBits(key);
+    msg.textContent = bits.text;
+    msg.className = 'ytmsg ' + bits.cls;
+    dur.textContent = bits.durText;
+    if (bits.openId) {
+      open.hidden = false;
+      open.textContent = canonicalWatchUrl(bits.openId);
+      open.href = canonicalWatchUrl(bits.openId);
+    }
+    input.addEventListener('input', () => {
+      rowDrafts.set(key, input.value);
+      clearBtn.hidden = !input.value;
+      // Any edit voids the standing check at once, and with it
+      // the Generate ZIP button (2.6.16).
+      if (rowChecks.delete(key)) {
+        const zb = row.querySelector('[data-act="zipgen"]');
+        if (zb) zb.remove();
+      }
+      rowZipErrors.delete(key);
+      paintRowCell(key);
+      if (rowTimers.has(key)) clearTimeout(rowTimers.get(key));
+      rowTimers.set(key, setTimeout(() => {
+        rowTimers.delete(key);
+        runRowCheck(key);
+      }, 700));
+    });
+    clearBtn.addEventListener('click', () => {
+      // × clears the field and the kept link for this job: the
+      // check is voided, the Generate ZIP button goes, and the
+      // cell returns to its starting line. No confirmation.
+      input.value = '';
+      rowDrafts.set(key, '');
+      rowChecks.delete(key);
+      rowZipErrors.delete(key);
+      persistRowLink(entry, '', '', '');
+      renderJobs();
+    });
+    // Hover play (2.6.16): dwelling on a populated link cell for
+    // about 400 ms plays its video, without sound, in the fixed
+    // player area above the table; a sweep across cells starts
+    // nothing, and leaving the cell pauses the preview.
+    let hoverTimer = null;
+    tdYt.addEventListener('mouseenter', () => {
+      const id = parseYouTubeVideoId(input.value);
+      if (!id) return;
+      hoverTimer = setTimeout(() => previewLoad(id, true, null), 400);
+    });
+    tdYt.addEventListener('mouseleave', () => {
+      if (hoverTimer) clearTimeout(hoverTimer);
+      hoverTimer = null;
+      previewPause();
+    });
   }
-  const detail = document.createElement('div');
-  detail.className = 'jobdetail';
-  detail.hidden = !expandedJobs.has(key);
+  row.append(tdYt);
+
+  /* ---- the actions cell ---- */
+  const tdAct = document.createElement('td');
+  const actions = document.createElement('div');
+  actions.className = 'jobactions';
   const detailBtn = document.createElement('button');
   detailBtn.dataset.act = 'grades';
-  detailBtn.textContent = 'Show details';
-  if (expandedJobs.has(key)) detailBtn.textContent = 'Hide details';
-  detailBtn.addEventListener('click', () => {
-    detail.hidden = !detail.hidden;
-    if (detail.hidden) expandedJobs.delete(key); else expandedJobs.add(key);
-    detailBtn.textContent = detail.hidden ? 'Show details' : 'Hide details';
-  });
-  line.append(detailBtn);
-  row.append(line);
-  if (bundle && entry.kind === 'practice' && entry.pkg === cfg.pkg) {
-    // A graded practice job (no link was given at send time): the
-    // place to add the link is on the job itself (2.6.10). The button takes the student
-    // to the conversion panel below the list, with this job
-    // selected and the link field focused — the panel is where the
-    // check and the conversion run, as before.
-    const linkBtn = document.createElement('button');
-    linkBtn.dataset.act = 'addlink';
-    linkBtn.className = 'primary';
-    linkBtn.textContent = 'Add a YouTube link — make this your submission';
-    linkBtn.addEventListener('click', () => {
-      refreshFinPanel(key);
-      $('finPanel').scrollIntoView({ block: 'nearest' });
-      $('finLink').focus({ preventScroll: true });
-    });
-    detail.append(linkBtn);
+  detailBtn.textContent = expandedJobs.has(key) ? 'Hide details' : 'Show details';
+  actions.append(detailBtn);
+  const review = bundle ? zipReviews.get(key) : null;
+  const reviewOpen = !!(review && bundle && review.receipt === bundle.receipt);
+  if (bundle && entry.pkg !== cfg.pkg) {
+    // Guard (2.6.2): the jobs list is browser-wide, but a submission
+    // ZIP is built only from the link of the job's own assignment.
+    // From another assignment's page the row says so instead of
+    // offering the button, so one homework's ZIP is not downloaded
+    // here and uploaded to the wrong Canvas assignment.
+    const other = document.createElement('span');
+    other.className = 'guardnote';
+    other.textContent = 'To build this job’s submission ZIP, ' +
+      'open its assignment’s link in Canvas.';
+    other.title = other.textContent;
+    actions.append(other);
+  } else if (bundle) {
+    // The Generate ZIP button exists only while the row's link
+    // check stands (2.6.16), and exactly one ZIP control per job at
+    // any moment (2.5.3): once the review panel is open, the
+    // panel's Download button replaces it.
+    const st = rowChecks.get(key);
+    if (!reviewOpen && st && st.state === 'ok') {
+      const zipBtn = document.createElement('button');
+      zipBtn.dataset.act = 'zipgen';
+      zipBtn.className = 'primary';
+      zipBtn.textContent = 'Generate ZIP';
+      zipBtn.addEventListener('click', () => generateZipForRow(entry, bundle, zipBtn));
+      actions.append(zipBtn);
+    }
   }
+  const forgetBtn = document.createElement('button');
+  forgetBtn.dataset.act = 'remove';
+  forgetBtn.className = 'quiet';
+  forgetBtn.textContent = 'Remove from this browser';
+  forgetBtn.addEventListener('click', () => {
+    // A review open on this row is abandoned with the job: its
+    // zipReviews entry goes too, or the poll would stay paused on a
+    // review that no longer exists. The row's link state goes too.
+    zipReviews.delete(key);
+    expandedJobs.delete(key);
+    rowChecks.delete(key);
+    rowDrafts.delete(key);
+    rowZipErrors.delete(key);
+    if (rowTimers.has(key)) { clearTimeout(rowTimers.get(key)); rowTimers.delete(key); }
+    removeJobEntry(entry.pkg, entry.retrieval_code);
+    renderJobs();
+  });
+  actions.append(forgetBtn);
+  tdAct.append(actions);
+  row.append(tdAct);
+  tbody.append(row);
+
+  /* ---- the details row: critique and ZIP review ---- */
+  const dtr = document.createElement('tr');
+  dtr.className = 'jobdetailrow';
+  dtr.dataset.jobKey = key;
+  dtr.hidden = !expandedJobs.has(key);
+  const dtd = document.createElement('td');
+  dtd.colSpan = 4;
+  const detail = document.createElement('div');
+  detail.className = 'jobdetail';
   if (bundle) {
     // The critique is a numbered list, one point per line: keep the
     // line breaks when it is shown (the submission HTML does the
@@ -1471,98 +1757,49 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
     crit.textContent = bundle.critique || '';
     detail.append(crit);
   }
-  if (statusInfo && statusInfo.status === 'ready') {
-    if (entry.kind === 'final' && bundle && entry.pkg !== cfg.pkg) {
-      // Guard (2.6.2): the jobs list is browser-wide, but a submission
-      // ZIP is built only from the link of the job's own assignment.
-      // From another assignment's page the row says so instead of
-      // offering the button, so one homework's ZIP is not downloaded
-      // here and uploaded to the wrong Canvas assignment.
-      const other = document.createElement('span');
-      other.className = 'guardnote';
-      other.textContent = 'To build this job\u2019s submission ZIP, ' +
-        'open its assignment\u2019s link in Canvas.';
-      other.title = other.textContent;
-      line.append(other);
-    } else if (entry.kind === 'final' && bundle) {
-      // Exactly one ZIP button per job at any moment (2.5.3): before
-      // verification the row's button is the Review button; once the
-      // review panel is open, the panel's Download button REPLACES
-      // it — the Review button is not rendered alongside the panel.
-      // (Before this fix both were shown together, and students
-      // counted the still-visible Review button as a second,
-      // non-working "generate ZIP" button.)
-      const review = zipReviews.get(key);
-      const reviewOpen = !!(review && review.receipt === bundle.receipt);
-      if (!reviewOpen) {
-        const zipBtn = document.createElement('button');
-        zipBtn.dataset.act = 'zip-review';
-        zipBtn.className = 'primary';
-        zipBtn.textContent = 'Review and download';
-        zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle, zipBtn));
-        line.append(zipBtn);
-      } else {
-        // The review section from a completed verification (see
-        // downloadSubmissionZip), inside the job's one panel: the
-        // download button first, then the compact lines — the checks
-        // on one line, the recording and YouTube identity in small
-        // print, and the instruction.
-        const panel = document.createElement('div');
-        panel.className = 'box reviewbox';
-        const dlBtn = document.createElement('button');
-        dlBtn.dataset.act = 'zip-download';
-        dlBtn.className = 'primary';
-        dlBtn.textContent = 'Download submission ZIP';
-        dlBtn.addEventListener('click', () => doDownloadZip(entry, bundle, review, dlBtn));
-        const closeBtn = document.createElement('button');
-        closeBtn.dataset.act = 'zip-close';
-        closeBtn.className = 'quiet';
-        closeBtn.textContent = 'Close review';
-        closeBtn.addEventListener('click', () => {
-          // Closing the review restores the row's Review button and
-          // lets the 5-second poll resume (it pauses while a review
-          // is open).
-          zipReviews.delete(key);
-          renderJobs();
-        });
-        const btnRow = document.createElement('div');
-        btnRow.className = 'houserow';
-        btnRow.append(dlBtn, closeBtn);
-        panel.append(btnRow);
-        review.lines.forEach((text, i) => {
-          const p = document.createElement('p');
-          if (i > 0 && i < review.lines.length - 1) p.className = 'small';
-          p.textContent = text;
-          panel.append(p);
-        });
-        detail.append(panel);
-      }
-    }
-    // The conversion itself runs in the panel below the list; a
-    // practice job's panel above carries the button that leads
-    // there (2.6.10).
+  if (bundle && reviewOpen) {
+    // The review section from a completed verification (see
+    // downloadSubmissionZip): the download button first, then the
+    // compact lines — the checks on one line, the recording and
+    // YouTube identity in small print, and the instruction.
+    const panel = document.createElement('div');
+    panel.className = 'box reviewbox';
+    const dlBtn = document.createElement('button');
+    dlBtn.dataset.act = 'zip-download';
+    dlBtn.className = 'primary';
+    dlBtn.textContent = 'Download submission ZIP';
+    dlBtn.addEventListener('click', () => doDownloadZip(entry, bundle, review, dlBtn));
+    const closeBtn = document.createElement('button');
+    closeBtn.dataset.act = 'zip-close';
+    closeBtn.className = 'quiet';
+    closeBtn.textContent = 'Close review';
+    closeBtn.addEventListener('click', () => {
+      // Closing the review restores the row's Generate ZIP button
+      // and lets the 5-second poll resume (it pauses while a review
+      // is open).
+      zipReviews.delete(key);
+      renderJobs();
+    });
+    const btnRow = document.createElement('div');
+    btnRow.className = 'houserow';
+    btnRow.append(dlBtn, closeBtn);
+    panel.append(btnRow);
+    review.lines.forEach((text, i) => {
+      const p = document.createElement('p');
+      if (i > 0 && i < review.lines.length - 1) p.className = 'small';
+      p.textContent = text;
+      panel.append(p);
+    });
+    detail.append(panel);
   }
-  const forgetBtn = document.createElement('button');
-  forgetBtn.dataset.act = 'remove';
-  forgetBtn.className = 'quiet';
-  forgetBtn.textContent = 'Remove from this browser';
-  forgetBtn.addEventListener('click', () => {
-    // A review open on this row is abandoned with the job: its
-    // zipReviews entry goes too, or the poll would stay paused on a
-    // review that no longer exists.
-    zipReviews.delete(key);
-    expandedJobs.delete(key);
-    removeJobEntry(entry.pkg, entry.retrieval_code);
-    renderJobs();
+  dtd.append(detail);
+  dtr.append(dtd);
+  tbody.append(dtr);
+  detailBtn.addEventListener('click', () => {
+    dtr.hidden = !dtr.hidden;
+    if (dtr.hidden) expandedJobs.delete(key); else expandedJobs.add(key);
+    detailBtn.textContent = dtr.hidden ? 'Show details' : 'Hide details';
   });
-  // Housekeeping sits at the foot of the panel (2.6.7): Remove is
-  // not part of the job's one line.
-  const houseRow = document.createElement('div');
-  houseRow.className = 'houserow';
-  houseRow.append(forgetBtn);
-  detail.append(houseRow);
-  row.append(detail);
-  container.append(row);
 }
 
 // Rendering is serialised: every caller shares the one in-flight
@@ -1590,7 +1827,6 @@ async function renderJobsOnce() {
   const entries = loadJobEntries();
   if (!entries.length) {
     box.textContent = 'No jobs sent from this browser yet.';
-    refreshFinPanel();
     return;
   }
   // Every status is fetched before the list is touched, and all of
@@ -1674,7 +1910,7 @@ async function renderJobsOnce() {
         // alias entry filed while the job was still queued carries
         // the submitted kind, which may not be the existing job's
         // kind. Correct it from the bundle so the ZIP button and
-        // the conversion panel see the job as it is.
+        // the row's ZIP flow see the job as it is.
         const trueKind = kindFromResultBundle(res.data.result);
         if (entry.kind !== trueKind) {
           entry.kind = trueKind;
@@ -1729,14 +1965,26 @@ async function renderJobsOnce() {
     }
   }
   const survivors = kept.map(({ entry }) => entry);
-  const frag = document.createDocumentFragment();
-  for (const entry of survivors) {
-    const holder = document.createElement('div');
-    const key = jobKey(entry.pkg, entry.retrieval_code);
-    renderJobRow(holder, entry, jobStates.get(key) || null,
-      (statusFailures.get(key) || 0) >= 3);
-    frag.append(holder);
+  // The jobs list is a table (2.6.16): Job | Grades | YouTube link |
+  // Actions, one row per job plus its details row.
+  const table = document.createElement('table');
+  table.className = 'jobstable';
+  const thead = document.createElement('thead');
+  const htr = document.createElement('tr');
+  for (const h of ['Job', 'Grades', 'YouTube link', 'Actions']) {
+    const th = document.createElement('th');
+    th.textContent = h;
+    htr.append(th);
   }
+  thead.append(htr);
+  table.append(thead);
+  const tbody = document.createElement('tbody');
+  for (const entry of survivors) {
+    const key = jobKey(entry.pkg, entry.retrieval_code);
+    renderJobRow(tbody, entry, jobStates.get(key) || null,
+      (statusFailures.get(key) || 0) >= 3);
+  }
+  table.append(tbody);
   // One synchronous swap, after every fetch has settled: no painted
   // frame ever shows an empty or half-built list, and a button's
   // position never moves while its row is being rebuilt.
@@ -1753,18 +2001,18 @@ async function renderJobsOnce() {
     if (holderRow) focusMark = { key: holderRow.dataset.jobKey, act: ae.dataset.act };
   }
   box.textContent = '';
-  if (survivors.length) box.append(frag);
+  if (survivors.length) box.append(table);
   else box.textContent = 'No jobs sent from this browser yet.';
   if (focusMark) {
+    // A job has two keyed rows (its row and its details row); the
+    // focused control may sit in either, so scan both.
     for (const r of box.querySelectorAll('[data-job-key]')) {
       if (r.dataset.jobKey !== focusMark.key) continue;
       const target = r.querySelector('[data-act="' + focusMark.act + '"]');
-      if (target) target.focus({ preventScroll: true });
-      break;
+      if (target) { target.focus({ preventScroll: true }); break; }
     }
   }
   if (entriesDirty) saveJobEntries(survivors);
-  refreshFinPanel();
 }
 
 // The jobs list refreshes itself every 5 seconds while the page is
@@ -1787,216 +2035,6 @@ async function refreshJobs() {
   try { await renderJobs(); } catch { /* the next tick retries */ }
 }
 setInterval(refreshJobs, 5000);
-
-// --- Conversion: turn a graded job into the Canvas submission ---
-let finCheck = null;
-let finPrevSelKey = null;
-
-function conversionCandidates() {
-  const out = [];
-  for (const entry of loadJobEntries()) {
-    const key = jobKey(entry.pkg, entry.retrieval_code);
-    const st = jobStates.get(key);
-    const bundle = readyBundles.get(key);
-    if (entry.pkg !== cfg.pkg) continue; // guard (2.6.2): this assignment only
-    if (entry.kind === 'practice' && st && st.status === 'ready' && bundle) {
-      out.push({ entry, bundle });
-    }
-  }
-  return out;
-}
-
-function refreshFinPanel(preferKey) {
-  const panel = $('finPanel');
-  if (!panel) return;
-  const cands = conversionCandidates();
-  if (!cands.length) { panel.hidden = true; finPrevSelKey = null; return; }
-  panel.hidden = false;
-  const sel = $('finJobSel');
-  const prev = preferKey || sel.value;
-  sel.textContent = '';
-  for (const c of cands) {
-    const opt = document.createElement('option');
-    opt.value = jobKey(c.entry.pkg, c.entry.retrieval_code);
-    const label = [c.entry.course, c.entry.asg].filter(Boolean).join(' · ') || c.entry.pkg;
-    opt.textContent = label +
-      ' — Completeness ' + c.bundle.completeness + '/5, Accuracy ' +
-      c.bundle.accuracy + '/5 · recording hash ' +
-      (c.bundle.audio_sha256 || '').slice(0, 8) + '…' +
-      (c.bundle.t ? ' — graded ' + new Date(c.bundle.t).toLocaleString() : '');
-    sel.append(opt);
-  }
-  const latest = cands[cands.length - 1];
-  sel.value = cands.some((c) => jobKey(c.entry.pkg, c.entry.retrieval_code) === prev)
-    ? prev : jobKey(latest.entry.pkg, latest.entry.retrieval_code);
-  // The picker is rebuilt on every jobs-list refresh, so it tracks
-  // graded jobs being added or removed at once. If a rebuild changed
-  // which job is selected (the selected job was removed, so the
-  // latest took its place), a link check already made was for a
-  // different job and no longer stands — the select's own change
-  // event does not fire for a programmatic change.
-  if (finPrevSelKey !== null && sel.value !== finPrevSelKey) finResetCheck();
-  finPrevSelKey = sel.value;
-}
-
-function finSelected() {
-  const key = $('finJobSel').value;
-  return conversionCandidates().find(
-    (c) => jobKey(c.entry.pkg, c.entry.retrieval_code) === key) || null;
-}
-
-async function finJobAudioDurationS(cand) {
-  if (audioSha && audioSha === cand.bundle.audio_sha256 && durationS > 0) return durationS;
-  const record = await cacheGet(cand.bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
-    .catch(() => null);
-  return record && record.duration_s ? record.duration_s : 0;
-}
-
-function finResetCheck() {
-  finCheck = null;
-  finDur = null;
-  $('finConfirmBtn').disabled = true;
-  $('finStatus').textContent = '';
-  $('finDone').textContent = '';
-  $('finPlayerWrap').hidden = true;
-  refreshFinDurationUi();
-}
-$('finJobSel').addEventListener('change', finResetCheck);
-// As in step 6 (2.6.8): the link invalidates any earlier check when
-// it changes, and a recognisable link is checked by itself after a
-// short pause.
-let finCheckTimer = null;
-let finCheckBusy = false;
-let finCheckRearms = 0;
-$('finLink').addEventListener('input', () => {
-  finCheck = null;
-  finDur = null;
-  finCheckRearms = 0;
-  $('finConfirmBtn').disabled = true;
-  $('finPlayerWrap').hidden = true;
-  refreshFinDurationUi();
-  if (finCheckTimer) clearTimeout(finCheckTimer);
-  finCheckTimer = setTimeout(runFinCheck, 700);
-});
-
-async function runFinCheck() {
-  const cand = finSelected();
-  if (!cand) return;
-  const url = $('finLink').value.trim();
-  const videoId = parseYouTubeVideoId(url);
-  if (!videoId) {
-    // As in step 6 (2.6.13): an unreadable link is pointed out.
-    if (url) {
-      $('finStatus').textContent =
-        'That is not a YouTube link this page can read. Paste the ' +
-        'watch address, https://www.youtube.com/watch?v=… — the ' +
-        'Studio edit address cannot be used.';
-    }
-    return;
-  }
-  if (finCheckBusy) {
-    // As in step 6: re-arm so the replacement link is checked once
-    // the in-flight check for the earlier link ends, capped so a
-    // flight that never settles leaves a message, not a timer.
-    if (finCheckRearms >= 40) {
-      $('finStatus').textContent = 'The link check is taking a long time; edit the link to try again.';
-      return;
-    }
-    finCheckRearms += 1;
-    $('finStatus').textContent = 'Checking…';
-    if (finCheckTimer) clearTimeout(finCheckTimer);
-    finCheckTimer = setTimeout(runFinCheck, 700);
-    return;
-  }
-  if (finCheck && finCheck.videoId === videoId) return; // already checked
-  finCheckRearms = 0;
-  if (!cfg.worker) {
-    $('finStatus').textContent = 'Open this page from the link your teacher put in Canvas to check the link.';
-    return;
-  }
-  finCheckBusy = true;
-  $('finStatus').textContent = 'Checking…';
-  try {
-    const res = await requestYouTubeCheck(cfg.worker, canonicalWatchUrl(videoId));
-    if ($('finLink').value.trim() !== url) return; // replaced while checking
-    if (res.status === 'ok' && res.video_id === videoId && res.token) {
-      finCheck = {
-        videoId, tok: res.token, checkedAt: res.checked_at,
-        title: res.title || '',
-        jobKey: jobKey(cand.entry.pkg, cand.entry.retrieval_code),
-      };
-      $('finStatus').textContent = 'Link checks out: the video is reachable (Unlisted or Public).' +
-        (res.title ? ' Video title: “' + res.title + '”.' : '');
-    } else {
-      $('finStatus').textContent =
-        'YouTube reports this video as private or missing. Set it to Unlisted or Public and check again.';
-    }
-  } catch (err) {
-    $('finStatus').textContent = 'Could not complete the check. Try again.';
-    console.error(err);
-  } finally {
-    finCheckBusy = false;
-  }
-  refreshFinDurationUi();
-  if (finCheck) {
-    const dur = await finJobAudioDurationS(cand);
-    if (!dur) {
-      $('finStatus').textContent +=
-        ' Load this job’s recording in step 2 to compare the video length with its audio.';
-    }
-    const checkedSha = cand.bundle.audio_sha256;
-    previewYouTube(videoId,
-      { wrap: 'finPlayerWrap', player: 'finPlayer', status: 'finStatus' },
-      (videoS) => {
-        if (!finCheck || finCheck.videoId !== videoId) return; // stale
-        const cls = classifyDuration(dur, videoS || 0);
-        finDur = { ...cls, audioS: dur, videoS };
-        refreshFinDurationUi();
-        if (videoS) reportDurationOnce('convert', checkedSha, videoId, dur, videoS);
-      });
-  }
-}
-
-$('finConfirmBtn').addEventListener('click', async () => {
-  const cand = finSelected();
-  if (!cand || !finCheck) return;
-  if (finCheck.jobKey !== jobKey(cand.entry.pkg, cand.entry.retrieval_code)) {
-    $('finDone').textContent = 'Link check mismatch: it was made for a different job. Check the link again.';
-    return;
-  }
-  if (!durationGateOk(finDur)) {
-    $('finDone').textContent = 'Checked video and this job’s audio differ in length by more than the allowed tolerance. Enter the link for this job’s recording.';
-    return;
-  }
-  $('finConfirmBtn').disabled = true;
-  $('finDone').textContent = 'Converting…';
-  try {
-    const payload = {
-      pkg: cand.entry.pkg,
-      retrieval_code: cand.entry.retrieval_code,
-      youtube_video_id: finCheck.videoId,
-      youtube_checked_at: finCheck.checkedAt,
-    };
-    payload['youtube' + '_token'] = finCheck.tok;
-    await finalizeJob(cfg.worker, payload);
-    const entries = loadJobEntries();
-    const e = entries.find((x) => x.pkg === cand.entry.pkg &&
-      x.retrieval_code === cand.entry.retrieval_code);
-    if (e) {
-      e.kind = 'final';
-      e.youtube_link = $('finLink').value.trim();
-      e.youtube_title = finCheck.title || '';
-      e.youtube_checked_at = finCheck.checkedAt;
-      saveJobEntries(entries);
-    }
-    finCheck = null;
-    $('finDone').textContent = 'Converted. Download the submission ZIP from the job’s row above.';
-    await renderJobs();
-  } catch (err) {
-    $('finDone').textContent = 'Converting failed: ' + err.message;
-    $('finConfirmBtn').disabled = false;
-  }
-});
 
 renderConfig();
 refreshDerived();
