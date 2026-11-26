@@ -67,7 +67,7 @@
   in it identifies you. When you send in step 6, the page makes a
   recovery code for the job and shows it; save it — the job’s row in
   section 7 can show it again. Keep the recording file as well: after
-  grading, this page packages the recording and the grade into the ZIP file
+  grading, this page packages the grade with the recording — or, for a job sent with a checked link, with the recording’s fingerprint — into the ZIP file
   you upload to Canvas. A YouTube link to the same recording, set to Unlisted
   or Public, is optional when you send; it is required for the Canvas
   submission.</p>
@@ -105,8 +105,7 @@
     <span class="status" id="mediaStatus">No file chosen.</span>
   </div>
   <p class="note" id="audioMeta"></p>
-  <p class="note">The extracted audio is saved on this computer automatically;
-  it goes into the submission ZIP.</p>
+  <p class="note">The extracted audio is saved on this computer automatically; it, or its fingerprint, goes into the submission ZIP.</p>
   <h3>Recordings saved on this computer</h3>
   <p class="note">Audio and transcripts this page has made, kept in this browser so
   the same recording never has to be transcribed twice — under any course's link.
@@ -177,8 +176,7 @@
   and any graded job can be turned into your Canvas submission there. If the
   link is added and checked now, the job is submission-ready as soon as it is
   graded; if not, you add the link when you convert the job. The link itself
-  is never sent with the transcript; the grading side stores only the fact
-  that the check passed and a hash of the video. The link is written into
+  is never sent with the transcript; the grading service stores only the fact that the check passed and a hash of the video. The link is written into
   your submission file when you download it.</p>
   <p class="note">There is no code to pick. When you press Send, the page
   makes a recovery code for this job and shows it below the button:
@@ -199,26 +197,14 @@
   review below is open): a waiting job shows how many jobs
   are ahead of it in the grading queue, and grades and critique appear
   here when they are ready. An ungraded job is kept for 7 days; once
-  graded, the grade is kept for 180 days. Grades are two scores out
-  of 5: Completeness — how much of the question your explanation
-  covers; Accuracy — how much of it is right. Each grade carries a
-  signed record, a receipt from the grading side that this page
-  checks before anything is packaged. For a ready
-  submission, Review and download first verifies the audio and the
-  transcript against the signed grade record and shows exactly what
-  will be packaged — the recording and the checked video — before the
-  ZIP is built.</p>
+  graded, the grade is kept for 180 days. Jobs from your other assignments are listed too — a job’s submission ZIP is built only from its own assignment’s link.</p>
+  <p class="note">Grades are two scores out of 5: Completeness — how much of the question your explanation covers; Accuracy — how much of it is right. Each grade has a signed grade record that this page checks before anything is packaged. For a ready submission, Review and download first verifies the recording — or its fingerprint — and the transcript against the signed grade record, and shows exactly what will be packaged, before the ZIP is built.</p>
   <div class="status" id="zipDone" role="status"></div>
   <div class="box" id="jobsBox">No jobs sent from this browser yet.</div>
 
   <div id="finPanel" hidden>
     <h3>Turn a graded job into your Canvas submission</h3>
-    <p class="note">Pick the graded job — the latest is selected, and each
-    option shows its grades and recording hash. It must be
-    the job for this same recording: the check below previews the video and
-    compares its length with that job's audio under the same three bands
-    as in step 6, and the submission file is
-    built from that job's audio and grade. One submission per recording.</p>
+    <p class="note">Pick the graded job for this assignment — the latest is selected, and each option shows its grades and recording hash. It must be the job for this same recording: the check below previews the video and compares its length with that job's audio under the same length limits as in step 6, and the submission file is built from that job's audio and grade. One submission per recording.</p>
     <div class="row">
       <label>Graded job <select id="finJobSel"></select></label>
     </div>
@@ -241,13 +227,7 @@
     </div>
   </div>
   <h3>Retrieving on a different browser</h3>
-  <p class="note">Enter the recovery code the page showed when the job was
-  sent. When the job’s grade
-  record carries its recording fingerprint, the submission ZIP is built from
-  the grade record and no audio is needed on this computer; otherwise the
-  audio for the submission ZIP must be on this computer — choose the recording
-  file above, or restore it from the saved recordings, before downloading
-  the ZIP.</p>
+  <p class="note">Open this page from the assignment’s link, then enter the recovery code shown when the job was sent. If the job’s grade record has its recording fingerprint, the submission ZIP is built from the grade record and no audio is needed on this computer. Otherwise the recording must be on this computer: choose the file above, or restore it from the saved recordings, before downloading the ZIP.</p>
   <div class="row oneline">
     <label>Recovery code <input type="text" id="manualCode" size="28" autocomplete="off" spellcheck="false"></label>
     <button id="manualBtn">Retrieve</button>

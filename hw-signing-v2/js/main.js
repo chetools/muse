@@ -680,7 +680,7 @@ $('ytCheckBtn').addEventListener('click', async () => {
     return;
   }
   if (!cfg.worker) {
-    $('ytStatus').textContent = 'A configured link from your teacher is needed to check the link.';
+    $('ytStatus').textContent = 'Open this page from the link your teacher put in Canvas to check the link.';
     return;
   }
   $('ytStatus').textContent = 'Checking…';
@@ -1270,7 +1270,7 @@ function renderJobRow(container, entry, statusInfo) {
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
   let statusText;
   if (statusInfo === null) statusText = 'checking…';
-  else if (statusInfo.status === 'forbidden') statusText = 'not found under this recovery code';
+  else if (statusInfo.status === 'forbidden') statusText = 'No job under that recovery code.';
   else if (statusInfo.status === 'ready') statusText = 'ready';
   else if (statusInfo.status === 'claimed') statusText = 'being graded now';
   else if (statusInfo.status === 'queued') {
@@ -1315,7 +1315,17 @@ function renderJobRow(container, entry, statusInfo) {
       showBtn.textContent = detail.hidden ? 'Show grades and critique' : 'Hide grades and critique';
     });
     row.append(showBtn, detail);
-    if (entry.kind === 'final' && bundle) {
+    if (entry.kind === 'final' && bundle && entry.pkg !== cfg.pkg) {
+      // Guard (2.6.2): the jobs list is browser-wide, but a submission
+      // ZIP is built only from the link of the job's own assignment.
+      // From another assignment's page the row says so instead of
+      // offering the button, so one homework's ZIP is not downloaded
+      // here and uploaded to the wrong Canvas assignment.
+      const other = document.createElement('span');
+      other.textContent = ' To build this job\u2019s submission ZIP, ' +
+        'open its assignment\u2019s link in Canvas.';
+      row.append(other);
+    } else if (entry.kind === 'final' && bundle) {
       // Exactly one ZIP button per job at any moment (2.5.3): before
       // verification the row's button is the Review button; once the
       // review panel is open, the panel's Download button REPLACES
@@ -1616,11 +1626,13 @@ function conversionCandidates() {
     const key = jobKey(entry.pkg, entry.retrieval_code);
     const st = jobStates.get(key);
     const bundle = readyBundles.get(key);
+    if (entry.pkg !== cfg.pkg) continue; // guard (2.6.2): this assignment only
     if (entry.kind === 'practice' && st && st.status === 'ready' && bundle) {
       out.push({ entry, bundle });
     }
   }
-  if (finManualEntry && finManualEntry.kind === 'practice') {
+  if (finManualEntry && finManualEntry.kind === 'practice' &&
+      finManualEntry.pkg === cfg.pkg) {
     const key = jobKey(finManualEntry.pkg, finManualEntry.retrieval_code);
     const bundle = readyBundles.get(key);
     // The manually retrieved job may be the same job as a stored
@@ -1711,7 +1723,7 @@ $('finCheckBtn').addEventListener('click', async () => {
     return;
   }
   if (!cfg.worker) {
-    $('finStatus').textContent = 'A configured link from your teacher is needed to check the link.';
+    $('finStatus').textContent = 'Open this page from the link your teacher put in Canvas to check the link.';
     return;
   }
   $('finStatus').textContent = 'Checking…';
@@ -1828,7 +1840,7 @@ $('manualBtn').addEventListener('click', async () => {
   }
   box.hidden = true;
   if (!cfg.worker || !cfg.pkg) {
-    $('manualStatus').textContent = 'Open this assignment’s configured link to retrieve.';
+    $('manualStatus').textContent = 'Open this page from the assignment’s link in Canvas to retrieve.';
     return;
   }
   $('manualStatus').textContent = 'Checking…';
@@ -1914,7 +1926,7 @@ $('manualBtn').addEventListener('click', async () => {
       note.className = 'note';
       note.textContent = entry.kind === 'final'
         ? (bundleChromaprintSha(res.data.result)
-          ? 'This job was sent with a checked link. Its grade record carries the recording’s fingerprint, so the submission ZIP can be built on this computer without the recording file. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
+          ? 'This job was sent with a checked link. Its grade record has the recording’s fingerprint, so the submission ZIP can be built on this computer without the recording file. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
           : 'This job was sent with a checked link. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.')
         : 'This job was sent without a link. To make the Canvas submission, add the YouTube link in the conversion panel above (Turn a graded job into your Canvas submission).';
       box.append(note);

@@ -44,7 +44,7 @@
 
 export const FORMAT_VERSION = '2';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 2.6.1',
+  webapp: 'hw-signing-webapp 2.6.2',
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };
@@ -145,7 +145,7 @@ export function assemblePackage(input) {
     '<h3>Critique</h3>\n' + critiqueHtml + '\n' +
     '<section id="audit">\n<h3>Audit</h3>\n</section>\n</section>\n' +
     '<section id="verification">\n<h2>Verification</h2>\n' +
-    '<p>Audio duration is a plain number of seconds (s).</p>\n<dl>\n' +
+    '<dl>\n' +
     '<dt>Format version</dt><dd>' + escapeHtml(FORMAT_VERSION) + '</dd>\n' +
     '<dt>Job</dt><dd>' + escapeHtml(bundle.job_id || '') + '</dd>\n' +
     '<dt>Prompt package</dt><dd>' + escapeHtml(bundle.pkg || '') + '</dd>\n' +
@@ -155,6 +155,7 @@ export function assemblePackage(input) {
     '<dt>Glossary version</dt><dd>' + escapeHtml(VERSIONS.glossary) + '</dd>\n' +
     '<dt>YouTube link</dt><dd>' + linkHtml + '</dd>\n' +
     '<dt>Audio file</dt><dd>' + escapeHtml(fpSha ? FINGERPRINT_FILE_NAME : input.audioFileName) + '</dd>\n' +
+    '<dt>Audio duration unit</dt><dd>seconds (s)</dd>\n' +
     '<dt>Audio duration</dt><dd>' + duration + '</dd>\n' +
     '<dt>Audio SHA-256</dt><dd>' + escapeHtml(bundle.audio_sha256 || '') + '</dd>\n' +
     (fpSha
