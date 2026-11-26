@@ -18,6 +18,20 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v50 (2026-11-26) — each submission's prompt package shown in the table and on the wall
+
+- Every submission now shows the prompt package it was graded
+  under — the name and version in its signed verification
+  section (for example "ponchon-savarit v3"). In the submissions
+  table it appears under the course and homework in the Student
+  column, and on each previous-attempt row; on the video wall it
+  appears on the tile, on the attempt tiles, and in the student
+  card of the side panel and the zoom view. A submission whose
+  package differs from the homework you are looking at is
+  visible at a glance. The line stays visible under Privacy —
+  a package name is not a student identifier. Display only:
+  no check changes.
+
 ## v48 (2026-11-26) — fingerprint-form packages, per-block YouTube comparison, WAV repair
 
 - **Two package forms.** A submission ZIP now arrives in one of two

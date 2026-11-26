@@ -476,6 +476,9 @@ def main():
     check(chk["internally_consistent"] and chk["receipt_ok"]
           and chk["estimated_grades"] == {"completeness": 4, "accuracy": 4},
           "check result shows receipt, fingerprints and grades")
+    check(subs[0].get("pkg") == PKG and chk.get("pkg") == PKG,
+          "submissions row and its stored check carry the prompt "
+          "package (v50)")
     check(chk.get("grade_receipt_ok") is True
           and chk.get("signed_grades") == {"completeness": 4,
                                            "accuracy": 4}
@@ -645,6 +648,10 @@ def main():
           and demo_rows[0]["assignment_name"] is None
           and demo_rows[0]["submitted_at"] is None,
           "wall demo students carry empty view fields (v29)")
+    check(real_rows[0].get("pkg") == PKG
+          and demo_rows[0].get("pkg") is None,
+          "wall data carries the real package's prompt package; "
+          "demo students carry none (v50)")
     status, wall_v29 = call("GET", "/wall", raw=True)
     check(all(b'id="' + i + b'"' in wall_v29 for i in
               (b"fcourse", b"fhw", b"fstudent", b"ffrom", b"fto",
@@ -654,6 +661,10 @@ def main():
           and b"ta-view-v1" in wall_v29 and b"ta-view-v1" in dash_v29,
           "video wall carries the same v29 view controls, sharing "
           "the stored view with the dashboard")
+    check(b"package '+esc(s.pkg)" in wall_v29
+          and b"package '+esc(s.pkg)" in dash_v29,
+          "wall tiles and dashboard rows render the prompt "
+          "package line (v50)")
     status, out = call("POST", "/api/final-grade",
                        {"user_id": "demo-t", "score": 7})
     status, walldata = call("GET", "/api/wall")
@@ -1297,8 +1308,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/49.0",
-          "user agent bumped to 49.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/50.0",
+          "user agent bumped to 50.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2506,6 +2517,9 @@ def main():
           and a35.get("integrity") == "clean",
           "submissions ?attempts=1 payload carries the attempt "
           "check and integrity (v35)")
+    check(prev35.get("pkg") == PKG and a35.get("pkg") == PKG,
+          "wall attempts and the table's attempt rows carry the "
+          "attempt's own prompt package (v50)")
 
     # (c) check-all counts: submissions and attempts apart.
     status, out35 = call("POST", "/api/check-all", {})

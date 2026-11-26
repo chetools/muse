@@ -372,6 +372,20 @@ split so the frozen-text rule stands first; the package-text
 mismatch message says "the stored text", not "the frozen
 text"; and the Cleanup introduction reads "There is no
 waiting period: you decide when material is deleted."
+
+v50: each submission's prompt package — the name and version
+in its signed verification section, the value the stored
+check already records — is shown wherever the submission
+itself is shown: a line under the course and homework in
+the submissions table (and on each previous-attempt row),
+and on the wall in the tile, the attempt tiles, the side
+panel's student card and the zoom view's student card.
+The table takes it from the stored check when one has run
+and parses it from the package otherwise, like the grades;
+the wall reads it from the package it already parses. A
+package name is not a student identifier, so the line
+stays visible under Privacy. Display only: no check
+changes, and the check schema stays 2.
 """
 
 import argparse
@@ -2652,6 +2666,7 @@ def wall_attempts(cfg, key):
                 "examined": examined, "final_score": final,
                 "integrity": integrity,
                 "check": acheck,
+                "pkg": ver.get("pkg"),
                 "critique": _grading_text(html_text),
                 "transcript": [{"t": t, "text": text}
                                for t, text in parsed["timed_lines"]
@@ -3547,6 +3562,7 @@ def wall_students(cfg, local_only=False):
             "examined": store_has(examined, key, uid),
             "final_score": final_score(store_get(finals, key, uid)),
             "integrity": integrity,
+            "pkg": ver.get("pkg"),
             "critique": _grading_text(html_text),
             "transcript": [{"t": t, "text": text}
                            for t, text in parsed["timed_lines"]
@@ -4265,13 +4281,14 @@ function renderSubs(){
     const c=s.check||{};
     const fin = s.final_score ?? s.suggested_score;
     const ctx = (s.course_name||s.assignment_name) ? '<br><span class="mut">'+esc(s.course_name||"")+(s.assignment_name? " · "+esc(s.assignment_name):"")+"</span>" : "";
+    const pkgline = s.pkg ? '<br><span class="mut">package '+esc(s.pkg)+"</span>" : "";
     let ghead="";
     if(VIEW.group!=="none"){ const g=groupLabelS(s);
       if(g!==lastGroup){ lastGroup=g;
         ghead='<tr class="grouprow"><td colspan="9">'+esc(g)+' <span class="mut">· '+gcounts[g]+" shown</span></td></tr>"; } }
     let out=ghead+"<tr>"+
     '<td><input type="checkbox" class="selbox" style="width:auto" data-key="'+esc(s.id)+'"'+(SEL.has(s.id)?" checked":"")+"></td>"+
-    '<td><a class="stuname priv" href="/wall?focus='+encodeURIComponent(s.id)+'">'+esc(nameOfS(s))+'</a><br><span class="mut priv">'+esc(s.user_id)+"</span>"+ctx+"</td>"+
+    '<td><a class="stuname priv" href="/wall?focus='+encodeURIComponent(s.id)+'">'+esc(nameOfS(s))+'</a><br><span class="mut priv">'+esc(s.user_id)+"</span>"+ctx+pkgline+"</td>"+
     "<td>"+fmtDateS(s.submitted_at)+"</td>"+
     "<td>"+esc(s.workflow_state||"")+"<br><span class='mut'>attempt "+esc(s.attempt??"")+"</span></td>"+
     "<td>"+(s.downloaded?badge(true,"yes",""):'<span class="badge">no</span>')+"</td>"+
@@ -4292,7 +4309,7 @@ function renderSubs(){
       const atts=[...(s.attempts||[])].sort(
         (a,b)=>(b.attempt_no||0)-(a.attempt_no||0));
       out+=atts.map(a=>'<tr class="attrow"><td></td>'+
-        '<td class="attname">Attempt '+esc(a.attempt_no)+' · '+esc(fmtDateS(a.submitted_at))+'</td>'+
+        '<td class="attname">Attempt '+esc(a.attempt_no)+' · '+esc(fmtDateS(a.submitted_at))+(a.pkg? ' · package '+esc(a.pkg):"")+'</td>'+
         "<td>"+fmtDateS(a.submitted_at)+"</td>"+
         '<td><span class="mut">attempt '+esc(a.attempt_no)+"</span></td>"+
         "<td>"+badge(true,"yes","")+"</td>"+
@@ -5019,6 +5036,7 @@ function renderHoverPanel(){
   $("hpcard").innerHTML=
     '<p style="margin:2px 0"><strong class="priv">'+esc(d.name)+'</strong></p>'+
     (d.context? '<p class="mut" style="margin:2px 0">'+esc(d.context)+'</p>':"")+
+    (d.pkg? '<p class="mut" style="margin:2px 0">package '+esc(d.pkg)+'</p>':"")+
     (d.submitted_at? '<p class="mut" style="margin:2px 0">submitted '+esc(dayLabelW(d.submitted_at))+'</p>':"")+
     (d.attempt!=null && !d.attempt_label? '<p class="mut" style="margin:2px 0">attempt '+esc(d.attempt)+'</p>':"")+
     (d.attempt_label? '<p class="mut" style="margin:2px 0">'+esc(d.attempt_label)+'</p>':"")+
@@ -5201,6 +5219,7 @@ function render(){
       : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
     '<div class="nm"><span class="priv">'+esc(s.name)+'</span></div>'+
     (s.context? '<div class="mut">'+esc(s.context)+'</div>':"")+
+    (s.pkg? '<div class="mut">package '+esc(s.pkg)+'</div>':"")+
     (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
     '<span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
@@ -5230,6 +5249,7 @@ function renderAttemptTiles(){
     '<div><span class="badge '+(s.is_current?"ok":"warn")+'">'+esc(s.attempt_label)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
     '<span class="badge priv">grade '+gr+'</span></div>'+
+    (s.pkg? '<div class="mut">package '+esc(s.pkg)+'</div>':"")+
     (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
     (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
     '</div>';}).join("");
@@ -5556,6 +5576,7 @@ function openZoom(id, opts){
     '<p style="margin:2px 0"><span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
     (s.youtube? ' <a href="'+esc(s.youtube)+'" target="_blank" rel="noopener" style="color:#9fc3e8">Open on YouTube ↗</a>':"")+"</p>"+
+    (s.pkg? '<p class="mut" style="margin:2px 0">package '+esc(s.pkg)+'</p>':"")+
     "<p style='margin:6px 0'><strong>Student grade:</strong> <span class='priv'>"+(s.score==null?"—":esc(s.score)+" / 10")+"</span></p>"+
     (s.is_current===false
       ? '<p class="mut" style="margin:6px 0">'+esc(s.attempt_label||"Previous attempt")+" — the grade of record stays with the current attempt; this view is read-only.</p>"
@@ -6968,6 +6989,18 @@ def _package_grades(pkg):
         return {}
 
 
+def _package_pkg(pkg):
+    """The prompt package a downloaded package was graded under,
+    from its signed verification section (shown in the list and
+    on the wall without waiting for the integrity checks, v50)."""
+    try:
+        parsed = audit.parse_package(
+            Path(pkg["html_path"]).read_text(encoding="utf-8"))
+        return parsed["verification"].get("pkg")
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def submissions_view(cfg, local_only=False, attempts=False):
     """Rows for the submissions table. With local_only=True (v31)
     no Canvas call is made at all: the rows are the downloaded
@@ -6996,6 +7029,7 @@ def submissions_view(cfg, local_only=False, attempts=False):
     examined = examined_store(cfg)
     local = {p["key"]: p for p in downloaded_packages(cfg)}
     pkg_grades = {}
+    pkg_names = {}
 
     def grades_of(key):
         # Package grades are parsed on demand, only for rows with
@@ -7006,6 +7040,14 @@ def submissions_view(cfg, local_only=False, attempts=False):
             pkg_grades[key] = _package_grades(local[key]) \
                 if key in local else {}
         return pkg_grades[key]
+
+    def pkg_of(key):
+        # The prompt package of a row with no stored check (v50),
+        # parsed on demand and cached like the grades above.
+        if key not in pkg_names:
+            pkg_names[key] = _package_pkg(local[key]) \
+                if key in local else None
+        return pkg_names[key]
 
     targets = {}
     if not local_only and cfg.get("canvas_token"):
@@ -7020,6 +7062,7 @@ def submissions_view(cfg, local_only=False, attempts=False):
         if student is None:
             student = grades_total(grades_of(key))
         return {"check": check,
+                "pkg": (check or {}).get("pkg") or pkg_of(key),
                 "student_score": student,
                 "examined": store_has(examined, key, uid),
                 "final_score": final_score(store_get(finals, key, uid)),
@@ -7078,6 +7121,7 @@ def submissions_view(cfg, local_only=False, attempts=False):
                 "completeness": a["completeness"],
                 "accuracy": a["accuracy"],
                 "check": a.get("check"),
+                "pkg": a.get("pkg"),
                 "integrity": a.get("integrity")} for a in prev]
             if total:
                 on_disk = {a["attempt_no"] for a in prev}
