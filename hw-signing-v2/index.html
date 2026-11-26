@@ -38,6 +38,13 @@
   #liveRaw { color: #555; }
   .jobrow, .recrow { border-top: 1px solid #ddd; padding: 8px 0; }
   .jobrow:first-child, .recrow:first-child { border-top: none; }
+  .jobline { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+  .jobline .joblabel { flex: 1 1 auto; min-width: 0; overflow: hidden;
+                       text-overflow: ellipsis; white-space: nowrap; }
+  .jobline button { flex: 0 0 auto; white-space: nowrap; }
+  .jobline .mono { flex: 0 0 auto; white-space: nowrap; }
+  .jobline .guardnote { flex: 1 1 auto; min-width: 0; overflow: hidden;
+                        text-overflow: ellipsis; white-space: nowrap; }
   .recrow { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
   .recrow .recmeta { flex: 1 1 auto; min-width: 0; overflow: hidden;
                      text-overflow: ellipsis; white-space: nowrap; }

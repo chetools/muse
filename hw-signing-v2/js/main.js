@@ -1293,9 +1293,20 @@ function renderJobRow(container, entry, statusInfo) {
         : 'waiting — ' + ahead + (ahead === 1 ? ' job' : ' jobs') + ' ahead')
       : 'waiting';
   } else statusText = statusInfo.status;
-  row.append(document.createTextNode(
+  // The row's summary and its controls sit on one line that never
+  // wraps (2.6.5): the label takes the slack and shortens with an
+  // ellipsis, and the buttons and the recovery code keep their full
+  // width. Panels (grades, ZIP review) open below the line.
+  const line = document.createElement('div');
+  line.className = 'jobline';
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'joblabel';
+  labelSpan.textContent =
     label + (entry.kind === 'final' ? ' (sent with a checked link): '
-      : ' (sent without a link): ') + statusText + ' '));
+      : ' (sent without a link): ') + statusText;
+  labelSpan.title = labelSpan.textContent;
+  line.append(labelSpan);
+  row.append(line);
   if (statusInfo && statusInfo.status === 'ready') {
     const bundle = readyBundles.get(jobKey(entry.pkg, entry.retrieval_code));
     const key = jobKey(entry.pkg, entry.retrieval_code);
@@ -1327,7 +1338,8 @@ function renderJobRow(container, entry, statusInfo) {
       if (detail.hidden) expandedJobs.delete(key); else expandedJobs.add(key);
       showBtn.textContent = detail.hidden ? 'Show grades and critique' : 'Hide grades and critique';
     });
-    row.append(showBtn, detail);
+    line.append(showBtn);
+    row.append(detail);
     if (entry.kind === 'final' && bundle && entry.pkg !== cfg.pkg) {
       // Guard (2.6.2): the jobs list is browser-wide, but a submission
       // ZIP is built only from the link of the job's own assignment.
@@ -1335,9 +1347,11 @@ function renderJobRow(container, entry, statusInfo) {
       // offering the button, so one homework's ZIP is not downloaded
       // here and uploaded to the wrong Canvas assignment.
       const other = document.createElement('span');
-      other.textContent = ' To build this job\u2019s submission ZIP, ' +
+      other.className = 'guardnote';
+      other.textContent = 'To build this job\u2019s submission ZIP, ' +
         'open its assignment\u2019s link in Canvas.';
-      row.append(other);
+      other.title = other.textContent;
+      line.append(other);
     } else if (entry.kind === 'final' && bundle) {
       // Exactly one ZIP button per job at any moment (2.5.3): before
       // verification the row's button is the Review button; once the
@@ -1353,7 +1367,7 @@ function renderJobRow(container, entry, statusInfo) {
         zipBtn.className = 'primary';
         zipBtn.textContent = 'Review and download submission ZIP';
         zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle, zipBtn));
-        row.append(document.createTextNode(' '), zipBtn);
+        line.append(zipBtn);
       } else {
         // The review panel from a completed verification (see
         // downloadSubmissionZip): every item that will be packaged,
@@ -1390,13 +1404,39 @@ function renderJobRow(container, entry, statusInfo) {
   const codeLine = document.createElement('span');
   codeLine.className = 'mono';
   codeLine.hidden = true;
-  codeLine.textContent = ' ' + entry.retrieval_code;
+  codeLine.textContent = entry.retrieval_code;
+  // One click copies the code (2.6.5): nobody should have to select
+  // a 24-character string by hand. The button appears with the code,
+  // reads "Copied" briefly after a copy, and if the clipboard is
+  // unavailable it selects the code instead, ready for Ctrl+C.
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copy';
+  copyBtn.hidden = true;
+  copyBtn.addEventListener('click', async () => {
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(entry.retrieval_code);
+      copied = true;
+    } catch { /* clipboard unavailable: fall through to selection */ }
+    if (!copied) {
+      const range = document.createRange();
+      range.selectNodeContents(codeLine);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      copyBtn.textContent = 'Selected — press Ctrl+C';
+    } else {
+      copyBtn.textContent = 'Copied';
+    }
+    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
+  });
   codeBtn.addEventListener('click', () => {
     codeLine.hidden = !codeLine.hidden;
+    copyBtn.hidden = codeLine.hidden;
     codeBtn.textContent = codeLine.hidden
       ? 'Show recovery code' : 'Hide recovery code';
   });
-  row.append(document.createTextNode(' '), codeBtn, codeLine);
+  line.append(codeBtn, codeLine, copyBtn);
   const forgetBtn = document.createElement('button');
   forgetBtn.textContent = 'Remove from this browser';
   forgetBtn.addEventListener('click', () => {
@@ -1407,7 +1447,7 @@ function renderJobRow(container, entry, statusInfo) {
     removeJobEntry(entry.pkg, entry.retrieval_code);
     renderJobs();
   });
-  row.append(document.createTextNode(' '), forgetBtn);
+  line.append(forgetBtn);
   container.append(row);
 }
 
