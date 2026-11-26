@@ -59,7 +59,6 @@ let sourceName = '';
 let chunks = [];            // pipeline chunks: {start, end, raw, corrected, ...}
 let windowsDoneBase = 0;    // windows already cached before this run (resume)
 let transcriptionComplete = false;
-let confirmed = false;
 let vocabulary = null;
 let ytCheck = null;         // { videoId, token, checkedAt, title, audioSha256 } after an ok check
 let chromaprint = null;     // raw Chromaprint as base64 (2.6.0), or null when none computed
@@ -75,6 +74,7 @@ const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
 // the same status response (Worker 2.7.0): the stored transcript text and the
 // raw fingerprint as base64, kept in memory only, for the fingerprint-form ZIP
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
+const statusFailures = new Map(); // "pkg|code" -> consecutive failed status fetches
 const expandedJobs = new Set(); // "pkg|code" with the detail panel open (kept across refreshes)
 const shownCodes = new Set();   // "pkg|code" with recovery code shown (kept across refreshes)
 
@@ -300,7 +300,6 @@ $('mediaFile').addEventListener('change', async (ev) => {
   chromaprint = null; chromaprintSha = null; chromaprintPending = null;
   chunks = []; windowsDoneBase = 0;
   transcriptionComplete = false;
-  confirmed = false; $('confirmChk').checked = false;
   updateRunEnabled();
   if (!file) { $('mediaStatus').textContent = 'No file chosen.'; return; }
   sourceName = file.name;
@@ -404,8 +403,6 @@ async function renderCacheList() {
 
 // --- Scrub field: re-derive everything when it changes ---
 $('scrubField').addEventListener('input', () => {
-  confirmed = false;
-  $('confirmChk').checked = false;
   setAudioMeta();
   refreshDerived();
   renderCacheList();
@@ -418,8 +415,6 @@ $('runBtn').addEventListener('click', async () => {
   const resumeFrom = windowsDoneBase;
   if (!resumeFrom) chunks = [];
   transcriptionComplete = false;
-  confirmed = false;
-  $('confirmChk').checked = false;
   $('runBtn').disabled = true;
   $('runProg').hidden = false;
   $('runProg').value = durationS ? Math.min(1, (resumeFrom * FILE_WINDOW_S) / durationS) : 0;
@@ -509,14 +504,9 @@ function renderSuspects(sc) {
     .join('\n');
 }
 
-$('confirmChk').addEventListener('change', () => {
-  confirmed = $('confirmChk').checked;
-  updateJobEnabled();
-});
-
 // --- Job section ---
 function updateJobEnabled() {
-  const base = !!(cfg.worker && cfg.pkg && cfg.ph && transcriptionComplete && confirmed);
+  const base = !!(cfg.worker && cfg.pkg && cfg.ph && transcriptionComplete);
   // With a checked link, the duration gate also applies: a blocked
   // link (length beyond the tolerance) disables Send until the link
   // is fixed or cleared.
@@ -1299,7 +1289,7 @@ async function doDownloadZip(entry, bundle, review, anchor) {
   }
 }
 
-function renderJobRow(container, entry, statusInfo) {
+function renderJobRow(container, entry, statusInfo, unreachable) {
   const row = document.createElement('div');
   row.className = 'jobrow';
   // The row and each of its controls carry stable identities, so a
@@ -1308,7 +1298,14 @@ function renderJobRow(container, entry, statusInfo) {
   row.dataset.jobKey = jobKey(entry.pkg, entry.retrieval_code);
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
   let statusText;
-  if (statusInfo === null) statusText = 'checking…';
+  if (statusInfo === null && unreachable) {
+    // The status fetch has failed three rounds running: say so,
+    // instead of leaving the row at "checking…" indefinitely. The
+    // poll keeps retrying, and the row returns to its real status
+    // on the first answer that gets through.
+    statusText = 'can’t reach the grading service — retrying';
+  }
+  else if (statusInfo === null) statusText = 'checking…';
   else if (statusInfo.status === 'forbidden') statusText = 'No job under that recovery code.';
   else if (statusInfo.status === 'ready') statusText = 'ready';
   else if (statusInfo.status === 'claimed') statusText = 'being graded now';
@@ -1600,10 +1597,19 @@ async function renderJobsOnce() {
       readyBundles.delete(key);
       readyExtras.delete(key);
       jobStates.delete(key);
+      statusFailures.delete(key);
       zipReviews.delete(key);
       return;
     }
+    if (!res) {
+      // The status fetch failed (offline, or the service address
+      // blocked in this browser): count it, so the row can say the
+      // service cannot be reached instead of sitting at "checking…"
+      // with no explanation (2.6.9).
+      statusFailures.set(key, (statusFailures.get(key) || 0) + 1);
+    }
     if (res) {
+      statusFailures.delete(key);
       // The Worker reports the job's current expiry (7 days while
       // ungraded, 180 days after grading); keep the stored entry in
       // step with it.
@@ -1680,6 +1686,7 @@ async function renderJobsOnce() {
       readyBundles.delete(key);
       readyExtras.delete(key);
       jobStates.delete(key);
+      statusFailures.delete(key);
     }
   }
   const survivors = kept.map(({ entry }) => entry);
@@ -1692,8 +1699,9 @@ async function renderJobsOnce() {
   const frag = document.createDocumentFragment();
   for (const entry of survivors) {
     const holder = document.createElement('div');
-    renderJobRow(holder, entry,
-      jobStates.get(jobKey(entry.pkg, entry.retrieval_code)) || null);
+    const key = jobKey(entry.pkg, entry.retrieval_code);
+    renderJobRow(holder, entry, jobStates.get(key) || null,
+      (statusFailures.get(key) || 0) >= 3);
     frag.append(holder);
   }
   // One synchronous swap, after every fetch has settled: no painted

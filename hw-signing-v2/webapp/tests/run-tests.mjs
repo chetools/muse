@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.8');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.9');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -945,8 +945,8 @@ await test('push: VAPID base64url round-trips', () => {
 
 await test('wiring: identifier confirmation gates the job submit button', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes('transcriptionComplete && confirmed'),
-    'submit gating includes the confirmation');
+  assert.ok(main.includes('cfg.ph && transcriptionComplete'),
+    'submit gating needs the package and a finished transcription');
   assert.ok(main.includes("cacheGet(audioSha, VERSIONS.model, VERSIONS.glossary)"),
     'cache is checked after fingerprinting');
   assert.ok(main.includes('transcript restored from this computer') ||
@@ -1001,7 +1001,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.8');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.9');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1734,6 +1734,21 @@ await test('wiring: the 5-second poll is not blocked by focus in the jobs list (
     'downloading a submission ZIP keeps the job row, so the ZIP can be downloaded again');
   assert.ok(download.includes('you can download '),
     'the Done line tells the student the ZIP can be downloaded again');
+});
+
+await test('wiring: no step-5 confirmation box; stuck rows say the service cannot be reached (2.6.9)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(!html.includes('id="confirmChk"') && !main.includes('confirmChk'),
+    'the step-5 confirmation checkbox is gone from page and code');
+  assert.ok(!main.includes('transcriptionComplete && confirmed'),
+    'Send no longer waits on a confirmation flag');
+  assert.ok(main.includes('statusFailures.set(key, (statusFailures.get(key) || 0) + 1)'),
+    'failed status fetches are counted per job');
+  assert.ok(main.includes('(statusFailures.get(key) || 0) >= 3'),
+    'the cannot-reach state needs three failed rounds');
+  assert.ok(main.includes('can\u2019t reach the grading service \u2014 retrying'),
+    'the row states the failure instead of sitting at checking\u2026');
 });
 
 await test('wiring: link check is automatic and needs no played-preview confirmation (2.6.8)', () => {
