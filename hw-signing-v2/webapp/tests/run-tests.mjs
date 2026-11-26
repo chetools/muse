@@ -508,7 +508,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.19');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.20');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1157,17 +1157,50 @@ await test('wiring: the section-7 critique keeps its line breaks', () => {
 
 await test('wiring: the model loads automatically on page open (2.6.4)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(main.includes('startModelLoad();'),
     'page init starts the model load without a click');
-  assert.ok(main.includes("$('loadStatus').textContent = 'Model loaded.';"),
-    'a finished load leaves only the brief loaded line');
-  assert.ok(index.includes('loads by itself and is kept'),
-    'the section-1 note states the load is automatic');
-  assert.ok(index.includes('note fine'),
-    'the section-1 technical detail is set in small print');
-  assert.ok(!index.includes('Nothing is downloaded until you press the button'),
-    'the press-to-download wording is gone');
+});
+
+await test('wiring: no model section; the load is a progress bar, then nothing (2.6.20)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(!index.includes('The transcription model'),
+    'the model section heading is gone');
+  assert.ok(!index.includes('loads by itself') && !index.includes('670 MB'),
+    'no text about the model, its size or its storage remains');
+  assert.ok(index.includes('id="loadProg"'),
+    'the loading progress bar remains');
+  assert.ok(!main.includes('Model loaded.'),
+    'a finished load leaves no line behind');
+  assert.ok(main.includes("$('loadBtn').textContent = 'Retry';"),
+    'a failed load offers a retry beside the failure line');
+  assert.ok(main.includes("'Model did not load. Check the connection and try again.'"),
+    'a failed load states one line beside the retry');
+  assert.ok(index.includes('<h2>1. The recording file</h2>')
+    && index.includes('<h2>6. Your grading jobs</h2>'),
+    'the remaining sections are renumbered 1 to 6');
+  assert.ok(index.includes('after your removals in step 2')
+    && index.includes('to the list in step 2'),
+    'cross-references point at the renumbered removal step');
+});
+
+await test('wiring: the page carries no unnecessary explanations (2.6.20)', () => {
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(!index.includes('keep the\n  recording file') && !index.includes('you need it for the Canvas submission ZIP'),
+    'the intro no longer claims the recording file is needed for the ZIP');
+  assert.ok(!index.includes('Sending takes no YouTube link'),
+    'the sending section has no explanatory paragraph');
+  assert.ok(!index.includes('An ungraded job is kept for 7 days'),
+    'the jobs section has no retention preamble');
+  assert.ok(!index.includes('how much of the question your explanation'),
+    'the jobs section has no completeness/accuracy preamble');
+  assert.ok(!index.includes('Runs 25 s at a time'),
+    'the transcription chunking note is gone');
+  assert.ok(!index.includes('never\n  transcribed twice') && !index.includes('never transcribed twice'),
+    'the recordings cache note is gone');
+  assert.ok(!main.includes('kept for 180 days'),
+    'the send confirmation no longer restates retention');
 });
 
 await test('wiring: no separate download button for the extracted audio', () => {
@@ -1178,7 +1211,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.19');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.20');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1291,8 +1324,10 @@ await test('wiring: preview elements present; the check sits at the click, insid
   assert.ok(!main.includes('Link checks out'), 'no passed-check cell message remains');
   assert.ok(main.includes('previewPlayer.destroy()'),
     'clearing the player destroys it — the window actually clears');
-  assert.ok(main.includes('previewMaybeClear(key, parseYouTubeVideoId(input.value))'),
-    'editing the playing row’s link clears the player with it');
+  assert.ok(main.includes('previewOnLinkCommit(key, nowParsed);'),
+    'editing the playing row’s link to a new video updates the player to it (2.6.20)');
+  assert.ok(main.includes('previewMaybeClear(key, null)'),
+    'editing the playing row’s link to nothing readable clears the player with it');
   assert.ok(main.includes('previewMaybeClear(key, null)'),
     'clearing the playing row’s link clears the player with it');
   assert.ok(main.includes("dlBtn.textContent = 'Download submission ZIP';"),
@@ -1823,8 +1858,8 @@ await test('wiring: cross-assignment guard on the row Generate ZIP button (2.6.2
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(!html.includes('Turn a graded job into your Canvas submission'),
     'the conversion panel heading is gone with the panel');
-  assert.ok(html.includes('A job\u2019s ZIP is built only from its own assignment\u2019s link'),
-    'section 7 states the guard');
+  assert.ok(main.includes('To build this job\u2019s submission ZIP'),
+    'the guarded row itself states the guard (the section preamble went in the 2.6.20 diet)');
 });
 await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -1845,10 +1880,8 @@ await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () =
     'the stray duration sentence is gone from the submission file');
   assert.ok(pkg.includes('<dt>Audio duration unit</dt><dd>seconds (s)</dd>'),
     'the duration unit is a labelled entry');
-  assert.ok(html.includes('its fingerprint goes into the submission ZIP'),
-    'step 2 states that the fingerprint goes into the ZIP (2.6.3)');
-  assert.ok(!html.includes('it, or its fingerprint, goes into'),
-    'step 2 no longer hedges the ZIP contents (2.6.3)');
+  assert.ok(!html.includes('its fingerprint goes into the submission ZIP'),
+    'the step-2 fingerprint sentence went with the 2.6.20 text diet');
   assert.ok(!html.includes('for a job sent with a checked link, with the recording'),
     'the opening paragraph does not tie the fingerprint form to a checked link (2.6.3)');
   assert.ok(main.includes('Verifying the fingerprint and the transcript'),
@@ -1940,9 +1973,11 @@ await test('wiring: section 7 redesign — table rows, details row, compact revi
     'a completed verification opens the panel so the review is visible');
   assert.ok(html.includes('.jobstable .jobgrades'),
     'the grades sit in the table’s Grades column');
-  assert.ok(rowFn.includes("'Add a YouTube link to download the ZIP.'") ||
-    main.includes("'Add a YouTube link to download the ZIP.'"),
+  assert.ok(rowFn.includes("'Necessary for ZIP generation'") ||
+    main.includes("'Necessary for ZIP generation'"),
     'a row with no readable link carries the one succinct line');
+  assert.ok(!main.includes('Add a YouTube link to download the ZIP.'),
+    'the older caption wording is gone');
   assert.ok(main.includes("zipBtn.textContent = 'Generate ZIP'"),
     'a readable link produces the Generate ZIP button');
   assert.ok(rowFn.includes("clearBtn.textContent = '×'"),
@@ -1970,11 +2005,25 @@ await test('wiring: no add-link button; the row field is the link route (2.6.16)
     'the conversion wording is gone');
   assert.ok(main.includes("input.dataset.act = 'ytlink'"),
     'each ready row carries its own link field');
-  assert.ok(main.includes("setTimeout(() => previewLoad(id, true, key), 400)"),
+  assert.ok(main.includes('previewLoad(id, true, key);') && main.includes('}, 400);'),
     'dwelling on a populated link cell plays its video in the preview area');
+  assert.ok(main.includes('if (!document.contains(input)) return;'),
+    'the hover timer re-validates, so a cleared or rebuilt row cannot resurrect its video (2.6.20)');
   assert.ok(main.includes('previewPlayer.mute()') || main.includes('ev.target.mute()'),
     'the preview is muted before it plays — no audible autoplay');
 });
+await test('wiring: a link added or replaced in a row plays at once (2.6.20)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('function previewOnLinkCommit(key, videoId)'),
+    'one helper takes the viewing area over for a committed link');
+  assert.ok(main.includes('previewOnLinkCommit(key, nowParsed);'),
+    'the field commit path plays the new video without a hover');
+  assert.ok(main.includes('previewOnLinkCommit(key, videoId);'),
+    'the Generate ZIP check path also takes the player over');
+  assert.ok(main.includes('nowParsed !== prevParsed'),
+    'the takeover fires on a change of video, not on every keystroke');
+});
+
 await test('wiring: fingerprint-form ZIP path is wired into the review and download steps (2.6.0)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes('bundleChromaprintSha(bundle)'),

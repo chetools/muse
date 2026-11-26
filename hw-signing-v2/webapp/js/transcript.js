@@ -33,7 +33,7 @@ export function scrubText(text, words) {
     // or commas — so "Ann-Marie Lee" removes "Ann Marie Lee" and
     // "Ann, Marie Lee" as well as the exact form. (A name spoken as
     // one joined word, e.g. "CarlosCo", still cannot be matched
-    // safely and is left to the identifier review in section 5.)
+    // safely and is left to the identifier review in section 4.)
     const pattern = String(w).split(/[\s-]+/).filter(Boolean)
       .map(escapeRegExp).join('(?:[,\\s-]+)');
     if (!pattern) continue;

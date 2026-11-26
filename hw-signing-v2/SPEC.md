@@ -562,6 +562,13 @@ Finalize marks a job final and enforces the one-final rule
 only; the page carries no bound-video comparison and no
 supersede notice, and the review's confirm button reads
 “Download submission ZIP”.
+Webapp 2.6.20: the page's model section is eliminated (the
+load shows a progress bar only, then nothing; a failed load
+leaves one line and a Retry button), the sections are
+renumbered 1 to 6, explanatory text that restated its
+controls is removed, the empty link field's caption reads
+“Necessary for ZIP generation”, and a link added or replaced
+in a row plays in the preview area at once, without a hover.
 `critique_sha256` = SHA-256 hex of the critique exactly as stored.
 receipt = base64url(HMAC-SHA-256(SIGNING_SECRET, canonical)).
 The bundle returned to the student and printed in the HTML is:

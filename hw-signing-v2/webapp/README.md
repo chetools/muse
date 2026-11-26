@@ -300,7 +300,7 @@ sandbox browser cannot reach YouTube).
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle
   change changes the glossary string and thereby every cache key.
 - **Jobs list and the YouTube link (2.6.16; no binding
-  2.6.19)**: section 7 is a
+  2.6.19)**: the jobs section is a
   table (Job | Grades | YouTube link | Actions; stacked on phone
   widths) with a fixed, muted preview player above it — hovering a
   populated row's link cell for about 400 ms plays that video
@@ -316,7 +316,7 @@ sandbox browser cannot reach YouTube).
 - **No check on paste; no binding (2.6.18, 2.6.19)**:
   pasting or editing a row's link runs no check and shows no
   status; while the field holds no readable link the cell shows
-  only “Add a YouTube link to download the ZIP.”, and a readable
+  only “Necessary for ZIP generation” (2.6.20), and a readable
   link brings the row's Generate ZIP button. The length check is
   gone from the page entirely. Clicking Generate ZIP runs the
   Worker's reachability check while preparing the review — a
@@ -334,6 +334,23 @@ sandbox browser cannot reach YouTube).
   hash, works like any other row — the page never consults that
   hash, and a ZIP generated with a different link packages that
   link.
+- **Text diet, no model section, play on commit (2.6.20)**: the
+  transcription-model section is gone — while the model loads,
+  only its progress bar shows; when it has loaded, the bar goes
+  and nothing replaces it, and a failed load leaves one line
+  (“Model did not load. Check the connection and try again.”)
+  with a Retry button beside it. The remaining sections are
+  renumbered 1 to 6 (the removals list is step 2; the jobs
+  section is section 6), and explanatory text that restated its
+  controls is removed throughout: the intro no longer claims
+  the recording file is needed for the submission ZIP (it is
+  not — the ZIP is built from the job's own data), and the
+  sending and jobs sections carry no preamble paragraphs.
+  A link added or replaced in a row now plays in the preview
+  area at once, without a hover (muted, as before); the hover
+  dwell is unchanged, and its timer re-validates when it fires,
+  so a row cleared or rebuilt inside the dwell cannot resurrect
+  the video it no longer holds.
 - **Package transcript timestamps use total minutes** (`[75:20]`),
   carried over from v1, because the audit app's timestamp stripping
   reads `mm:ss`.

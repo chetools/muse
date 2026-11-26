@@ -98,8 +98,7 @@
   <h1>Graded feedback on practice recordings for Canvas submission</h1>
   <p class="sub">Record your video, following the course camera-angle
   requirements. The recording never leaves this page — only the transcript
-  is sent for grading, after your removals in step 3 — and keep the
-  recording file: you need it for the Canvas submission ZIP in section 7.</p>
+  is sent for grading, after your removals in step 2.</p>
   <p class="note" id="appVersion"></p>
   <p class="status" id="cfgLine">Configuration: reading the link…</p>
   <div class="err" id="errBox"></div>
@@ -118,45 +117,34 @@
     <p class="mono" id="suLink"></p>
   </section>
 
-  <h2>1. The transcription model</h2>
-  <div class="row">
-    <button id="loadBtn" class="primary" hidden>Load model (about 670 MB, first time only)</button>
-    <span class="status" id="loadStatus">Loading model…</span>
+  <div class="row" id="modelLoadRow">
+    <progress id="loadProg" value="0" max="1" hidden></progress>
+    <span class="status" id="loadStatus"></span>
+    <button id="loadBtn" hidden>Load model</button>
   </div>
-  <progress id="loadProg" value="0" max="1" hidden></progress>
-  <p class="note fine">The model (about 670 MB) loads by itself and is kept
-  in this browser. Not needed if the recording is already saved on this
-  computer.</p>
 
-  <h2>2. The recording file</h2>
+  <h2>1. The recording file</h2>
   <div class="row">
     <input type="file" id="mediaFile" accept="audio/*,video/*,.wav,.mp3,.m4a,.webm,.ogg,.mp4,.mov,.mkv">
     <span class="status" id="mediaStatus">No file chosen.</span>
   </div>
   <p class="note" id="audioMeta"></p>
-  <p class="note">The extracted audio is saved on this computer automatically; its fingerprint goes into the submission ZIP.</p>
   <h3>Recordings saved on this computer</h3>
-  <p class="note">Kept in this browser, so the same recording is never
-  transcribed twice. Deleting an entry here does not touch your own
-  files.</p>
   <div class="box" id="cacheBox">No recordings saved yet.</div>
 
-  <h2>3. Names and words to remove</h2>
+  <h2>2. Names and words to remove</h2>
   <p class="note">One per line, or separated by commas; removed from the
   transcript and from everything this page shows or exports. What you type
   here never leaves this page.</p>
   <textarea id="scrubField" rows="3" placeholder="e.g. your name, your lab partner's name, your school"></textarea>
   <p class="status" id="scrubStatus"></p>
 
-  <h2>4. Transcription</h2>
+  <h2>3. Transcription</h2>
   <div class="row">
     <button id="runBtn" class="primary" disabled>Transcribe</button>
     <span class="status" id="runStatus"></span>
   </div>
   <progress id="runProg" value="0" max="1" hidden></progress>
-  <p class="note">Runs 25 s at a time; a long recording takes many minutes.
-  Pieces are saved as they finish, so an interrupted run resumes when you
-  choose the same file again.</p>
   <div class="box" id="liveBox" hidden>
     <div><span class="lbl">Latest piece, as transcribed:</span> <span id="liveRaw"></span></div>
     <div style="margin-top:6px"><span class="lbl">Latest piece, after glossary correction and removal:</span> <span id="liveCorrected"></span></div>
@@ -164,25 +152,18 @@
   <h3>Transcript (corrected, with removals applied)</h3>
   <div class="box" id="transcriptBox">Your transcript will appear here.</div>
 
-  <h2>5. Possible identifiers</h2>
+  <h2>4. Possible identifiers</h2>
   <p class="note">Words that may identify you, after your removals. Add any
-  that are yours to the list in step 3.</p>
+  that are yours to the list in step 2.</p>
   <div class="box" id="suspectsBox">No transcript yet.</div>
 
-  <h2>6. Sending for grading</h2>
-  <p class="note">Sending takes no YouTube link. When the grade is back,
-  the link is added in the job’s own row in section 7, where the
-  Canvas submission ZIP is made.</p>
+  <h2>5. Sending for grading</h2>
   <div class="row">
     <button id="submitJobBtn" class="primary" disabled>Send for grading</button>
     <span class="status" id="jobStatus"></span>
   </div>
 
-  <h2>7. Your grading jobs</h2>
-  <p class="note">An ungraded job is kept for 7 days; a grade for 180 days.
-  A job’s ZIP is built only from its own assignment’s link.</p>
-  <p class="note">Completeness — how much of the question your explanation
-  covers. Accuracy — how much of it is right.</p>
+  <h2>6. Your grading jobs</h2>
   <div class="status" id="zipDone" role="status"></div>
   <div id="ytPreviewArea"><div id="ytPreviewSlot"><div id="ytPreviewPlayer"></div><span id="ytPreviewHint">Hover a YouTube link to play it here</span><div id="ytPreviewOverlay" hidden></div></div></div>
   <div class="box" id="jobsBox">No jobs sent from this browser yet.</div>

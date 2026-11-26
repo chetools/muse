@@ -127,7 +127,7 @@ function scrubbed() { return scrubChunks(chunks, scrubWords()); }
 function canonical() { return canonicalTranscript(scrubbed()); }
 // There is no Practice/Final choice anywhere in the page (2.6.16):
 // a job is sent with no YouTube link, and the submission is made
-// afterwards from the job's own row in section 7. No video is
+// afterwards from the job's own row in section 6. No video is
 // bound to a job (2.6.19): confirming the ZIP review finalises
 // the job — marking it final, with no video attached — and the
 // ZIP carries the row's link as package data. The Worker's
@@ -188,13 +188,15 @@ function onDownloadProgress({ loaded, total, file }) {
   for (const v of fileProgress.values()) { sumLoaded += v.loaded; sumTotal += v.total || 0; }
   if (sumTotal > 0) {
     $('loadProg').value = sumLoaded / sumTotal;
-    $('loadStatus').textContent = 'Downloading ' + file + ' — ' +
-      (sumLoaded / 1048576).toFixed(0) + ' MB of ' + (sumTotal / 1048576).toFixed(0) + ' MB…';
   }
 }
-// The model loads automatically when the page opens (2.6.4); the
-// button remains only as the retry after a failed load, and in
-// teacher setup mode, where nothing loads on its own.
+// The model loads automatically when the page opens (2.6.4).
+// There is no model section (2.6.20): while it loads, only the
+// progress bar shows; when it has loaded, the bar goes and
+// nothing replaces it. The button appears only after a failed
+// load, as the retry, beside the one-line failure note; in
+// teacher setup mode, where nothing loads on its own, it is
+// the manual load button.
 let modelLoading = false;
 async function startModelLoad() {
   if (model || modelLoading) return;
@@ -202,17 +204,17 @@ async function startModelLoad() {
   clearError();
   $('loadBtn').hidden = true;
   $('loadProg').hidden = false;
-  $('loadStatus').textContent = 'Loading model…';
+  $('loadStatus').textContent = '';
   try {
     model = await loadModel(onDownloadProgress);
     $('loadProg').hidden = true;
-    $('loadStatus').textContent = 'Model loaded.';
     updateRunEnabled();
   } catch (err) {
+    console.error(err);
     $('loadProg').hidden = true;
-    $('loadStatus').textContent = 'Model did not load.';
+    $('loadStatus').textContent = 'Model did not load. Check the connection and try again.';
+    $('loadBtn').textContent = 'Retry';
     $('loadBtn').hidden = false;
-    showError('Model loading failed. Check the connection and try again.', err, $('loadBtn'));
   } finally {
     modelLoading = false;
   }
@@ -620,6 +622,18 @@ function previewClear() {
 // edited to a different video or to something unreadable, the
 // playing window clears with the link. Editing any other row, or
 // re-entering the same video, leaves the player untouched.
+// A link added or replaced in a row plays in the viewing area
+// at once (2.6.20), without waiting for a hover: the commit is
+// the field holding a readable video different from the one the
+// field held before. If another row's video was showing, the
+// area updates to this one. Clearing keeps the clearing
+// behaviour below.
+function previewOnLinkCommit(key, videoId) {
+  if (!videoId) return;
+  if (previewKey === key && previewVideoId === videoId) return;
+  previewLoad(videoId, true, key);
+}
+
 function previewMaybeClear(key, currentVideoId) {
   if (previewKey !== key) return;
   if (currentVideoId && currentVideoId === previewVideoId) return;
@@ -673,7 +687,7 @@ function rowCellBits(key) {
   const bits = { text: '', cls: 'ytneed', openId: parsed };
   if (zipErr) { bits.text = zipErr; bits.cls = 'ytreason'; return bits; }
   if (!parsed) {
-    bits.text = 'Add a YouTube link to download the ZIP.';
+    bits.text = 'Necessary for ZIP generation';
     return bits;
   }
   return bits;
@@ -775,6 +789,7 @@ async function generateZipForRow(entry, bundle, btn) {
   // only. It is package data: the ZIP is built with this link,
   // and no video is bound to the job (2.6.19).
   persistRowLink(entry, canonical, res.title || '', res.checked_at);
+  previewOnLinkCommit(key, videoId);
   if (rowDrafts.get(key) !== canonical) rowDrafts.set(key, canonical);
   const pending = { videoId, title: res.title || '' };
   await downloadSubmissionZip(entry, bundle, btn, (msg) => {
@@ -834,9 +849,7 @@ $('submitJobBtn').addEventListener('click', async () => {
     const res = await submitJob(cfg.worker, payload);
     const sentText =
       'Sent — when the grade is back, add the YouTube link in the ' +
-      'job’s row below to make your Canvas submission. ' +
-      'The list below updates every 5 seconds while this page is open. ' +
-      'An ungraded job is kept for 7 days; once graded, the grade is kept for 180 days.';
+      'job’s row below to make your Canvas submission.';
     if (res.duplicate) {
       // The recording already has a live job under this prompt
       // package version: no new job was created. The entry is filed
@@ -969,7 +982,7 @@ function keepReenteredLink(entry, bundle, link) {
 // - the transcript is built from THAT recording's own cached chunks
 //   (never from whatever transcript happens to be on the page) and
 //   its canonical checksum must equal the signed transcript_sha256 —
-//   a different removal list in step 3 is the usual cause of a
+//   a different removal list in step 2 is the usual cause of a
 //   mismatch, and the error says so;
 // - the critique's SHA-256 must equal the signed critique_sha256.
 // The YouTube link is not verified against the bundle: no video
@@ -1027,7 +1040,7 @@ async function verifySubmissionParts(entry, bundle, anchor, onError, pending) {
   if (failures.includes('transcript')) {
     fail('Packaging would use a transcript that does not match the ' +
       'transcript that was graded (checksum mismatch). The usual cause is ' +
-      'the removal list in step 3: re-enter the same names and words you ' +
+      'the removal list in step 2: re-enter the same names and words you ' +
       'used when you sent this job, then try again.', null, anchor);
     return null;
   }
@@ -1153,7 +1166,7 @@ async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
   if (failures.includes('transcript')) {
     fail('Packaging would use a transcript that does not match ' +
       'the transcript that was graded (checksum mismatch). The usual ' +
-      'cause is the removal list in step 3: re-enter the same names ' +
+      'cause is the removal list in step 2: re-enter the same names ' +
       'and words you used when you sent this job, then try again.',
     null, anchor);
     return null;
@@ -1498,13 +1511,20 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
       open.href = canonicalWatchUrl(bits.openId);
     }
     input.addEventListener('input', () => {
+      const prevParsed = parseYouTubeVideoId(rowDrafts.get(key) || '');
       rowDrafts.set(key, input.value);
       clearBtn.hidden = !input.value;
       rowZipErrors.delete(key);
-      // If this row's link loaded the preview player and the edit
-      // changed or unreadied the video, the window clears with
+      // A link added or replaced in the row plays in the viewing
+      // area at once (2.6.20). If this row's link loaded the
+      // player and the edit unreadied it, the window clears with
       // the link (2.6.18).
-      previewMaybeClear(key, parseYouTubeVideoId(input.value));
+      const nowParsed = parseYouTubeVideoId(input.value);
+      if (nowParsed && nowParsed !== prevParsed) {
+        previewOnLinkCommit(key, nowParsed);
+      } else if (!nowParsed) {
+        previewMaybeClear(key, null);
+      }
       // The Generate ZIP button follows readability, in place:
       // present while the field holds a readable link, gone
       // while it does not. No check runs on typing.
@@ -1544,7 +1564,14 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
     tdYt.addEventListener('mouseenter', () => {
       const id = parseYouTubeVideoId(input.value);
       if (!id) return;
-      hoverTimer = setTimeout(() => previewLoad(id, true, key), 400);
+      // The timer re-validates when it fires (2.6.20): a row
+      // rebuilt, cleared or edited within the dwell must not
+      // resurrect the video it no longer holds.
+      hoverTimer = setTimeout(() => {
+        if (!document.contains(input)) return;
+        if (parseYouTubeVideoId(input.value) !== id) return;
+        previewLoad(id, true, key);
+      }, 400);
     });
     tdYt.addEventListener('mouseleave', () => {
       if (hoverTimer) clearTimeout(hoverTimer);
@@ -1914,7 +1941,6 @@ renderCacheList();
 renderJobs();
 if (cfg.setup) {
   $('loadBtn').hidden = false;
-  $('loadStatus').textContent = 'Model not loaded.';
 } else {
   startModelLoad();
 }
