@@ -29,6 +29,13 @@
 //                                Accuracy, Critique SHA-256, YouTube
 //                                video SHA-256, Graded at,
 //                                Grade receipt.
+// Fingerprint form (2.6.0): when the signed bundle carries a real
+// chromaprint_sha256 (the job was graded under Worker 2.7.0 with a
+// fingerprint), the ZIP holds the raw fingerprint bytes instead of
+// the WAV, and the <dl> gains one more line — Chromaprint SHA-256,
+// immediately after Audio SHA-256 — with the Audio file line naming
+// the fingerprint file. Bundles without the field (or with "none")
+// produce exactly the markup above, unchanged.
 // v2 packages carry NO v1 receipt and no Session line: the job ID and
 // the grade receipt take their place. Transcript timestamps use total
 // minutes ([75:20], never h:mm:ss) so the audit's timestamp stripping
@@ -37,12 +44,13 @@
 
 export const FORMAT_VERSION = '2';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 2.5.4',
+  webapp: 'hw-signing-webapp 2.6.0',
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };
 
 export const AUDIO_FILE_NAME = 'submission-audio.wav';
+export const FINGERPRINT_FILE_NAME = 'submission-fingerprint.bin';
 export const PACKAGE_FILE_NAME = 'submission.html';
 
 export function escapeHtml(s) {
@@ -70,12 +78,39 @@ function oneLine(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
+// Parse canonical transcript lines ("[mm:ss] text", one per chunk)
+// back into chunks: [{ start, text }] with start in seconds from the
+// marker. The fingerprint-form ZIP path uses this on the transcript
+// text the Worker returns with the grade (Worker 2.7.0), when this
+// computer does not hold the recording's own chunks. A line that
+// does not carry a marker is kept as a chunk with start 0 and the
+// line as its text — never dropped.
+export function chunksFromCanonical(transcriptText) {
+  const chunks = [];
+  for (const line of String(transcriptText || '').split('\n')) {
+    if (line === '') continue;
+    const m = line.match(/^\[(\d+):(\d{2})\](?: (.*))?$/);
+    if (m) {
+      chunks.push({ start: Number(m[1]) * 60 + Number(m[2]), text: m[3] || '' });
+    } else {
+      chunks.push({ start: 0, text: line });
+    }
+  }
+  return chunks;
+}
+
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
 // Assemble the HTML package. Input:
 // { youtubeLink, audioFileName, durationS, chunks: [{start, text}]
-//   (scrubbed chunk texts), bundle: <Worker result bundle> }
+//   (scrubbed chunk texts), bundle: <Worker result bundle>,
+//   fingerprintSha256?: the bundle's signed chromaprint_sha256 —
+//   fingerprint form only (see the markup contract above) }
 // Audio is never embedded.
 export function assemblePackage(input) {
   const bundle = input.bundle || {};
+  const fpSha = SHA256_HEX.test(input.fingerprintSha256 || '')
+    ? input.fingerprintSha256 : null;
   const link = input.youtubeLink || '';
   const linkHtml = link
     ? '<a href="' + escapeHtml(link) + '">' + escapeHtml(link) + '</a>'
@@ -119,9 +154,12 @@ export function assemblePackage(input) {
     '<dt>Model version</dt><dd>' + escapeHtml(VERSIONS.model) + '</dd>\n' +
     '<dt>Glossary version</dt><dd>' + escapeHtml(VERSIONS.glossary) + '</dd>\n' +
     '<dt>YouTube link</dt><dd>' + linkHtml + '</dd>\n' +
-    '<dt>Audio file</dt><dd>' + escapeHtml(input.audioFileName) + '</dd>\n' +
+    '<dt>Audio file</dt><dd>' + escapeHtml(fpSha ? FINGERPRINT_FILE_NAME : input.audioFileName) + '</dd>\n' +
     '<dt>Audio duration</dt><dd>' + duration + '</dd>\n' +
     '<dt>Audio SHA-256</dt><dd>' + escapeHtml(bundle.audio_sha256 || '') + '</dd>\n' +
+    (fpSha
+      ? '<dt>Chromaprint SHA-256</dt><dd>' + escapeHtml(fpSha) + '</dd>\n'
+      : '') +
     '<dt>Transcript SHA-256</dt><dd>' + escapeHtml(bundle.transcript_sha256 || '') + '</dd>\n' +
     '<dt>Completeness</dt><dd>' + escapeHtml(bundle.completeness) + '</dd>\n' +
     '<dt>Accuracy</dt><dd>' + escapeHtml(bundle.accuracy) + '</dd>\n' +

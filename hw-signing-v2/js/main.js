@@ -23,7 +23,8 @@ import {
   legacyCanonicalTranscript, findSuspects, formatDuration,
 } from './transcript.js';
 import {
-  VERSIONS, AUDIO_FILE_NAME, assemblePackage, formatTranscriptTimestamp,
+  VERSIONS, AUDIO_FILE_NAME, FINGERPRINT_FILE_NAME, assemblePackage,
+  chunksFromCanonical, formatTranscriptTimestamp,
 } from './package.js';
 import { encodeWavPcm16, decodeFileTo16kMono, SAMPLE_RATE } from './media.js';
 import { loadModel, transcribePcm, FILE_WINDOW_S } from './transcribe.js';
@@ -35,7 +36,7 @@ import {
 import { fromCachedChunk, recordingFirstWords } from './cachekey.js';
 import {
   parseYouTubeVideoId, canonicalWatchUrl, classifyDuration,
-  verifyBundleContents,
+  verifyBundleContents, bundleChromaprintSha, verifyFingerprintContents,
   validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry,
   removeJobEntry, saveJobEntries, kindFromResultBundle,
   duplicateJobEntry, collapseSameJobEntries,
@@ -43,6 +44,7 @@ import {
   finalizeJob, reportDurationStat,
 } from './jobs.js';
 import { computeFingerprint } from './fingerprint.js';
+import { decodeRawFingerprint } from './fingerprint.js';
 import { buildZipAsync, submissionZipName, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
 
 const $ = (id) => document.getElementById(id);
@@ -69,6 +71,9 @@ let ytDur = null;           // duration comparison for the step-6 check:
 let finDur = null;          // the same, for the conversion panel
 let ytApiPromise = null;
 const readyBundles = new Map(); // "pkg|code" -> result bundle from /jobs/status
+const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
+// the same status response (Worker 2.7.0): the stored transcript text and the
+// raw fingerprint as base64, kept in memory only, for the fingerprint-form ZIP
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
 const expandedJobs = new Set(); // "pkg|code" with grades shown (kept across refreshes)
 
@@ -912,6 +917,32 @@ function clearZipStatus(anchor) {
   if (row) for (const el of row.querySelectorAll('.zipstatus')) el.remove();
 }
 
+// Keep a re-entered YouTube link with the job's stored entry, so
+// the next click does not need it again. Only a stored entry is
+// updated; a manually retrieved job is not in the stored list. The
+// title and check time come from the step-6 check when it was made
+// for this job's recording. Shared by the WAV and fingerprint ZIP
+// paths.
+function keepReenteredLink(entry, bundle, link) {
+  if (entry.youtube_link) return;
+  // Keep the re-entered link with the entry so the next click does
+  // not need it again.
+  const entries = loadJobEntries();
+  const e = entries.find((x) => x.pkg === entry.pkg &&
+    x.retrieval_code === entry.retrieval_code);
+  if (e) {
+    entry.youtube_link = link;
+    e.youtube_link = link;
+    if (ytCheck && ytCheck.audioSha256 === bundle.audio_sha256) {
+      entry.youtube_title = ytCheck.title || '';
+      entry.youtube_checked_at = ytCheck.checkedAt;
+      e.youtube_title = ytCheck.title || '';
+      e.youtube_checked_at = ytCheck.checkedAt;
+    }
+    saveJobEntries(entries);
+  }
+}
+
 // Verify everything that will go into the ZIP against the signed
 // result bundle, before anything is packaged:
 // - the WAV is the recording the job was graded on: it is fetched by
@@ -1003,28 +1034,123 @@ async function verifySubmissionParts(entry, bundle, anchor) {
     showError('A different video is kept on this browser from the one that was checked for this job.', null, anchor);
     return null;
   }
-  if (!entry.youtube_link) {
-    // Keep the re-entered link with the entry so the next click does
-    // not need it again. Only a stored entry is updated; a manually
-    // retrieved job is not in the stored list. The title and check
-    // time come from the step-6 check when it was made for this
-    // job's recording.
-    const entries = loadJobEntries();
-    const e = entries.find((x) => x.pkg === entry.pkg &&
-      x.retrieval_code === entry.retrieval_code);
-    if (e) {
-      entry.youtube_link = link;
-      e.youtube_link = link;
-      if (ytCheck && ytCheck.audioSha256 === bundle.audio_sha256) {
-        entry.youtube_title = ytCheck.title || '';
-        entry.youtube_checked_at = ytCheck.checkedAt;
-        e.youtube_title = ytCheck.title || '';
-        e.youtube_checked_at = ytCheck.checkedAt;
-      }
-      saveJobEntries(entries);
-    }
+  keepReenteredLink(entry, bundle, link);
+  return { form: 'wav', wav, scrubbedChunks, record, videoId };
+}
+
+// The fingerprint form's verification (2.6.0): the same discipline
+// as verifySubmissionParts, over the contents this form packages —
+// no audio is read on this computer at all, which is what lets a
+// job retrieved on a fresh computer (no local entry, no recording)
+// build its ZIP here.
+// - the fingerprint bytes are the ones the status response returned
+//   with the grade, and their SHA-256 must equal the signed
+//   chromaprint_sha256 in the bundle;
+// - the transcript comes from this recording's own cached chunks
+//   when this computer holds them, and otherwise from the
+//   transcript text the status response returned; either way its
+//   canonical SHA-256 must equal the signed transcript_sha256;
+// - the critique's SHA-256 must equal the signed critique_sha256;
+// - the YouTube link (the entry's kept link, or the one in the
+//   step-6 field) must hash to the signed youtube_video_sha256.
+// Returns the verified parts, or null with the error shown beside
+// the button that was used.
+async function verifyFingerprintParts(entry, bundle, anchor) {
+  const key = jobKey(entry.pkg, entry.retrieval_code);
+  const extras = readyExtras.get(key);
+  const items = extras && extras.chromaprint
+    ? decodeRawFingerprint(extras.chromaprint) : null;
+  if (!items) {
+    showError('The grading record for this job did not include its ' +
+      'recording fingerprint, so the fingerprint submission cannot ' +
+      'be built. Retrieve the job again and try again.', null, anchor);
+    return null;
   }
-  return { wav, scrubbedChunks, record, videoId };
+  const fingerprintBytes = new Uint8Array(
+    items.buffer, items.byteOffset, items.byteLength);
+  const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
+    .catch(() => null);
+  let scrubbedChunks = null;
+  let transcriptSha = null;
+  if (record && record.chunks && record.chunks.length) {
+    scrubbedChunks = scrubChunks(
+      record.chunks.map(fromCachedChunk), scrubWords());
+    const [markedSha, legacySha] = await Promise.all([
+      sha256Hex(canonicalTranscript(scrubbedChunks)),
+      sha256Hex(legacyCanonicalTranscript(scrubbedChunks)),
+    ]);
+    transcriptSha = legacySha === bundle.transcript_sha256
+      ? legacySha : markedSha;
+  } else if (extras && typeof extras.transcript === 'string') {
+    transcriptSha = await sha256Hex(extras.transcript);
+    scrubbedChunks = chunksFromCanonical(extras.transcript);
+  }
+  if (!scrubbedChunks) {
+    showError('The grading record for this job did not include its ' +
+      'transcript, so the submission cannot be built. Retrieve the ' +
+      'job again and try again.', null, anchor);
+    return null;
+  }
+  const [fingerprintSha, critiqueSha] = await Promise.all([
+    sha256Hex(fingerprintBytes),
+    sha256Hex(bundle.critique || ''),
+  ]);
+  const failures = verifyFingerprintContents(bundle, {
+    fingerprintSha256: fingerprintSha, transcriptSha256: transcriptSha,
+    critiqueSha256: critiqueSha,
+  });
+  if (failures.includes('fingerprint')) {
+    showError('The recording fingerprint that came back with this ' +
+      'grade does not match the fingerprint checksum signed with ' +
+      'the grade, so nothing was packaged. Retrieve the job again ' +
+      'and retry.', null, anchor);
+    return null;
+  }
+  if (failures.includes('transcript')) {
+    showError('Packaging would use a transcript that does not match ' +
+      'the transcript that was graded (checksum mismatch). The usual ' +
+      'cause is the removal list in step 3: re-enter the same names ' +
+      'and words you used when you sent this job, then try again.',
+    null, anchor);
+    return null;
+  }
+  if (failures.includes('critique')) {
+    showError('Critique check failed: the critique in the grade ' +
+      'record does not match its signed checksum, so nothing was ' +
+      'packaged. Retrieve the job again and retry.', null, anchor);
+    return null;
+  }
+  // The link is needed only when the signed bundle names a checked
+  // video; a job whose bundle carries youtube_video_sha256 "none"
+  // was sent without one and packages with no link.
+  let videoId = '';
+  if (bundle.youtube_video_sha256 && bundle.youtube_video_sha256 !== 'none') {
+    const link = entry.youtube_link || $('ytLink').value.trim() || '';
+    videoId = parseYouTubeVideoId(link) || '';
+    if (!videoId) {
+      showError('No YouTube link is kept on this browser. Enter the ' +
+        'link for this recording in step 6 above, then download ' +
+        'again — it is checked against the signed grade record ' +
+        'before anything is packaged.', null, anchor);
+      return null;
+    }
+    const videoIdSha = await sha256Hex(videoId);
+    if (videoIdSha !== bundle.youtube_video_sha256) {
+      showError('That YouTube link is for a different video from ' +
+        'the one that was checked for this job.', null, anchor);
+      return null;
+    }
+    keepReenteredLink(entry, bundle, link);
+  }
+  // The packaged duration: the locally held recording's duration
+  // when this computer has it, otherwise the fingerprint's own
+  // length — one item per 0.124 s of audio.
+  const durationS = record && record.duration_s
+    ? record.duration_s : items.length * 0.124;
+  return {
+    form: 'fingerprint', fingerprintBytes, scrubbedChunks, record,
+    videoId, durationS,
+  };
 }
 
 // First click on a ready final job's ZIP button: verify, then show
@@ -1043,7 +1169,12 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
   try {
     // Let the status paint before the verification hashes begin.
     await new Promise((resolve) => setTimeout(resolve, 0));
-    parts = await verifySubmissionParts(entry, bundle, anchor);
+    // The signed bundle decides the ZIP form (2.6.0): a real signed
+    // chromaprint_sha256 means the fingerprint form, verified
+    // without reading any audio; anything else is the WAV form.
+    parts = bundleChromaprintSha(bundle)
+      ? await verifyFingerprintParts(entry, bundle, anchor)
+      : await verifySubmissionParts(entry, bundle, anchor);
   } finally {
     zipBusy = false;
     anchor.disabled = false;
@@ -1052,18 +1183,23 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
   if (!parts) return;
   const words = scrubWords();
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
-  const recName = parts.record.source_name
+  const recName = parts.record && parts.record.source_name
     ? scrubMetadata(parts.record.source_name, words) + ' · ' : '';
-  const firstWords = recordingFirstWords(parts.record.chunks);
+  const firstWords = parts.record
+    ? recordingFirstWords(parts.record.chunks) : '';
+  const durationS = parts.form === 'fingerprint'
+    ? parts.durationS : parts.record.duration_s;
   const lines = [
     label + ' — ' + entry.pkg,
     'Grades: Completeness ' + bundle.completeness + '/5 · Accuracy ' +
       bundle.accuracy + '/5',
-    'Recording: ' + recName + formatDuration(parts.record.duration_s) +
+    'Recording: ' + recName + formatDuration(durationS) +
       ' · recording hash ' + bundle.audio_sha256.slice(0, 12) + '…' +
       (firstWords
         ? ' · starts “' + scrubMetadata(firstWords, words) + '…”' : ''),
-    'Audio: matches the recording hash signed with the grade ✓',
+    parts.form === 'fingerprint'
+      ? 'Audio: the recording fingerprint matches the checksum signed with the grade ✓'
+      : 'Audio: matches the recording hash signed with the grade ✓',
     'Transcript: matches the checksum signed with the grade ✓',
     'YouTube: ' + (entry.youtube_title ? '“' + entry.youtube_title + '” · ' : '') +
       canonicalWatchUrl(parts.videoId) +
@@ -1084,14 +1220,20 @@ async function doDownloadZip(entry, bundle, review, anchor) {
     const { parts } = review;
     const html = assemblePackage({
       youtubeLink: canonicalWatchUrl(parts.videoId),
-      audioFileName: AUDIO_FILE_NAME,
-      durationS: parts.record.duration_s,
+      audioFileName: parts.form === 'fingerprint'
+        ? FINGERPRINT_FILE_NAME : AUDIO_FILE_NAME,
+      durationS: parts.form === 'fingerprint'
+        ? parts.durationS : parts.record.duration_s,
       chunks: parts.scrubbedChunks,
       bundle,
+      ...(parts.form === 'fingerprint'
+        ? { fingerprintSha256: bundle.chromaprint_sha256 } : {}),
     });
     const zip = await buildZipAsync([
       { name: ZIP_ENTRY_HTML, data: new TextEncoder().encode(html) },
-      { name: ZIP_ENTRY_AUDIO, data: parts.wav },
+      parts.form === 'fingerprint'
+        ? { name: FINGERPRINT_FILE_NAME, data: parts.fingerprintBytes }
+        : { name: ZIP_ENTRY_AUDIO, data: parts.wav },
     ], (done, total) => {
       status.bar.max = total;
       status.bar.value = done;
@@ -1322,6 +1464,7 @@ async function renderJobsOnce() {
       // paused on a review that no longer exists.
       entriesDirty = true;
       readyBundles.delete(key);
+      readyExtras.delete(key);
       jobStates.delete(key);
       zipReviews.delete(key);
       return;
@@ -1337,6 +1480,17 @@ async function renderJobsOnce() {
       }
       if (res.status === 'ready' && res.data && res.data.result) {
         readyBundles.set(key, res.data.result);
+        // The same response carries the stored transcript and
+        // fingerprint (Worker 2.7.0) for the fingerprint-form ZIP
+        // path; an older Worker sends neither, and the WAV path
+        // then governs, exactly as before.
+        if (typeof res.data.transcript === 'string' || res.data.chromaprint) {
+          readyExtras.set(key, {
+            transcript: typeof res.data.transcript === 'string'
+              ? res.data.transcript : null,
+            chromaprint: res.data.chromaprint || null,
+          });
+        }
         // The ready bundle is authoritative for the job's kind: an
         // alias entry filed while the job was still queued carries
         // the submitted kind, which may not be the existing job's
@@ -1390,6 +1544,7 @@ async function renderJobsOnce() {
         }
       }
       readyBundles.delete(key);
+      readyExtras.delete(key);
       jobStates.delete(key);
     }
   }
@@ -1641,8 +1796,10 @@ $('finConfirmBtn').addEventListener('click', async () => {
 
 // Manual retrieval (different browser): status by typed code
 // against the configured package. On ready, the same rendering is
-// used, with a synthetic entry; the ZIP path then needs the audio on
-// this computer, as the section text states.
+// used, with a synthetic entry; the WAV-form ZIP path then needs
+// the audio on this computer, while a fingerprint-form bundle
+// (signed chromaprint_sha256, Worker 2.7.0) builds its ZIP from
+// the fingerprint and transcript the status response returned.
 $('manualBtn').addEventListener('click', async () => {
   clearError();
   const code = $('manualCode').value;
@@ -1723,6 +1880,13 @@ $('manualBtn').addEventListener('click', async () => {
       // entry carries no link, and a listener added on every
       // retrieval accumulated on the field for the page's lifetime.
       readyBundles.set(jobKey(entry.pkg, entry.retrieval_code), res.data.result);
+      if (typeof res.data.transcript === 'string' || res.data.chromaprint) {
+        readyExtras.set(jobKey(entry.pkg, entry.retrieval_code), {
+          transcript: typeof res.data.transcript === 'string'
+            ? res.data.transcript : null,
+          chromaprint: res.data.chromaprint || null,
+        });
+      }
       entry.manual = true;
       manualEntry = entry;
       if (entry.kind === 'practice') {
@@ -1736,7 +1900,9 @@ $('manualBtn').addEventListener('click', async () => {
       const note = document.createElement('p');
       note.className = 'note';
       note.textContent = entry.kind === 'final'
-        ? 'This job was sent with a checked link. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
+        ? (bundleChromaprintSha(res.data.result)
+          ? 'This job was sent with a checked link. Its grade record carries the recording’s fingerprint, so the submission ZIP can be built on this computer without the recording file. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.'
+          : 'This job was sent with a checked link. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download submission ZIP here.')
         : 'This job was sent without a link. To make the Canvas submission, add the YouTube link in the conversion panel above (Turn a graded job into your Canvas submission).';
       box.append(note);
       renderJobRow(box, entry, { status: 'ready' });
