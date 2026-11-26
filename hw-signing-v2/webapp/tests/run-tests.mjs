@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.10');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.11');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -495,30 +495,23 @@ await test('recovery token: byte mapping is uniform, with rejection of bytes >= 
   assert.equal(generateRetrievalToken(rejecting), 'A'.repeat(RECOVERY_TOKEN_LENGTH));
 });
 
-await test('wiring: the page generates the recovery code; no code input remains', () => {
+await test('wiring: the page generates the job token internally; the student never sees or enters a code (2.6.11)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(main.includes('retrievalCode: generateRetrievalToken()'),
     'the submit payload carries a freshly generated token');
-  assert.ok(main.includes('showRecoveryCode(payload.retrieval_code)'),
-    'a successful send shows the recovery code once');
-  assert.ok((main.match(/showRecoveryCode\(payload\.retrieval_code\)/g) || []).length === 2,
-    'the code is shown on exactly the two paths where it retrieves a job: new job and duplicate-with-alias');
-  const submitHandler = main.slice(main.indexOf("$('submitJobBtn').addEventListener('click'"));
-  assert.ok(submitHandler.indexOf("$('recoveryLine').textContent = '';") >= 0 &&
-    submitHandler.indexOf("$('recoveryLine').textContent = '';") <
-      submitHandler.indexOf('buildJobPayload({'),
-    'each send attempt clears any earlier recovery code before sending, so a failed or no-alias send leaves none displayed');
+  assert.ok(!main.includes('showRecoveryCode') && !index.includes('recoveryLine'),
+    'no send-time code display remains');
+  assert.ok(!index.includes('id="manualCode"') && !main.includes('manualBtn'),
+    'no manual code entry remains');
+  assert.ok(!index.includes('Retrieving on a different browser'),
+    'the different-browser retrieval section is gone');
+  assert.ok(!index.includes('recovery'),
+    'the page never mentions a recovery code');
   assert.ok(!main.includes("$('retrievalCode')"),
-    'no page code reads the removed code input');
+    'no page code reads a code input');
   assert.ok(!index.includes('id="retrievalCode"'),
     'step 6 has no retrieval code input');
-  assert.ok(index.includes('id="recoveryLine"'),
-    'step 6 has the one-time recovery code display');
-  assert.ok(index.includes('id="manualCode"'),
-    'the manual recovery box remains for other browsers and pre-2.5.4 codes');
-  assert.ok(index.includes('Recovery code <input type="text" id="manualCode"'),
-    'the manual box is labelled Recovery code');
 });
 
 /* ---------------- job payload ---------------- */
@@ -813,7 +806,7 @@ await test('collapse: distinct jobs and unknown-job entries are all kept', () =>
   assert.equal(kept[1].entry.job_id, 'job-2');
 });
 
-await test('wiring: one ZIP button per job — collapse in render, review replaces the button, manual guard', () => {
+await test('wiring: one ZIP button per job — collapse in render, review replaces the button', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes('collapseSameJobEntries(live)'),
     'renderJobsOnce collapses same-job entries before rendering');
@@ -823,23 +816,8 @@ await test('wiring: one ZIP button per job — collapse in render, review replac
     'the Review button is rendered only when no review is open for the row');
   assert.ok(main.includes("'Close review'"),
     'the open review panel can be closed, restoring the Review button');
-  assert.ok(main.includes('alreadyListed'),
-    'manual retrieval checks whether the job is already in the list');
-  assert.ok(main.includes('That job is already in your jobs list above'),
-    'manual retrieval of a listed job points at the list row instead of rendering a second row');
-  assert.ok(main.includes('clearManualRowIfListed(survivors)'),
-    'every list render clears a manual row whose job has become listed (manual first, send second)');
-  assert.ok(main.includes('That job is now in your jobs list above'),
-    'the cleared manual row leaves a pointer to the list row');
-  const renderOnce = main.slice(main.indexOf('async function renderJobsOnce'),
-    main.indexOf('setInterval(refreshJobs'));
-  assert.ok(renderOnce.indexOf('clearManualRowIfListed(survivors)') >= 0 &&
-    renderOnce.indexOf('clearManualRowIfListed(survivors)') <
-      renderOnce.indexOf('renderJobRow(holder, entry,'),
-    'the manual row is cleared (and its review moved) before the list rows are rendered, so the transferred review is the panel the list row renders');
-  const manualSection = main.slice(main.indexOf('// Manual retrieval'));
-  assert.ok(!manualSection.includes("addEventListener('input'"),
-    'manual retrieval adds no per-retrieval input listener to the step-6 field');
+  assert.ok(!main.includes('manualBtn') && !main.includes('clearManualRowIfListed'),
+    'no manual-retrieval row exists to duplicate a listed job (2.6.11)');
 });
 
 await test('wiring: fingerprint computed after normalisation; duplicate handled in the submit path', () => {
@@ -974,7 +952,7 @@ await test('wiring: the section-7 critique keeps its line breaks', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('<title>Graded feedback on practice recordings for Canvas submission</title>'),
     'page title is the current one');
-  assert.ok(index.includes('Transcription runs in this browser: the recording itself never'),
+  assert.ok(index.includes('The recording never leaves this page'),
     'page description is the current one');
 });
 
@@ -985,7 +963,7 @@ await test('wiring: the model loads automatically on page open (2.6.4)', () => {
     'page init starts the model load without a click');
   assert.ok(main.includes("$('loadStatus').textContent = 'Model loaded.';"),
     'a finished load leaves only the brief loaded line');
-  assert.ok(index.includes('loads automatically when this page opens'),
+  assert.ok(index.includes('loads by itself and is kept'),
     'the section-1 note states the load is automatic');
   assert.ok(index.includes('note fine'),
     'the section-1 technical detail is set in small print');
@@ -1001,7 +979,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.10');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.11');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1020,8 +998,8 @@ await test('wiring: status expiry is stored back into the job entry (2.4.1)', ()
   assert.ok(main.includes("res.status === 'expired'"),
     'renderJobs drops an entry when the Worker reports the job expired');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(index.includes('There is no code to pick'),
-    'the step-6 help states the page makes the recovery code (2.5.4)');
+  assert.ok(!index.includes('id="recoveryLine"'),
+    'no recovery-code line remains in step 6 (2.6.11)');
 });
 
 await test('wiring: jobs refresh never rebuilds the list under the student (2.4.5)', () => {
@@ -1038,13 +1016,10 @@ await test('wiring: jobs refresh never rebuilds the list under the student (2.4.
     'no row is rendered twice (stale state, then fresh state) any more');
   assert.ok((main.match(/zipReviews\.delete/g) || []).length >= 4,
     'a ZIP review entry is deleted on download, on removing its job, ' +
-    'on the job expiring, and on a manual retrieval replacing its row — ' +
+    'on the job expiring, and in the same-job collapse — ' +
     'an orphaned entry would pause the poll for good');
-  assert.ok(main.includes("renderJobRow(box, entry, { status: 'ready' })"),
-    'the manually retrieved row is rendered with a status object, so its ' +
-    'grades and ZIP buttons appear');
-  assert.ok(!main.includes("renderJobRow(box, entry, 'ready')"),
-    'a string status renders as "undefined" with no ZIP button (pre-2.4.5 defect)');
+  assert.ok(!main.includes('renderJobRow(box, entry'),
+    'no second (manual) row is rendered outside the jobs list (2.6.11)');
 });
 
 await test('wiring: ZIP steps show live status and a completion line (2.4.6)', () => {
@@ -1663,12 +1638,10 @@ await test('wiring: cross-assignment guard on ZIP buttons and the conversion pic
     'the guarded row says where its ZIP is built');
   assert.ok(main.includes('if (entry.pkg !== cfg.pkg) continue;'),
     'the conversion picker offers only this assignment\u2019s jobs');
-  assert.ok(main.includes('finManualEntry.pkg === cfg.pkg'),
-    'a manually retrieved job converts only under its own assignment');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.ok(html.includes('Pick the graded job for this assignment'),
-    'the conversion panel names this assignment');
-  assert.ok(html.includes('a job\u2019s submission ZIP is built only from its own assignment\u2019s link'),
+  assert.ok(html.includes('Turn a graded job into your Canvas submission'),
+    'the conversion panel heading names its purpose');
+  assert.ok(html.includes('A job\u2019s ZIP is built only from its own assignment\u2019s link'),
     'section 7 states the guard');
 });
 
@@ -1680,8 +1653,8 @@ await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () =
   assert.ok(!html.includes('carries its recording fingerprint')
     && !main.includes('carries the recording\u2019s fingerprint'),
     'no "carries" for "has" in the retrieval texts');
-  assert.ok(html.includes('Open this page from the assignment\u2019s link, then enter the'),
-    'the retrieval note states the link precondition');
+  assert.ok(!html.includes('Retrieving on a different browser'),
+    'the different-browser retrieval section is gone (2.6.11)');
   assert.ok(!html.includes('the same three bands'), 'no unresolvable "bands" reference');
   assert.ok(main.includes('Open this page from the link your teacher put in Canvas'),
     'the link-check message names the Canvas link');
@@ -1701,17 +1674,17 @@ await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () =
     'the ZIP progress line names the fingerprint form\u2019s verification (2.6.3)');
 });
 
-await test('wiring: job rows sit on one line and copy the recovery code in one click (2.6.5)', () => {
+await test('wiring: job rows sit on one line; no recovery-code control on the row (2.6.5, 2.6.11)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(main.includes("line.className = 'jobline'"),
     'each job row builds a single-line summary container');
   assert.ok(index.includes('.jobline { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }'),
     'the summary line never wraps; the label shortens with an ellipsis instead');
-  assert.ok(main.includes('navigator.clipboard.writeText(entry.retrieval_code)'),
-    'the Copy button copies the stored recovery code in one click');
-  assert.ok(main.includes("copyBtn.textContent = 'Copied'"),
-    'a successful copy is confirmed on the button');
+  assert.ok(!main.includes('Copy recovery code') && !main.includes('codeBtn'),
+    'the row carries no recovery-code control (2.6.11)');
+  assert.ok(main.includes("forgetBtn.textContent = 'Remove from this browser'"),
+    'Remove is the row panel\u2019s only housekeeping control');
 });
 
 await test('wiring: the 5-second poll is not blocked by focus in the jobs list (2.6.6)', () => {
@@ -1726,8 +1699,8 @@ await test('wiring: the 5-second poll is not blocked by focus in the jobs list (
     'the render notes the focused control before the swap');
   assert.ok(main.includes('target.focus({ preventScroll: true })'),
     'the render restores focus to the matching control in the rebuilt row');
-  assert.ok(main.includes('shownCodes.has(row.dataset.jobKey)'),
-    'a shown recovery code stays shown across a refresh rebuild');
+  assert.ok(main.includes('expandedJobs.has(key)'),
+    'an open details panel stays open across a refresh rebuild');
   const download = main.slice(main.indexOf('async function doDownloadZip'),
     main.indexOf('function renderJobRow'));
   assert.ok(!download.includes('removeJobEntry'),
@@ -1774,15 +1747,15 @@ await test('wiring: section 7 redesign — one line collapsed, one panel, compac
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const rowFn = main.slice(main.indexOf('function renderJobRow'),
-    main.indexOf('// The manual-retrieval row'));
+    main.indexOf('// Rendering is serialised'));
   assert.ok(!rowFn.includes('checked link') && !rowFn.includes('sent without a link'),
     'the row label no longer carries the checked-link wording');
   assert.ok(main.includes("(entry.kind === 'final' ? 'Final' : 'Practice')"),
     'the row label names the kind in plain words');
   assert.ok(main.includes("'Show details'") && main.includes("'Hide details'"),
     'one toggle opens and closes the job\u2019s single panel');
-  assert.ok(main.includes('houseRow.append(codeBtn, codeLine, copyBtn, forgetBtn)'),
-    'the recovery code and Remove live in the panel, not on the row\u2019s line');
+  assert.ok(main.includes('houseRow.append(forgetBtn)'),
+    'Remove lives in the panel, not on the row\u2019s line (2.6.11)');
   assert.ok(main.includes("'Checks: recording \u2713 \u00b7 transcript \u2713 \u00b7 YouTube \u2713'"),
     'the ZIP review opens with the three checks on one line');
   assert.ok(!main.includes('Grades: Completeness'),
@@ -1793,14 +1766,12 @@ await test('wiring: section 7 redesign — one line collapsed, one panel, compac
     'the grades sit on the row\u2019s line in their own span');
 });
 
-await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
+await test('wiring: no recovery-code control anywhere on the page (2.6.11)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes("codeBtn.textContent = 'Copy recovery code'"),
-    'each job row carries a Copy recovery code button (2.6.10: copy, not show)');
+  assert.ok(!main.includes('Copy recovery code') && !main.includes('Show recovery code'),
+    'no job row carries a recovery-code button');
   assert.ok(main.includes('entry.retrieval_code'),
-    'the copied code is the job entry\u2019s stored code');
-  assert.ok(!main.includes("'Hide recovery code'"),
-    'there is no show/hide toggle for the code any more');
+    'the entry\u2019s stored token is still used internally, for polling and the ZIP');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(!html.includes('picked at the time'),
     'the retrieval note no longer mentions student-picked codes');
@@ -1810,12 +1781,8 @@ await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
     'the send-time line no longer claims the code is never shown again');
 });
 
-await test('wiring: recovery code copies without showing; practice jobs carry the add-link button (2.6.10)', () => {
+await test('wiring: practice jobs carry the add-link button (2.6.10)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes("btn.textContent = 'Copy recovery code'"),
-    'the send-time line offers a copy button, not the printed code');
-  assert.ok(!main.includes("'Recovery code for the job just sent: ' + code"),
-    'the send-time line no longer prints the code');
   assert.ok(main.includes("entry.kind === 'practice' && entry.pkg === cfg.pkg"),
     'the add-link button is gated to this assignment\u2019s practice jobs');
   assert.ok(main.includes("'Add a YouTube link \u2014 make this your submission'"),

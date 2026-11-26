@@ -83,16 +83,9 @@
 <div class="wrap">
   <h1>Graded feedback on practice recordings for Canvas submission</h1>
   <p class="sub">Record your video, following the course camera-angle
-  requirements. Transcription runs in this browser: the recording itself never
-  leaves this page, and only the transcript is sent for grading — after you
-  have removed names and words in step 3 and checked in step 5 that nothing
-  in it identifies you. When you send in step 6, the page makes a
-  recovery code for the job and offers it to copy; save it — the job’s row in
-  section 7 can copy it again. Keep the recording file as well: after
-  grading, this page packages the grade with the recording’s fingerprint into the ZIP file
-  you upload to Canvas. A YouTube link to the same recording, set to Unlisted
-  or Public, is optional when you send; it is required for the Canvas
-  submission.</p>
+  requirements. The recording never leaves this page — only the transcript
+  is sent for grading, after your removals in step 3 — and keep the
+  recording file: you need it for the Canvas submission ZIP in section 7.</p>
   <p class="note" id="appVersion"></p>
   <p class="status" id="cfgLine">Configuration: reading the link…</p>
   <div class="err" id="errBox"></div>
@@ -117,10 +110,9 @@
     <span class="status" id="loadStatus">Loading model…</span>
   </div>
   <progress id="loadProg" value="0" max="1" hidden></progress>
-  <p class="note fine">The model loads automatically when this page opens. It is about
-  670 MB the first time, and is then kept in this browser. Transcription runs entirely
-  in this browser (NVIDIA Parakeet TDT 0.6B v2, int8; WebAssembly, one thread). If the
-  recording is already saved on this computer (step 2), the model is not needed.</p>
+  <p class="note fine">The model (about 670 MB) loads by itself and is kept
+  in this browser. Not needed if the recording is already saved on this
+  computer.</p>
 
   <h2>2. The recording file</h2>
   <div class="row">
@@ -130,17 +122,15 @@
   <p class="note" id="audioMeta"></p>
   <p class="note">The extracted audio is saved on this computer automatically; its fingerprint goes into the submission ZIP.</p>
   <h3>Recordings saved on this computer</h3>
-  <p class="note">Audio and transcripts this page has made, kept in this browser so
-  the same recording never has to be transcribed twice — under any course's link.
-  Each entry shows its source file name and the opening words of its transcript,
-  so takes of the same assignment can be told apart.
-  Deleting an entry here does not touch your own files.</p>
+  <p class="note">Kept in this browser, so the same recording is never
+  transcribed twice. Deleting an entry here does not touch your own
+  files.</p>
   <div class="box" id="cacheBox">No recordings saved yet.</div>
 
   <h2>3. Names and words to remove</h2>
-  <p class="note">One per line, or separated by commas. Every occurrence is removed
-  from the transcript and from anything this page shows or exports. What you type
-  here stays in this page: it is never exported, stored, or sent anywhere.</p>
+  <p class="note">One per line, or separated by commas; removed from the
+  transcript and from everything this page shows or exports. What you type
+  here never leaves this page.</p>
   <textarea id="scrubField" rows="3" placeholder="e.g. your name, your lab partner's name, your school"></textarea>
   <p class="status" id="scrubStatus"></p>
 
@@ -150,11 +140,9 @@
     <span class="status" id="runStatus"></span>
   </div>
   <progress id="runProg" value="0" max="1" hidden></progress>
-  <p class="note">Transcription runs piece by piece, 25 s of audio at a time, on one
-  thread. The page may appear to pause while a piece is processed; the status line
-  and the bar update after each piece. A long recording takes many minutes. Pieces
-  are saved on this computer as they finish, so an interrupted run resumes where
-  it stopped when you choose the same file again.</p>
+  <p class="note">Runs 25 s at a time; a long recording takes many minutes.
+  Pieces are saved as they finish, so an interrupted run resumes when you
+  choose the same file again.</p>
   <div class="box" id="liveBox" hidden>
     <div><span class="lbl">Latest piece, as transcribed:</span> <span id="liveRaw"></span></div>
     <div style="margin-top:6px"><span class="lbl">Latest piece, after glossary correction and removal:</span> <span id="liveCorrected"></span></div>
@@ -163,9 +151,8 @@
   <div class="box" id="transcriptBox">Your transcript will appear here.</div>
 
   <h2>5. Possible identifiers</h2>
-  <p class="note">Words the page suspects may identify you, after your removals.
-  Add any that are yours to the removal list above. Nothing is sent
-  for grading until you press Send in step 6.</p>
+  <p class="note">Words that may identify you, after your removals. Add any
+  that are yours to the list in step 3.</p>
   <div class="box" id="suspectsBox">No transcript yet.</div>
 
   <h2>6. Sending for grading</h2>
@@ -178,50 +165,24 @@
   </div>
   <div id="ytPlayerWrap" hidden><div id="ytPlayer"></div></div>
   <p class="status" id="ytDurStatus"></p>
-  <p class="note">Paste the link and the check runs by itself; replace the
-  link and it runs again. The check is made against the recording loaded
-  in step 2; loading a different recording voids it. The video's length is
-  compared with the audio's: a difference up to the larger of 2 s and 2%
-  of the audio passes; beyond that the link cannot be used for this
-  recording. The two lengths and their difference are recorded anonymously
-  (no link, no name) so these limits can be set from measured data later.</p>
-  <p class="note">Send first, decide later. The grade comes back in section 7,
-  and any graded job can be turned into your Canvas submission there. If the
-  link is added and checked now, the job is submission-ready as soon as it is
-  graded; if not, you add the link when you convert the job. The link itself
-  is never sent with the transcript; the grading service stores only the fact that the check passed and a hash of the video. The link is written into
-  your submission file when you download it.</p>
-  <p class="note">There is no code to pick. When you press Send, the page
-  makes a recovery code for this job and offers it below the button
-  to copy: save it. The code is kept in this browser, so coming back to this page
-  retrieves your grade without typing anything, and the job’s row in
-  section 7 can copy the code again. You need the saved code
-  only on a different browser, where it is how you retrieve the job.
-  Anyone with the code can retrieve the grade, so keep it private.</p>
   <div class="row">
     <button id="submitJobBtn" class="primary" disabled>Send for grading</button>
     <span class="status" id="jobStatus"></span>
   </div>
-  <p class="mono" id="recoveryLine" role="status"></p>
 
   <h2>7. Your grading jobs</h2>
-  <p class="note">Jobs sent from this browser. The list updates every
-  5 seconds while this page is open (and pauses while a submission
-  review below is open). A waiting job shows how many jobs are ahead
-  of it. An ungraded job is kept for 7 days; once graded, the grade
-  is kept for 180 days. Jobs from your other assignments are listed
-  too — a job’s submission ZIP is built only from its own assignment’s link.</p>
-  <p class="note">Grades are two scores out of 5: Completeness — how
-  much of the question your explanation covers; Accuracy — how much
-  of it is right. Review and download checks the recording — or its
-  fingerprint — and the transcript against the signed grade record
-  before the ZIP is built.</p>
+  <p class="note">An ungraded job is kept for 7 days; a grade for 180 days.
+  A job’s ZIP is built only from its own assignment’s link.</p>
+  <p class="note">Completeness — how much of the question your explanation
+  covers. Accuracy — how much of it is right.</p>
   <div class="status" id="zipDone" role="status"></div>
   <div class="box" id="jobsBox">No jobs sent from this browser yet.</div>
 
   <div id="finPanel" hidden>
     <h3>Turn a graded job into your Canvas submission</h3>
-    <p class="note">Pick the graded job for this assignment — the latest is selected, and each option shows its grades and recording hash. It must be the job for this same recording: paste the link and the check runs by itself — it previews the video and compares its length with that job's audio under the same length limits as in step 6, and the submission file is built from that job's grade and the recording's fingerprint. One submission per recording.</p>
+    <p class="note">It must be the job for this same recording — one
+    submission per recording. Paste the link and the check runs by
+    itself.</p>
     <div class="row">
       <label>Graded job <select id="finJobSel"></select></label>
     </div>
@@ -238,14 +199,6 @@
       <span class="status" id="finDone"></span>
     </div>
   </div>
-  <h3>Retrieving on a different browser</h3>
-  <p class="note">Open this page from the assignment’s link, then enter the recovery code you saved when the job was sent. If the job’s grade record has its recording fingerprint, the submission ZIP is built from the grade record and no audio is needed on this computer. Otherwise the recording must be on this computer: choose the file above, or restore it from the saved recordings, before downloading the ZIP.</p>
-  <div class="row oneline">
-    <label>Recovery code <input type="text" id="manualCode" size="28" autocomplete="off" spellcheck="false"></label>
-    <button id="manualBtn">Retrieve</button>
-  </div>
-  <p class="status" id="manualStatus"></p>
-  <div class="box" id="manualBox" hidden></div>
 </div>
 <script type="module" src="./js/main.js"></script>
 </body>

@@ -76,7 +76,6 @@ const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
 const statusFailures = new Map(); // "pkg|code" -> consecutive failed status fetches
 const expandedJobs = new Set(); // "pkg|code" with the detail panel open (kept across refreshes)
-const shownCodes = new Set();   // "pkg|code" with recovery code shown (kept across refreshes)
 
 // Errors belong beside the control that was used, in the part
 // of the window on screen — not in one banner at the top of a
@@ -752,57 +751,8 @@ function duplicateStatusText(res) {
   return res.status || '';
 }
 
-// The recovery code display at send time (2.5.4). The page generates
-// the job's retrieval code at send time (generateRetrievalToken in
-// jobs.js); the student never picks or types one. The code is kept
-// in the job entry in this browser, so return visits here need
-// nothing — the display below exists for the one case the browser
-// cannot cover: retrieving the job on a different browser, where
-// the code is typed into the manual box. It is offered at send
-// time, and only when the code actually retrieves a job: a new
-// job, or a duplicate send whose code was stored as an alias for
-// the existing job. A duplicate send with no alias created stores
-// nothing under its code, so no code is offered for it. The code
-// itself is not printed (2.6.10): the line carries a Copy button,
-// and the code appears as text only when the browser refuses
-// clipboard access, as the fallback. Afterwards
-// the job row's Copy recovery code button copies it again (2.6.1).
-function showRecoveryCode(code) {
-  const line = $('recoveryLine');
-  line.textContent = '';
-  const btn = document.createElement('button');
-  btn.textContent = 'Copy recovery code';
-  btn.addEventListener('click', async () => {
-    let copied = false;
-    try {
-      await navigator.clipboard.writeText(code);
-      copied = true;
-    } catch { /* clipboard unavailable: print as the fallback */ }
-    if (copied) {
-      btn.textContent = 'Copied';
-      setTimeout(() => { btn.textContent = 'Copy recovery code'; }, 1600);
-    } else {
-      line.append(document.createTextNode(' ' + code));
-      btn.remove();
-    }
-  });
-  line.append(
-    document.createTextNode('Recovery code for the job just sent \u2014 save it now: '),
-    btn,
-    document.createTextNode(' You need it only to retrieve this job ' +
-      'on a different browser; this job\u2019s row in section 7 can copy ' +
-      'it again. Anyone with it can retrieve the grade, so keep it private.'));
-}
-
 $('submitJobBtn').addEventListener('click', async () => {
   clearError();
-  // A new send attempt supersedes any recovery code still on
-  // display from an earlier job: clear it now, so a failed send —
-  // or a duplicate send that stores no alias — never leaves a
-  // previous job's code standing under a "job just sent" label.
-  // showRecoveryCode sets it again on the paths where the new
-  // attempt's code retrieves a job.
-  $('recoveryLine').textContent = '';
   $('submitJobBtn').disabled = true;
   $('jobStatus').textContent = 'Preparing…';
   try {
@@ -866,7 +816,6 @@ $('submitJobBtn').addEventListener('click', async () => {
       });
       if (aliasEntry) {
         addJobEntry(aliasEntry);
-        showRecoveryCode(payload.retrieval_code);
         const key = jobKey(cfg.pkg, payload.retrieval_code);
         jobStates.set(key, { status: res.status, queue_ahead: res.queue_ahead });
         if (res.result) readyBundles.set(key, res.result);
@@ -890,7 +839,6 @@ $('submitJobBtn').addEventListener('click', async () => {
       created_at: res.created_at,
       expires_at: res.expires_at,
     });
-    showRecoveryCode(payload.retrieval_code);
     $('jobStatus').textContent = sentText;
     renderJobs();
   } catch (err) {
@@ -949,7 +897,7 @@ function clearZipStatus(anchor) {
 
 // Keep a re-entered YouTube link with the job's stored entry, so
 // the next click does not need it again. Only a stored entry is
-// updated; a manually retrieved job is not in the stored list. The
+// updated in place. The
 // title and check time come from the step-6 check when it was made
 // for this job's recording. Shared by the WAV and fingerprint ZIP
 // paths.
@@ -1328,7 +1276,7 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
     statusText = 'can’t reach the grading service — retrying';
   }
   else if (statusInfo === null) statusText = 'checking…';
-  else if (statusInfo.status === 'forbidden') statusText = 'No job under that recovery code.';
+  else if (statusInfo.status === 'forbidden') statusText = 'Job not found.';
   else if (statusInfo.status === 'ready') statusText = 'ready';
   else if (statusInfo.status === 'claimed') statusText = 'being graded now';
   else if (statusInfo.status === 'queued') {
@@ -1342,7 +1290,7 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
   // in plain words (Final or Practice), the status, the grades when
   // ready, the panel toggle, and the one primary button; the label
   // takes the slack and shortens with an ellipsis. Everything else —
-  // the critique, the ZIP review, the recovery code, Remove — lives
+  // the critique, the ZIP review, Remove — lives
   // in the single panel below the line, so a collapsed job is
   // exactly one line. That a final job's link was checked is carried
   // by the YouTube check in the ZIP review, not by the label.
@@ -1477,62 +1425,6 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
     // practice job's panel above carries the button that leads
     // there (2.6.10).
   }
-  const codeBtn = document.createElement('button');
-  codeBtn.dataset.act = 'code';
-  codeBtn.className = 'quiet';
-  codeBtn.textContent = 'Copy recovery code';
-  const codeLine = document.createElement('span');
-  codeLine.className = 'mono';
-  // The code is a credential: copying it must not put it on screen
-  // (2.6.10). The code is revealed only as the fallback when the
-  // browser refuses clipboard access, so the student can still
-  // select it by hand; shownCodes then keeps it revealed across
-  // refreshes, as the shown state did before.
-  const codeShown = shownCodes.has(row.dataset.jobKey);
-  codeLine.hidden = !codeShown;
-  codeLine.textContent = entry.retrieval_code;
-  // One click copies the code (2.6.5): nobody should have to select
-  // a 24-character string by hand. The button appears with the code,
-  // reads "Copied" briefly after a copy, and if the clipboard is
-  // unavailable it selects the code instead, ready for Ctrl+C.
-  const copyBtn = document.createElement('button');
-  copyBtn.dataset.act = 'copy';
-  copyBtn.className = 'quiet';
-  copyBtn.textContent = 'Copy';
-  copyBtn.hidden = !codeShown;
-  copyBtn.addEventListener('click', async () => {
-    let copied = false;
-    try {
-      await navigator.clipboard.writeText(entry.retrieval_code);
-      copied = true;
-    } catch { /* clipboard unavailable: fall through to selection */ }
-    if (!copied) {
-      const range = document.createRange();
-      range.selectNodeContents(codeLine);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      copyBtn.textContent = 'Selected — press Ctrl+C';
-    } else {
-      copyBtn.textContent = 'Copied';
-    }
-    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
-  });
-  codeBtn.addEventListener('click', async () => {
-    let copied = false;
-    try {
-      await navigator.clipboard.writeText(entry.retrieval_code);
-      copied = true;
-    } catch { /* clipboard unavailable: reveal as the fallback */ }
-    if (copied) {
-      codeBtn.textContent = 'Copied';
-      setTimeout(() => { codeBtn.textContent = 'Copy recovery code'; }, 1600);
-    } else {
-      codeLine.hidden = false;
-      copyBtn.hidden = false;
-      shownCodes.add(row.dataset.jobKey);
-    }
-  });
   const forgetBtn = document.createElement('button');
   forgetBtn.dataset.act = 'remove';
   forgetBtn.className = 'quiet';
@@ -1542,56 +1434,18 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
     // zipReviews entry goes too, or the poll would stay paused on a
     // review that no longer exists.
     zipReviews.delete(key);
-    shownCodes.delete(key);
     expandedJobs.delete(key);
     removeJobEntry(entry.pkg, entry.retrieval_code);
     renderJobs();
   });
-  // Housekeeping sits at the foot of the panel (2.6.7): the recovery
-  // code and Remove are not part of the job's one line.
+  // Housekeeping sits at the foot of the panel (2.6.7): Remove is
+  // not part of the job's one line.
   const houseRow = document.createElement('div');
   houseRow.className = 'houserow';
-  houseRow.append(codeBtn, codeLine, copyBtn, forgetBtn);
+  houseRow.append(forgetBtn);
   detail.append(houseRow);
   row.append(detail);
   container.append(row);
-}
-
-// The manual-retrieval row and the jobs list must never show the
-// same job at once (2.5.3): the manual handler refuses to render a
-// job that is already listed, and this is the reverse direction —
-// when a render finds the manually retrieved job among the listed
-// entries (the student retrieved it by code, then sent the same
-// recording from this page and the Worker's duplicate path filed a
-// list entry for it), the manual row is cleared. A ZIP review open
-// on the manual row moves to the list row's key, as in the
-// same-job collapse above.
-function clearManualRowIfListed(keptEntries) {
-  if (!manualEntry) return;
-  const mKey = jobKey(manualEntry.pkg, manualEntry.retrieval_code);
-  const mBundle = readyBundles.get(mKey);
-  const mJobId = manualEntry.job_id || (mBundle && mBundle.job_id) || '';
-  const matches = (e) => {
-    if (jobKey(e.pkg, e.retrieval_code) === mKey) return true;
-    if (mJobId && e.job_id && e.job_id === mJobId) return true;
-    const b = readyBundles.get(jobKey(e.pkg, e.retrieval_code));
-    return !!(mJobId && b && b.job_id === mJobId);
-  };
-  const target = keptEntries.find(matches);
-  if (!target) return;
-  const review = zipReviews.get(mKey);
-  if (review) {
-    zipReviews.delete(mKey);
-    const tKey = jobKey(target.pkg, target.retrieval_code);
-    if (!zipReviews.has(tKey)) zipReviews.set(tKey, review);
-  }
-  if (finManualEntry === manualEntry) finManualEntry = null;
-  manualEntry = null;
-  const box = $('manualBox');
-  box.hidden = true;
-  box.textContent = '';
-  $('manualStatus').textContent = 'That job is now in your jobs list above — ' +
-    'use the ZIP button on its row there.';
 }
 
 // Rendering is serialised: every caller shares the one in-flight
@@ -1741,12 +1595,6 @@ async function renderJobsOnce() {
     }
   }
   const survivors = kept.map(({ entry }) => entry);
-  // Clear a manual row for a now-listed job BEFORE the rows are
-  // rendered: its ZIP review must move to the list row's key first,
-  // or the list row would render its Review button instead of the
-  // review panel, leaving the transferred review displayed nowhere
-  // while the poll stays paused on it.
-  clearManualRowIfListed(survivors);
   const frag = document.createDocumentFragment();
   for (const entry of survivors) {
     const holder = document.createElement('div');
@@ -1762,8 +1610,8 @@ async function renderJobsOnce() {
   // student's focus to the page body: note the focused control
   // (its row's job key and its action) before the swap and put the
   // focus back on the matching control in the rebuilt row. The
-  // grades panel and a shown recovery code survive a rebuild the
-  // same way, through expandedJobs and shownCodes.
+  // grades panel survives a rebuild the same way, through
+  // expandedJobs.
   const ae = document.activeElement;
   let focusMark = null;
   if (ae && ae.dataset && ae.dataset.act && box.contains(ae)) {
@@ -1797,8 +1645,7 @@ async function renderJobsOnce() {
 // at "being graded now" after the grade had arrived. A rebuild is
 // safe for a focused student instead: the swap is synchronous, and
 // renderJobsOnce restores the focus to the same control in the
-// rebuilt row, with the grades panel and a shown recovery code kept
-// as they were.
+// rebuilt row, with the grades panel kept as it was.
 let zipBusy = false;
 async function refreshJobs() {
   if (document.hidden) return;
@@ -1809,8 +1656,6 @@ setInterval(refreshJobs, 5000);
 
 // --- Conversion: turn a graded job into the Canvas submission ---
 let finCheck = null;
-let finManualEntry = null;
-let manualEntry = null; // the job currently rendered in the manual box
 let finPrevSelKey = null;
 
 function conversionCandidates() {
@@ -1823,19 +1668,6 @@ function conversionCandidates() {
     if (entry.kind === 'practice' && st && st.status === 'ready' && bundle) {
       out.push({ entry, bundle });
     }
-  }
-  if (finManualEntry && finManualEntry.kind === 'practice' &&
-      finManualEntry.pkg === cfg.pkg) {
-    const key = jobKey(finManualEntry.pkg, finManualEntry.retrieval_code);
-    const bundle = readyBundles.get(key);
-    // The manually retrieved job may be the same job as a stored
-    // entry (same key, or the same job_id under an alias code):
-    // list it once, or the picker would offer the same job twice.
-    const already = out.some((c) =>
-      jobKey(c.entry.pkg, c.entry.retrieval_code) === key ||
-      (bundle && c.bundle && c.bundle.job_id &&
-        c.bundle.job_id === bundle.job_id));
-    if (bundle && !already) out.push({ entry: finManualEntry, bundle });
   }
   return out;
 }
@@ -2004,22 +1836,15 @@ $('finConfirmBtn').addEventListener('click', async () => {
     };
     payload['youtube' + '_token'] = finCheck.tok;
     await finalizeJob(cfg.worker, payload);
-    if (cand.entry.manual) {
-      cand.entry.kind = 'final';
-      cand.entry.youtube_link = $('finLink').value.trim();
-      cand.entry.youtube_title = finCheck.title || '';
-      cand.entry.youtube_checked_at = finCheck.checkedAt;
-    } else {
-      const entries = loadJobEntries();
-      const e = entries.find((x) => x.pkg === cand.entry.pkg &&
-        x.retrieval_code === cand.entry.retrieval_code);
-      if (e) {
-        e.kind = 'final';
-        e.youtube_link = $('finLink').value.trim();
-        e.youtube_title = finCheck.title || '';
-        e.youtube_checked_at = finCheck.checkedAt;
-        saveJobEntries(entries);
-      }
+    const entries = loadJobEntries();
+    const e = entries.find((x) => x.pkg === cand.entry.pkg &&
+      x.retrieval_code === cand.entry.retrieval_code);
+    if (e) {
+      e.kind = 'final';
+      e.youtube_link = $('finLink').value.trim();
+      e.youtube_title = finCheck.title || '';
+      e.youtube_checked_at = finCheck.checkedAt;
+      saveJobEntries(entries);
     }
     finCheck = null;
     $('finDone').textContent = 'Converted. Download the submission ZIP from the job’s row above.';
@@ -2027,125 +1852,6 @@ $('finConfirmBtn').addEventListener('click', async () => {
   } catch (err) {
     $('finDone').textContent = 'Converting failed: ' + err.message;
     $('finConfirmBtn').disabled = false;
-  }
-});
-
-// Manual retrieval (different browser): status by typed code
-// against the configured package. On ready, the same rendering is
-// used, with a synthetic entry; the WAV-form ZIP path then needs
-// the audio on this computer, while a fingerprint-form bundle
-// (signed chromaprint_sha256, Worker 2.7.0) builds its ZIP from
-// the fingerprint and transcript the status response returned.
-$('manualBtn').addEventListener('click', async () => {
-  clearError();
-  const code = $('manualCode').value;
-  const box = $('manualBox');
-  // Retrieving a different code replaces the row below, which
-  // destroys the only button that could close a ZIP review open on
-  // it: delete that review's zipReviews entry now, or it would be
-  // orphaned and pause the poll for good. Retrieving the same code
-  // again keeps its review (the row is re-rendered with the panel).
-  if (manualEntry && manualEntry.retrieval_code !== code) {
-    zipReviews.delete(jobKey(manualEntry.pkg, manualEntry.retrieval_code));
-    manualEntry = null;
-  }
-  box.hidden = true;
-  if (!cfg.worker || !cfg.pkg) {
-    $('manualStatus').textContent = 'Open this page from the assignment’s link in Canvas to retrieve.';
-    return;
-  }
-  $('manualStatus').textContent = 'Checking…';
-  try {
-    const res = await fetchJobStatus(cfg.worker, {
-      pkg: cfg.pkg, retrieval_code: code,
-    });
-    if ((res.status === 'expired' || res.status === 'forbidden') &&
-        manualEntry && manualEntry.retrieval_code === code) {
-      // The job a kept review belongs to is gone for good, and its
-      // row stays hidden: delete the review, or it would be orphaned
-      // and pause the poll for good.
-      zipReviews.delete(jobKey(manualEntry.pkg, manualEntry.retrieval_code));
-      manualEntry = null;
-    }
-    if (res.status === 'forbidden') {
-      $('manualStatus').textContent = 'No job under that recovery code.';
-      return;
-    }
-    $('manualStatus').textContent = 'Status: ' + res.status +
-      (res.data && typeof res.data.queue_ahead === 'number' && res.status === 'queued'
-        ? ' — ' + res.data.queue_ahead + (res.data.queue_ahead === 1 ? ' job' : ' jobs') + ' ahead in the grading queue.'
-        : '.');
-    if (res.status === 'ready' && res.data && res.data.result) {
-      const entry = {
-        pkg: cfg.pkg, course: cfg.course, asg: cfg.asg,
-        retrieval_code: code,
-        job_id: res.data.result.job_id || '',
-        kind: res.data.result.youtube_video_sha256 && res.data.result.youtube_video_sha256 !== 'none'
-          ? 'final' : 'practice',
-        youtube_link: '',
-        created_at: '', expires_at: (res.data && res.data.expires_at) || '',
-      };
-      // A job already in the jobs list above must not be rendered
-      // a second time here (2.5.3): the manual row is a full second
-      // row for the same job, with a second ZIP button — and it
-      // even inherited the list row's open review panel, for three
-      // or more ZIP buttons on the page for one job. "Already
-      // listed" means a stored entry under the same code, or a
-      // stored entry for the same underlying job (its stored
-      // job_id, or the job_id in the bundle the list last fetched
-      // for it — alias codes retrieve the same job).
-      const newJobId = res.data.result.job_id || '';
-      const alreadyListed = loadJobEntries().some((e) => {
-        if (e.pkg === entry.pkg && e.retrieval_code === entry.retrieval_code) return true;
-        if (newJobId && e.job_id && e.job_id === newJobId) return true;
-        const b = readyBundles.get(jobKey(e.pkg, e.retrieval_code));
-        return !!(newJobId && b && b.job_id === newJobId);
-      });
-      if (alreadyListed) {
-        $('manualStatus').textContent = 'That job is already in your jobs list above — ' +
-          'use the ZIP button on its row there.';
-        return;
-      }
-      // A final job retrieved manually needs its YouTube link for the
-      // HTML; it is not stored anywhere off the original browser, so
-      // the student enters it in step 6 and the row reads the live
-      // entry at click time (the signed video hash check in
-      // downloadSubmissionZip verifies it is the checked video).
-      // No per-retrieval 'input' listener is added to the step-6
-      // field: the verification reads that field directly when the
-      // entry carries no link, and a listener added on every
-      // retrieval accumulated on the field for the page's lifetime.
-      readyBundles.set(jobKey(entry.pkg, entry.retrieval_code), res.data.result);
-      if (typeof res.data.transcript === 'string' || res.data.chromaprint) {
-        readyExtras.set(jobKey(entry.pkg, entry.retrieval_code), {
-          transcript: typeof res.data.transcript === 'string'
-            ? res.data.transcript : null,
-          chromaprint: res.data.chromaprint || null,
-        });
-      }
-      entry.manual = true;
-      manualEntry = entry;
-      if (entry.kind === 'practice') {
-        finManualEntry = entry;
-        jobStates.set(jobKey(entry.pkg, entry.retrieval_code), { status: 'ready' });
-        refreshFinPanel(jobKey(entry.pkg, entry.retrieval_code));
-      }
-      entry.youtube_link = $('ytLink').value.trim();
-      box.hidden = false;
-      box.textContent = '';
-      const note = document.createElement('p');
-      note.className = 'note';
-      note.textContent = entry.kind === 'final'
-        ? (bundleChromaprintSha(res.data.result)
-          ? 'This job is a final job. Its grade record has the recording’s fingerprint, so the submission ZIP can be built on this computer without the recording file. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download here.'
-          : 'This job is a final job. Enter the YouTube link in step 6 (it is checked against the signed record when the ZIP is built), then use Review and download here.')
-        : 'This job is a practice job. To make the Canvas submission, add the YouTube link in the conversion panel above (Turn a graded job into your Canvas submission).';
-      box.append(note);
-      renderJobRow(box, entry, { status: 'ready' });
-    }
-  } catch (err) {
-    $('manualStatus').textContent = 'Could not complete the check. Try again.';
-    console.error(err);
   }
 });
 
