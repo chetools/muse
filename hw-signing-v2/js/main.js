@@ -743,23 +743,24 @@ function duplicateStatusText(res) {
   return res.status || '';
 }
 
-// The one-time recovery code display (2.5.4). The page generates
+// The recovery code display at send time (2.5.4). The page generates
 // the job's retrieval code at send time (generateRetrievalToken in
 // jobs.js); the student never picks or types one. The code is kept
 // in the job entry in this browser, so return visits here need
 // nothing — the display below exists for the one case the browser
 // cannot cover: retrieving the job on a different browser, where
-// the code is typed into the manual box. It is shown once, at send
-// time, and only when the code actually retrieves a job: a new job,
+// the code is typed into the manual box. It is shown at send time,
+// and only when the code actually retrieves a job: a new job,
 // or a duplicate send whose code was stored as an alias for the
 // existing job. A duplicate send with no alias created stores
-// nothing under its code, so no code is shown for it.
+// nothing under its code, so no code is shown for it. Afterwards
+// the job row's Show recovery code button shows it again (2.6.1).
 function showRecoveryCode(code) {
   $('recoveryLine').textContent =
     'Recovery code for the job just sent: ' + code + ' — save it ' +
-    'now; it is not shown again. You need it only to retrieve this ' +
-    'job on a different browser. Anyone with it can retrieve the ' +
-    'grade, so keep it private.';
+    'now. You need it only to retrieve this job on a different ' +
+    'browser; this job\u2019s row in section 7 can show it again. ' +
+    'Anyone with it can retrieve the grade, so keep it private.';
 }
 
 $('submitJobBtn').addEventListener('click', async () => {
@@ -1361,6 +1362,18 @@ function renderJobRow(container, entry, statusInfo) {
     // No per-row conversion button: the conversion panel's picker is
     // the single route to turning a graded job into the submission.
   }
+  const codeBtn = document.createElement('button');
+  codeBtn.textContent = 'Show recovery code';
+  const codeLine = document.createElement('span');
+  codeLine.className = 'mono';
+  codeLine.hidden = true;
+  codeLine.textContent = ' ' + entry.retrieval_code;
+  codeBtn.addEventListener('click', () => {
+    codeLine.hidden = !codeLine.hidden;
+    codeBtn.textContent = codeLine.hidden
+      ? 'Show recovery code' : 'Hide recovery code';
+  });
+  row.append(document.createTextNode(' '), codeBtn, codeLine);
   const forgetBtn = document.createElement('button');
   forgetBtn.textContent = 'Remove from this browser';
   forgetBtn.addEventListener('click', () => {
