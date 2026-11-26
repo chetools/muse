@@ -665,6 +665,72 @@ def main():
           and b"package '+esc(s.pkg)" in dash_v29,
           "wall tiles and dashboard rows render the prompt "
           "package line (v50)")
+
+    # v51: the package-match gate.
+    status, out51 = call("POST", "/api/expected-package",
+                         {"course_id": 101, "assignment_id": 202,
+                          "pkg": "other-pkg v1"})
+    check(status == 200 and out51.get("expected_pkg") == "other-pkg v1",
+          "expected package saved for the assignment (v51)")
+    status, subs51 = call("GET", "/api/submissions")
+    row51 = next(r for r in subs51 if r["user_id"] == "111")
+    check(row51.get("pkg_mismatch") is True
+          and row51.get("expected_pkg") == "other-pkg v1",
+          "submissions row flags the package mismatch (v51)")
+    status, wall51 = call("GET", "/api/wall")
+    wrow51 = next(s for s in wall51["students"] if s["id"] == KEY111)
+    check(wrow51.get("pkg_mismatch") is True,
+          "wall row flags the package mismatch (v51)")
+    status, out51 = call("POST", "/api/final-grade",
+                         {"user_id": KEY111, "score": 7})
+    check(status == 400 and "mismatch" in (out51.get("error") or ""),
+          "final grade refused for a mismatched submission (v51)")
+    status, gb51 = call(
+        "GET", "/api/gradebook/preview?course_id=101&assignment_id=202")
+    grow51 = next(r for r in gb51["rows"] if r["ID"] == "111")
+    check(grow51["score"] == "" and grow51.get("pkg_mismatch") is True
+          and any("prompt package mismatch" in w
+                  for w in gb51["warnings"]),
+          "gradebook exports no score for a mismatched submission, "
+          "with the mismatch in the warnings (v51)")
+    _keep_fs51 = web.fetch_submissions_for
+    web.fetch_submissions_for = lambda cfg, cid, aid: [{
+        "user_id": 111, "workflow_state": "graded", "attempt": 1,
+        "submitted_at": "2026-11-08T10:00:00Z", "grade": None,
+        "attachments": [{"filename": "submission.zip"}],
+        "user": {"id": 111, "name": "Doe, Jane",
+                 "sortable_name": "Doe, Jane"}}] \
+        if (cid, aid) == (101, 202) else []
+    web._SCAN["targets"] = []
+    web._SCAN["at"] = 0.0
+    web._SCAN["subs"] = {}
+    status, tg51 = call("GET", "/api/targets")
+    web.fetch_submissions_for = _keep_fs51
+    web._SCAN["subs"] = {}
+    trow51 = next(t for t in tg51 if t["assignment_id"] == 202)
+    check(trow51.get("expected_pkg") == "other-pkg v1",
+          "targets carry the expected package for the selector (v51)")
+    status, dash51 = call("GET", "/", raw=True)
+    check(b"expkg" in dash51 and b"Expected package" in dash51,
+          "gradebook section carries the Expected package "
+          "selector (v51)")
+    call("POST", "/api/expected-package",
+         {"course_id": 101, "assignment_id": 202, "pkg": PKG})
+    status, subs51 = call("GET", "/api/submissions")
+    row51 = next(r for r in subs51 if r["user_id"] == "111")
+    check(row51.get("pkg_mismatch") is False,
+          "matching expected package: no mismatch (v51)")
+    status, out51 = call("POST", "/api/final-grade",
+                         {"user_id": KEY111, "score": 7})
+    check(status == 200 and out51.get("saved") == KEY111,
+          "final grade accepted when the package matches (v51)")
+    call("POST", "/api/expected-package",
+         {"course_id": 101, "assignment_id": 202, "pkg": ""})
+    status, subs51 = call("GET", "/api/submissions")
+    row51 = next(r for r in subs51 if r["user_id"] == "111")
+    check(row51.get("pkg_mismatch") is False
+          and row51.get("expected_pkg") is None,
+          "cleared expected package: the gate is off (v51)")
     status, out = call("POST", "/api/final-grade",
                        {"user_id": "demo-t", "score": 7})
     status, walldata = call("GET", "/api/wall")
@@ -1308,8 +1374,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/50.0",
-          "user agent bumped to 50.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/51.0",
+          "user agent bumped to 51.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"

@@ -386,6 +386,27 @@ the wall reads it from the package it already parses. A
 package name is not a student identifier, so the line
 stays visible under Privacy. Display only: no check
 changes, and the check schema stays 2.
+
+v51: the package-match gate. In the Grades back to Canvas
+section each assignment gains an Expected package selector
+(the versions on the Worker, or Not set); the choice is
+stored per course and assignment in expected-packages.json.
+Where an expected package is set, a submission whose known
+package — the stored check's, or the package's own parsed
+value — differs is treated as misplaced, not gradable: the
+submissions table shows the mismatch in its Integrity cell
+and no final-grade field; the final-grade endpoint refuses
+the save with the mismatch named; the zoom view shows no
+grade field; the wall tile, attempt tiles and student cards
+carry a package-mismatch badge; and the gradebook build
+exports no score for it, with the mismatch in the preview
+warnings — a final grade already stored stands in the store
+but is not exported while the mismatch lasts. An assignment
+with no expected package set is not gated, and a submission
+whose package is unknown (not downloaded, not checked) is
+never mismatched: the gate acts on what is known. Display
+and gate only: no check changes, and the check schema
+stays 2.
 """
 
 import argparse
@@ -2619,6 +2640,7 @@ def wall_attempts(cfg, key):
     idx = package_index(cfg).get(key) or {}
     state = read_json_file(_state_file(cfg, "download-state.json"), {})
     checks = results_store(cfg)
+    exp = expected_package(cfg, cid, aid)
     name = idx.get("user_name") or f"Student {uid}"
     context = " · ".join(x for x in (idx.get("course_name"),
                                      idx.get("assignment_name")) if x)
@@ -2667,6 +2689,8 @@ def wall_attempts(cfg, key):
                 "integrity": integrity,
                 "check": acheck,
                 "pkg": ver.get("pkg"),
+                "expected_pkg": exp,
+                "pkg_mismatch": pkg_mismatch(exp, ver.get("pkg")),
                 "critique": _grading_text(html_text),
                 "transcript": [{"t": t, "text": text}
                                for t, text in parsed["timed_lines"]
@@ -3007,6 +3031,54 @@ def auto_loop():
         time.sleep(AUTO_INTERVAL_S)
 
 
+# ------------------------------------------------------- package gate (v51)
+
+def expected_packages(cfg):
+    """The per-assignment expected prompt packages: a map
+    "course_id_assignment_id" -> "name vN", set by the teacher
+    in the Grades back to Canvas section. An assignment with
+    no entry is not gated."""
+    return read_json_file(
+        _state_file(cfg, "expected-packages.json"), {})
+
+
+def expected_package(cfg, course_id, assignment_id):
+    return expected_packages(cfg).get(
+        f"{course_id}_{assignment_id}")
+
+
+def save_expected_package(cfg, course_id, assignment_id, pkg):
+    store = expected_packages(cfg)
+    key = f"{course_id}_{assignment_id}"
+    if pkg:
+        store[key] = pkg
+    else:
+        store.pop(key, None)
+    _state_file(cfg, "expected-packages.json").write_text(
+        json.dumps(store, indent=2), encoding="utf-8")
+    return store
+
+
+def pkg_mismatch(expected, pkg):
+    """True when an expected package is set and the submission's
+    known package differs. An unknown package (not downloaded,
+    not checked) never mismatches: the gate acts on what is
+    known."""
+    return bool(expected and pkg and pkg != expected)
+
+
+def submission_pkg(cfg, key, uid, check=None):
+    """A submission's known prompt package: its stored check's
+    when one has run, else the downloaded package's own parsed
+    value, else None."""
+    pkg = (check or {}).get("pkg")
+    if pkg:
+        return pkg
+    local = next((p for p in downloaded_packages(cfg)
+                  if p["key"] == key), None)
+    return _package_pkg(local) if local else None
+
+
 # ---------------------------------------------------------------- gradebook
 
 def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
@@ -3033,6 +3105,9 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
     roster = fetch_roster_maps(cfg, course_id)
     checks = results_store(cfg)
     finals = finals_store(cfg)
+    exp = expected_package(cfg, course_id, assignment_id)
+    local = {p["key"]: p for p in downloaded_packages(cfg)} \
+        if exp else {}
     rows, warnings = [], []
     for sub in subs:
         user = sub.get("user") or {}
@@ -3043,14 +3118,29 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
         rmap = roster.get(uid, {})
         student = rmap.get("sortable_name") or user.get("sortable_name") \
             or user.get("name") or uid
+        _check = store_get(checks, key, uid) or {}
+        _pkg = _check.get("pkg")
+        if not _pkg and key in local:
+            _pkg = _package_pkg(local[key])
+        mismatch = pkg_mismatch(exp, _pkg)
         total = final_score(store_get(finals, key, uid))
         source = "teacher entry" if total is not None else None
         if total is None:
-            total = suggested_score(store_get(checks, key, uid))
+            total = suggested_score(_check or None)
             source = "student grade (integrity clean)" \
                 if total is not None else None
         score = ""
-        if total is not None:
+        if mismatch:
+            # The gate (v51): a submission graded under another
+            # assignment's package exports no score for this
+            # one, whatever grade it carries.
+            total = None
+            source = None
+            warnings.append(
+                f"{student}: prompt package mismatch — submitted "
+                f"under {_pkg}; this assignment expects {exp} "
+                "(score left blank)")
+        elif total is not None:
             score = total if float(points) == 10 else \
                 round(total * float(points) / 10, 2)
             if isinstance(score, float) and score.is_integer():
@@ -3058,7 +3148,6 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
         else:
             warnings.append(f"{student}: no final grade (cell left blank; "
                             "Canvas keeps the existing grade)")
-        _check = store_get(checks, key, uid) or {}
         if _check.get("injection_suspected"):
             _flags = _check.get("injection_flags") or []
             _when = (f" at {audit.mmss(_flags[0]['at_s'])}"
@@ -3090,6 +3179,8 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
             "Section": rmap.get("section", ""),
             "score": score, "source": source or "",
             "student_score": student_score,
+            "pkg": _pkg, "expected_pkg": exp,
+            "pkg_mismatch": mismatch,
             "grade_differs": bool(
                 source == "teacher entry"
                 and student_score is not None
@@ -3539,6 +3630,9 @@ def wall_students(cfg, local_only=False):
         grades = parsed["grading_grades"] or parsed["summary_grades"]
         check = store_get(checks, key, uid) or {}
         integrity = _integrity_text(check)
+        _split = _split_unit_key(key)
+        exp = expected_package(cfg, _split[0], _split[1]) \
+            if _split else None
         local = youtube_video_file(cfg, key, uid)
         out.append({
             "id": key, "user_id": uid,
@@ -3563,6 +3657,8 @@ def wall_students(cfg, local_only=False):
             "final_score": final_score(store_get(finals, key, uid)),
             "integrity": integrity,
             "pkg": ver.get("pkg"),
+            "expected_pkg": exp,
+            "pkg_mismatch": pkg_mismatch(exp, ver.get("pkg")),
             "critique": _grading_text(html_text),
             "transcript": [{"t": t, "text": text}
                            for t, text in parsed["timed_lines"]
@@ -3815,11 +3911,11 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <table><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
 <th>Integrity</th><th>Grade</th>
 <th>Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
-<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade.</p>
+<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade. Where an assignment's expected package is set (section 3) and a submission was graded under a different package, the cell shows no grade field: the mismatch stands in the Integrity cell instead.</p>
 </section>
 
 <section><h2>3. Grades back to Canvas</h2>
-<p>One CSV per assignment, in Canvas Gradebook import format (Student, ID, SIS User ID, SIS Login ID, Section, then the assignment column with its Canvas ID, and a Points Possible row). The preview table is grouped by course and, when a course has more than one section, by section. The button beside each course heading downloads all of that course's CSVs at once — as separate files inside one ZIP, since a browser cannot save several files from one click; unzip it and import each file in turn. In Canvas: Grades → Import → choose the file → Upload Data → review → Save Changes. The CSV import sets scores only — it cannot post comments or change posting policy.</p>
+<p>One CSV per assignment, in Canvas Gradebook import format (Student, ID, SIS User ID, SIS Login ID, Section, then the assignment column with its Canvas ID, and a Points Possible row). The preview table is grouped by course and, when a course has more than one section, by section. The button beside each course heading downloads all of that course's CSVs at once — as separate files inside one ZIP, since a browser cannot save several files from one click; unzip it and import each file in turn. In Canvas: Grades → Import → choose the file → Upload Data → review → Save Changes. The CSV import sets scores only — it cannot post comments or change posting policy. Beside each assignment, Expected package names the prompt package its submissions must have been graded under: set it, and a submission graded under a different package takes no final grade and exports no score — the mismatch is flagged in section 2, on the wall and in the preview warnings below. Leave it at Not set for no gate.</p>
 <div id="gbtargets"><p class="mut">The assignment list appears here once a Canvas token is saved.</p></div>
 <div id="gb"></div>
 </section>
@@ -3991,12 +4087,33 @@ function renderTargets(ts){
         ' <button class="secondary" onclick="gbDownloadCourse('+t.course_id+')">Download all CSVs for this course (separate files, one ZIP)</button></h3>'; }
       out+="<p>"+esc(t.assignment_name)+" <span class='mut'>"+t.submissions+" submission(s)"+(t.pending? " · "+t.pending+" new to download":"")+"</span> "+
       '<button class="secondary" onclick="gbPreview('+i+')">Preview gradebook rows</button> '+
-      '<button class="secondary" onclick="gbDownload('+i+')">Download Gradebook CSV</button></p>';
+      '<button class="secondary" onclick="gbDownload('+i+')">Download Gradebook CSV</button>'+
+      '<br><label class="mut">Expected package <select class="expkg" data-i="'+i+'">'+expkgOptions(t.expected_pkg)+'</select></label></p>';
     });
     $("gbtargets").innerHTML = ts.length ? out : '<p class="mut">No assignments holding submissions for this system in the scanned courses yet.</p>';
+    document.querySelectorAll(".expkg").forEach(sel=>{
+      sel.onchange=async ()=>{
+        const t=window.GBTARGETS[Number(sel.dataset.i)];
+        try{
+          const r=await api("/api/expected-package",{course_id:t.course_id,assignment_id:t.assignment_id,pkg:sel.value||null});
+          t.expected_pkg=r.expected_pkg;
+          await refreshSubs();
+        }catch(e){ loadTargets(); }
+      };
+    });
+}
+function expkgOptions(cur){
+  const opts=[""].concat(window.PKGOPTS||[]);
+  if(cur && !opts.includes(cur)) opts.push(cur);
+  return opts.map(p=>'<option value="'+esc(p)+'"'+(p===(cur||"")?" selected":"")+">"+(p? esc(p):"Not set")+"</option>").join("");
 }
 async function loadTargets(){
   try{
+    if(!window.PKGOPTS){
+      try{ const ps=await api("/api/hw-packages");
+        window.PKGOPTS=ps.map(p=>p.pkg); }
+      catch(e){ window.PKGOPTS=[]; }
+    }
     const ts=await api("/api/targets");
     snapSave("targets",ts);
     renderTargets(ts);
@@ -4013,7 +4130,7 @@ window.gbPreview=async i=>{
       body+="<tr><td colspan='5' style='background:#f0f0ec'><strong>Section "+esc(lastSec||"—")+"</strong></td></tr>"; }
     body+="<tr><td><span class=\"priv\">"+esc(r.Student)+"</span></td><td><span class=\"priv\">"+esc(r.ID)+"</span></td><td>"+esc(r.Section)+"</td>"+
       (r.grade_differs? "<td class=\"diff\" style=\"background:#f7ecd2\"><span class=\"priv\">"+esc(r.score)+"</span></td><td>"+esc(r.source)+" <span class=\"priv\">(signed grade "+esc(r.student_score)+")</span></td>"
-                      : "<td><span class=\"priv\">"+esc(r.score)+"</span></td><td>"+esc(r.source)+"</td>")+"</tr>";
+                      : "<td><span class=\"priv\">"+esc(r.score)+"</span></td><td>"+esc(r.source)+(r.pkg_mismatch? " (package mismatch)":"")+"</td>")+"</tr>";
   });
   $("gb").innerHTML="<p class='mut'>Course: "+esc(t.course_name)+" · Assignment column: "+esc(b.header[5])+" · Points Possible: "+esc(b.points_possible)+"</p>"+
    "<table><thead><tr><th>Student</th><th>ID</th><th>Section</th><th>Score</th><th>Source</th></tr></thead><tbody>"+
@@ -4286,17 +4403,21 @@ function renderSubs(){
     if(VIEW.group!=="none"){ const g=groupLabelS(s);
       if(g!==lastGroup){ lastGroup=g;
         ghead='<tr class="grouprow"><td colspan="9">'+esc(g)+' <span class="mut">· '+gcounts[g]+" shown</span></td></tr>"; } }
+    const integ = integCell(c,s.downloaded) + (s.pkg_mismatch? '<br><span class="err">Package mismatch — submitted under '+esc(s.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"")+"</span>":"");
+    const fincell = s.pkg_mismatch
+      ? '<td class="fincell"><span class="mut">no grade entry — package mismatch</span></td>'
+      : '<td class="fincell"><input class="fin priv" type="number" min="0" max="10" id="fc_'+s.id+'" data-uid="'+esc(s.id)+'" data-signed="'+(s.student_score??"")+'" value="'+(fin??"")+'"> '+
+        '<span class="mut finsign priv" id="fs_'+s.id+'" style="display:none">signed '+(s.student_score??"")+'</span> '+
+        '<span class="mut finmsg" id="fm_'+s.id+'"></span></td>';
     let out=ghead+"<tr>"+
     '<td><input type="checkbox" class="selbox" style="width:auto" data-key="'+esc(s.id)+'"'+(SEL.has(s.id)?" checked":"")+"></td>"+
     '<td><a class="stuname priv" href="/wall?focus='+encodeURIComponent(s.id)+'">'+esc(nameOfS(s))+'</a><br><span class="mut priv">'+esc(s.user_id)+"</span>"+ctx+pkgline+"</td>"+
     "<td>"+fmtDateS(s.submitted_at)+"</td>"+
     "<td>"+esc(s.workflow_state||"")+"<br><span class='mut'>attempt "+esc(s.attempt??"")+"</span></td>"+
     "<td>"+(s.downloaded?badge(true,"yes",""):'<span class="badge">no</span>')+"</td>"+
-    "<td>"+integCell(c,s.downloaded)+"</td>"+
+    "<td>"+integ+"</td>"+
     "<td>"+(s.student_score==null?"—":'<span class="priv">'+s.student_score+" / 10</span>")+"</td>"+
-    '<td class="fincell"><input class="fin priv" type="number" min="0" max="10" id="fc_'+s.id+'" data-uid="'+esc(s.id)+'" data-signed="'+(s.student_score??"")+'" value="'+(fin??"")+'"> '+
-    '<span class="mut finsign priv" id="fs_'+s.id+'" style="display:none">signed '+(s.student_score??"")+'</span> '+
-    '<span class="mut finmsg" id="fm_'+s.id+'"></span></td>'+
+    fincell+
     '<td><input type="checkbox" style="width:auto" '+(s.examined?"checked":"")+
     ' onchange="toggleExamined(\''+s.id+'\',this.checked)">'+
     "</td></tr>";
@@ -4313,7 +4434,7 @@ function renderSubs(){
         "<td>"+fmtDateS(a.submitted_at)+"</td>"+
         '<td><span class="mut">attempt '+esc(a.attempt_no)+"</span></td>"+
         "<td>"+badge(true,"yes","")+"</td>"+
-        "<td>"+integCell(a.check,true)+"</td>"+
+        "<td>"+integCell(a.check,true)+(a.pkg_mismatch? '<br><span class="err">Package mismatch — submitted under '+esc(a.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"")+"</span>":"")+"</td>"+
         "<td>"+(a.score==null?"—":'<span class="priv">'+a.score+" / 10</span>")+"</td>"+
         '<td><span class="mut">—</span></td>'+
         '<td><a href="/wall?focus='+encodeURIComponent(s.id)+'&attempt='+esc(a.attempt_no)+'">View →</a></td></tr>').join("");
@@ -5037,6 +5158,7 @@ function renderHoverPanel(){
     '<p style="margin:2px 0"><strong class="priv">'+esc(d.name)+'</strong></p>'+
     (d.context? '<p class="mut" style="margin:2px 0">'+esc(d.context)+'</p>':"")+
     (d.pkg? '<p class="mut" style="margin:2px 0">package '+esc(d.pkg)+'</p>':"")+
+    (d.pkg_mismatch? '<p style="margin:2px 0"><span class="badge bad">package mismatch</span> <span class="mut">submitted under '+esc(d.pkg||"")+" · this assignment expects "+esc(d.expected_pkg||"")+'</span></p>':"")+
     (d.submitted_at? '<p class="mut" style="margin:2px 0">submitted '+esc(dayLabelW(d.submitted_at))+'</p>':"")+
     (d.attempt!=null && !d.attempt_label? '<p class="mut" style="margin:2px 0">attempt '+esc(d.attempt)+'</p>':"")+
     (d.attempt_label? '<p class="mut" style="margin:2px 0">'+esc(d.attempt_label)+'</p>':"")+
@@ -5223,6 +5345,7 @@ function render(){
     (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
     '<span class="badge '+(s.source==="demo"?"demo":"")+'">'+esc(s.source==="demo"?"DEMO":s.source)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
+    (s.pkg_mismatch? '<span class="badge bad">package mismatch</span>':"")+
     '<span class="badge priv">grade '+g+fin+'</span>'+
     '<span data-exam="'+esc(s.id)+'">'+(s.examined? '<span class="badge ok">examined ✓</span>' : '')+'</span>'+
     '<span class="badge pct" id="pct_'+esc(s.id)+'">0% · '+fmt(s.duration_s)+'</span>'+
@@ -5248,6 +5371,7 @@ function renderAttemptTiles(){
     '<div class="nm"><span class="priv">'+esc(s.name)+'</span></div>'+
     '<div><span class="badge '+(s.is_current?"ok":"warn")+'">'+esc(s.attempt_label)+'</span>'+
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
+    (s.pkg_mismatch? '<span class="badge bad">package mismatch</span>':"")+
     '<span class="badge priv">grade '+gr+'</span></div>'+
     (s.pkg? '<div class="mut">package '+esc(s.pkg)+'</div>':"")+
     (s.submitted_at? '<div class="mut">submitted '+esc(dayLabelW(s.submitted_at))+'</div>':"")+
@@ -5577,8 +5701,11 @@ function openZoom(id, opts){
     '<span class="badge '+(s.integrity==="clean"?"ok":s.integrity==="not checked"?"":"bad")+'">'+esc(s.integrity)+'</span>'+
     (s.youtube? ' <a href="'+esc(s.youtube)+'" target="_blank" rel="noopener" style="color:#9fc3e8">Open on YouTube ↗</a>':"")+"</p>"+
     (s.pkg? '<p class="mut" style="margin:2px 0">package '+esc(s.pkg)+'</p>':"")+
+    (s.pkg_mismatch? '<p style="margin:2px 0"><span class="badge bad">package mismatch</span> <span class="mut">submitted under '+esc(s.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"")+'</span></p>':"")+
     "<p style='margin:6px 0'><strong>Student grade:</strong> <span class='priv'>"+(s.score==null?"—":esc(s.score)+" / 10")+"</span></p>"+
-    (s.is_current===false
+    (s.pkg_mismatch
+      ? '<p class="mut" style="margin:6px 0">Package mismatch — no final grade is accepted for this submission here.</p>'
+      : s.is_current===false
       ? '<p class="mut" style="margin:6px 0">'+esc(s.attempt_label||"Previous attempt")+" — the grade of record stays with the current attempt; this view is read-only.</p>"
       : '<p style="margin:6px 0"><label><strong>Teacher final grade:</strong> '+
         '<input class="fin2 priv" type="number" min="0" max="10" step="1" id="zgrade" value="'+(s.final_score!=null? esc(s.final_score):"")+'" placeholder="'+(s.score!=null? esc(s.score):"0–10")+'"></label> '+
@@ -6518,8 +6645,11 @@ class Handler(BaseHTTPRequestHandler):
                 slot["submissions"] += 1
                 if r["key"] not in local_keys:
                     slot["pending"] += 1
+            expected = expected_packages(cfg)
             self._send(200, [
-                {**t, **counts[(t["course_id"], t["assignment_id"])]}
+                {**t, **counts[(t["course_id"], t["assignment_id"])],
+                 "expected_pkg": expected.get(
+                     f"{t['course_id']}_{t['assignment_id']}")}
                 for t in targets
                 if counts.get((t["course_id"], t["assignment_id"]))])
         elif u.path == "/api/package":
@@ -6800,8 +6930,29 @@ class Handler(BaseHTTPRequestHandler):
             store = set_examined(cfg, uid, bool(body.get("examined")),
                                  via=str(body.get("via") or "manual"))
             self._send(200, {"examined": uid in store})
+        elif u.path == "/api/expected-package":
+            cid = str(body.get("course_id") or "")
+            aid = str(body.get("assignment_id") or "")
+            if not cid or not aid:
+                raise ValueError("a course and assignment are required")
+            pkg = str(body.get("pkg") or "").strip() or None
+            save_expected_package(cfg, cid, aid, pkg)
+            self._send(200, {"expected_pkg": pkg})
         elif u.path == "/api/final-grade":
             uid = str(body["user_id"])
+            _split = _split_unit_key(uid)
+            if _split:
+                _exp = expected_package(cfg, _split[0], _split[1])
+                if _exp:
+                    _pkg = submission_pkg(
+                        cfg, uid, _split[2],
+                        store_get(results_store(cfg), uid, _split[2]))
+                    if pkg_mismatch(_exp, _pkg):
+                        raise ValueError(
+                            f"package mismatch — this submission was "
+                            f"graded under {_pkg}; this assignment "
+                            f"expects {_exp}, so no final grade is "
+                            "accepted for it here")
             if body.get("score") is not None:
                 score = int(body["score"])
             else:  # earlier pair shape, kept for compatibility
@@ -7061,8 +7212,14 @@ def submissions_view(cfg, local_only=False, attempts=False):
             if check else None
         if student is None:
             student = grades_total(grades_of(key))
+        _split = _split_unit_key(key)
+        _exp = expected_package(cfg, _split[0], _split[1]) \
+            if _split else None
+        _pkg = (check or {}).get("pkg") or pkg_of(key)
         return {"check": check,
-                "pkg": (check or {}).get("pkg") or pkg_of(key),
+                "pkg": _pkg,
+                "expected_pkg": _exp,
+                "pkg_mismatch": pkg_mismatch(_exp, _pkg),
                 "student_score": student,
                 "examined": store_has(examined, key, uid),
                 "final_score": final_score(store_get(finals, key, uid)),
@@ -7122,6 +7279,9 @@ def submissions_view(cfg, local_only=False, attempts=False):
                 "accuracy": a["accuracy"],
                 "check": a.get("check"),
                 "pkg": a.get("pkg"),
+                "expected_pkg": r.get("expected_pkg"),
+                "pkg_mismatch": pkg_mismatch(
+                    r.get("expected_pkg"), a.get("pkg")),
                 "integrity": a.get("integrity")} for a in prev]
             if total:
                 on_disk = {a["attempt_no"] for a in prev}

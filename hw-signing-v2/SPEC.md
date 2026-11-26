@@ -191,6 +191,15 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   and verifies the contents.
 - Grade of record: the signed grade stands for clean packages; a grade
   the teacher enters in the audit app overrides it (existing v21 rule).
+- Package-match gate (audit app v51): the teacher may set an expected
+  prompt package per Canvas assignment. A submission whose known
+  package (its stored check's, or its own parsed verification value)
+  differs from the assignment's expected package takes no final grade
+  in the audit app — the grade save is refused and no grade field is
+  shown — and exports no gradebook score, with the mismatch flagged
+  in the table, on the wall and in the gradebook preview warnings.
+  No expected package set, no gate; an unknown package never
+  mismatches.
 
 ## Worker interface
 

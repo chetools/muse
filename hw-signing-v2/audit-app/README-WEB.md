@@ -18,6 +18,29 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v51 (2026-11-26) — the package-match gate: grade entry only when the package matches
+
+- In section 3 (Grades back to Canvas), each assignment now has
+  an **Expected package** selector: the prompt-package versions
+  held on the grading Worker, or "Not set". The choice is stored
+  on this computer, per course and assignment.
+- Where an expected package is set, a submission graded under a
+  different package is treated as misplaced, not gradable: the
+  submissions table shows "Package mismatch — submitted under
+  ⟨package⟩ · this assignment expects ⟨package⟩" in its
+  Integrity cell and offers no final-grade field; the zoom view
+  shows no grade field either, and a grade save is refused with
+  the mismatch named; the wall tile, attempt tiles and student
+  cards carry a "package mismatch" badge; and the gradebook CSV
+  leaves that student's score blank, with the mismatch named in
+  the preview warnings. A final grade already entered stays
+  stored but is not exported while the mismatch lasts.
+- Where the packages match — or no expected package is set —
+  nothing changes: the final grade stands pre-filled from the
+  student's grade, and the only entry is a grade you choose to
+  override. A submission whose package is not known yet (not
+  downloaded, not checked) is never flagged.
+
 ## v50 (2026-11-26) — each submission's prompt package shown in the table and on the wall
 
 - Every submission now shows the prompt package it was graded
