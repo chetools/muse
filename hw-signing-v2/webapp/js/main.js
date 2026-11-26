@@ -575,34 +575,19 @@ function updateJobEnabled() {
   $('submitJobBtn').disabled = !base;
 }
 
-// The duration verdict for a row's checked link, as a short line
-// for the row's cell (2.6.8: a statement, not a gate — within the
-// tolerance the link may be used, beyond it it may not; only the
-// 'block' band bars use, and runRowCheck turns it into the row's
-// error). Returns '' when there is nothing to say.
+// The duration verdict for a row's checked link (2.6.8: a
+// statement, not a gate — within the tolerance the link may be
+// used, beyond it it may not; only the 'block' band bars use, and
+// runRowCheck turns it into the row's error). Since 2.6.17 no
+// duration line is displayed for the pass, confirm, or unknown
+// bands; only the block band produces text, as the row's failure
+// reason, in one line. The classification and gating are unchanged.
 function durationLineText(dur) {
   if (!dur) return '';
-  const band = dur.band || 'unknown';
-  if (band === 'pass') {
-    return 'Lengths match: video ' + dur.videoS.toFixed(1) +
-      ' s, audio ' + dur.audioS.toFixed(1) + ' s (difference ' +
-      dur.diffS.toFixed(1) + ' s).';
-  }
-  if (band === 'confirm') {
-    return 'Video ' + dur.videoS.toFixed(1) +
-      ' s, audio ' + dur.audioS.toFixed(1) + ' s — a difference of ' +
-      dur.diffS.toFixed(1) + ' s, within the allowed ' +
-      dur.tolS.toFixed(1) + ' s.';
-  }
-  if (band === 'block') {
-    return 'Video ' + dur.videoS.toFixed(1) +
-      ' s, audio ' + dur.audioS.toFixed(1) + ' s — a difference of ' +
-      dur.diffS.toFixed(1) + ' s, beyond the allowed ' + dur.tolS.toFixed(1) +
-      ' s. This link cannot be used for this job: enter the link for ' +
-      'this job’s recording.';
-  }
-  return 'No length has been reported by the preview, so ' +
-    'the lengths could not be compared. The link check above is what counts.';
+  if ((dur.band || 'unknown') !== 'block') return '';
+  return 'Video ' + dur.videoS.toFixed(1) +
+    ' s, recording ' + dur.audioS.toFixed(1) +
+    ' s — the lengths differ too much for the same recording.';
 }
 
 function loadYouTubeApi() {
@@ -739,8 +724,7 @@ function rowCellBits(key) {
   }
   if (st.state === 'checking') { bits.text = 'Checking…'; return bits; }
   if (st.state === 'error') { bits.text = st.reason; bits.cls = 'ytreason'; return bits; }
-  bits.text = 'Link checks out: the video is reachable (Unlisted or Public).' +
-    (st.title ? ' Video title: “' + st.title + '”.' : '');
+  bits.text = 'Link checks out.';
   bits.cls = 'ytok';
   bits.durText = st.dur ? durationLineText(st.dur) : '';
   return bits;

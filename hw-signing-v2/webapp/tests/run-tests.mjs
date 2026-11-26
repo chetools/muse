@@ -509,7 +509,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.16');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.17');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1130,7 +1130,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.16');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.17');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1278,6 +1278,15 @@ await test('wiring: duration gate and preview elements present in the page (2.6.
     'the row check classifies the video length against the job’s audio');
   assert.ok(main.includes("return band !== 'block';"),
     'only the block band bars a checked link');
+  assert.ok(main.includes("bits.text = 'Link checks out.';"),
+    'a passed check reads only “Link checks out.” (2.6.17)');
+  for (const gone of ['reachable (Unlisted or Public)', 'Video title: “',
+    'lengths could not be compared', 'Lengths match:', 'within the allowed']) {
+    assert.ok(!main.includes(gone),
+      'the row cell no longer shows: ' + gone + ' (2.6.17)');
+  }
+  assert.ok(main.includes('the lengths differ too much for the same recording.'),
+    'the block band keeps one shortened reason line with both lengths (2.6.17)');
   assert.ok(!main.includes(': chunks;'), 'no fallback to the on-page transcript at ZIP time');
   assert.ok(main.includes('verifyBundleContents'), 'ZIP contents verified against the bundle');
 });

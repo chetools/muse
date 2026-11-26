@@ -536,6 +536,12 @@ above state; the step 6 link field and the section 7 conversion
 panel are removed, sending takes no link, the submission is made
 from the row (finalise inside Generate ZIP), and no Practice/
 Final label remains. The Worker and the audit app are unchanged.
+Webapp 2.6.17: a passed row check reads only “Link checks out.”,
+with no reachability explanation, video title, or duration line;
+the duration classification and gating are unchanged, and only
+the block band still shows text, as the cell's failure reason —
+“Video … s, recording … s — the lengths differ too much for the
+same recording.”
 `critique_sha256` = SHA-256 hex of the critique exactly as stored.
 receipt = base64url(HMAC-SHA-256(SIGNING_SECRET, canonical)).
 The bundle returned to the student and printed in the HTML is:

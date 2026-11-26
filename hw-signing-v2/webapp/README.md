@@ -312,6 +312,13 @@ logic is Node-tested through `classifyDuration`.
   listed on the browser that holds its entry, and a bound job's
   row link is verified against the bundle's signed video-ID hash,
   so a wrong link cannot be packaged.
+- **Row-cell check text (2.6.17)**: a passed check reads only
+  “Link checks out.” — no reachability explanation, no video
+  title, and no duration line. The duration classification and
+  its gating are unchanged; only the block band still shows
+  text, as the failure reason in the cell: “Video … s,
+  recording … s — the lengths differ too much for the same
+  recording.”
 - **Package transcript timestamps use total minutes** (`[75:20]`),
   carried over from v1, because the audit app's timestamp stripping
   reads `mm:ss`.
