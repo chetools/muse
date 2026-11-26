@@ -422,7 +422,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.12');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.13');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -553,6 +553,17 @@ await test('wiring: the page generates the job token internally; the student nev
     'no page code reads a code input');
   assert.ok(!index.includes('id="retrievalCode"'),
     'step 6 has no retrieval code input');
+});
+
+await test('wiring: an unreadable YouTube link is pointed out in step 6 and in the conversion panel (2.6.13)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const msg = 'That is not a YouTube link this page can read.';
+  assert.equal(main.split(msg).length - 1, 2,
+    'both link fields carry the unreadable-link message');
+  assert.ok(main.includes("$('ytStatus').textContent =\n        'That is not a YouTube link"),
+    'step 6 writes the message to its status line');
+  assert.ok(main.includes("$('finStatus').textContent =\n        'That is not a YouTube link"),
+    'the conversion panel writes the message to its status line');
 });
 
 /* ---------------- job payload ---------------- */
@@ -1020,7 +1031,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.12');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.13');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
