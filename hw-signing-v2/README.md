@@ -22,21 +22,26 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 3. The student scrubs identifying words, reviews the suspected
    identifiers, and ticks the confirmation. Nothing leaves the machine
    before that confirmation.
-4. The student sends a grading job under a self-picked retrieval
-   code; the YouTube link is optional at send (a checked link makes
-   the job submission-ready when graded). There is no Practice/Final
-   choice. The teacher's Muse grades it; the Worker signs the result.
-5. The jobs list refreshes every 5 seconds while the page is open — a
-   waiting job shows how many jobs are ahead of it — and when the job
-   is ready the page shows the grades and critique. An ungraded job
-   is kept for 7 days; a graded job is kept for 180 days after
-   grading. A graded job
-   without a checked link can then be turned into the Canvas
-   submission from the conversion panel (pick the job, check the
-   link, confirm; the Worker re-signs the bundle with the video
-   hash), and
-   for a final job builds the submission ZIP — one file for Canvas,
-   downloaded under a per-job name (2.4.4):
+4. The student sends a grading job; the page generates the job's
+   retrieval code itself and keeps it in the job's entry. Sending
+   takes no YouTube link, and there is no Practice/Final choice.
+   The teacher's Muse grades it; the Worker signs the result.
+5. The jobs list is a table — Job | Grades | YouTube link |
+   Actions — refreshing every 5 seconds while the page is open: a
+   waiting job shows how many jobs are ahead of it, and a ready job
+   shows its grades in its row and its critique in its details row.
+   An ungraded job is kept for 7 days; a graded job is kept for
+   180 days after grading. Each ready row carries its own YouTube
+   link field: pasting a link checks it automatically (a Studio
+   address is converted to the watch form; the Worker reports the
+   video reachable; its length is compared with the job's
+   recording; a job already bound to a video accepts only that
+   video), a failed check states its reason in the row's cell, and
+   a passed check produces the row's Generate ZIP button.
+   Generating the ZIP finalises the job first when no video is
+   bound yet (the Worker re-signs the bundle with the video hash),
+   then verifies and builds the submission ZIP — one file for
+   Canvas, downloaded under a per-job name (2.4.4):
    `C<course>H<homework>-G<total grade>-Y<HHMM>-<YYMMDD>.zip`, the Y
    segment being the job's YouTube link check time (grading time for
    jobs whose entry kept none). The ZIP's bytes and entry names are
@@ -101,7 +106,10 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   mirror of the Worker's validation, the Worker calls (`/youtube-check`,
   `/jobs`, `/jobs/status`, `/jobs/finalize`, `/jobs/retrieved`, `/stats/duration`,
   `GET /` for service info; fetch injected), the YouTube video-ID
-  parser, the duration comparison bands (`classifyDuration`: pass at
+  parser (watch, youtu.be, shorts, live, embed, and — since 2.6.16 —
+  Studio edit addresses, which the page converts to the watch form),
+  the signed bundle's bound video (`bundleBoundVideoSha`), the
+  duration comparison bands (`classifyDuration`: pass at
   a difference of at most 1 s; confirm — the student's
   played-and-confirmed tick — up to max(2 s, 2% of the audio); block
   beyond), the pre-ZIP bundle verification (`verifyBundleContents`),
@@ -111,9 +119,10 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   created_at, expires_at}`. The `youtube_link` and `youtube_title`
   fields are held **only** in the
   student's browser so the HTML can be built at ZIP creation on a
-  later visit; they are never sent with the job. An entry is removed
-  when its ZIP is downloaded, or when the Worker reports the job
-  expired. Each status response carries the job's current
+  later visit; they are never sent with the job. An entry stays
+  after its ZIP is downloaded (the ZIP can be downloaded again);
+  it is removed when the Worker reports the job expired, or when
+  the student removes it from the browser. Each status response carries the job's current
   `expires_at`, and `main.js` stores it back into the entry, so the
   entry's lifetime follows the governing expiry (7 days while
   ungraded, 180 days after grading). The stored expiry is a cache,
@@ -155,7 +164,7 @@ Session/Signed-at/Receipt: the job ID and the Worker's grade receipt
 over the signed result bundle take their place. The HTML is built
 only at retrieval, from the signed bundle, so the grades and critique
 in it are exactly what the Worker signed. Downloading is two steps:
-Review first verifies the exact contents against the signed bundle —
+Generate ZIP first verifies the exact contents against the signed bundle —
 the WAV bytes' SHA-256, the canonical transcript's SHA-256 (built
 from the job recording's own cached chunks, never from the
 transcript currently on the page; a removal list that differs from
@@ -288,10 +297,21 @@ logic is Node-tested through `classifyDuration`.
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle
   change changes the glossary string and thereby every cache key.
-- **Manual retrieval on another browser**: a final job's ZIP needs
-  the YouTube link re-entered (step 6 field); the build verifies it
-  against the bundle's signed video-ID hash, so a wrong link cannot
-  be packaged.
+- **Jobs list and the YouTube link (2.6.16)**: section 7 is a
+  table (Job | Grades | YouTube link | Actions; stacked on phone
+  widths) with a fixed, muted preview player above it — hovering a
+  populated row's link cell for about 400 ms plays that video
+  there, without sound; clicking the link text under the field, or
+  the player, opens the video on YouTube. The step 6 link field
+  and the conversion panel are removed: sending takes no link, and
+  each ready row's field does the checking and the binding. Before
+  a check passes a row has no ZIP button, only the line “Add a
+  YouTube link to download the ZIP.”; a × at the field's right end
+  clears the field and the kept link. There is no Practice/Final
+  label. The page has no manual job-retrieval control: a job is
+  listed on the browser that holds its entry, and a bound job's
+  row link is verified against the bundle's signed video-ID hash,
+  so a wrong link cannot be packaged.
 - **Package transcript timestamps use total minutes** (`[75:20]`),
   carried over from v1, because the audit app's timestamp stripping
   reads `mm:ss`.
