@@ -76,6 +76,7 @@ const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
 // raw fingerprint as base64, kept in memory only, for the fingerprint-form ZIP
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
 const expandedJobs = new Set(); // "pkg|code" with grades shown (kept across refreshes)
+const shownCodes = new Set();   // "pkg|code" with recovery code shown (kept across refreshes)
 
 // Errors belong beside the control that was used, in the part
 // of the window on screen — not in one banner at the top of a
@@ -1261,14 +1262,23 @@ async function doDownloadZip(entry, bundle, review, anchor) {
     });
     downloadBlob(zip, zipName);
     $('zipDone').textContent = 'Done — ' + zipName +
-      ' has been downloaded. Upload that file to Canvas.';
+      ' has been downloaded. Upload that file to Canvas. ' +
+      'The job stays in the list below, so you can download ' +
+      'the ZIP again if you need to.';
     zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
     try {
       await markJobRetrieved(cfg.worker, {
         pkg: entry.pkg, retrieval_code: entry.retrieval_code,
       });
     } catch { /* the ZIP is already in the student's hands */ }
-    removeJobEntry(entry.pkg, entry.retrieval_code);
+    // The job entry is kept (2.6.6): before this, a download removed
+    // the row, the list flipped to "No jobs sent from this browser
+    // yet" under the Done line, and a student whose Canvas upload
+    // failed had to retrieve the job by its recovery code before
+    // they could build the ZIP again. The Worker keeps a graded job
+    // for 180 days and the render drops the row when the Worker
+    // reports it expired, so a kept row costs nothing; "Remove from
+    // this browser" remains the student's own way to clear it.
     renderJobs();
   } finally {
     zipBusy = false;
@@ -1280,6 +1290,10 @@ async function doDownloadZip(entry, bundle, review, anchor) {
 function renderJobRow(container, entry, statusInfo) {
   const row = document.createElement('div');
   row.className = 'jobrow';
+  // The row and each of its controls carry stable identities, so a
+  // refresh rebuild can put the student's focus back on the control
+  // that had it (see renderJobsOnce) instead of dropping it.
+  row.dataset.jobKey = jobKey(entry.pkg, entry.retrieval_code);
   const label = [entry.course, entry.asg].filter(Boolean).join(' · ') || entry.pkg;
   let statusText;
   if (statusInfo === null) statusText = 'checking…';
@@ -1311,6 +1325,7 @@ function renderJobRow(container, entry, statusInfo) {
     const bundle = readyBundles.get(jobKey(entry.pkg, entry.retrieval_code));
     const key = jobKey(entry.pkg, entry.retrieval_code);
     const showBtn = document.createElement('button');
+    showBtn.dataset.act = 'grades';
     showBtn.textContent = expandedJobs.has(key) ? 'Hide grades and critique' : 'Show grades and critique';
     const detail = document.createElement('div');
     detail.hidden = !expandedJobs.has(key);
@@ -1364,6 +1379,7 @@ function renderJobRow(container, entry, statusInfo) {
       const reviewOpen = !!(review && review.receipt === bundle.receipt);
       if (!reviewOpen) {
         const zipBtn = document.createElement('button');
+        zipBtn.dataset.act = 'zip-review';
         zipBtn.className = 'primary';
         zipBtn.textContent = 'Review and download submission ZIP';
         zipBtn.addEventListener('click', () => downloadSubmissionZip(entry, bundle, zipBtn));
@@ -1380,10 +1396,12 @@ function renderJobRow(container, entry, statusInfo) {
           panel.append(p);
         }
         const dlBtn = document.createElement('button');
+        dlBtn.dataset.act = 'zip-download';
         dlBtn.className = 'primary';
         dlBtn.textContent = 'Download submission ZIP';
         dlBtn.addEventListener('click', () => doDownloadZip(entry, bundle, review, dlBtn));
         const closeBtn = document.createElement('button');
+        closeBtn.dataset.act = 'zip-close';
         closeBtn.textContent = 'Close review';
         closeBtn.addEventListener('click', () => {
           // Closing the review restores the row's Review button and
@@ -1400,18 +1418,22 @@ function renderJobRow(container, entry, statusInfo) {
     // the single route to turning a graded job into the submission.
   }
   const codeBtn = document.createElement('button');
+  codeBtn.dataset.act = 'code';
+  const codeShown = shownCodes.has(row.dataset.jobKey);
   codeBtn.textContent = 'Show recovery code';
+  if (codeShown) codeBtn.textContent = 'Hide recovery code';
   const codeLine = document.createElement('span');
   codeLine.className = 'mono';
-  codeLine.hidden = true;
+  codeLine.hidden = !codeShown;
   codeLine.textContent = entry.retrieval_code;
   // One click copies the code (2.6.5): nobody should have to select
   // a 24-character string by hand. The button appears with the code,
   // reads "Copied" briefly after a copy, and if the clipboard is
   // unavailable it selects the code instead, ready for Ctrl+C.
   const copyBtn = document.createElement('button');
+  copyBtn.dataset.act = 'copy';
   copyBtn.textContent = 'Copy';
-  copyBtn.hidden = true;
+  copyBtn.hidden = !codeShown;
   copyBtn.addEventListener('click', async () => {
     let copied = false;
     try {
@@ -1433,17 +1455,21 @@ function renderJobRow(container, entry, statusInfo) {
   codeBtn.addEventListener('click', () => {
     codeLine.hidden = !codeLine.hidden;
     copyBtn.hidden = codeLine.hidden;
+    if (codeLine.hidden) shownCodes.delete(row.dataset.jobKey);
+    else shownCodes.add(row.dataset.jobKey);
     codeBtn.textContent = codeLine.hidden
       ? 'Show recovery code' : 'Hide recovery code';
   });
   line.append(codeBtn, codeLine, copyBtn);
   const forgetBtn = document.createElement('button');
+  forgetBtn.dataset.act = 'remove';
   forgetBtn.textContent = 'Remove from this browser';
   forgetBtn.addEventListener('click', () => {
     // A review open on this row is abandoned with the job: its
     // zipReviews entry goes too, or the poll would stay paused on a
     // review that no longer exists.
     zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
+    shownCodes.delete(jobKey(entry.pkg, entry.retrieval_code));
     removeJobEntry(entry.pkg, entry.retrieval_code);
     renderJobs();
   });
@@ -1641,9 +1667,29 @@ async function renderJobsOnce() {
   // One synchronous swap, after every fetch has settled: no painted
   // frame ever shows an empty or half-built list, and a button's
   // position never moves while its row is being rebuilt.
+  // The swap replaces the row elements, which would drop the
+  // student's focus to the page body: note the focused control
+  // (its row's job key and its action) before the swap and put the
+  // focus back on the matching control in the rebuilt row. The
+  // grades panel and a shown recovery code survive a rebuild the
+  // same way, through expandedJobs and shownCodes.
+  const ae = document.activeElement;
+  let focusMark = null;
+  if (ae && ae.dataset && ae.dataset.act && box.contains(ae)) {
+    const holderRow = ae.closest('[data-job-key]');
+    if (holderRow) focusMark = { key: holderRow.dataset.jobKey, act: ae.dataset.act };
+  }
   box.textContent = '';
   if (survivors.length) box.append(frag);
   else box.textContent = 'No jobs sent from this browser yet.';
+  if (focusMark) {
+    for (const r of box.querySelectorAll('[data-job-key]')) {
+      if (r.dataset.jobKey !== focusMark.key) continue;
+      const target = r.querySelector('[data-act="' + focusMark.act + '"]');
+      if (target) target.focus({ preventScroll: true });
+      break;
+    }
+  }
   if (entriesDirty) saveJobEntries(survivors);
   refreshFinPanel();
 }
@@ -1652,17 +1698,20 @@ async function renderJobsOnce() {
 // open, so a waiting student sees the queue move and the grade arrive
 // without reloading — no notification is needed. A poll is skipped
 // while the tab is hidden, while a ZIP verification or download is
-// running (zipBusy), while a ZIP review panel is open (zipReviews),
-// or while the student's focus is inside the list: a poll never
-// rebuilds the list under a student who is reading a review or about
-// to click. A skipped poll loses nothing — the next tick fetches
-// every status again.
+// running (zipBusy), or while a ZIP review panel is open
+// (zipReviews) — a rebuild would destroy the review being read.
+// Focus inside the list no longer skips a poll (2.6.6): a clicked
+// button keeps the focus, so the old rule blocked every later update
+// for as long as the student left the focus there, and the row sat
+// at "being graded now" after the grade had arrived. A rebuild is
+// safe for a focused student instead: the swap is synchronous, and
+// renderJobsOnce restores the focus to the same control in the
+// rebuilt row, with the grades panel and a shown recovery code kept
+// as they were.
 let zipBusy = false;
 async function refreshJobs() {
   if (document.hidden) return;
   if (zipBusy || zipReviews.size) return;
-  const box = $('jobsBox');
-  if (box && document.activeElement && box.contains(document.activeElement)) return;
   try { await renderJobs(); } catch { /* the next tick retries */ }
 }
 setInterval(refreshJobs, 5000);
