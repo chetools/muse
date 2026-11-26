@@ -121,7 +121,7 @@ export function findSuspects(scrubbedChunks, vocabSet, wordlistSet) {
       const lower = word.toLowerCase().replace(/['’]s$/, '');
       if (vocabSet && vocabSet.has(lower)) continue;
       if (wordlistSet && wordlistSet.has(lower)) continue;
-      add(word, 'capitalised word not in the glossary vocabulary');
+      add(word, 'capitalised word not in the glossary');
     }
   }
   return [...found.values()]

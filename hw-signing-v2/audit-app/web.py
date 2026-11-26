@@ -353,6 +353,25 @@ alone like an audio one. Nothing in the front end serves
 or plays a package's own media — the wall and the single
 view play the downloaded YouTube take — so a fingerprint
 package appears there exactly as an audio package does.
+
+v49: writing corrections only, from the 2026-11-26 audit of
+the displayed texts (no behaviour or check changes, and the
+check schema stays 2): the section 2 guidance is set as four
+paragraphs, one per topic, with "Submissions are not
+re-graded" for "There is no re-grade" and the Examined
+paragraph's "listed first" qualified to the default sort;
+"carry" no longer stands for "has" (the Packages messages
+and the Cleanup table's "Contains" heading); the gradebook
+preview warnings name the student's YouTube video (not
+"portfolio video") and use the em dash like the rest of the
+app; the Final grade note drops its "(audit v2)" tag; the
+activity log's skip line drops its "(v36)" tag; the
+Redownload note says the automatic passes "still fetch
+current attempts only"; the Packages lifecycle paragraph is
+split so the frozen-text rule stands first; the package-text
+mismatch message says "the stored text", not "the frozen
+text"; and the Cleanup introduction reads "There is no
+waiting period: you decide when material is deleted."
 """
 
 import argparse
@@ -755,7 +774,7 @@ def hw_package_show(cfg, pkg):
         raise ValueError(
             "the package text fetched from the Worker does not "
             "match its content SHA-256 — the copy read is not the "
-            "frozen text; try Show again")
+            "stored text; try Show again")
     return rec
 
 
@@ -778,7 +797,7 @@ def hw_package_create(cfg, text, pkg_name=None):
         name = str(pkg_name)
     if not name:
         raise ValueError(
-            "no package name found: the text must carry a header of "
+            "no package name found: the text must have a header of "
             'the form "# Prompt package (pkg: <name>)", or a package '
             "name must be given")
     sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -875,7 +894,7 @@ def hw_package_link(cfg, pkg, course, asg, page_base=None):
             "for an open package")
     if not rec.get("content_sha256"):
         raise ValueError(
-            f'the Worker record for "{pkg}" carries no content hash')
+            f'the Worker record for "{pkg}" has no content hash')
     params = {"w": (cfg.get("worker_base_url") or "").rstrip("/"),
               "pkg": pkg, "ph": rec["content_sha256"],
               "course": course, "asg": asg}
@@ -1911,7 +1930,7 @@ def run_checks(cfg, force=False, only_keys=None, stats=None):
     if skipped:
         log_activity("check", f"integrity checks: {skipped} "
                               "unchanged package(s) skipped — "
-                              "stored checks stand (v36)")
+                              "stored checks stand")
     if stats is not None:
         stats["skipped"] = skipped
     if not jobs:
@@ -3033,14 +3052,14 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
                             f"submitted transcript{_when}")
         if (_check.get("youtube") or {}).get("youtube_flag"):
             warnings.append(f"{student}: YouTube acoustic cross-check "
-                            "flag - the portfolio video does not match "
+                            "flag — the student's YouTube video does not match "
                             "the submitted audio")
         if _check.get("grade_receipt_ok") is False:
-            warnings.append(f"{student}: grade signature FAILED - "
+            warnings.append(f"{student}: grade signature FAILED — "
                             "the grades and critique in the submission "
                             "do not verify against the grading Worker")
         if _check.get("youtube_id_ok") is False:
-            warnings.append(f"{student}: YouTube video ID mismatch - "
+            warnings.append(f"{student}: YouTube video ID mismatch — "
                             "the link in the submission is not the "
                             "video checked before grading")
         # Preview-only fields (v35): the signed grade from the
@@ -3736,7 +3755,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <button class="secondary" id="exportcoded">Export coded grading sections</button>
 <span id="exportresult"></span> <span id="dlresult"></span></p>
 <h3>Redownload submissions</h3>
-<p class="mut">Fetch a filtered selection again — packages missing or damaged on this computer, or everything in the selection with Force. Previous attempts are fetched only when the scope includes them; the automatic passes stay latest-only. The estimate covers package download and extraction only.</p>
+<p class="mut">Fetch a filtered selection again — packages missing or damaged on this computer, or everything in the selection with Force. Previous attempts are fetched only when the scope includes them; the automatic passes still fetch current attempts only. The estimate covers package download and extraction only.</p>
 <div class="rdctl">
 <label>Course <select id="rdcourse"><option value="">All courses</option></select></label>
 <label>Homework <select id="rdhw"><option value="">All homework</option></select></label>
@@ -3754,7 +3773,10 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <p class="mut" id="rdestimate"></p>
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
-<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
+<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. Submissions are not re-graded: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's grade.</p>
+<p class="mut"><strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one.</p>
+<p class="mut"><strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full.</p>
+<p class="mut"><strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. With the default sort, students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
 <div id="viewctl">
 <label>Course <select id="fcourse"><option value="">All courses</option></select></label>
@@ -3777,7 +3799,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <table><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
 <th>Integrity</th><th>Grade</th>
 <th>Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
-<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean (audit v2). It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade.</p>
+<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade.</p>
 </section>
 
 <section><h2>3. Grades back to Canvas</h2>
@@ -3793,7 +3815,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <button class="secondary" id="rmdemos">Remove test examples</button>
 <span id="demoresult"></span></p>
 <h3>Cleanup</h3>
-<p class="mut">Working material is deleted from the separate Cleanup page, where it is grouped by course and assignment with filters, so you can remove exactly what you choose — one assignment's submissions and videos, the coded exports, or the download watermark — and see the size of everything before anything is deleted. There is no appeal-period gate: when material may go is your decision.</p>
+<p class="mut">Working material is deleted from the separate Cleanup page, where it is grouped by course and assignment with filters, so you can remove exactly what you choose — one assignment's submissions and videos, the coded exports, or the download watermark — and see the size of everything before anything is deleted. There is no waiting period: you decide when material is deleted.</p>
 <p><a href="/cleanup" style="color:#243b53;font-weight:600">Open the Cleanup page →</a></p>
 <h3>HW prompt packages</h3>
 <p class="mut">The grading prompt packages live on the grading Worker, not on this computer. The Packages page lists every version held there — status, trial, job counts and content hash — and manages the lifecycle: record a trial, open, close or retire a version, upload a new version as a draft, and build the verified student link for an open package. It needs the Worker's admin token, saved on that page in the local config file only.</p>
@@ -5924,7 +5946,7 @@ function render(){
   $("groups").innerHTML = gs.length? gs.map((g,gi)=>{
     const bytes=g.items.reduce((a,it)=>a+it.bytes+it.video_bytes,0);
     return "<h3><label><input type='checkbox' style='width:auto' data-group='"+gi+"' onchange='tickGroup(this)'> "+esc(g.course_name)+(g.assignment_name?" — "+esc(g.assignment_name):"")+"</label> <span class='mut'>"+g.items.length+" submission(s) · "+mb(bytes)+"</span></h3>"+
-    "<table><thead><tr><th></th><th>Student</th><th>Package</th><th>Video</th><th>Carries</th></tr></thead><tbody>"+
+    "<table><thead><tr><th></th><th>Student</th><th>Package</th><th>Video</th><th>Contains</th></tr></thead><tbody>"+
     g.items.map(it=>"<tr><td><input type='checkbox' style='width:auto' class='unit' value='"+esc(it.key)+"'></td><td>"+esc(it.name)+"</td><td>"+mb(it.bytes)+"</td><td>"+(it.video_bytes?mb(it.video_bytes):"—")+"</td><td class='mut'>"+[it.has_result?"check result":"",it.has_final?"final grade":"",it.examined?"examined":""].filter(Boolean).join(", ")+"</td></tr>").join("")+
     "</tbody></table>";
   }).join("") : '<p class="mut">Nothing downloaded matches the filters.</p>';
@@ -6023,7 +6045,8 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 
 <section><h2>All packages</h2>
 <p><button id="refreshpkgs">Refresh list</button> <span id="pkgcount" class="mut"></span></p>
-<p class="mut">One row per version. A package version's text never changes: a correction is a new version, uploaded below as a new draft. Lifecycle: draft → trialled (a trial of 5/5 completeness and 5/5 accuracy, or a lower trial with your override reason recorded) → open (the Worker accepts grading jobs only against open packages) → closed (no new jobs; graded jobs stay retrievable until they expire) → retired (kept, not deleted, for as long as a grade can be appealed).</p>
+<p class="mut">One row per version. A package version's text never changes: a correction is a new version, uploaded below as a new draft.</p>
+<p class="mut">Lifecycle: draft → trialled (a trial of 5/5 completeness and 5/5 accuracy, or a lower trial with your override reason recorded) → open (the Worker accepts grading jobs only against open packages) → closed (no new jobs; graded jobs stay retrievable until they expire) → retired (kept, not deleted, for as long as a grade can be appealed).</p>
 <table><thead><tr><th>Package</th><th>Status</th><th>Trial</th><th>Jobs</th><th>Content SHA-256</th><th>Created</th><th>Actions</th></tr></thead><tbody id="pkgs"></tbody></table>
 <div id="pkgdetail"></div>
 <div id="pkgpanel"></div>
@@ -6033,7 +6056,7 @@ td,th,pre,.mut{overflow-wrap:anywhere}
 <p class="mut">Paste the approved package text, or choose the Markdown file — the text is read on this computer and sent only to the grading Worker. The package name comes from the header line, <span class="hash"># Prompt package (pkg: &lt;name&gt;)</span>; if the text has no header, give the name here. The Worker assigns the next version number and the content SHA-256, and stores the text as a <strong>draft</strong>: it cannot take jobs until its trial is recorded and it is opened, above.</p>
 <label>Package file (optional)</label>
 <input type="file" id="pkgfile" accept=".md,.txt,text/markdown,text/plain">
-<label>Package name (only if the text carries no header)</label>
+<label>Package name (only if the text has no header)</label>
 <input type="text" id="pkgname">
 <label>Package text</label>
 <textarea id="pkgtext" rows="14" spellcheck="false"></textarea>

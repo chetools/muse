@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.1');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.2');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -986,7 +986,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.1');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.2');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1634,6 +1634,44 @@ await test('fresh computer: a retrieved job builds the fingerprint ZIP once the 
   ]);
   assert.deepEqual(unzipStored(zip).entries.map((e) => e.name),
     ['submission.html', 'submission-fingerprint.bin']);
+});
+
+await test('wiring: cross-assignment guard on ZIP buttons and the conversion picker (2.6.2)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes("entry.kind === 'final' && bundle && entry.pkg !== cfg.pkg"),
+    'a final job of another assignment gets no ZIP button on this page');
+  assert.ok(main.includes('open its assignment\\u2019s link in Canvas'),
+    'the guarded row says where its ZIP is built');
+  assert.ok(main.includes('if (entry.pkg !== cfg.pkg) continue;'),
+    'the conversion picker offers only this assignment\u2019s jobs');
+  assert.ok(main.includes('finManualEntry.pkg === cfg.pkg'),
+    'a manually retrieved job converts only under its own assignment');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('Pick the graded job for this assignment'),
+    'the conversion panel names this assignment');
+  assert.ok(html.includes('a job\u2019s submission ZIP is built only from its own assignment\u2019s link'),
+    'section 7 states the guard');
+});
+
+await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const jobs = readFileSync(new URL('../js/jobs.js', import.meta.url), 'utf8');
+  const pkg = readFileSync(new URL('../js/package.js', import.meta.url), 'utf8');
+  assert.ok(!html.includes('carries its recording fingerprint')
+    && !main.includes('carries the recording\u2019s fingerprint'),
+    'no "carries" for "has" in the retrieval texts');
+  assert.ok(html.includes('Open this page from the assignment\u2019s link, then enter the'),
+    'the retrieval note states the link precondition');
+  assert.ok(!html.includes('the same three bands'), 'no unresolvable "bands" reference');
+  assert.ok(main.includes('Open this page from the link your teacher put in Canvas'),
+    'the link-check message names the Canvas link');
+  assert.ok(!jobs.includes('grading Worker answered') && !jobs.includes('no grading Worker'),
+    'student errors name the grading service, not the Worker');
+  assert.ok(!pkg.includes('Audio duration is a plain number'),
+    'the stray duration sentence is gone from the submission file');
+  assert.ok(pkg.includes('<dt>Audio duration unit</dt><dd>seconds (s)</dd>'),
+    'the duration unit is a labelled entry');
 });
 
 await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {

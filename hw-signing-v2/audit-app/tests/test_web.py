@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/48.0",
-          "user agent bumped to 48.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/49.0",
+          "user agent bumped to 49.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"

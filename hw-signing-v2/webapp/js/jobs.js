@@ -184,7 +184,7 @@ export function verifyFingerprintContents(bundle, actual) {
 export function validateJobPayload(body) {
   const fail = (reason) => ({ ok: false, reason });
   if (!body || typeof body !== 'object') return fail('No job to submit.');
-  if (!body.pkg || String(body.pkg).length > 128) return fail('No prompt package in the configured link.');
+  if (!body.pkg || String(body.pkg).length > 128) return fail('No prompt package in this link.');
   if (!SHA256_HEX.test(body.pkg_content_sha256 || '')) {
     return fail('This link is incomplete. Use the link your teacher put in Canvas.');
   }
@@ -376,7 +376,7 @@ export function collapseSameJobEntries(items) {
 
 async function postJson(workerBase, path, body, fetchFn) {
   const base = normaliseWorkerBase(workerBase);
-  if (!base) throw new Error('no grading Worker address configured');
+  if (!base) throw new Error('no grading service address configured');
   const doFetch = fetchFn || globalThis.fetch;
   const res = await doFetch(base + path, {
     method: 'POST',
@@ -391,10 +391,10 @@ async function postJson(workerBase, path, body, fetchFn) {
 // GET / — service info, including vapid_public_key when configured.
 export async function fetchWorkerInfo(workerBase, fetchFn) {
   const base = normaliseWorkerBase(workerBase);
-  if (!base) throw new Error('no grading Worker address configured');
+  if (!base) throw new Error('no grading service address configured');
   const doFetch = fetchFn || globalThis.fetch;
   const res = await doFetch(base + '/');
-  if (!res.ok) throw new Error('grading Worker answered HTTP ' + res.status);
+  if (!res.ok) throw new Error('the grading service answered HTTP ' + res.status);
   return res.json();
 }
 

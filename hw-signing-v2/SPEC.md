@@ -63,7 +63,13 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   crypto.getRandomValues) and shows it at send time as the job's
   recovery code; since webapp 2.6.1 the job's row in section 7 has a
   Show recovery code button that reveals the stored code again, for
-  use on a different browser. The student no longer picks or types
+  use on a different browser. Webapp 2.6.2 adds the cross-assignment
+  guard: the section 7 list stays browser-wide across the student's
+  courses, but a final job's submission ZIP is built only from the
+  link of the job's own assignment — on another assignment's page
+  the row carries a note instead of the ZIP button — and the
+  conversion picker offers only the open link's assignment's jobs.
+  The student no longer picks or types
   one in the normal flow,
   and the manual box below section 7 — relabelled "Recovery code" —
   is the only place a code is typed. The Worker protocol is
