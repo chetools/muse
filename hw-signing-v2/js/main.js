@@ -678,7 +678,18 @@ async function previewYouTube(videoId, els, onDuration) {
 async function runYtCheck() {
   const url = $('ytLink').value.trim();
   const videoId = parseYouTubeVideoId(url);
-  if (!videoId) return;
+  if (!videoId) {
+    // A non-empty entry that is not a readable YouTube link is
+    // pointed out, not passed over in silence (2.6.13): the Studio
+    // edit address is the common case.
+    if (url) {
+      $('ytStatus').textContent =
+        'That is not a YouTube link this page can read. Paste the ' +
+        'watch address, https://www.youtube.com/watch?v=… — the ' +
+        'Studio edit address cannot be used.';
+    }
+    return;
+  }
   if (ytCheckBusy) {
     // A check for an earlier link is still in flight; its result
     // will be discarded as stale. Re-arm so this link is checked
@@ -1765,7 +1776,16 @@ async function runFinCheck() {
   if (!cand) return;
   const url = $('finLink').value.trim();
   const videoId = parseYouTubeVideoId(url);
-  if (!videoId) return;
+  if (!videoId) {
+    // As in step 6 (2.6.13): an unreadable link is pointed out.
+    if (url) {
+      $('finStatus').textContent =
+        'That is not a YouTube link this page can read. Paste the ' +
+        'watch address, https://www.youtube.com/watch?v=… — the ' +
+        'Studio edit address cannot be used.';
+    }
+    return;
+  }
   if (finCheckBusy) {
     // As in step 6: re-arm so the replacement link is checked once
     // the in-flight check for the earlier link ends, capped so a
