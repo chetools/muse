@@ -203,7 +203,7 @@ export function validateJobPayload(body) {
   if (!v.webapp || !v.model || !v.glossary) return fail('Component versions are missing.');
   if (typeof body.retrieval_code !== 'string' ||
       !RETRIEVAL_CODE_RE.test(body.retrieval_code)) {
-    return fail('The recovery code for this job could not be made. Reload the page and send again.');
+    return fail('This job could not be prepared for sending. Reload the page and send again.');
   }
   if (body.kind === 'final') {
     if (!body.youtube_token) return fail('A submission with a link needs the YouTube link checked first.');
