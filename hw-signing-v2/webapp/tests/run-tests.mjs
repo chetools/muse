@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.9');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.10');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1001,7 +1001,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.9');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.10');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1795,12 +1795,12 @@ await test('wiring: section 7 redesign — one line collapsed, one panel, compac
 
 await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes("codeBtn.textContent = 'Show recovery code'"),
-    'each job row carries a Show recovery code button');
+  assert.ok(main.includes("codeBtn.textContent = 'Copy recovery code'"),
+    'each job row carries a Copy recovery code button (2.6.10: copy, not show)');
   assert.ok(main.includes('entry.retrieval_code'),
-    'the revealed code is the job entry\u2019s stored code');
-  assert.ok(main.includes("'Hide recovery code'"),
-    'the button toggles back to hidden');
+    'the copied code is the job entry\u2019s stored code');
+  assert.ok(!main.includes("'Hide recovery code'"),
+    'there is no show/hide toggle for the code any more');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(!html.includes('picked at the time'),
     'the retrieval note no longer mentions student-picked codes');
@@ -1808,6 +1808,20 @@ await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
     'no page text still claims the code is shown only once');
   assert.ok(!main.includes('it is not shown again'),
     'the send-time line no longer claims the code is never shown again');
+});
+
+await test('wiring: recovery code copies without showing; practice jobs carry the add-link button (2.6.10)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes("btn.textContent = 'Copy recovery code'"),
+    'the send-time line offers a copy button, not the printed code');
+  assert.ok(!main.includes("'Recovery code for the job just sent: ' + code"),
+    'the send-time line no longer prints the code');
+  assert.ok(main.includes("entry.kind === 'practice' && entry.pkg === cfg.pkg"),
+    'the add-link button is gated to this assignment\u2019s practice jobs');
+  assert.ok(main.includes("'Add a YouTube link \u2014 make this your submission'"),
+    'a graded practice job\u2019s panel carries the add-link button');
+  assert.ok(main.includes('refreshFinPanel(key)'),
+    'the button selects the job in the conversion panel');
 });
 
 await test('wiring: fingerprint-form ZIP path is wired into the review and download steps (2.6.0)', () => {

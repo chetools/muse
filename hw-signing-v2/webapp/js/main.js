@@ -758,18 +758,40 @@ function duplicateStatusText(res) {
 // in the job entry in this browser, so return visits here need
 // nothing — the display below exists for the one case the browser
 // cannot cover: retrieving the job on a different browser, where
-// the code is typed into the manual box. It is shown at send time,
-// and only when the code actually retrieves a job: a new job,
-// or a duplicate send whose code was stored as an alias for the
-// existing job. A duplicate send with no alias created stores
-// nothing under its code, so no code is shown for it. Afterwards
-// the job row's Show recovery code button shows it again (2.6.1).
+// the code is typed into the manual box. It is offered at send
+// time, and only when the code actually retrieves a job: a new
+// job, or a duplicate send whose code was stored as an alias for
+// the existing job. A duplicate send with no alias created stores
+// nothing under its code, so no code is offered for it. The code
+// itself is not printed (2.6.10): the line carries a Copy button,
+// and the code appears as text only when the browser refuses
+// clipboard access, as the fallback. Afterwards
+// the job row's Copy recovery code button copies it again (2.6.1).
 function showRecoveryCode(code) {
-  $('recoveryLine').textContent =
-    'Recovery code for the job just sent: ' + code + ' — save it ' +
-    'now. You need it only to retrieve this job on a different ' +
-    'browser; this job\u2019s row in section 7 can show it again. ' +
-    'Anyone with it can retrieve the grade, so keep it private.';
+  const line = $('recoveryLine');
+  line.textContent = '';
+  const btn = document.createElement('button');
+  btn.textContent = 'Copy recovery code';
+  btn.addEventListener('click', async () => {
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(code);
+      copied = true;
+    } catch { /* clipboard unavailable: print as the fallback */ }
+    if (copied) {
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = 'Copy recovery code'; }, 1600);
+    } else {
+      line.append(document.createTextNode(' ' + code));
+      btn.remove();
+    }
+  });
+  line.append(
+    document.createTextNode('Recovery code for the job just sent \u2014 save it now: '),
+    btn,
+    document.createTextNode(' You need it only to retrieve this job ' +
+      'on a different browser; this job\u2019s row in section 7 can copy ' +
+      'it again. Anyone with it can retrieve the grade, so keep it private.'));
 }
 
 $('submitJobBtn').addEventListener('click', async () => {
@@ -1357,6 +1379,23 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
   });
   line.append(detailBtn);
   row.append(line);
+  if (bundle && entry.kind === 'practice' && entry.pkg === cfg.pkg) {
+    // A graded practice job (no link was given at send time): the
+    // place to add the link is on the job itself (2.6.10). The button takes the student
+    // to the conversion panel below the list, with this job
+    // selected and the link field focused — the panel is where the
+    // check and the conversion run, as before.
+    const linkBtn = document.createElement('button');
+    linkBtn.dataset.act = 'addlink';
+    linkBtn.className = 'primary';
+    linkBtn.textContent = 'Add a YouTube link — make this your submission';
+    linkBtn.addEventListener('click', () => {
+      refreshFinPanel(key);
+      $('finPanel').scrollIntoView({ block: 'nearest' });
+      $('finLink').focus({ preventScroll: true });
+    });
+    detail.append(linkBtn);
+  }
   if (bundle) {
     // The critique is a numbered list, one point per line: keep the
     // line breaks when it is shown (the submission HTML does the
@@ -1434,17 +1473,22 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
         detail.append(panel);
       }
     }
-    // No per-row conversion button: the conversion panel's picker is
-    // the single route to turning a graded job into the submission.
+    // The conversion itself runs in the panel below the list; a
+    // practice job's panel above carries the button that leads
+    // there (2.6.10).
   }
   const codeBtn = document.createElement('button');
   codeBtn.dataset.act = 'code';
   codeBtn.className = 'quiet';
-  const codeShown = shownCodes.has(row.dataset.jobKey);
-  codeBtn.textContent = 'Show recovery code';
-  if (codeShown) codeBtn.textContent = 'Hide recovery code';
+  codeBtn.textContent = 'Copy recovery code';
   const codeLine = document.createElement('span');
   codeLine.className = 'mono';
+  // The code is a credential: copying it must not put it on screen
+  // (2.6.10). The code is revealed only as the fallback when the
+  // browser refuses clipboard access, so the student can still
+  // select it by hand; shownCodes then keeps it revealed across
+  // refreshes, as the shown state did before.
+  const codeShown = shownCodes.has(row.dataset.jobKey);
   codeLine.hidden = !codeShown;
   codeLine.textContent = entry.retrieval_code;
   // One click copies the code (2.6.5): nobody should have to select
@@ -1474,13 +1518,20 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
     }
     setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1600);
   });
-  codeBtn.addEventListener('click', () => {
-    codeLine.hidden = !codeLine.hidden;
-    copyBtn.hidden = codeLine.hidden;
-    if (codeLine.hidden) shownCodes.delete(row.dataset.jobKey);
-    else shownCodes.add(row.dataset.jobKey);
-    codeBtn.textContent = codeLine.hidden
-      ? 'Show recovery code' : 'Hide recovery code';
+  codeBtn.addEventListener('click', async () => {
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(entry.retrieval_code);
+      copied = true;
+    } catch { /* clipboard unavailable: reveal as the fallback */ }
+    if (copied) {
+      codeBtn.textContent = 'Copied';
+      setTimeout(() => { codeBtn.textContent = 'Copy recovery code'; }, 1600);
+    } else {
+      codeLine.hidden = false;
+      copyBtn.hidden = false;
+      shownCodes.add(row.dataset.jobKey);
+    }
   });
   const forgetBtn = document.createElement('button');
   forgetBtn.dataset.act = 'remove';
