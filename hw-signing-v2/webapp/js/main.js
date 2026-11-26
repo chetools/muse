@@ -26,7 +26,7 @@ import {
   VERSIONS, AUDIO_FILE_NAME, FINGERPRINT_FILE_NAME, assemblePackage,
   chunksFromCanonical, formatTranscriptTimestamp,
 } from './package.js';
-import { encodeWavPcm16, decodeFileTo16kMono, SAMPLE_RATE } from './media.js';
+import { encodeWavPcm16, pcmFromWavBytes, decodeFileTo16kMono, SAMPLE_RATE } from './media.js';
 import { loadModel, transcribePcm, FILE_WINDOW_S } from './transcribe.js';
 import { buildVocabulary } from './vocab.js';
 import {
@@ -293,6 +293,11 @@ async function adoptCacheRecord(record, note) {
   windowsDoneBase = record.windows_done || 0;
   if (record.wavBlob) {
     wavBytes = new Uint8Array(await record.wavBlob.arrayBuffer());
+    // The samples are derived from the stored WAV (2.6.14), so a
+    // restored recording whose transcription is missing or partial
+    // can be transcribed or resumed; before this, a restore left
+    // the samples null and the Transcribe button stayed disabled.
+    pcm = pcmFromWavBytes(wavBytes);
   }
   durationS = record.duration_s || (wavBytes ? (wavBytes.length - 44) / 2 / SAMPLE_RATE : 0);
   transcriptionComplete = !!record.complete;
@@ -379,7 +384,9 @@ async function renderCacheList() {
     meta.textContent =
       namePart + when + ' · ' + formatDuration(entry.duration_s) + ' · ' +
       (entry.size_bytes / 1048576).toFixed(1) + ' MB · ' +
-      (entry.complete ? 'transcribed' : 'partly transcribed (' + entry.chunks + ' pieces)') +
+      (entry.complete ? 'transcribed'
+        : entry.chunks ? 'partly transcribed (' + entry.chunks + ' pieces)'
+        : 'not transcribed') +
       ' · recording hash ' + entry.audio_sha256.slice(0, 12) + '…' + wordsPart;
     row.append(meta);
     const restoreBtn = document.createElement('button');
@@ -396,6 +403,7 @@ async function renderCacheList() {
         chromaprint = null; chromaprintSha = null; chromaprintPending = null;
         updateRunEnabled();
         await adoptCacheRecord(record, 'Recording restored from this computer.');
+        updateRunEnabled();
         refreshFingerprint();
       } catch (err) { showError('That saved recording could not be restored.', err, restoreBtn); }
     });
@@ -403,6 +411,20 @@ async function renderCacheList() {
     delBtn.textContent = 'Delete';
     delBtn.addEventListener('click', async () => {
       await cacheDelete(entry.audio_sha256).catch(() => {});
+      // A delete is a delete (2.6.14): when the deleted recording
+      // is the one loaded in the page, it is unloaded too, instead
+      // of living on in the page until a reload.
+      if (audioSha && entry.audio_sha256 === audioSha) {
+        pcm = null; wavBytes = null; audioSha = null; durationS = 0;
+        chromaprint = null; chromaprintSha = null; chromaprintPending = null;
+        chunks = []; windowsDoneBase = 0;
+        transcriptionComplete = false;
+        clearYtCheck();
+        $('mediaStatus').textContent = 'Recording deleted from this computer.';
+        setAudioMeta();
+        updateRunEnabled();
+        refreshDerived();
+      }
       renderCacheList();
     });
     row.append(restoreBtn, delBtn);

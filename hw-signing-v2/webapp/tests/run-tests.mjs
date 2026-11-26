@@ -18,7 +18,7 @@ import {
   VERSIONS, FINGERPRINT_FILE_NAME, assemblePackage, parsePackageVerification,
   chunksFromCanonical, formatTranscriptTimestamp,
 } from '../js/package.js';
-import { encodeWavPcm16, wavDurationS, channelsToMono, createStreamResampler, decodeFileTo16kMono } from '../js/media.js';
+import { encodeWavPcm16, pcmFromWavBytes, wavDurationS, channelsToMono, createStreamResampler, decodeFileTo16kMono } from '../js/media.js';
 import {
   isMp4FamilyFile, tier2BlockReason, webCodecsCodecString,
   decoderSpecificInfo, planesToChannels, demuxMp4Audio, decodeMp4WithWebCodecs,
@@ -222,6 +222,29 @@ await test('wav: header, size and duration agree', () => {
   assert.equal(wavDurationS(wav), 1);
 });
 
+await test('wav: pcmFromWavBytes inverts encodeWavPcm16 within int16 quantisation (2.6.14)', () => {
+  const samples = new Float32Array([0, 0.5, -0.5, 1, -1, 0.25, -0.125]);
+  const back = pcmFromWavBytes(encodeWavPcm16(samples));
+  assert.equal(back.length, samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    assert.ok(Math.abs(back[i] - samples[i]) <= 1 / 32767,
+      'sample ' + i + ' round-trips');
+  }
+  assert.equal(pcmFromWavBytes(new Uint8Array(10)).length, 0);
+});
+
+await test('wiring: restore leaves the recording transcribable, delete unloads the loaded recording, empty records are labelled not transcribed (2.6.14)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('pcm = pcmFromWavBytes(wavBytes);'),
+    'adopting a stored record derives the samples from its WAV');
+  assert.ok(main.includes('entry.audio_sha256 === audioSha'),
+    'the delete handler checks whether the deleted record is the loaded one');
+  assert.ok(main.includes("'Recording deleted from this computer.'"),
+    'deleting the loaded recording says so in the media status');
+  assert.ok(main.includes(": 'not transcribed'"),
+    'a record with no pieces is labelled not transcribed');
+});
+
 /* ---------------- cache key rules ---------------- */
 
 await test('cache key: fingerprint + model + glossary; nothing else enters', () => {
@@ -422,7 +445,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.13');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.14');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1031,7 +1054,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.13');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.14');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
