@@ -1164,8 +1164,12 @@ async function downloadSubmissionZip(entry, bundle, anchor) {
   zipBusy = true;
   anchor.disabled = true;
   const status = showZipStatus(anchor,
-    'Verifying the recording and the transcript against the signed ' +
-    'grade record… This can take a minute on a long recording.');
+    bundleChromaprintSha(bundle)
+      ? 'Verifying the fingerprint and the transcript against the ' +
+        'signed grade record…'
+      : 'Verifying the recording and the transcript against the ' +
+        'signed grade record… This can take a minute on a long ' +
+        'recording.');
   let parts = null;
   try {
     // Let the status paint before the verification hashes begin.

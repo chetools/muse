@@ -69,6 +69,14 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   link of the job's own assignment — on another assignment's page
   the row carries a note instead of the ZIP button — and the
   conversion picker offers only the open link's assignment's jobs.
+  Webapp 2.6.3 corrects the ZIP-contents wording to the rule the
+  Worker has applied since 2.7.0: every graded job's bundle signs
+  its chromaprint_sha256, so the fingerprint form is the form of
+  every job graded by the current system (the signed bundle
+  decides, not the link the job was sent with; only pre-2.7.0
+  bundles keep the WAV form) — the step 2 note and the opening
+  paragraph now say the fingerprint goes into the ZIP, and the
+  ZIP progress line names the form being verified.
   The student no longer picks or types
   one in the normal flow,
   and the manual box below section 7 — relabelled "Recovery code" —
