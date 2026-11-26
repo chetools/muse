@@ -1,4 +1,18 @@
-# Teacher audit app — HW Signing v2 (audit app v57)
+# Teacher audit app — HW Signing v2 (audit app v58)
+
+**v58 (2026-11-26).** The audit app is developed only as a
+standalone portable install on the teacher's computer; no
+other deployment form is developed. One fix, in that form:
+the startup yt-dlp update check no longer asks yt-dlp to
+update itself — a pip-installed yt-dlp refuses `yt-dlp -U`,
+and its refusal was logged at every start. The check now
+upgrades yt-dlp with uv, into the Python environment the
+found yt-dlp belongs to (in the portable install, the
+bundled runtime Python): `uv pip install --python <that
+python> --upgrade yt-dlp`, and logs the resulting version.
+uv is always used, never pip; if uv is not found, the check
+reports that yt-dlp was not updated. Everything else is as
+in v57, below.
 
 **v57 (2026-11-26).** Package checks now also verify binding
 currency against the grading Worker (2.7.3): the video hash in

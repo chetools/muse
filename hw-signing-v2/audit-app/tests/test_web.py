@@ -1307,16 +1307,84 @@ def main():
         pass
     check("not installed" in web._YTDLP_STATE["status"],
           "yt-dlp check with no yt-dlp reports it, no NameError")
-    fake = tmp / "fake-yt-dlp"
-    fake.write_text("#!/bin/sh\necho 'yt-dlp is up to date'\n")
-    fake.chmod(0o755)
-    web.find_ytdlp = lambda: str(fake)
+    # v58: the update check upgrades yt-dlp with uv, into the
+    # Python environment the found yt-dlp belongs to. It never
+    # runs yt-dlp -U (a pip-installed yt-dlp refuses, and the
+    # refusal was logged at every start) and never falls back
+    # to pip. Stubbed subprocess: a fake venv layout (Scripts
+    # holding yt-dlp.exe beside python.exe) stands in for the
+    # standalone portable's own environment.
+    import subprocess as _sp58
+    venv58 = tmp / "venv58"
+    (venv58 / "Scripts").mkdir(parents=True, exist_ok=True)
+    fake58 = venv58 / "Scripts" / "yt-dlp.exe"
+    fake58.write_bytes(b"")
+    py58 = venv58 / "Scripts" / "python.exe"
+    py58.write_bytes(b"")
+    all58 = []
+    uv58_out = ["Resolved 1 package in 1ms\n"
+                 " + yt-dlp==2099.1.1\n"
+                 "Installed 1 package in 1ms\n"]
+
+    def fake_run58(argv, **kw):
+        all58.append(list(argv))
+        if argv[1:3] == ["pip", "install"]:
+            return _sp58.CompletedProcess(
+                argv, 0, stdout=uv58_out[0], stderr="")
+        if argv[1] == "--version":
+            return _sp58.CompletedProcess(
+                argv, 0, stdout="2099.1.1\n", stderr="")
+        return _sp58.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    def failing_run58(argv, **kw):
+        all58.append(list(argv))
+        return _sp58.CompletedProcess(
+            argv, 1, stdout="", stderr="some uv error\n")
+
+    _orig_uv58 = web._find_uv
+    _orig_run58 = web.subprocess.run
+    web.find_ytdlp = lambda: str(fake58)
+    web._find_uv = lambda: "uv"
+    web.subprocess.run = fake_run58
     try:
         web.ytdlp_update_check()
+        check(all58 and all58[0] == [
+            "uv", "pip", "install", "--python", str(py58),
+            "--upgrade", "yt-dlp"],
+            "v58: env yt-dlp is upgraded by uv pip install "
+            "--python <env python> --upgrade yt-dlp")
+        check(web._YTDLP_STATE["status"]
+              == "yt-dlp updated with uv: now at 2099.1.1",
+              "v58: a successful uv upgrade logs the version "
+              "reported by --version")
+        uv58_out[0] = "Checked 1 package in 1ms\n"
+        web.ytdlp_update_check()
+        check(web._YTDLP_STATE["status"]
+              == "yt-dlp is current at 2099.1.1",
+              "v58: uv reporting nothing to upgrade logs yt-dlp "
+              "as current at its version")
+        web.subprocess.run = failing_run58
+        web.ytdlp_update_check()
+        check("some uv error" in web._YTDLP_STATE["status"],
+              "v58: a failed uv run logs its last output line")
+        web.subprocess.run = fake_run58
+        web._find_uv = lambda: None
+        before58 = len(all58)
+        web.ytdlp_update_check()
+        check(len(all58) == before58,
+              "v58: with uv missing, no upgrade command is issued")
+        check("uv was not found" in web._YTDLP_STATE["status"]
+              and "not updated" in web._YTDLP_STATE["status"],
+              "v58: with uv missing, the status states plainly "
+              "that yt-dlp was not updated")
     finally:
         web.find_ytdlp = _orig_find
-    check("up to date" in web._YTDLP_STATE["status"],
-          "yt-dlp update check runs the binary (subprocess imported)")
+        web._find_uv = _orig_uv58
+        web.subprocess.run = _orig_run58
+    check(all("-U" not in c for c in all58)
+          and all(c[0] in ("uv", str(fake58)) for c in all58),
+          "v58: the update check never runs yt-dlp -U and runs "
+          "nothing but uv and yt-dlp --version")
 
     # 8i. User-Agent regression (the 403 in the user's screenshot):
     # the teacher's PC has no `requests` in the app venv, so the
@@ -1481,8 +1549,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/57.0",
-          "user agent bumped to 57.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/58.0",
+          "user agent bumped to 58.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"

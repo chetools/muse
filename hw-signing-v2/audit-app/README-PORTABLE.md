@@ -99,7 +99,7 @@ folder's `web.py` — copy it again into this folder.
 - Windows x64 only. The app code and `data\` are platform-free,
   but the bundled `runtime\` programs are Windows x64 builds.
 - The folder must be writable: state files, downloads, videos
-  and the `yt-dlp` self-update at startup all write inside it.
+  and the `yt-dlp` update at startup all write inside it.
 - The folder holds live tokens and student material. On a USB
   drive, use an encrypted drive (for example BitLocker To Go);
   a lost unencrypted drive is a lost Canvas token and student
@@ -140,9 +140,11 @@ folder's `web.py` — copy it again into this folder.
   `ffmpeg-n8.1-latest-win64-gpl-shared-8.1`, built with
   `--enable-chromaprint` (the acoustic check's muxer);
   `ffplay` is not included — the app never uses it.
-- yt-dlp: 2026.10.26, the standalone `yt-dlp.exe`. As in the
-  standard app, it checks for its own update when the app
-  starts and updates in place.
+- yt-dlp: 2026.10.26, the standalone `yt-dlp.exe`. Since
+  v58 the app upgrades yt-dlp with uv when the app starts —
+  into the Python environment the found yt-dlp belongs to,
+  in the portable the bundled runtime Python — and never
+  asks yt-dlp to update itself.
 
 ## Repository note
 

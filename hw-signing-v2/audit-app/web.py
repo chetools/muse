@@ -694,10 +694,67 @@ def activity_entries(since=0):
         return [e for e in _ACTIVITY if e["seq"] > since]
 
 
+def _find_uv():
+    """uv, located on PATH or in the per-user install location
+    (~/.local/bin, where the uv installer puts uv.exe on Windows).
+    None when uv cannot be found."""
+    found = shutil.which("uv")
+    if found:
+        return found
+    for cand in (Path.home() / ".local" / "bin" / "uv.exe",
+                 Path.home() / ".local" / "bin" / "uv"):
+        if cand.exists():
+            return str(cand)
+    return None
+
+
+def _ytdlp_env_python(ytdlp_path):
+    """The Python of the environment the found yt-dlp belongs to.
+
+    Signs, in order: a python beside the script (a venv's Scripts
+    folder holds python.exe next to yt-dlp.exe); a python in the
+    folder above the script's folder (a base install: python.exe
+    beside the Scripts folder); the script's shebang interpreter
+    (POSIX pip scripts name their environment's python there).
+    Falls back to the Python running this app — in the standalone
+    portable install that is the bundled runtime Python, the
+    environment the portable's yt-dlp belongs to."""
+    p = Path(ytdlp_path)
+    for cand in (p.parent / "python.exe", p.parent / "python",
+                 p.parent.parent / "python.exe",
+                 p.parent.parent / "python"):
+        if cand.exists():
+            return str(cand)
+    try:
+        head = p.read_bytes()[:256]
+    except OSError:
+        head = b""
+    if head.startswith(b"#!"):
+        words = head.splitlines()[0][2:].decode(
+            "utf-8", "replace").strip().split()
+        if words:
+            target = words[-1] if Path(words[0]).name == "env" \
+                else words[0]
+            if Path(target).name.startswith("python"):
+                resolved = target if Path(target).exists() \
+                    else shutil.which(target)
+                if resolved:
+                    return resolved
+    return sys.executable
+
+
 def ytdlp_update_check():
-    """At app start: if yt-dlp is installed, ask it to update itself
-    (yt-dlp -U) in the background and record the outcome for the
-    Setup section. Best-effort: any failure is reported, never fatal."""
+    """At app start: upgrade yt-dlp with uv in the background and
+    record the outcome for the Setup section. The app is
+    developed only as the standalone portable install, so the
+    case that matters is the portable's own: the found yt-dlp
+    belongs to a Python environment (in the portable, the
+    bundled runtime Python), and uv upgrades yt-dlp inside that
+    environment (uv pip install --python <that python>). uv is
+    always used, never pip; yt-dlp is never asked to update
+    itself — a pip-installed yt-dlp refuses `yt-dlp -U`, and its
+    refusal line was logged at every start. Best-effort: any
+    failure is reported, never fatal."""
     path = find_ytdlp()
     if not path:
         _YTDLP_STATE["status"] = (
@@ -708,12 +765,42 @@ def ytdlp_update_check():
         return
     _YTDLP_STATE["status"] = "yt-dlp update check running..."
     try:
-        proc = subprocess.run([path, "-U"], capture_output=True,
-                              text=True, timeout=300)
+        uv = _find_uv()
+        if not uv:
+            _YTDLP_STATE["status"] = (
+                "uv was not found, so yt-dlp was not updated. "
+                "Install uv (https://docs.astral.sh/uv/) and restart "
+                "this app to keep yt-dlp updated.")
+            log_activity("system", _YTDLP_STATE["status"])
+            return
+        python = _ytdlp_env_python(path)
+        proc = subprocess.run(
+            [uv, "pip", "install", "--python", python,
+             "--upgrade", "yt-dlp"],
+            capture_output=True, text=True, timeout=300)
         out = ((proc.stdout or "") + (proc.stderr or "")).strip()
         last = out.splitlines()[-1] if out else ""
-        _YTDLP_STATE["status"] = "yt-dlp: " + (
-            last or f"update check exited {proc.returncode}")
+        if proc.returncode != 0:
+            _YTDLP_STATE["status"] = "yt-dlp: " + (
+                last or f"uv upgrade exited {proc.returncode}")
+        else:
+            ver = subprocess.run([path, "--version"],
+                                 capture_output=True, text=True,
+                                 timeout=60)
+            vlines = (ver.stdout or "").strip().splitlines()
+            version = vlines[0].strip() if vlines else ""
+            updated = any(
+                line.strip().startswith("+") and "yt-dlp" in line
+                for line in out.splitlines())
+            if version and updated:
+                _YTDLP_STATE["status"] = (
+                    f"yt-dlp updated with uv: now at {version}")
+            elif version:
+                _YTDLP_STATE["status"] = (
+                    f"yt-dlp is current at {version}")
+            else:
+                _YTDLP_STATE["status"] = "yt-dlp: " + (
+                    last or "uv upgrade completed")
     except Exception as e:  # noqa: BLE001
         _YTDLP_STATE["status"] = f"yt-dlp update check failed: {e}"
     log_activity("system", _YTDLP_STATE["status"])

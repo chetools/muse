@@ -532,10 +532,12 @@ provide Python if none is installed.
    **Test Canvas connection** shows your name and Canvas id.
 3. The Grading Worker address is pre-filled with the HW Signing
    v2 grading Worker (see the v23 note above).
-4. On startup the app also checks whether a newer **yt-dlp** is
-   available and updates it in the background; the result shows in
-   the line under the Setup form. If yt-dlp is not installed at
-   all, that line gives the install command
+4. On startup the app also upgrades **yt-dlp** in the
+   background, with uv, into the Python environment the found
+   yt-dlp belongs to; the result, with the resulting version,
+   shows in the line under the Setup form. If uv is not found,
+   that line states that yt-dlp was not updated. If yt-dlp is
+   not installed at all, that line gives the install command
    (`uv tool install yt-dlp`); the video wall needs it to download
    YouTube takes.
 
