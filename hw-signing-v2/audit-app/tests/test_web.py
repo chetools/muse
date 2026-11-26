@@ -1526,8 +1526,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/60.0",
-          "user agent bumped to 60.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/61.0",
+          "user agent bumped to 61.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3647,6 +3647,36 @@ def main():
           "frame is re-issued by the watchdog (bounded per "
           "tile), and a play during a seek proceeds after "
           "a 1.5 s time-box instead of waiting for ever")
+    # ---------------------------------------------------------
+    # 23c. v61: the Activity panel starts blank on page load;
+    # the zoom video gets the tiles' stall recovery; browser
+    # Back closes the zoom view through a pushed history
+    # entry, on the same path as the Back to wall button.
+    check(b"ACTBASED" in main_page and b"if(!ACTBASED){" in main_page,
+          "v61: the dashboard's first activity answer only sets "
+          "the baseline — the panel starts blank on page load "
+          "and earlier lines are never replayed into it")
+    check(b"reviveStalledTiles([zv])" in wall40
+          and b"playAfterSeek(zv)" in wall40
+          and b"wasPlaying=!v.paused || !!v._autoplay" in wall40,
+          "v61: the stall watchdog also watches the zoom video "
+          "while the zoom view is open, its opening play waits "
+          "out the seek like a tile's, and a revived video that "
+          "was playing resumes playing")
+    check(b"history.pushState({zoom:id}" in wall40
+          and b"history.replaceState({zoom:id}" in wall40
+          and b'addEventListener("popstate"' in wall40
+          and b"function closeZoom()" in wall40
+          and b"if(zoomHist){ history.back(); return; }" in wall40,
+          "v61: opening the zoom view pushes a history entry "
+          "(switching students replaces it), browser Back "
+          "closes the zoom view through popstate, and the "
+          "Back to wall button goes through the same path")
+    check(b"release-binding" not in open("web.py", "rb").read()
+          and b"Release video binding" not in open("web.py", "rb").read(),
+          "v61: no release-binding route or button remains "
+          "anywhere in web.py (removed in v59)")
+
     # v54: every page's script blocks must parse as
     # JavaScript. One syntax error disables a page's whole
     # script block while every Python-side check still

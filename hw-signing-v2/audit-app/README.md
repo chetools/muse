@@ -1,4 +1,23 @@
-# Teacher audit app — HW Signing v2 (audit app v60)
+# Teacher audit app — HW Signing v2 (audit app v61)
+
+**v61 (2026-11-26).** Three fixes. (1) The Activity panel
+starts blank when the page loads: lines logged before the
+page session are no longer replayed into it, and lines from
+work done while the page is open appear as they are logged.
+(2) The zoom view's video is watched by the same stall
+recovery as the wall's tiles: a seek of the zoom video that
+stalls is re-issued, a video that was playing resumes, and
+its opening play waits out the seek the way a tile's does —
+a scrub of the whole wall can no longer leave the one
+playing video black and stopped, on the wall or in the zoom
+view. (3) Opening the zoom view pushes a browser history
+entry, so the browser's Back button closes the zoom view
+and returns to the wall — the same close as the Back to
+wall button — instead of leaving the wall page for the
+submissions table; Forward reopens the zoom view. There is
+no release action for video bindings: there has been none
+since v59, and no such button or route exists in this
+version. Everything else is as in v60, below.
 
 **v60 (2026-11-26).** One fix, to the video wall: tiles no
 longer come back black and refusing to play after a round

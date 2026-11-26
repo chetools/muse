@@ -4981,7 +4981,7 @@ async function refreshCounts(){
       " · "+(st.ytdlp||"");
   }catch(e){ /* retried after the next pass */ }
 }
-let ACTSEQ=0, ACTBUSY=false, ACTENTRIES=[];
+let ACTSEQ=0, ACTBUSY=false, ACTENTRIES=[], ACTBASED=false;
 // ---- Activity name redaction (v47): log lines name
 // students (downloads, checks, video downloads). The
 // page keeps the raw entries and renders each message
@@ -5056,14 +5056,24 @@ async function pollActivity(){
   try{
     const r=await fetch("/api/activity?since="+ACTSEQ);
     const j=await r.json();
-    for(const e of j.entries){
-      ACTSEQ=Math.max(ACTSEQ,e.seq);
-      ACTENTRIES.push(e);
-    }
-    while(ACTENTRIES.length>300) ACTENTRIES.shift();
-    if(j.entries.length) renderActivity();
-    if(j.entries.some(e=>e.kind==="auto"&&e.msg.indexOf("pass finished")===0)){
-      refreshSubs(); refreshCounts(); updateCourseBadges();
+    if(!ACTBASED){
+      // The panel starts blank on every page load (v61): the
+      // first answer only sets the baseline, so lines logged
+      // before this page session are never replayed into it.
+      // Lines from work done while the page is open appear
+      // as they are logged.
+      ACTBASED=true;
+      for(const e of j.entries) ACTSEQ=Math.max(ACTSEQ,e.seq);
+    } else {
+      for(const e of j.entries){
+        ACTSEQ=Math.max(ACTSEQ,e.seq);
+        ACTENTRIES.push(e);
+      }
+      while(ACTENTRIES.length>300) ACTENTRIES.shift();
+      if(j.entries.length) renderActivity();
+      if(j.entries.some(e=>e.kind==="auto"&&e.msg.indexOf("pass finished")===0)){
+        refreshSubs(); refreshCounts(); updateCourseBadges();
+      }
     }
     if(j.auto) $("autoline").textContent="Automatic passes (at startup, as soon as a token is saved, then every 10 min): scan all your published teaching courses, download new submissions, then integrity checks and YouTube videos in parallel. Last: "+
       (STATUS&&STATUS.auto_last? new Date(STATUS.auto_last).toLocaleTimeString():"—")+" — "+j.auto+(j.running?" (a pass is running now)":"");
@@ -5879,7 +5889,7 @@ function updateMaster(){
   $("syncinfo").textContent=vs.length+" videos · lengths "+vs.map(v=>fmt(v.duration||0)).join(", ");
 }
 let stallTick=0;
-function reviveStalledTiles(){
+function reviveStalledTiles(list){
   // A tile that never got its frame (v52): the browser has
   // stopped fetching (network idle) with no frame to show —
   // the state a cancelled seek/play sequence can leave
@@ -5907,7 +5917,7 @@ function reviveStalledTiles(){
   // the tile alone, and pressing play still works because
   // playAfterSeek no longer waits for seeked for ever.
   const now=performance.now();
-  vids().forEach(v=>{
+  (list||vids()).forEach(v=>{
     if(!v.src || v.readyState>=2 || !v.duration) return;
     if(v.seeking){
       if(!v._seekSince){ v._seekSince=now; return; }
@@ -5919,6 +5929,17 @@ function reviveStalledTiles(){
       v._seekSince=now;
       const f=(v._wantFrac!==undefined) ? v._wantFrac
         : v.currentTime/v.duration;
+      // A video that was playing resumes once the re-issued
+      // seek lands (v61): the reload discards its playback
+      // along with the stuck fetch, and a paused black tile
+      // is only half a recovery — this is the state the one
+      // playing tile on the wall was left in when a scrub of
+      // the whole wall stalled its seek. The zoom video's
+      // open-time seek handler is dropped for the same
+      // reason: its captured fraction is stale by now.
+      const wasPlaying=!v.paused || !!v._autoplay;
+      if(wasPlaying) v._autoplay=true;
+      if(v===$("zv")) v.onloadedmetadata=null;
       v.load();
       seekFrac(v, f);
       return;
@@ -5929,7 +5950,7 @@ function reviveStalledTiles(){
     v.currentTime=v.currentTime;
   });
 }
-function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); } else { syncHoverTranscript(); if(++stallTick>=150){ stallTick=0; reviveStalledTiles(); } } raf=requestAnimationFrame(loop); }
+function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); if(++stallTick>=150){ stallTick=0; const zv=$("zv"); if(zv && zv.getAttribute("src")) reviveStalledTiles([zv]); } } else { syncHoverTranscript(); if(++stallTick>=150){ stallTick=0; reviveStalledTiles(); } } raf=requestAnimationFrame(loop); }
 function syncZBar(){
   // The zoom position bar lives in the page layout under the video
   // (not as a video overlay), so it never fades or disappears.
@@ -5979,6 +6000,14 @@ function seekGate(apply){
 }
 const WALLSEEK=seekGate(f=>setFracAll(f));
 const ZSEEK=seekGate(f=>seekZoomFrac(f));
+// Seek timing for the zoom video's stall watchdog (v61):
+// the same fields the wall tiles carry, so the watchdog
+// below treats the zoom video exactly like a tile. Until
+// now nothing watched the zoom video at all: a seek whose
+// range fetch stalled left it black for the rest of the
+// session, where a wall tile in the same state recovered.
+$("zv").addEventListener("seeking",()=>{ const zv=$("zv"); zv._seekSince=performance.now(); });
+$("zv").addEventListener("seeked",()=>{ const zv=$("zv"); zv._seekSince=0; zv._stallRetries=0; });
 $("zv").addEventListener("mousedown",e=>{
   if(e.button!==2) return;
   e.preventDefault();
@@ -6123,9 +6152,11 @@ document.addEventListener("keydown",e=>{
 });
 $("prevp").onclick=()=>{ if(page>0){ page--; render(); } };
 $("nextp").onclick=()=>{ if(page<pages()-1){ page++; render(); } };
+let zoomHist=false;
 function openZoom(id, opts){
   const s=STUDENTS.find(x=>x.id===id) || ATT.rows.find(x=>x.id===id);
   if(!s) return;
+  const wasOpen=!!zoomId;
   markExamined(id,"zoom");
   opts=opts||{};
   // Playback state transfers with the student being followed, so
@@ -6143,6 +6174,24 @@ function openZoom(id, opts){
     vids().forEach(v=>{ v._autoplay=false; v.pause(); });
   }
   zoomId=id;
+  // Browser history (v61): opening the zoom view pushes a
+  // history entry, so the browser's Back button closes the
+  // zoom view and returns to the wall — the same close as
+  // the Back to wall button — instead of leaving the wall
+  // page for whatever came before it (the submissions
+  // table, when the wall was opened from there: the
+  // "sometimes" was which page the teacher had come from,
+  // and whether the zoom was opened from a tile or from a
+  // focus deep link — both paths run through here, so both
+  // push). Switching students replaces the entry, so one
+  // Back leaves the zoom view however many students were
+  // viewed; Forward after Back reopens it.
+  if(!wasOpen){
+    if(history.state && history.state.zoom===id){ zoomHist=true; }
+    else { try{ history.pushState({zoom:id},""); }catch(e){} zoomHist=true; }
+  } else {
+    try{ history.replaceState({zoom:id},""); }catch(e){}
+  }
   $("wall").style.display="none"; $("master").style.display="none"; $("zoom").style.display="block";
   $("zoomtitle").innerHTML="<strong class='priv'>"+esc(s.name)+"</strong>"+(s.attempt_label? ' <span class="mut">'+esc(s.attempt_label)+"</span>":"");
   const zv=$("zv");
@@ -6155,7 +6204,7 @@ function openZoom(id, opts){
     if(zv.getAttribute("src")!==s.video_url) zv.src=s.video_url;
     claimAudio(zv); zv.muted=false;
     const startAt=()=>{ zv.currentTime=f*(zv.duration||0);
-      if(playing){ const p=zv.play(); if(p) p.catch(()=>{}); } };
+      if(playing){ playAfterSeek(zv); } };
     zv.onloadedmetadata=startAt;
     if(zv.readyState>=1) startAt();
     ZFPS=30; zFpsDone=false; $("fpsinfo").textContent="";
@@ -6396,6 +6445,24 @@ document.querySelectorAll(".panel").forEach(p=>{
     layoutPanels(); };
 });
 $("backbtn").onclick=()=>{
+  // With a zoom history entry on the stack, the button goes
+  // through history.back() (v61), so the button and the
+  // browser's Back button are one path: the popstate
+  // handler below performs the close.
+  if(zoomHist){ history.back(); return; }
+  closeZoom();
+};
+window.addEventListener("popstate",e=>{
+  const z=e.state && e.state.zoom;
+  if(z){
+    zoomHist=true;
+    if(zoomId!==z) openZoom(z);
+  } else {
+    zoomHist=false;
+    if(zoomId) closeZoom();
+  }
+});
+function closeZoom(){
   const zv=$("zv"); const f=zv.duration? zv.currentTime/zv.duration:0;
   const wasPlaying=!zv.paused, id=zoomId;
   zv.pause(); zv.removeAttribute("src"); zv.load();
@@ -6440,7 +6507,7 @@ $("backbtn").onclick=()=>{
     const wv=tileVideo(id2);
     if(wv) playTile(wv); });
   WALLPLAY=new Set();
-};
+}
 // ---- Focus deep link (v33): /wall?focus=<unit key> opens the
 // zoom view on that unit once its data has loaded (the table's
 // student-name links); &attempt=<n> opens the unit's attempts

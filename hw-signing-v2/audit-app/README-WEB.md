@@ -18,6 +18,28 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v61 (2026-11-26) — Activity starts blank; the zoom video recovers; browser Back closes the zoom
+
+- **The Activity panel starts blank.** On page load the
+  panel shows nothing; the first poll only sets the
+  baseline, so lines logged before the page session are
+  never replayed into it. Lines from work done while the
+  page is open appear as they are logged.
+- **The zoom video is watched like a tile.** The stall
+  watchdog also runs on the zoom view's video while the
+  zoom view is open: a seek that stalls is re-issued, a
+  video that was playing resumes when the re-issued seek
+  lands, and the zoom view's opening play waits out its
+  seek instead of racing it. A whole-wall scrub that
+  stalls the one playing tile's seek recovers it framed
+  and playing.
+- **Browser Back closes the zoom view.** Opening the zoom
+  view pushes a history entry (switching students
+  replaces it); the browser's Back button and the Back
+  to wall button take the same path, closing the zoom
+  view onto the wall with its tiles alive. Forward
+  reopens the zoom view.
+
 ## v60 (2026-11-26) — the wall survives the zoom round trip
 
 - **Back keeps the tiles alive.** Returning from the zoom

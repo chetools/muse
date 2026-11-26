@@ -113,10 +113,13 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v60 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v61 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v60: the video wall keeps its tiles alive across
+  installs). v61: the Activity panel starts blank on page
+  load, the zoom view's video is covered by the stall
+  recovery, and browser Back closes the zoom view onto the
+  wall. v60: the video wall keeps its tiles alive across
   a trip to the zoom view and back (no black, unplayable
   tiles on return), a seek stalled for over three seconds
   with no frame is re-issued, and a play asked for during a
