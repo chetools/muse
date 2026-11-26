@@ -458,6 +458,24 @@ passed, the string checks included. The line is fixed,
 and the web test suite now parses every page's script
 blocks with node --check where node is available, so a
 JavaScript syntax error fails the suite from here on.
+
+v55: the 2026-11-26 security audit. The local server now
+refuses requests whose Host is not a loopback name and
+POSTs whose Origin is not its own (loopback binding alone
+let any web page the teacher visited POST to the app, and
+a DNS-rebinding host read it). The student-controlled
+YouTube link is validated to a video ID and downloaded as
+a canonical watch address behind "--", so it can no longer
+reach yt-dlp as an option or as an arbitrary address.
+Extraction deletes the other package form's media file, so
+a stale WAV can no longer stand in for a fingerprint
+package's media. A submission ZIP is refused on its
+declared size before its bytes are fetched. The package
+parser rejects duplicated transcript, critique or
+verification entries instead of hashing the last one, and
+a non-numeric grade span fails the package instead of
+raising. Gradebook CSV text cells that would open as
+spreadsheet formulas are quote-prefixed.
 """
 
 import argparse
@@ -3315,16 +3333,29 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
             "assignment_name": name, "rows": rows, "warnings": warnings}
 
 
+def _csv_safe(value):
+    # v55: a text cell whose first character is one of = + - @ or a
+    # tab/CR is evaluated as a formula when the CSV is opened in a
+    # spreadsheet. Student names come from Canvas and are not under
+    # the teacher's control, so prefix such cells with a quote.
+    v = str(value)
+    if v and v[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def gradebook_csv_text(built):
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
-    w.writerow(built["header"])
+    w.writerow([_csv_safe(c) for c in built["header"]])
     pp = built["points_possible"]
     w.writerow(["Points Possible", "", "", "", "",
                 int(pp) if float(pp).is_integer() else pp])
     for r in built["rows"]:
-        w.writerow([r["Student"], r["ID"], r["SIS User ID"],
-                    r["SIS Login ID"], r["Section"], r["score"]])
+        w.writerow([_csv_safe(r["Student"]), _csv_safe(r["ID"]),
+                    _csv_safe(r["SIS User ID"]),
+                    _csv_safe(r["SIS Login ID"]), _csv_safe(r["Section"]),
+                    r["score"]])
     return buf.getvalue()
 
 
@@ -3883,6 +3914,18 @@ def download_youtube_medium(cfg, user_id, youtube_url):
     order verified on this network: visionos returns the full
     format list)."""
     import subprocess
+    # v55: the link comes from the student's submission HTML and is
+    # attacker-controlled. Accept only a link that parses as a
+    # YouTube video, download the canonical watch address built
+    # from its ID, and put "--" before it: a value beginning with
+    # "-" would otherwise be read by yt-dlp as its own options
+    # (e.g. --exec), and a non-YouTube address would be fetched by
+    # its generic extractor.
+    vid = audit.youtube_video_id(youtube_url)
+    if not vid:
+        raise ValueError(
+            f"not a YouTube video link: {str(youtube_url)[:80]!r}")
+    youtube_url = f"https://www.youtube.com/watch?v={vid}"
     ytdlp = find_ytdlp()
     if not ytdlp:
         raise ValueError(
@@ -3897,7 +3940,8 @@ def download_youtube_medium(cfg, user_id, youtube_url):
         cmd = [ytdlp, "--no-playlist", "--no-warnings",
                "--extractor-args", f"youtube:player_client={client}",
                "-f", YTDLP_FORMAT,
-               "--merge-output-format", "mp4", "-o", out_tmpl, youtube_url]
+               "--merge-output-format", "mp4", "-o", out_tmpl,
+               "--", youtube_url]
         proc = subprocess.run(cmd, capture_output=True, text=True,
                               timeout=1200)
         if proc.returncode == 0 and target.exists():
@@ -6718,6 +6762,27 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 remaining -= len(chunk)
 
+    def _guard_local(self):
+        # v55: loopback binding alone does not stop a web page the
+        # teacher visits from POSTing to this app (a cross-origin
+        # "simple request" needs no preflight), nor a DNS-rebinding
+        # host from reading it. Refuse any request whose Host is
+        # not a loopback name, and any POST whose Origin (sent by
+        # every browser POST) is not this app's own origin.
+        host = self.headers.get("host") or ""
+        if not (host.startswith("127.0.0.1") or host.startswith("localhost")
+                or host.startswith("[::1]")):
+            self._send(403, {"error": "forbidden host"})
+            return False
+        if self.command == "POST":
+            origin = self.headers.get("origin")
+            if origin:
+                oh = urllib.parse.urlparse(origin).netloc
+                if oh != host:
+                    self._send(403, {"error": "forbidden origin"})
+                    return False
+        return True
+
     def _body(self):
         n = int(self.headers.get("content-length") or 0)
         return json.loads(self.rfile.read(n) or b"{}")
@@ -6726,6 +6791,8 @@ class Handler(BaseHTTPRequestHandler):
         return load_web_config()
 
     def do_GET(self):
+        if not self._guard_local():
+            return
         try:
             self._get()
         except Exception as e:  # noqa: BLE001 - surface to the page
@@ -6893,6 +6960,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
     def do_POST(self):
+        if not self._guard_local():
+            return
         try:
             self._post()
         except Exception as e:  # noqa: BLE001

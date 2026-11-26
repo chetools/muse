@@ -1195,6 +1195,33 @@ def main():
     else:
         print("skip: v48 WAV repair checks (no chromaprint ffmpeg)")
 
+    # 9b. v55 audit fixes: extraction removes the other form's
+    # media; duplicated package elements fail the format check.
+    stale_dir = tmp / "stale-form"
+    stale_dir.mkdir()
+    (stale_dir / "submission-audio.wav").write_bytes(b"stale wav")
+    fp_zip2 = make_zip({"submission.html": "<html></html>",
+                        audit.FINGERPRINT_ENTRY_NAME: b"\x00" * 8})
+    audit.extract_package_zip(fp_zip2, stale_dir)
+    check(not (stale_dir / "submission-audio.wav").exists()
+          and (stale_dir / audit.FINGERPRINT_ENTRY_NAME).exists(),
+          "v55: fingerprint extraction deletes a stale WAV from "
+          "an earlier audio-form submission in the same folder")
+    good_html = build_html_v2(CHUNKS, audit.sha256_bytes(audio_bytes))
+    dup_html_path = tmp / "dup.html"
+    dup_html_path.write_text(
+        good_html.replace("</body>",
+                          '<pre class="transcript">second</pre></body>'),
+        encoding="utf-8")
+    wav_path2 = tmp / "dup.wav"
+    wav_path2.write_bytes(audio_bytes)
+    rep = audit.check_package(wav_path2, dup_html_path, cfg,
+                              post_fn=transport_for(TEST_SECRET))
+    check(rep["format_ok"] is False
+          and rep["internally_consistent"] is False,
+          "v55: a second transcript block fails the package format "
+          "check instead of being silently ignored")
+
     # 10. Cleanup refuses without confirmation, and deletes with it.
     try:
         audit.cleanup(cfg, confirm=False)

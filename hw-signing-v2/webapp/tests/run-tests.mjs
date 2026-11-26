@@ -35,7 +35,7 @@ import {
   submitJob, fetchJobStatus, finalizeJob,
   bundleChromaprintSha, verifyFingerprintContents,
   kindFromResultBundle, duplicateJobEntry, collapseSameJobEntries,
-  generateRetrievalToken, RECOVERY_TOKEN_LENGTH,
+  generateRetrievalToken, RECOVERY_TOKEN_LENGTH, entryPollable,
 } from '../js/jobs.js';
 import { encodeRawFingerprint, decodeRawFingerprint } from '../js/fingerprint.js';
 import { urlBase64ToUint8Array, uint8ArrayToUrlBase64 } from '../js/push.js';
@@ -97,6 +97,47 @@ await test('config: built link round-trips through parse, with ph', () => {
   assert.ok(!link.includes('pkgurl'), 'v2 links carry no pkgurl');
 });
 
+await test('config: worker address must be a plain https address (2.6.12)', () => {
+  assert.equal(parseConfig('?w=http%3A%2F%2Fhw.example.workers.dev').worker, null);
+  assert.equal(parseConfig('?w=http%3A%2F%2F127.0.0.1%3A8787').worker, 'http://127.0.0.1:8787');
+  assert.equal(parseConfig('?w=https%3A%2F%2Fuser%3Apass%40hw.example.workers.dev').worker, null);
+  assert.equal(normaliseWorkerBase('https://x.dev/?next=1'), null);
+  assert.equal(normaliseWorkerBase('https://x.dev/#frag'), null);
+  assert.equal(normaliseWorkerBase('not a url'), null);
+  assert.equal(normaliseWorkerBase('https://x.dev/base///'), 'https://x.dev/base');
+});
+
+await test('job entries: polled only against their creating Worker (2.6.12)', () => {
+  const prod = 'https://hw-grading.carloscomail.workers.dev';
+  const other = 'https://attacker.example';
+  assert.equal(entryPollable({ worker: prod }, prod), true);
+  assert.equal(entryPollable({ worker: prod }, other), false);
+  assert.equal(entryPollable({ worker: other }, prod), false);
+  assert.equal(entryPollable({}, prod), true);   // legacy entry, production Worker
+  assert.equal(entryPollable({}, other), false); // legacy entry, foreign Worker
+  assert.equal(entryPollable({ worker: prod }, null), false);
+});
+
+await test('scrub: separator variants of a removal entry match (2.6.12)', () => {
+  assert.equal(scrubText('my partner Ann Marie Lee helped', ['Ann-Marie Lee']).text,
+    'my partner helped');
+  assert.equal(scrubText('presented by Ann, Marie Lee today', ['Ann-Marie Lee']).text,
+    'presented by today');
+});
+
+await test('package: grades are escaped like every other bundle field (2.6.12)', () => {
+  const html = assemblePackage({
+    youtubeLink: '', audioFileName: 'submission-audio.wav', durationS: 5,
+    chunks: [{ start: 0, text: 'x' }],
+    bundle: { completeness: '</span><script>alert(1)</script>', accuracy: 5,
+      critique: 'ok', job_id: 'j', pkg: 'p v1', pkg_content_sha256: SHA_A,
+      audio_sha256: SHA_B, transcript_sha256: SHA_C, critique_sha256: SHA_A,
+      youtube_video_sha256: 'none', t: '2026-01-01T00:00:00.000Z', receipt: 'r' },
+  });
+  assert.ok(!html.includes('<script>alert(1)</script>'), 'grade payload not present verbatim');
+  assert.ok(html.includes('&lt;script&gt;'), 'grade payload is escaped');
+});
+
 /* ---------------- scrub + canonical + checksum ---------------- */
 
 const rawChunks = [
@@ -111,7 +152,7 @@ await test('scrub: every occurrence removed, any case, chunks and metadata', () 
   const sc = scrubChunks(rawChunks, words);
   assert.equal(sc[0].text, 'Hi I am and this is my homework');
   assert.ok(!/jordan/i.test(sc[0].text) && !/jordan/i.test(sc[1].text));
-  assert.equal(scrubMetadata('jordan-lee-hw3.mp4', words), '-lee-hw3.mp4');
+  assert.equal(scrubMetadata('jordan-lee-hw3.mp4', words), '-hw3.mp4'); // 2.6.12: separator variants match, so the full name goes
   assert.equal(scrubMetadata('Jordan Lee hw3.mp4', words), 'hw3.mp4');
 });
 
@@ -381,7 +422,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.11');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.12');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -979,7 +1020,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.11');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.12');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');

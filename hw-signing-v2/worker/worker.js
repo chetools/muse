@@ -20,6 +20,11 @@
 // earlier have no such line and keep the form above. Verify accepts
 // both forms and recomputes with the form the submitted bundle
 // carries, so a tampered chromaprint_sha256 fails verification.
+// 2.7.1: a verify body with NO chromaprint field is accepted when
+// the receipt matches either the old form or the "none" form —
+// the submission package prints no Chromaprint line for a
+// fingerprint-less job, so the audit app has no field to send for
+// exactly the bundles that were signed over "none".
 // t is stamped from the server clock at result time, never taken from
 // the caller. receipt = base64url(HMAC-SHA-256(secret, canonical text)).
 // Verify recomputes the receipt from the claimed values; no stored
@@ -42,7 +47,7 @@
 // databases and merges by creation time, each entry tagged with
 // its binding.
 
-const SERVICE_VERSION = "2.7.0";
+const SERVICE_VERSION = "2.7.1";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 // Job lifetime (2.6.0): an ungraded job is kept for up to
@@ -147,6 +152,10 @@ const FP_SIMILARITY_THRESHOLD = 0.85;
 
 function decodeChromaprint(value) {
   if (typeof value !== "string" || value.length === 0) return null;
+  // 2.7.1: length guard before any decoding — FP_MAX_ITEMS items
+  // are FP_MAX_ITEMS * 4 bytes, at most ~465,100 base64 characters;
+  // a longer value is invalid without being decoded first.
+  if (value.length > 470000) return null;
   if (value.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(value)) return null;
   let bin;
   try {
@@ -263,7 +272,14 @@ function json(body, status = 200) {
   });
 }
 
-async function readJson(request) {
+async function readJson(request, maxBytes = 1500000) {
+  // 2.7.1: reject an oversize body before parsing it. The largest
+  // legitimate body is a job (a 200,000-character transcript plus a
+  // fingerprint) or a package text (500,000 characters, given the
+  // larger cap at that route); anything beyond the cap is refused
+  // without being materialised field by field.
+  const len = Number(request.headers.get("content-length") || 0);
+  if (Number.isFinite(len) && len > maxBytes) return null;
   try {
     return await request.json();
   } catch {
@@ -421,6 +437,7 @@ async function resolvePackage(env, name, version) {
 // caller can tell an unknown package from a hash mismatch.
 async function resolvePackageByHash(env, name, version, contentSha256) {
   let sawRow = false;
+  const matches = [];
   for (const { binding, db } of await semesterDbs(env)) {
     const row = await getPackageRow(db, name, version);
     if (!row) continue;
@@ -431,10 +448,20 @@ async function resolvePackageByHash(env, name, version, contentSha256) {
         String(contentSha256).toLowerCase(),
       )
     ) {
-      return { match: { binding, db, row }, sawRow };
+      matches.push({ binding, db, row });
     }
   }
-  return { match: null, sawRow };
+  if (!matches.length) return { match: null, sawRow };
+  // 2.7.1: identical package text reused in a later semester gives
+  // the same content hash in two databases (the earlier assumption
+  // that only one database can match is false for reused text).
+  // Prefer the current semester's database; fall back to the first.
+  if (matches.length > 1) {
+    const cur = await currentBinding(env);
+    const preferred = matches.find((m) => m.binding === cur);
+    if (preferred) return { match: preferred, sawRow };
+  }
+  return { match: matches[0], sawRow };
 }
 
 // The database holding a job, by primary-key lookup across the
@@ -456,7 +483,16 @@ async function findJobDb(env, jobId) {
 async function jobByRetrievalAnyDb(env, body) {
   const nowIso = new Date().toISOString();
   let error = null;
-  for (const { binding, db } of await semesterDbs(env)) {
+  // 2.7.1: try the current semester's database first. The code
+  // lookup carries no semester component, so the same package and
+  // code can exist in two semesters; the current semester is the
+  // one a live student is almost always asking about.
+  const dbs = await semesterDbs(env);
+  const cur = await currentBinding(env);
+  const ordered = [...dbs].sort(
+    (a, b) => (b.binding === cur) - (a.binding === cur),
+  );
+  for (const { binding, db } of ordered) {
     await sweep(db, nowIso);
     const row = await jobByRetrieval(db, body);
     if (!isErrorResponse(row)) return { binding, db, row };
@@ -513,7 +549,9 @@ async function sweep(db, nowIso) {
   // from graded_at so jobs graded before 2.4.1 follow the same rule.
   await db.prepare(
     "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
-      "result_json = NULL, push_json = NULL " +
+      "result_json = NULL, push_json = NULL, chromaprint = NULL, " +
+      "receipt = NULL, completeness = NULL, accuracy = NULL, " +
+      "youtube_video_sha256 = NULL " +
       "WHERE status = ? AND graded_at <= ?",
   )
     .bind(
@@ -526,7 +564,9 @@ async function sweep(db, nowIso) {
   // its stored expires_at.
   await db.prepare(
     "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
-      "result_json = NULL, push_json = NULL " +
+      "result_json = NULL, push_json = NULL, chromaprint = NULL, " +
+      "receipt = NULL, completeness = NULL, accuracy = NULL, " +
+      "youtube_video_sha256 = NULL " +
       "WHERE expires_at <= ? AND status <> ? " +
       "AND status <> ? AND status <> ? AND status <> ?",
   )
@@ -541,7 +581,9 @@ async function sweep(db, nowIso) {
   for (const st of ["queued", "claimed"]) {
     await db.prepare(
       "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
-        "result_json = NULL, push_json = NULL " +
+        "result_json = NULL, push_json = NULL, chromaprint = NULL, " +
+      "receipt = NULL, completeness = NULL, accuracy = NULL, " +
+      "youtube_video_sha256 = NULL " +
         "WHERE status = ? AND created_at <= ?",
     )
       .bind("expired", st, ungradedCutoff)
@@ -550,18 +592,16 @@ async function sweep(db, nowIso) {
   // Aliases whose job has expired are deleted (2.6.0): a code
   // submitted with a duplicate job retrieves that job only while
   // the job is live.
-  const { results: expiredRows } = await db.prepare(
-    "SELECT job_id FROM jobs WHERE status = ?",
+  // One statement for all expired jobs (2.7.1): the previous form
+  // issued one DELETE per expired row on every sweep, and expired
+  // rows are kept, so the cost grew with the total number of jobs
+  // that had ever expired.
+  await db.prepare(
+    "DELETE FROM job_code_aliases WHERE job_id IN " +
+      "(SELECT job_id FROM jobs WHERE status = ?)",
   )
     .bind("expired")
-    .all();
-  for (const r of expiredRows || []) {
-    await db.prepare(
-      "DELETE FROM job_code_aliases WHERE job_id = ?",
-    )
-      .bind(r.job_id)
-      .run();
-  }
+    .run();
   await db.prepare(
     "UPDATE jobs SET status = ?, claimed_at = NULL, claim_expires = NULL " +
       "WHERE status = ? AND claim_expires <= ?",
@@ -832,6 +872,22 @@ async function handleDurationStat(request, env) {
     return json({ error: "invalid durations" }, 400);
   }
   const pkg = typeof body.pkg === "string" ? body.pkg.slice(0, 128) : "";
+  // 2.7.1: a statistic is stored only for a package that exists in
+  // some semester database. The endpoint is unauthenticated (the
+  // student page reports anonymously), and without this check any
+  // caller could fill the table with invented package names and
+  // fabricated durations, poisoning the calibration summary.
+  const parsedPkg = parsePkgId(pkg);
+  let pkgKnown = false;
+  if (parsedPkg) {
+    for (const { db } of await semesterDbs(env)) {
+      if (await getPackageRow(db, parsedPkg.name, parsedPkg.version)) {
+        pkgKnown = true;
+        break;
+      }
+    }
+  }
+  if (!pkgKnown) return json({ ok: true });
   const context = body.context === "send" || body.context === "convert"
     ? body.context : "other";
   const diff = Math.round((videoS - audioS) * 1000) / 1000;
@@ -891,12 +947,33 @@ function validVersions(v) {
   );
 }
 
+// 2.7.1: push endpoints are restricted to the known push services.
+// An arbitrary HTTPS endpoint would make the Worker POST to any
+// address at grading time (a blind server-side request with the
+// VAPID identity attached).
+const PUSH_HOST_SUFFIXES = [
+  ".googleapis.com",
+  ".mozilla.com",
+  ".windows.com",
+  ".apple.com",
+];
+
 function validPushSubscription(p) {
+  let endpointOk = false;
+  if (p && typeof p.endpoint === "string") {
+    try {
+      const u = new URL(p.endpoint);
+      endpointOk =
+        u.protocol === "https:" &&
+        PUSH_HOST_SUFFIXES.some((s) => u.hostname.endsWith(s));
+    } catch {
+      endpointOk = false;
+    }
+  }
   return (
     p &&
     typeof p === "object" &&
-    typeof p.endpoint === "string" &&
-    p.endpoint.startsWith("https://") &&
+    endpointOk &&
     p.endpoint.length <= 1024 &&
     p.keys &&
     typeof p.keys === "object" &&
@@ -959,8 +1036,50 @@ async function findLiveDuplicate(db, pkgFull, audioSha256, fpItems, excludeJobId
 // job (keyed by the REQUESTED pkg string) unless that code is
 // already used by a different job for the pkg, in which case no
 // alias is stored. The submitted kind and YouTube token are ignored.
-async function duplicateResponse(db, dupRow, requestedPkg, codeLookup, nowIso) {
+async function duplicateResponse(db, dupRow, requestedPkg, codeLookup, nowIso, proof = {}) {
+  // 2.7.1: the exact audio SHA-256 is printed in every submission
+  // package, so it is not a secret and proves nothing by itself.
+  // The full duplicate response (alias creation, and the result and
+  // transcript of a ready job) is given only when the submitter
+  // proves they hold the recording: a submitted fingerprint that
+  // matches the stored one, or a submitted transcript whose hash
+  // equals the stored transcript hash. Without proof the response
+  // names the duplicate and its status, and nothing more.
+  let holdsRecording = false;
+  if (proof.fpItems && dupRow.chromaprint) {
+    const other = decodeChromaprint(dupRow.chromaprint);
+    if (other) {
+      const sim = fpSimilarity(proof.fpItems, other);
+      holdsRecording = sim !== null && sim >= FP_SIMILARITY_THRESHOLD;
+    }
+  }
+  if (
+    !holdsRecording &&
+    proof.transcriptSha256 &&
+    dupRow.transcript_sha256 &&
+    timingSafeEqual(
+      String(proof.transcriptSha256).toLowerCase(),
+      String(dupRow.transcript_sha256).toLowerCase(),
+    )
+  ) {
+    holdsRecording = true;
+  }
   let aliasCreated = false;
+  if (!holdsRecording) {
+    const minimal = {
+      duplicate: true,
+      job_id: dupRow.job_id,
+      created_at: dupRow.created_at,
+      expires_at: effectiveExpiresAt(dupRow),
+      pkg: dupRow.pkg,
+      status: dupRow.status,
+      alias_created: false,
+    };
+    if (dupRow.status === "queued" || dupRow.status === "claimed") {
+      minimal.queue_ahead = await queueAhead(db, dupRow);
+    }
+    return json(minimal);
+  }
   const codeJob = await db.prepare(
     "SELECT job_id FROM jobs WHERE code_lookup = ?",
   )
@@ -1134,7 +1253,7 @@ async function handleJobCreate(request, env) {
     body.audio_sha256.toLowerCase(),
     fpItems,
   );
-  if (dup) return duplicateResponse(db, dup, parsed.full, codeLookup, nowIso);
+  if (dup) return duplicateResponse(db, dup, parsed.full, codeLookup, nowIso, { fpItems, transcriptSha256: body.transcript_sha256 });
 
   // YouTube gate for final jobs. The check token is an HMAC over
   // video_id / status / checked_at, so the page returns all three;
@@ -1241,15 +1360,17 @@ async function handleJobCreate(request, env) {
       fpItems,
     );
     if (raced) {
-      return duplicateResponse(db, raced, parsed.full, codeLookup, nowIso);
+      return duplicateResponse(db, raced, parsed.full, codeLookup, nowIso, { fpItems, transcriptSha256: body.transcript_sha256 });
     }
     return json({ error: "retrieval code already used for this package" }, 409);
   }
   // Post-insert race re-check: a concurrent create with a different
   // audio SHA but a matching Chromaprint is not stopped by the
-  // index, so re-check for an earlier live duplicate (strictly
-  // earlier created_at, so equal timestamps never delete both
-  // rows). If one is found, delete the row just inserted and return
+  // index, so re-check for an earlier live duplicate (earlier
+  // created_at, or the same timestamp with the smaller job_id —
+  // 2.7.1: equal timestamps no longer let both rows survive, and
+  // the job_id tie-break still never deletes both). If one is
+  // found, delete the row just inserted and return
   // the earlier one as the duplicate instead.
   const earlier = await findLiveDuplicate(
     db,
@@ -1258,11 +1379,12 @@ async function handleJobCreate(request, env) {
     fpItems,
     jobId,
   );
-  if (earlier && Date.parse(earlier.created_at) < Date.parse(nowIso)) {
+  if (earlier && (Date.parse(earlier.created_at) < Date.parse(nowIso) ||
+    (Date.parse(earlier.created_at) === Date.parse(nowIso) && earlier.job_id < jobId))) {
     await db.prepare("DELETE FROM jobs WHERE job_id = ?")
       .bind(jobId)
       .run();
-    return duplicateResponse(db, earlier, parsed.full, codeLookup, nowIso);
+    return duplicateResponse(db, earlier, parsed.full, codeLookup, nowIso, { fpItems, transcriptSha256: body.transcript_sha256 });
   }
   return json({
     job_id: jobId,
@@ -1717,10 +1839,17 @@ async function handleResult(request, env) {
   const gradedExpires = new Date(
     Date.parse(t) + GRADED_TTL_MS,
   ).toISOString();
-  await db.prepare(
+  // 2.7.1: the UPDATE is guarded by the same live-claim condition
+  // the read above checked. Without the guard, a claim that expired
+  // and was re-claimed by another grader between the read and this
+  // UPDATE could still be overwritten by the first grader's result,
+  // and two concurrent result posts could both land, the second
+  // silently replacing the first (and invalidating its receipt).
+  const upd = await db.prepare(
     "UPDATE jobs SET status = ?, completeness = ?, accuracy = ?, " +
       "critique = ?, result_json = ?, receipt = ?, graded_at = ?, " +
-      "expires_at = ?, claim_expires = NULL WHERE job_id = ?",
+      "expires_at = ?, claim_expires = NULL WHERE job_id = ? " +
+      "AND status = ? AND claim_expires > ?",
   )
     .bind(
       "ready",
@@ -1732,8 +1861,13 @@ async function handleResult(request, env) {
       t,
       gradedExpires,
       row.job_id,
+      "claimed",
+      nowIso,
     )
     .run();
+  if (!upd || !upd.meta || upd.meta.changes !== 1) {
+    return json({ error: "no live claim on this job" }, 409);
+  }
   await sendPush(env, db, { ...row, job_id: row.job_id, expires_at: gradedExpires });
   return json({ ok: true, receipt: bundle.receipt });
 }
@@ -1793,9 +1927,27 @@ async function handleVerifyGrade(request, env) {
       body.chromaprint_sha256 === "none"
         ? "none"
         : body.chromaprint_sha256.toLowerCase();
+    const expected = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(f));
+    return json({ valid: timingSafeEqual(expected, body.receipt) });
   }
-  const expected = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(f));
-  return json({ valid: timingSafeEqual(expected, body.receipt) });
+  // No chromaprint field in the body (2.7.1): two different signed
+  // bundles reach this point in that shape. A pre-2.7.0 bundle was
+  // signed with the old canonical and carries no line anywhere. A
+  // 2.7.0 bundle for a job with no fingerprint was signed with
+  // chromaprint_sha256 "none", but the student page prints the
+  // Chromaprint SHA-256 line in the submission package only for a
+  // real hash, so the teacher audit app — which builds this body
+  // from the package — has no field to send. Accept the receipt if
+  // it matches either canonical form: both are HMACs over every
+  // other field, and the "none" form asserts exactly that the job
+  // carried no fingerprint, so no tampered value gains anything.
+  const expectedOld = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(f));
+  if (timingSafeEqual(expectedOld, body.receipt)) return json({ valid: true });
+  const expectedNone = await hmacBase64url(
+    env.SIGNING_SECRET,
+    gradeCanonical({ ...f, chromaprint_sha256: "none" }),
+  );
+  return json({ valid: timingSafeEqual(expectedNone, body.receipt) });
 }
 
 // --------------------------------------------------------------- admin
@@ -1805,7 +1957,7 @@ async function handlePackageCreate(request, env) {
   if (badAuth) return badAuth;
   const badDb = requireDb(env);
   if (badDb) return badDb;
-  const body = await readJson(request);
+  const body = await readJson(request, 4000000);
   if (
     !body ||
     typeof body !== "object" ||

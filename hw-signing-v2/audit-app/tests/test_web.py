@@ -3683,6 +3683,42 @@ def main():
           "media entry is on disk")
     (unit999 / "submission-fingerprint.bin").write_bytes(fp_bytes48)
 
+    # ---- v55: local-server guard, CSV safety, yt-dlp validation
+    req = urllib.request.Request(BASE + "/", method="GET",
+                                 headers={"Host": "evil.example"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            check(False, "v55: a non-loopback Host is refused")
+    except urllib.error.HTTPError as e:
+        check(e.code == 403, "v55: a non-loopback Host is refused")
+    req = urllib.request.Request(
+        BASE + "/api/settings", data=b"{}", method="POST",
+        headers={"content-type": "text/plain",
+                 "Origin": "http://evil.example"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            check(False, "v55: a cross-origin POST is refused")
+    except urllib.error.HTTPError as e:
+        check(e.code == 403, "v55: a cross-origin POST is refused")
+    built55 = {"header": ["Student", "ID", "SIS User ID",
+                          "SIS Login ID", "Section", "HW1 (202)"],
+               "points_possible": 10, "assignment_name": "HW1",
+               "rows": [{"Student": "=2+5+cmd", "ID": "1",
+                         "SIS User ID": "", "SIS Login ID": "",
+                         "Section": "001", "score": 9}]}
+    csv55 = web.gradebook_csv_text(built55)
+    check("'=2+5+cmd" in csv55,
+          "v55: a formula-leading student name is quote-prefixed "
+          "in the Gradebook CSV")
+    for bad_link in ("--exec=echo pwned", "https://127.0.0.1:8766/x",
+                     "https://example.com/watch?v=abcdefghijk"):
+        try:
+            web.download_youtube_medium(web.load_web_config(), "u1", bad_link)
+            check(False, f"v55: yt-dlp link rejected: {bad_link}")
+        except ValueError as e:
+            check("not a YouTube video link" in str(e),
+                  f"v55: yt-dlp link rejected: {bad_link}")
+
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,
      web.fetch_roster_maps) = _keep35

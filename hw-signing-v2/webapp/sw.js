@@ -26,7 +26,15 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const cache = await caches.open('hw-signing-v2-config');
       const stored = await cache.match('page-url');
-      if (stored) target = await stored.text();
+      if (stored) {
+        // 2.6.12: open the stored address only when it is on this
+        // service worker's own origin; anything else falls back to
+        // the scope URL.
+        const candidate = await stored.text();
+        if (new URL(candidate).origin === self.location.origin) {
+          target = candidate;
+        }
+      }
     } catch { /* fall back to the scope URL */ }
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of clients) {

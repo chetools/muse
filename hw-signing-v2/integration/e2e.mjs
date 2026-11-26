@@ -57,6 +57,14 @@ function createDb() {
       if (m) return row[m[1]] !== null && row[m[1]] !== undefined;
       m = /^(\w+)\s+IS\s+NULL$/i.exec(c);
       if (m) return row[m[1]] === null || row[m[1]] === undefined;
+      m = /^(\w+)\s+IN\s+\(SELECT\s+(\w+)\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*\?\)$/i.exec(c);
+      if (m) {
+        const val = args[ptr.i++];
+        const set = new Set(
+          (tables[m[3]] || []).filter((r) => r[m[4]] === val).map((r) => r[m[2]]),
+        );
+        return set.has(row[m[1]]);
+      }
       m = /^(\w+)\s*(=|<>|<=|>=|<|>)\s*(.+)$/.exec(c);
       if (!m) throw new Error("unsupported condition: " + c);
       const val = resolveToken(m[3], args, ptr);
@@ -144,6 +152,15 @@ function createDb() {
         }
       }
       return changes;
+    }
+    m = /^DELETE\s+FROM\s+(\w+)\s+WHERE\s+(.+)$/is.exec(sql);
+    if (m) {
+      const [, table, where] = m;
+      if (!tables[table]) { tables[table] = []; return 0; }
+      const before = tables[table].length;
+      tables[table] = tables[table].filter(
+        (row) => !evalConds(row, where, args, { i: 0 }));
+      return before - tables[table].length;
     }
     throw new Error("unsupported statement: " + sql);
   }

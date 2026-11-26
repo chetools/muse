@@ -36,6 +36,14 @@ function createDb() {
       if (m) return row[m[1]] !== null && row[m[1]] !== undefined;
       m = /^(\w+)\s+IS\s+NULL$/i.exec(c);
       if (m) return row[m[1]] === null || row[m[1]] === undefined;
+      m = /^(\w+)\s+IN\s+\(SELECT\s+(\w+)\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*\?\)$/i.exec(c);
+      if (m) {
+        const val = args[ptr.i++];
+        const set = new Set(
+          tables[m[3]].filter((r) => r[m[4]] === val).map((r) => r[m[2]]),
+        );
+        return set.has(row[m[1]]);
+      }
       m = /^(\w+)\s*(=|<>|<=|>=|<|>)\s*(.+)$/.exec(c);
       if (!m) throw new Error("unsupported condition: " + c);
       const val = resolveToken(m[3], args, ptr);
@@ -237,11 +245,11 @@ const uaKeys = await crypto.subtle.generateKey(
 const uaPubRaw = new Uint8Array(await crypto.subtle.exportKey("raw", uaKeys.publicKey));
 const uaAuth = crypto.getRandomValues(new Uint8Array(16));
 const pushSub = {
-  endpoint: "https://push.example.test/send/ua1",
+  endpoint: "https://fcm.googleapis.com/send/ua1",
   keys: { p256dh: b64u(uaPubRaw), auth: b64u(uaAuth) },
 };
 const pushSubGone = {
-  endpoint: "https://push.example.test/send/gone",
+  endpoint: "https://fcm.googleapis.com/send/gone",
   keys: { p256dh: b64u(uaPubRaw), auth: b64u(uaAuth) },
 };
 
@@ -256,7 +264,7 @@ globalThis.fetch = async (url, opts = {}) => {
       status: 200, headers: { "content-type": "application/json" },
     });
   }
-  if (u.startsWith("https://push.example.test/")) {
+  if (u.startsWith("https://fcm.googleapis.com/")) {
     pushRequests.push({ url: u, opts });
     if (u.includes("gone")) return new Response("", { status: 410 });
     return new Response("", { status: 201 });
@@ -738,7 +746,7 @@ async function decryptPush(req) {
     Buffer.from(s, "base64url"), enc(`${h}.${p}`));
   const claims = JSON.parse(Buffer.from(p, "base64url").toString());
   check("VAPID JWT verifies against the public key and names the push origin",
-    sigOk && claims.aud === "https://push.example.test" && claims.exp > Date.now() / 1000);
+    sigOk && claims.aud === "https://fcm.googleapis.com" && claims.exp > Date.now() / 1000);
   const payloadText = await decryptPush(req);
   check("push payload decrypts (RFC 8291 self-decrypt) to the ready message",
     payloadText === JSON.stringify({ title: "HW Signing", body: "Your grade and critique are ready." }));
@@ -1127,7 +1135,7 @@ const FP_F = makeFp(5151, 60);
 const FP_A_SHIFTED = [...makeFp(777, 3), ...FP_A];
 
 r = await call("/", { method: "GET" });
-check("health: version is 2.7.0", r.status === 200 && r.body.version === "2.7.0");
+check("health: version is 2.7.1", r.status === 200 && r.body.version === "2.7.1");
 check("health: semester databases are discovered from the env bindings",
   r.body.databases === 2);
 
@@ -1525,6 +1533,46 @@ check("fingerprint-less bundle carries chromaprint_sha256 none and a null chroma
 {
   const rr = await call("/verify-grade", { body: r.body.result });
   check("fingerprint-less bundle verifies", rr.status === 200 && rr.body.valid === true);
+  // 2.7.1: the submission package for a fingerprint-less job carries
+  // no Chromaprint SHA-256 line, so the audit app's verify body omits
+  // the field entirely; the receipt (signed over the "none" line)
+  // must still verify, and a tampered field must still fail.
+  const noField = { ...r.body.result };
+  delete noField.chromaprint_sha256;
+  const rn = await call("/verify-grade", { body: noField });
+  check("fingerprint-less bundle verifies with the chromaprint field omitted (2.7.1)",
+    rn.status === 200 && rn.body.valid === true);
+  const rt = await call("/verify-grade", { body: { ...noField, accuracy: 5 } });
+  check("field-omitted verify still rejects a tampered grade (2.7.1)",
+    rt.status === 200 && rt.body.valid === false);
+  // 2.7.1: a second result post for the same job is refused, so a
+  // stored grade and its receipt can never be silently replaced.
+  const rr2 = await call("/grading/result", {
+    token: env.GRADING_TOKEN,
+    body: { job_id: noFpJob, completeness: 1, accuracy: 1, critique: "Second post." },
+  });
+  check("second result post for one job is refused (2.7.1)",
+    rr2.status === 409);
+  // 2.7.1: a duplicate submission that proves nothing about the
+  // recording (different transcript, no fingerprint) learns only
+  // that the job exists — no result, no transcript, no alias.
+  const alienTranscript = "A completely different explanation.";
+  const alienHash = await sha256Hex(alienTranscript);
+  const ra = await call("/jobs", { body: { ...jobBase, retrieval_code: "alien27101",
+    audio_sha256: "b7".repeat(32), transcript: alienTranscript, transcript_sha256: alienHash } });
+  check("unproven duplicate gets no result and no alias (2.7.1)",
+    ra.status === 200 && ra.body.duplicate === true &&
+    ra.body.alias_created === false && !("result" in ra.body) && !("transcript" in ra.body));
+  const rs = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "alien27101" } });
+  check("unproven duplicate code does not retrieve the job (2.7.1)", rs.status === 403);
+  // The same submission with the job's own transcript (the holder
+  // of the recording retranscribed it) is aliased and answered in
+  // full, as before.
+  const ro = await call("/jobs", { body: { ...jobBase, retrieval_code: "owner27101",
+    audio_sha256: "b7".repeat(32) } });
+  check("proven duplicate (same transcript) is aliased with its result (2.7.1)",
+    ro.status === 200 && ro.body.duplicate === true &&
+    ro.body.alias_created === true && !!ro.body.result);
 }
 
 // (5) A package created with binding DB_2027SP lives in the second

@@ -29,10 +29,14 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   separate grading sub-agent grades it under the package. The package may
   open only on completeness 5/5 and accuracy 5/5, or on a trial below
   that with a teacher override reason recorded on the package.
-- Transcript flow: transcription and scrubbing are local; the student's
-  identifier confirmation is a hard gate before anything leaves the
-  machine. The job sent to Cloudflare holds the scrubbed transcript and
-  no name, Canvas identity, or YouTube link.
+- Transcript flow: transcription and scrubbing are local. (The
+  identifier confirmation checkbox of the original design was
+  removed at the teacher's direction in webapp 2.6.9; sending is
+  gated on a configured link and a finished transcription, and
+  the section-5 review and removal list remain the student's
+  identifier control.) The job sent to Cloudflare holds the
+  scrubbed transcript and no name, Canvas identity, or YouTube
+  link.
 - YouTube: a submission (final job) requires a checked link; a job
   sent without one is graded the same and can be turned into the
   submission afterwards (2.2.0 — there is no Practice/Final choice at
@@ -342,7 +346,15 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   existing result bundle when it is ready — with the job's
   `transcript` and `chromaprint` returned alongside it (2.7.0, as
   in `/jobs/status`) — and `alias_created` says whether the
-  submitted code now retrieves the job. On no match: the
+  submitted code now retrieves the job. Proof requirement (2.7.1):
+  the audio SHA-256 is printed in every submission package, so it
+  is not a secret; the alias, `result`, `transcript` and
+  `chromaprint` are given only when the submitter proves they
+  hold the recording — a submitted fingerprint matching the
+  stored one, or a submitted transcript whose hash equals the
+  stored transcript hash. Without proof the response carries
+  only the duplicate's identity and status, with
+  `alias_created: false`. On no match: the
   retrieval code must be unique for the pkg (by its lookup hash),
   else 409; store the code's lookup hash and a salted SHA-256, and
   the fingerprint when sent.
@@ -459,6 +471,31 @@ has no stored fingerprint. A bundle's form is told by whether the
 field is present: bundles without it (signed before 2.7.0) keep the
 original canonical text, and signing, finalize re-signing and
 `/verify-grade` all choose the form from the bundle itself.
+One exception at `/verify-grade` (Worker 2.7.1): a verify body
+with no `chromaprint_sha256` field is accepted when the receipt
+matches either the original form or the `none` form. The
+submission package prints the Chromaprint SHA-256 line only for
+a real hash, so for a fingerprint-less job the audit app has no
+field to send, although the bundle was signed over `none`;
+before 2.7.1 every such legitimate package failed the audit's
+grade-receipt check.
+
+Further 2.7.1 changes: the result UPDATE is guarded by the
+live-claim condition, so a result cannot land after its claim
+expired or overwrite another grader's result; expiry now also
+nulls the fingerprint, receipt, scores and YouTube video hash,
+and alias deletion is a single statement per sweep rather than
+one per expired row; a package content hash matching two
+semester databases resolves to the current semester's, and
+retrieval tries the current semester's database first;
+`/stats/duration` stores a row only for a package that exists;
+push endpoints are restricted to the known push services;
+request bodies are size-capped before parsing. Webapp 2.6.12:
+the link's Worker address must be a plain https address (http
+only on loopback), and stored job entries are polled only
+against the Worker that created them; the submission HTML
+escapes the two grades as it escapes every other field; a
+scrub entry also matches its separator variants.
 `critique_sha256` = SHA-256 hex of the critique exactly as stored.
 receipt = base64url(HMAC-SHA-256(SIGNING_SECRET, canonical)).
 The bundle returned to the student and printed in the HTML is:
@@ -518,8 +555,7 @@ New/changed behaviour:
   is still established by the audit's acoustic cross-check on the
   submitted ZIP.
 - Scrub and identifier review are applied fresh on every load (cached
-  chunks are pre-scrub). The identifier confirmation checkbox gates the
-  job section, as it gates export in v1.
+  chunks are pre-scrub).
 - `js/jobs.js` — localStorage key `hw-signing.jobs.v2`: a list of
   `{pkg, course, asg, retrieval_code, kind, youtube_link, created_at,
   expires_at}`. On page load, for each unexpired entry, POST

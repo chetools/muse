@@ -526,6 +526,25 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
                       "skipped": True, "fetched_bytes": 0,
                       "current_attempt": is_current, **stored})
                 continue
+            # v55: refuse an oversize ZIP on its declared size
+            # before its bytes are fetched into memory; the
+            # extraction limits below can only act after the fetch.
+            declared = zip_att.get("size")
+            if declared and int(declared) > MAX_ZIP_TOTAL_BYTES + (1 << 20):
+                rec = {"user_id": user_id,
+                       "user_name": user.get("name"),
+                       "zip_path": str(zip_path),
+                       "error": (f"package ZIP rejected: declared size "
+                                 f"{int(declared)} bytes, over the "
+                                 f"{MAX_ZIP_TOTAL_BYTES} byte limit"),
+                       "fetched_bytes": 0,
+                       "current_attempt": is_current, **listing}
+                if not is_current:
+                    rec["rejected"] = True
+                    state[key] = {**listing, "rejected": True}
+                    save_state()
+                emit(rec)
+                continue
             zip_bytes = fetch_bytes_fn(cfg, zip_att["url"])
             zip_sha = hashlib.sha256(zip_bytes).hexdigest()
             mark = {**listing, "zip_sha256": zip_sha}
@@ -762,6 +781,14 @@ def extract_package_zip(zip_bytes, folder):
         if isinstance(e, ValueError):
             raise
         raise ValueError(f"cannot extract package ZIP ({e})") from e
+    # v55: remove the other form's media file when it is left over
+    # from an earlier submission in the same folder. A stale WAV
+    # beside a new fingerprint package (or the reverse) would
+    # otherwise be picked up as this package's media, and the newly
+    # submitted media file would never be checked.
+    other = (FINGERPRINT_ENTRY_NAME if form == "audio"
+             else "submission-audio.wav")
+    (folder / other).unlink(missing_ok=True)
     out = {"html_path": str(written["submission.html"]),
            "package_form": form}
     if form == "audio":
@@ -868,6 +895,13 @@ class PackageParser(html.parser.HTMLParser):
         self.fields = {}          # verification dt/dd pairs, raw labels
         self.summary_grades = {}
         self.grading_grades = {}
+        # v55: duplicate detection. The checks hash the LAST
+        # transcript / critique / verification value seen, while a
+        # browser renders all of them; a package carrying any of
+        # them twice is rejected as malformed (see parse_package).
+        self.transcript_blocks = 0
+        self.critique_blocks = 0
+        self.duplicate_labels = set()
         self._dt = None
         self._dd = None
         self._grade_span = None
@@ -884,10 +918,12 @@ class PackageParser(html.parser.HTMLParser):
             self.section_stack.append(attrs.get("id") or attrs.get("class"))
         elif tag == "pre" and "transcript" in (attrs.get("class") or ""):
             self.in_transcript = True
+            self.transcript_blocks += 1
             self._buf = []
         elif tag == "p" and "critique" in (attrs.get("class") or "") \
                 and self._section() == "grading":
             self._in_critique = True
+            self.critique_blocks += 1
             self._critique_buf = []
         elif tag == "dt":
             self._dt = []
@@ -912,6 +948,8 @@ class PackageParser(html.parser.HTMLParser):
             self._dt = None
         elif tag == "dd" and self._dd is not None:
             if self._section() == "verification" and hasattr(self, "_pending_label"):
+                if self._pending_label in self.fields:
+                    self.duplicate_labels.add(self._pending_label)
                 self.fields[self._pending_label] = "".join(self._dd).strip()
             self._dd = None
         elif tag == "span" and self._grade_span:
@@ -957,12 +995,17 @@ def parse_package(html_text):
             return None
 
     return {
+        "duplicates": {
+            "transcript_blocks": p.transcript_blocks,
+            "critique_blocks": p.critique_blocks,
+            "verification_labels": sorted(p.duplicate_labels),
+        },
         "transcript_lines": lines,
         "timed_lines": timed,  # [(start_s or None, text)]
         "canonical_transcript": canonical,
         "critique": p.critique_text or "",
-        "summary_grades": {k: int(v) for k, v in p.summary_grades.items()},
-        "grading_grades": {k: int(v) for k, v in p.grading_grades.items()},
+        "summary_grades": {k: as_int(v) for k, v in p.summary_grades.items()},
+        "grading_grades": {k: as_int(v) for k, v in p.grading_grades.items()},
         "verification": {
             "v": ver.get("v"),
             "session": ver.get("session"),
@@ -1155,7 +1198,11 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
     html_text = Path(html_path).read_text(encoding="utf-8")
     parsed = parse_package(html_text)
     ver = parsed["verification"]
-    format_ok = str(ver.get("v") or "") == "2"
+    dup = parsed.get("duplicates") or {}
+    format_ok = str(ver.get("v") or "") == "2" and \
+        dup.get("transcript_blocks", 1) <= 1 and \
+        dup.get("critique_blocks", 1) <= 1 and \
+        not dup.get("verification_labels")
     if form == "fingerprint":
         audio_ok = bool(ver.get("chromaprint_sha256")) and \
             sha256_file(media_path) == ver["chromaprint_sha256"]
