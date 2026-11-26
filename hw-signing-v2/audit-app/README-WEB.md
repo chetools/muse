@@ -18,6 +18,30 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v59 (2026-11-26) — no binding; the YouTube check is the similarity only
+
+- **There is no binding.** Package checks make no binding call
+  to the Worker, nothing in the wall, the dashboard, the
+  gradebook or the exports reports a submission as displaced
+  by a later one, and the dashboard's integrity cell has no
+  release action. A ZIP whose bundle carries a legacy video
+  hash verifies exactly as before on its other checks; the
+  hash is compared only within the package — the link's video
+  ID against the claimed hash, when the bundle claims a real
+  one. A bundle claiming "none" is not compared at all.
+- **The YouTube cross-check follows the Chromaprint
+  similarity only.** A duration difference — however large —
+  never flags and never passes; durations are recorded in the
+  result as diagnostics and are not displayed. When no
+  fingerprint comparison could be made, the result is neither
+  a pass nor a flag. The integrity cell shows the similarity:
+  **YouTube similarity 0.9851** (the value to four decimal
+  places) on a pass, **YouTube FLAGGED · similarity …** on a
+  flag, and the existing pending wording before a measurement
+  exists.
+- **Check schema 3.** Stored checks are re-done once under
+  the new meanings.
+
 ## v54 (2026-11-26) — repair: the dashboard loaded no data under v53
 
 - v53 shipped with a mismatched quote in one line of the
@@ -137,10 +161,9 @@ provide Python if none is installed.
   scored at least 0.929, 99.9% of cross-recording blocks scored
   below 0.842, and one real pair that scored only 0.796 at a single
   global offset scored 0.926–0.991 in every block at per-block
-  offsets. The claimed duration is the fingerprint span (items ×
-  0.124 s), checked against the package's Audio duration line
-  within 1 s and against the video's audio duration within
-  max(2 s, 2%), as before.
+  offsets. (Since v59 the check follows the similarity only:
+  the fingerprint span and the durations are recorded as
+  diagnostics and are not compared for any verdict.)
 - **WAV repair.** Five of the twelve past packages carry a WAV
   whose "fmt " chunk identifier is zeroed while the sound data is
   intact; ffmpeg cannot open such a file, and those packages
@@ -605,9 +628,10 @@ provide Python if none is installed.
   recomputes the audio fingerprint, the transcript checksum and
   the critique hash, requires format version 2, and verifies the
   grade receipt with the grading Worker over the grades shown in
-  the HTML (so the shown grades must be the signed grades); also
-  compares the YouTube video ID in the submission against the ID
-  hash the Worker recorded before grading, and runs the
+  the HTML (so the shown grades must be the signed grades); also,
+  when the bundle claims a real video hash, compares the YouTube
+  video ID in the submission against that claimed hash (a bundle
+  claiming "none" is not compared), and runs the
   prompt-injection scan, and runs the YouTube acoustic
   cross-check (below) for every package whose YouTube video has
   been downloaded. An injection flag carries the time of the
@@ -627,13 +651,14 @@ provide Python if none is installed.
   of the downloaded video's audio, and the row shows the
   similarity (1 minus the fingerprint bit error rate) — about
   0.99 for the same take after transcoding, about 0.5 for a
-  different take. It also compares the two durations. Below the
-  acoustic threshold (0.85 by default; set it in Setup, stored
-  as `acoustic_threshold` in `config.json`)
-  or with a duration mismatch, the row shows **YouTube FLAGGED**
-  and a "youtube" flag badge under Integrity, the wall shows
-  "YouTube mismatch", and the final grade stays blank until you
-  enter one.
+  different take. The similarity is the whole check: duration
+  is not used. Below the acoustic threshold (0.85 by default;
+  set it in Setup, stored as `acoustic_threshold` in
+  `config.json`) the row shows **YouTube FLAGGED · similarity
+  …** and a "youtube" flag badge under Integrity, the wall
+  shows "YouTube mismatch", and the final grade stays blank
+  until you enter one. A pass reads **YouTube similarity …**
+  with the value to four decimal places.
   Until the video has been downloaded the row reads "YouTube:
   video not downloaded yet" — the automatic pass that downloads
   the video runs the cross-check again in the same pass, so no

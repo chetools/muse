@@ -35,7 +35,7 @@ safely, recomputes fingerprints, verifies the grading Worker's
 grade receipt (which signs the grades and the critique hash),
 exports anonymised coded grading sections for the teacher's Muse,
 runs the acoustic YouTube cross-check (Chromaprint fingerprint
-similarity plus duration, in youtube_cross_check), and deletes
+similarity only, in youtube_cross_check), and deletes
 working material on command after grades are final.
 There is no re-grade: cases the teacher decides are decided by the
 teacher from the video wall, and the entered grade is the grade of
@@ -135,7 +135,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/58.0"
+USER_AGENT = "HWSigning-Teacher-Audit/59.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -1208,44 +1208,9 @@ def worker_verify_grade(cfg, ver, grades, post_fn=None):
     return bool(result.get("valid"))
 
 
-def worker_binding(cfg, job_id, post_fn=None):
-    """Fetch a job's current video binding and its binding history
-    from the Worker (POST /jobs/binding, Worker 2.7.3): the audit
-    names jobs by job_id and holds no retrieval code, and the
-    Worker answers with hashes only. Transport injectable, like
-    worker_verify_grade."""
-    post_fn = post_fn or http_post_json
-    url = cfg["worker_base_url"].rstrip("/") + "/jobs/binding"
-    return post_fn(url, {"job_id": job_id})
-
-
-def classify_binding(claimed, binding):
-    """Classify a package's claimed video hash against the
-    Worker's binding view for its job. Returns (status,
-    superseded_at): 'current' when the hash is the job's current
-    binding; 'superseded' when the job once held it and a later
-    binding event displaced it (superseded_at is that event's
-    time); 'unknown' when it appears in no binding, current or
-    past."""
-    claimed = (claimed or "").lower()
-    current = (binding.get("current_sha256") or "none").lower()
-    if claimed and claimed != "none" and claimed == current:
-        return "current", None
-    history = binding.get("history") or []
-    if claimed and any(
-            (h.get("video_sha256") or "").lower() == claimed
-            for h in history):
-        displaced = [h for h in history
-                     if (h.get("prev_video_sha256") or "").lower()
-                     == claimed]
-        at = displaced[-1].get("created_at") if displaced else None
-        return "superseded", at
-    return "unknown", None
-
-
 # ---------------------------------------------------------------- package checks
 
-def check_package(audio_path, html_path, cfg, post_fn=None, binding_fn=None):
+def check_package(audio_path, html_path, cfg, post_fn=None):
     """Recompute fingerprints and verify the grade receipt for one
     v2 package. audio_path is the package's media entry: the WAV
     (audio form) or submission-fingerprint.bin (fingerprint form,
@@ -1336,49 +1301,28 @@ def check_package(audio_path, html_path, cfg, post_fn=None, binding_fn=None):
             and shown_in_range:
         grade_receipt_ok = worker_verify_grade(
             cfg, ver, html_grades, post_fn=post_fn)
-    # The package's YouTube video SHA-256 is the hash of the video ID
-    # in its YouTube link; the Worker recorded the hash of the ID it
-    # checked before grading. A mismatch means the link in the HTML
-    # is not the video that was checked.
+    # The package's YouTube video SHA-256, when the bundle claims
+    # a real one, is the hash of the video ID in its YouTube link;
+    # the Worker recorded the hash of the ID it checked before
+    # grading. A mismatch means the link in the HTML is not the
+    # video that was checked. The comparison runs only when the
+    # bundle claims a real hash (v59): a bundle claiming "" or
+    # "none" made no video claim — the link in the package is
+    # package data, nothing to disagree with — so youtube_id_ok
+    # is None whether or not a link is present. A claimed hash
+    # is compared with nothing outside the package: there is no
+    # Worker-side record it is checked against.
     if not format_ok:
         youtube_id_ok = None
     else:
         link = ver.get("youtube_link")
         claimed = (ver.get("youtube_video_sha256") or "").lower()
-        if not link and claimed in ("", "none"):
-            youtube_id_ok = None     # no video claimed, none linked
-        elif link and claimed and claimed != "none":
+        if claimed in ("", "none"):
+            youtube_id_ok = None     # no video claim was made
+        elif link:
             youtube_id_ok = youtube_video_sha256(link) == claimed
         else:
-            youtube_id_ok = False    # link and claim disagree in kind
-    # Binding currency (v57, Worker 2.7.3): the video hash signed
-    # into the bundle must still be the job's current binding on
-    # the Worker. A hash displaced by a later binding is reported
-    # as superseded — not a pass, and not an integrity failure:
-    # the earlier ZIP is simply no longer the submission of
-    # record. A hash in no binding at all is an integrity
-    # failure, through internally_consistent below. When the
-    # binding cannot be fetched, the package is reported as not
-    # currency-checked rather than silently passed.
-    binding_status = None
-    binding_superseded_at = None
-    binding_note = None
-    claimed_sha = (ver.get("youtube_video_sha256") or "").lower()
-    if format_ok and claimed_sha and claimed_sha != "none" \
-            and ver.get("job_id"):
-        fetch_binding = binding_fn or (
-            lambda jid: worker_binding(cfg, jid, post_fn=post_fn))
-        try:
-            binding = fetch_binding(ver["job_id"])
-            binding_status, binding_superseded_at = classify_binding(
-                claimed_sha, binding or {})
-            if binding_status == "superseded":
-                binding_note = (
-                    "the video in this ZIP was replaced by a later "
-                    "binding; it is no longer the submission of record")
-        except Exception:
-            binding_status = "unchecked"
-            binding_note = "binding currency not checked (Worker unreachable)"
+            youtube_id_ok = False    # a hash claimed, no link shown
     injection_matches = scan_injection(parsed["canonical_transcript"])
     return {
         "format_ok": format_ok,
@@ -1395,13 +1339,9 @@ def check_package(audio_path, html_path, cfg, post_fn=None, binding_fn=None):
         "injection_flags": injection_flag_times(
             parsed["timed_lines"], injection_matches),
         "injection_suspected": bool(injection_matches),
-        "binding_status": binding_status,
-        "binding_superseded_at": binding_superseded_at,
-        "binding_note": binding_note,
         "internally_consistent": bool(
             format_ok and audio_ok and transcript_ok and critique_ok
-            and grade_receipt_ok and grades_match
-            and binding_status != "unknown"),
+            and grade_receipt_ok and grades_match),
         "estimated_grades": html_grades,
         "session": ver.get("session"),
         "job_id": ver.get("job_id"),
@@ -1560,10 +1500,14 @@ def wav_duration_s(path):
 # and no re-transcription command is needed, so this check has no
 # "not configured" state of that kind: if ffmpeg or its chromaprint
 # muxer is missing, the result reports acoustic_configured False
-# and passed None (never a vacuous pass), while the duration part
-# still runs. Two durations are also compared, and the fingerprint
-# comparison is reported per third of the recording, so a take
-# that was trimmed or spliced shows where it diverges; a small
+# and passed None (never a vacuous pass). Since v59 the flag and
+# the pass follow the fingerprint comparison only: the durations
+# are measured and recorded in the result as diagnostics, but no
+# duration difference — against the video, or against the
+# package's claimed duration — flags or passes anything. The
+# fingerprint comparison is reported per third of the recording,
+# so a take that was trimmed or spliced shows where it diverges;
+# a small
 # offset search (plus/minus 8 fingerprint items, about 1 s)
 # absorbs encoder delay at the start.
 
@@ -1842,26 +1786,30 @@ def _repaired_wav_temp(path):
 def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
                         cfg, ffmpeg=None, fingerprint_fn=None):
     """Acoustic cross-check: Canvas WAV against the downloaded
-    YouTube video. Reports duration agreement and fingerprint
-    similarity; youtube_flag is set when either disagrees.
+    YouTube video. Reports fingerprint similarity; youtube_flag
+    is set when the fingerprint comparison fails, and only then
+    (v59). Durations are measured and recorded in the result as
+    diagnostics (duration_diff_s and its neighbours) and affect
+    nothing: not passed, not any flag, not any displayed reason.
 
     fingerprint_fn(path) -> list of uint32 or None is injectable
     for tests; the production default is chromaprint_fingerprint.
     When the video has not been downloaded yet the result is
     available False with passed None - not a pass, not a flag; the
-    next pass after the download completes it.
+    next pass after the download completes it. When no fingerprint
+    comparison could be made (not configured, or a fingerprint
+    unreadable or missing), passed likewise stays None: duration
+    is not a fallback test.
 
     v48: when the package's media entry is the fingerprint file
     (fingerprint form), the submitted fingerprint is decoded from
     it directly and compared against the video's fingerprint per
     block (compare_fingerprints_blockwise) — the flag follows the
     per-block rule, with the whole-file comparison kept in the
-    result for continuity; the claimed duration is the fingerprint
-    span, cross-checked against the package's Audio duration line
-    within 1 s as well as against the video's duration. In the
-    audio form, a WAV the normal route cannot decode is retried
-    once against a repaired copy (_repaired_wav_temp) and the
-    result notes wav_repaired when the repair was used."""
+    result for continuity. In the audio form, a WAV the normal
+    route cannot decode is retried once against a repaired copy
+    (_repaired_wav_temp) and the result notes wav_repaired when
+    the repair was used."""
     threshold = float(cfg.get("acoustic_threshold", 0.85))
     out = {"available": False, "youtube_flag": False, "passed": None,
            "threshold": threshold, "similarity": None, "ber": None,
@@ -1932,28 +1880,21 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
                                 canvas_dur, 1)
                 finally:
                     repaired.unlink(missing_ok=True)
-    duration_checked = canvas_dur is not None and yt_dur is not None
-    claimed_ok = None
+    # Durations are diagnostics only (v59): the differences are
+    # recorded — canvas against video, and in the fingerprint
+    # form the fingerprint span against the package's claimed
+    # duration (its Audio duration line) — but no duration value
+    # is compared against a tolerance for any verdict, and
+    # duration_flag is never raised.
     if fp_form and claimed is not None and canvas_dur is not None:
-        # The fingerprint span must agree with the duration the
-        # package itself claims (its Audio duration line) within
-        # 1 s: the span is derived from the submitted evidence, so
-        # a package claiming a materially different length than
-        # its fingerprint spans is inconsistent on its face.
-        claimed_diff = abs(canvas_dur - claimed)
-        out["claimed_diff_s"] = round(claimed_diff, 1)
-        claimed_ok = claimed_diff <= 1.0
-    if duration_checked:
+        out["claimed_diff_s"] = round(abs(canvas_dur - claimed), 1)
+    if canvas_dur is not None and yt_dur is not None:
         diff = abs(canvas_dur - yt_dur)
-        tol = max(2.0, 0.02 * canvas_dur)
         out["duration_diff_s"] = round(diff, 1)
-        out["duration_tolerance_s"] = round(tol, 1)
-        out["duration_ok"] = diff <= tol \
-            and (claimed_ok is None or claimed_ok)
-        out["duration_flag"] = not out["duration_ok"]
-    elif claimed_ok is not None:
-        out["duration_ok"] = claimed_ok
-        out["duration_flag"] = not claimed_ok
+        out["duration_tolerance_s"] = round(
+            max(2.0, 0.02 * canvas_dur), 1)
+        out["duration_ok"] = diff <= out["duration_tolerance_s"]
+    out["duration_flag"] = False
     configured = bool(fp_canvas and fp_yt)
     out["acoustic_configured"] = configured
     content_flag = False
@@ -1968,15 +1909,16 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
             content_flag = (comp["similarity"] is not None
                             and comp["similarity"] < threshold)
     out["content_flag"] = content_flag
-    flagged = bool(out["duration_flag"] or content_flag)
-    out["youtube_flag"] = flagged
-    # A pass requires that something was actually measured: the
-    # fingerprint comparison, or at least the durations (in the
-    # fingerprint form, the span-versus-claimed check counts too).
-    # With none of those, passed stays None (not configured / not
-    # readable).
-    measured = configured or duration_checked or claimed_ok is not None
-    out["passed"] = (not flagged) if measured else None
+    out["youtube_flag"] = bool(content_flag)
+    # A pass requires that the fingerprint comparison was
+    # actually made (v59, both forms): that is the only
+    # measurement that counts. Durations alone — in the audio
+    # form, or the fingerprint form's span against the claimed
+    # duration — are not a measurement for pass/fail purposes,
+    # so with no fingerprint comparison passed stays None (not
+    # configured / not readable), never a pass and never a flag.
+    measured = configured
+    out["passed"] = (not content_flag) if measured else None
     return out
 
 

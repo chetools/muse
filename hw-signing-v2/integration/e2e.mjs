@@ -266,6 +266,7 @@ const gradeJobs = path.join(pollDir, "scripts", "grade_jobs.mjs");
 const VIDEO_ID = "abc123XYZ_-";
 const VIDEO_ID2 = "def456UVW_0";
 const WATCH_URL = "https://www.youtube.com/watch?v=" + VIDEO_ID;
+const WATCH_URL2 = "https://www.youtube.com/watch?v=" + VIDEO_ID2;
 const CHUNKS = [
   { start: 0, text: "Hello, this is the explanation of the grade distribution set-up." },
   { start: 65, text: "The count of ways uses the multinomial coefficient and Stirling's approximation." },
@@ -413,7 +414,10 @@ await step("retrieval via webapp fetchJobStatus returns the signed bundle under 
   assert(bundle.youtube_video_sha256 === "none", "practice bundle should carry no video hash");
 });
 
-await step("finalize via webapp finalizeJob turns the graded job into the submission", async () => {
+await step("finalize via webapp finalizeJob turns the graded job into the submission (no video bound, 2.7.4)", async () => {
+  // The 2.6.19 page sends no youtube fields at all (finalizeJob
+  // drops any a caller still passes); finalize marks the job final
+  // and binds nothing.
   const finPayload = { pkg: pkgId, retrieval_code: "e2ecode1234" };
   finPayload["youtube" + "_token"] = ytCheck.token;
   finPayload.youtube_video_id = ytCheck.video_id;
@@ -425,8 +429,9 @@ await step("finalize via webapp finalizeJob turns the graded job into the submis
   });
   assert(st.status === "ready" && st.data && st.data.result, "job not ready after finalize");
   bundle = st.data.result;
-  const expectHash = sha256(VIDEO_ID);
-  assert(bundle.youtube_video_sha256 === expectHash, "finalized bundle lacks the video hash");
+  assert(bundle.youtube_video_sha256 === "none",
+    "finalized bundle carries a video hash: " + bundle.youtube_video_sha256);
+  assert(!("binding" in st.data), "status still carries a binding view");
   assert(bundle.receipt === out.receipt, "finalized receipt differs from status bundle");
   assert(bundle.completeness === 4 && bundle.accuracy === 5 && bundle.critique === CRITIQUE,
     "finalize changed the grade content");
@@ -456,10 +461,11 @@ await step("audit check_package on the unzipped package: internally_consistent, 
   assert(chk.audio_fingerprint_ok === true, "audio check failed: " + JSON.stringify(chk));
   assert(chk.transcript_checksum_ok === true, "transcript check failed: " + JSON.stringify(chk));
   assert(chk.critique_ok === true, "critique check failed: " + JSON.stringify(chk));
-  assert(chk.youtube_id_ok === true, "youtube id check failed: " + JSON.stringify(chk));
+  assert(chk.youtube_id_ok === null,
+    "youtube id check should be null (the bundle claims no video): " + JSON.stringify(chk));
   assert(chk.grade_receipt_ok === true, "grade receipt failed against the real Worker: " + JSON.stringify(chk));
   assert(chk.internally_consistent === true, "not internally consistent: " + JSON.stringify(chk));
-  assert(chk.binding_status === "current", "binding not current for the just-finalized ZIP: " + JSON.stringify(chk));
+  assert(!("binding_status" in chk), "audit still reports a binding status: " + JSON.stringify(chk));
 });
 
 await step("tamper (i): completeness span 4→5 fails the grade check", async () => {
@@ -511,41 +517,43 @@ await step("tamper (iii): one WAV byte flipped fails the audio check", async () 
     "failure is not isolated to the audio check: " + JSON.stringify(chk));
 });
 
-await step("supersede: finalize again with a second video rebinds the job (2.7.3)", async () => {
-  const res = await realFetch(BASE + "/youtube-check", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url: "https://www.youtube.com/watch?v=" + VIDEO_ID2 }),
+await step("second ZIP, different link: re-finalize is idempotent and binds nothing (2.7.4)", async () => {
+  const out = await jobsMod.finalizeJob(BASE, {
+    pkg: pkgId, retrieval_code: "e2ecode1234",
   });
-  const yt2 = await res.json();
-  assert(yt2.video_id === VIDEO_ID2 && yt2.token, "second youtube-check failed: " + JSON.stringify(yt2));
-  const finPayload = { pkg: pkgId, retrieval_code: "e2ecode1234" };
-  finPayload["youtube" + "_token"] = yt2.token;
-  finPayload.youtube_video_id = yt2.video_id;
-  finPayload.youtube_checked_at = yt2.checked_at;
-  const out = await jobsMod.finalizeJob(BASE, finPayload);
-  assert(out.ok === true && out.superseded === true, "superseding finalize not accepted: " + JSON.stringify(out));
+  assert(out.ok === true && out.receipt, "re-finalize not accepted: " + JSON.stringify(out));
   const st = await jobsMod.fetchJobStatus(BASE, {
     pkg: pkgId, retrieval_code: "e2ecode1234",
   });
-  assert(st.data && st.data.binding, "status carries no binding view");
-  assert(st.data.binding.current_sha256 === sha256(VIDEO_ID2),
-    "current binding is not the second video: " + JSON.stringify(st.data.binding));
-  assert(st.data.binding.history.length === 2
-    && st.data.binding.history[0].video_sha256 === sha256(VIDEO_ID)
-    && st.data.binding.history[1].action === "supersede",
-    "binding history does not chain A -> B: " + JSON.stringify(st.data.binding));
+  assert(st.status === "ready" && st.data && st.data.result, "job not ready after re-finalize");
+  assert(!("binding" in st.data), "status still carries a binding view");
   const b2 = st.data.result;
-  assert(b2.youtube_video_sha256 === sha256(VIDEO_ID2)
+  assert(b2.youtube_video_sha256 === "none"
     && b2.completeness === 4 && b2.accuracy === 5 && b2.critique === CRITIQUE,
-    "supersede changed the grade content");
+    "re-finalize changed the grade content or bound a video: " + JSON.stringify(b2));
+  bundle = b2;
 });
 
-await step("audit reports the first video's ZIP as superseded after the rebind (v57)", async () => {
-  const chk = await auditCheck(path.join(tmp, "pkg-good"));
-  assert(chk.binding_status === "superseded",
-    "earlier ZIP not reported superseded: " + JSON.stringify(chk));
-  assert(chk.grade_receipt_ok === true && chk.internally_consistent === true,
-    "superseded ZIP must still verify its receipt and hashes: " + JSON.stringify(chk));
+await step("audit accepts the second ZIP (different link) as a current-form package (v59)", async () => {
+  const html2 = pkgMod.assemblePackage({
+    youtubeLink: WATCH_URL2, audioFileName: "submission-audio.wav",
+    durationS: 67, chunks: CHUNKS, bundle,
+  });
+  const zb = zipMod.buildZipBytes([
+    { name: "submission.html", data: enc.encode(html2) },
+    { name: "submission-audio.wav", data: WAV },
+  ]);
+  const dir = path.join(tmp, "pkg-second");
+  await unzipTo(zb, dir);
+  const chk = await auditCheck(dir);
+  assert(chk.format_ok === true, "second ZIP format_ok false: " + JSON.stringify(chk));
+  assert(chk.grade_receipt_ok === true, "second ZIP grade receipt failed: " + JSON.stringify(chk));
+  assert(chk.internally_consistent === true,
+    "second ZIP not internally consistent: " + JSON.stringify(chk));
+  assert(chk.youtube_id_ok === null,
+    "second ZIP youtube id check should be null (no video claimed): " + JSON.stringify(chk));
+  assert(!("binding_status" in chk),
+    "second ZIP audit still reports a binding status: " + JSON.stringify(chk));
 });
 
 // ------------------------------------------------------------ summary

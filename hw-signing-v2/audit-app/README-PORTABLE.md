@@ -113,10 +113,18 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v38 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v59 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v37: the browser opens only once the app
+  installs). v59: there is no binding — package checks make no
+  binding call to the Worker, no page reports a submission as
+  displaced by a later one, and there is no release action;
+  a legacy bundle's video hash is compared only within its
+  own package, and a bundle claiming "none" is not compared.
+  The YouTube check is the Chromaprint fingerprint similarity
+  only, shown in the dashboard's integrity cell ("YouTube
+  similarity …" on a pass, "YouTube FLAGGED · similarity …"
+  on a flag); duration is not used in the check. v37: the browser opens only once the app
   answers, the download log states when an unchanged
   submission was decided from the local record with no bytes
   downloaded, and an acoustic result that could not measure

@@ -41,6 +41,18 @@
 // /jobs/binding expose the current bound video hash and the
 // history. POST /admin/jobs/release-binding (admin token) clears
 // a job's binding back to unbound, recorded as a release.
+// 2.7.4: video binding is eliminated. /jobs/finalize no longer
+// verifies a YouTube check token, records a video hash, or
+// re-signs a graded bundle with one: it marks the job final
+// (one final per recording, as before) and holds the bundle in
+// the no-video form a link-less job is signed in at grading
+// (youtube_video_sha256 "none"); youtube_* fields an older page
+// still sends are accepted and ignored. Re-finalizing an
+// already-final job succeeds idempotently. The binding routes
+// POST /jobs/binding and POST /admin/jobs/release-binding are
+// removed (404), /jobs/status no longer carries a binding field,
+// and nothing writes to job_bindings (the table and its existing
+// rows are left in place as a historical record).
 // t is stamped from the server clock at result time, never taken from
 // the caller. receipt = base64url(HMAC-SHA-256(secret, canonical text)).
 // Verify recomputes the receipt from the claimed values; no stored
@@ -63,7 +75,7 @@
 // databases and merges by creation time, each entry tagged with
 // its binding.
 
-const SERVICE_VERSION = "2.7.3";
+const SERVICE_VERSION = "2.7.4";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 // Job lifetime (2.6.0): an ungraded job is kept for up to
@@ -1578,65 +1590,37 @@ async function handleJobStatus(request, env) {
     out.transcript = row.transcript;
     out.chromaprint = row.chromaprint ?? null;
   }
-  // 2.7.3: the current video binding and its history.
-  out.binding = await bindingView(db, row);
   return json(out);
 }
 
-// POST /jobs/finalize {pkg, retrieval_code, youtube_token,
-// youtube_video_id, youtube_checked_at} — turn an existing job into
-// the final (Canvas submission) job by attaching a YouTube check,
-// verified exactly as at intake. Allowed in any live status; when the
-// job is already graded, the stored result bundle is re-signed with
-// the video hash (every other signed field, including the grading
-// time, is unchanged), so the grade the student saw is the grade the
-// audit verifies. The one-final-per-recording rule applies as at
-// intake. The decision to submit is thus made after the grade is
-// seen, with no second grading.
+// POST /jobs/finalize {pkg, retrieval_code} — turn an existing job
+// into the final (Canvas submission) job. Allowed in any live
+// status. Since 2.7.4 no video is bound: any youtube_* fields an
+// older page still sends (youtube_token, youtube_video_id,
+// youtube_checked_at) are accepted and ignored — the token is NOT
+// verified — no video hash is recorded, and a graded bundle is
+// held in, or brought to, the no-video form a link-less job is
+// signed in at grading (youtube_video_sha256 "none"; see
+// handleResult, which signs row.youtube_video_sha256 || "none").
+// The one-final-per-recording rule applies as at intake.
+// Re-finalizing a job that is already final (under any version)
+// succeeds idempotently with the job's current receipt: the page
+// calls finalize on every Generate ZIP confirm, including for a
+// job an earlier ZIP generation already marked final. The
+// decision to submit is thus made after the grade is seen, with
+// no second grading.
 async function handleJobFinalize(request, env) {
   const badSecret = requireSigning(env);
   if (badSecret) return badSecret;
   const badDb = requireDb(env);
   if (badDb) return badDb;
   const body = await readJson(request);
-  const now = new Date();
   const found = await jobByRetrievalAnyDb(env, body);
   if (found.error) return found.error;
   const db = found.db;
   const row = found.row;
   if (row.status === "expired") {
     return json({ error: "job expired" }, 410);
-  }
-  // The token is verified before the already-final decision
-  // (2.7.3): finalising an already-final job with a different
-  // video is a superseding rebind, and it must present a fresh
-  // verifying token before anything is decided.
-  if (
-    !body ||
-    typeof body.youtube_video_id !== "string" ||
-    !VIDEO_ID.test(body.youtube_video_id) ||
-    !isText(body.youtube_token, 64) ||
-    !isText(body.youtube_checked_at, 64) ||
-    Number.isNaN(Date.parse(body.youtube_checked_at))
-  ) {
-    return json({ error: "finalize requires a YouTube check token" }, 400);
-  }
-  const expected = await hmacBase64url(
-    env.SIGNING_SECRET,
-    `${body.youtube_video_id}\nok\n${body.youtube_checked_at}`,
-  );
-  if (!timingSafeEqual(expected, body.youtube_token)) {
-    return json({ error: "YouTube check token invalid" }, 400);
-  }
-  const age = now.getTime() - Date.parse(body.youtube_checked_at);
-  if (age < -5 * 60 * 1000 || age > YOUTUBE_TOKEN_MAX_AGE_MS) {
-    return json({ error: "YouTube check token too old" }, 400);
-  }
-  const videoSha = await sha256Hex(body.youtube_video_id);
-  const supersede =
-    row.kind === "final" && row.youtube_video_sha256 !== videoSha;
-  if (row.kind === "final" && !supersede) {
-    return json({ error: "job is already a final submission" }, 409);
   }
   const priorFinal = await findLiveFinal(db, row.pkg, row.audio_sha256);
   if (priorFinal && priorFinal.job_id !== row.job_id) {
@@ -1646,167 +1630,30 @@ async function handleJobFinalize(request, env) {
   let resultJson = row.result_json;
   if (row.status === "ready" && row.result_json) {
     const bundle = JSON.parse(row.result_json);
-    bundle.youtube_video_sha256 = videoSha;
-    // gradeCanonical signs in the bundle's own form (2.7.0): a
-    // bundle carrying chromaprint_sha256 is re-signed with it, a
-    // pre-2.7.0 bundle without the field keeps the old canonical
-    // and does not gain the field.
-    receipt = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(bundle));
-    bundle.receipt = receipt;
-    resultJson = JSON.stringify(bundle);
+    if (bundle.youtube_video_sha256 !== "none") {
+      // A bundle bound under an earlier version is brought to the
+      // no-video form. gradeCanonical signs in the bundle's own
+      // form (2.7.0): a bundle carrying chromaprint_sha256 is
+      // re-signed with it, a pre-2.7.0 bundle without the field
+      // keeps the old canonical and does not gain the field.
+      bundle.youtube_video_sha256 = "none";
+      receipt = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(bundle));
+      bundle.receipt = receipt;
+      resultJson = JSON.stringify(bundle);
+    }
   }
   try {
     await db.prepare(
       "UPDATE jobs SET kind = ?, youtube_status = ?, " +
-        "youtube_video_sha256 = ?, result_json = ?, receipt = ? " +
+        "youtube_video_sha256 = NULL, result_json = ?, receipt = ? " +
         "WHERE job_id = ?",
     )
-      .bind("final", "ok", videoSha, resultJson, receipt, row.job_id)
+      .bind("final", "none", resultJson, receipt, row.job_id)
       .run();
   } catch {
     return json({ error: "a final job already exists for this recording" }, 409);
   }
-  if (supersede) {
-    await recordBinding(
-      db, row, "supersede", videoSha, row.youtube_video_sha256,
-      now.toISOString(),
-    );
-    return json({ ok: true, receipt, superseded: true });
-  }
-  await recordBinding(db, row, "bind", videoSha, null, now.toISOString());
   return json({ ok: true, receipt });
-}
-
-// --- Video binding history (2.7.3) ---
-// job_bindings holds one row per binding event for a job: the
-// initial bind, each superseding rebind, and each teacher
-// release. The current binding itself lives on the jobs row
-// (youtube_video_sha256) and inside the signed bundle; the
-// history is the record of how it got there, kept so the audit
-// can tell a superseded submission from a current one.
-async function bindingHistory(db, jobId) {
-  const { results } = await db.prepare(
-    "SELECT seq, action, video_sha256, prev_video_sha256, created_at " +
-      "FROM job_bindings WHERE job_id = ? ORDER BY seq",
-  )
-    .bind(jobId)
-    .all();
-  return (results || []).map((r) => ({
-    seq: r.seq,
-    action: r.action,
-    video_sha256: r.video_sha256 ?? null,
-    prev_video_sha256: r.prev_video_sha256 ?? null,
-    created_at: r.created_at ?? null,
-  }));
-}
-
-// The binding as reported by /jobs/status and /jobs/binding: the
-// current hash ("none" when unbound) and the history. A job bound
-// before 2.7.3 has no history rows; its current binding is
-// reported with a single synthesized bind entry.
-async function bindingView(db, row) {
-  const history = await bindingHistory(db, row.job_id);
-  if (!history.length && row.youtube_video_sha256) {
-    history.push({
-      seq: 1,
-      action: "bind",
-      video_sha256: row.youtube_video_sha256,
-      prev_video_sha256: null,
-      created_at: null,
-    });
-  }
-  return {
-    current_sha256: row.youtube_video_sha256 || "none",
-    history,
-  };
-}
-
-// Append a binding event. When the job's current binding predates
-// the history (bound before 2.7.3) and an event displaces it, a
-// bind row for that earlier binding is written first, so the
-// history names every binding the job has held.
-async function recordBinding(db, row, action, videoSha, prevSha, nowIso) {
-  let history = await bindingHistory(db, row.job_id);
-  if (!history.length && prevSha) {
-    await db.prepare(
-      "INSERT INTO job_bindings (job_id, seq, action, video_sha256, " +
-        "prev_video_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    )
-      .bind(row.job_id, 1, "bind", prevSha, null, row.graded_at || null)
-      .run();
-    history = await bindingHistory(db, row.job_id);
-  }
-  const seq = history.length ? history[history.length - 1].seq + 1 : 1;
-  await db.prepare(
-    "INSERT INTO job_bindings (job_id, seq, action, video_sha256, " +
-      "prev_video_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-  )
-    .bind(row.job_id, seq, action, videoSha, prevSha, nowIso)
-    .run();
-}
-
-// POST /jobs/binding {job_id} — the job's current bound video
-// hash and its binding history, for the teacher audit app, which
-// names jobs by job_id and holds no retrieval code. The values
-// are hashes of video IDs, already carried in signed bundles.
-async function handleJobBinding(request, env) {
-  const badDb = requireDb(env);
-  if (badDb) return badDb;
-  const body = await readJson(request);
-  if (!body || !isText(body.job_id, 128)) {
-    return json({ error: "invalid request body" }, 400);
-  }
-  const target = await findJobDb(env, body.job_id);
-  if (!target) return json({ error: "unknown job" }, 404);
-  const view = await bindingView(target.db, target.row);
-  return json({ job_id: target.row.job_id, ...view });
-}
-
-// POST /admin/jobs/release-binding {job_id} — teacher backstop:
-// clear a job's video binding back to unbound. The graded bundle
-// is re-signed with the unbound form ("none"), the job returns
-// to kind "practice" so the student's next finalize binds fresh,
-// and the release is recorded in the binding history.
-async function handleReleaseBinding(request, env) {
-  const badAuth = requireToken(request, env, "ADMIN_TOKEN");
-  if (badAuth) return badAuth;
-  const badDb = requireDb(env);
-  if (badDb) return badDb;
-  const body = await readJson(request);
-  if (!body || !isText(body.job_id, 128)) {
-    return json({ error: "invalid request body" }, 400);
-  }
-  const target = await findJobDb(env, body.job_id);
-  if (!target) return json({ error: "unknown job" }, 404);
-  const db = target.db;
-  const row = target.row;
-  if (row.status === "expired") {
-    return json({ error: "job expired" }, 410);
-  }
-  if (!row.youtube_video_sha256) {
-    return json({ error: "job has no video binding to release" }, 409);
-  }
-  const prevSha = row.youtube_video_sha256;
-  let receipt = row.receipt;
-  let resultJson = row.result_json;
-  if (row.status === "ready" && row.result_json) {
-    const bundle = JSON.parse(row.result_json);
-    bundle.youtube_video_sha256 = "none";
-    receipt = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(bundle));
-    bundle.receipt = receipt;
-    resultJson = JSON.stringify(bundle);
-  }
-  await db.prepare(
-    "UPDATE jobs SET kind = ?, youtube_status = ?, " +
-      "youtube_video_sha256 = NULL, result_json = ?, receipt = ? " +
-      "WHERE job_id = ?",
-  )
-    .bind("practice", "none", resultJson, receipt, row.job_id)
-    .run();
-  await recordBinding(
-    db, row, "release", null, prevSha, new Date().toISOString(),
-  );
-  return json({ ok: true });
 }
 
 async function handleJobRetrieved(request, env) {
@@ -2489,12 +2336,6 @@ export default {
     }
     if (request.method === "POST" && path === "/jobs/finalize") {
       return handleJobFinalize(request, env);
-    }
-    if (request.method === "POST" && path === "/jobs/binding") {
-      return handleJobBinding(request, env);
-    }
-    if (request.method === "POST" && path === "/admin/jobs/release-binding") {
-      return handleReleaseBinding(request, env);
     }
     if (request.method === "GET" && path === "/grading/pending") {
       return handlePending(request, env);

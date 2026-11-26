@@ -1,4 +1,27 @@
-# Teacher audit app — HW Signing v2 (audit app v58)
+# Teacher audit app — HW Signing v2 (audit app v59)
+
+**v59 (2026-11-26).** Two removals. (1) There is no binding:
+package checks make no binding call to the Worker, no status
+anywhere reports a submission as displaced by a later one, and
+there is no release action. A ZIP whose bundle carries a legacy video hash
+verifies exactly as before on its other checks; the hash is
+compared only within the package itself — the YouTube link's
+video ID is hashed and compared with the claimed hash when the
+bundle claims a real one, and a bundle claiming “none” reports
+`youtube_id_ok` as None (no video claim was made), whether or
+not the package carries a link. (2) The YouTube cross-check
+follows the Chromaprint fingerprint similarity only: in the
+audio form, similarity below `acoustic_threshold` (0.85)
+flags; in the fingerprint form, the per-block rule flags.
+Duration differences are not used at all — durations are
+measured and recorded in the result as diagnostics, but they
+never pass, flag, or appear in a displayed reason; when no
+fingerprint comparison could be made, the result is neither a
+pass nor a flag. The dashboard's integrity cell shows the
+similarity: “YouTube similarity 0.9851” on a pass, “YouTube
+FLAGGED · similarity …” on a flag. The check schema rises to
+3, so stored checks are re-done under the new meanings.
+Everything else is as in v58, below.
 
 **v58 (2026-11-26).** The audit app is developed only as a
 standalone portable install on the teacher's computer; no
@@ -14,22 +37,8 @@ uv is always used, never pip; if uv is not found, the check
 reports that yt-dlp was not updated. Everything else is as
 in v57, below.
 
-**v57 (2026-11-26).** Package checks now also verify binding
-currency against the grading Worker (2.7.3): the video hash in
-a submission ZIP is compared with the job's current binding
-(POST /jobs/binding). A ZIP whose video was replaced by a later
-binding is reported as SUPERSEDED — its own headline in the
-wall and the dashboard, with no suggested grade, but not an
-integrity failure; a video in no binding is an integrity
-failure; an unreachable Worker is reported as “binding
-currency not checked (Worker unreachable)”, never silently
-passed. The dashboard's integrity cell gains a “Release video
-binding” action per checked job, calling the Worker's admin
-release route with the grading admin token; the release is
-recorded in the job's binding history, and the student's next
-Generate ZIP binds fresh. Versions between v27 and v56 are
-recorded in the SPEC's audit notes. Everything else is as in
-the previous version.
+Versions between v27 and v58 are recorded in the SPEC's audit
+notes.
 
 **v27 (2026-11-09).** One display fix: the video wall's zoom
 view preserves the critique's line breaks, so its numbered
@@ -76,8 +85,9 @@ The original ZIP is kept as `package.zip` beside the extracted
 files. Verification is v2: the package's grade receipt is verified
 through the grading Worker's `/verify-grade`, the signed grades
 must equal the grades shown in the HTML, the critique hash is
-recomputed, and the YouTube link's video ID is hashed and compared
-with the value recorded at grading time. A failed grade signature
+recomputed, and — when the bundle claims a real video hash —
+the YouTube link's video ID is hashed and compared with the
+claimed value, within the package only. A failed grade signature
 holds back the suggested final grade and is badged on the
 dashboard and warned about in the gradebook. The app's Worker
 setting is the grading Worker; a config still carrying the v1
@@ -169,9 +179,11 @@ python3 audit.py --config config.json cleanup --confirm
   grades shown in the HTML, so it passes only when the shown grades
   are the signed grades; the verification section's own grade lines
   are compared against the shown grades as a separate check
-  (`grades_match`). The YouTube link's video ID is hashed and
-  compared with the package's recorded value (`youtube_id_ok`); it
-  is reported separately and does not enter internal consistency.
+  (`grades_match`). When the package's bundle claims a real
+  video hash, the YouTube link's video ID is hashed and compared
+  with the claimed value (`youtube_id_ok`); a bundle claiming
+  “none” reports None. It is reported separately and does not
+  enter internal consistency.
   Reports each check separately; a package whose format version is
   not 2, or with any of the audio, transcript, critique, receipt or
   grade-match checks failing, is internally inconsistent.
@@ -184,21 +196,23 @@ python3 audit.py --config config.json cleanup --confirm
   this machine.
 - `youtube-check` — the acoustic cross-check that the YouTube
   portfolio video is the same recording as the submitted WAV.
-  Compares the two durations (flag beyond the larger of 2 s and
-  2 % of the WAV duration) and their Chromaprint fingerprints,
-  computed by ffmpeg over the whole recording: similarity is
-  1 minus the fingerprint bit error rate at the best alignment
-  within about 1 s, reported overall and per third of the
-  recording. A byte hash cannot do this — YouTube transcodes
-  every upload — but the fingerprint is built from the
-  spectrogram and survives transcoding (measured: 0.99+
-  similarity for the same take after AAC or Opus transcoding,
-  about 0.5 for a different take). Below `acoustic_threshold`
-  the package is flagged. No transcription is involved, so the
-  check takes seconds and needs no re-transcription setup; if
-  ffmpeg or chromaprint is missing it reports itself not
-  configured rather than passing. In the web app it runs inside
-  Run integrity checks once the video has been downloaded.
+  Compares their Chromaprint fingerprints only, computed by
+  ffmpeg over the whole recording: similarity is 1 minus the
+  fingerprint bit error rate at the best alignment within about
+  1 s, reported overall and per third of the recording. Duration
+  is not used in the check: the measured durations are recorded
+  in the result as diagnostics and affect nothing. A byte hash
+  cannot do this — YouTube transcodes every upload — but the
+  fingerprint is built from the spectrogram and survives
+  transcoding (measured: 0.99+ similarity for the same take
+  after AAC or Opus transcoding, about 0.5 for a different
+  take). Below `acoustic_threshold` the package is flagged. No
+  transcription is involved, so the check takes seconds and
+  needs no re-transcription setup; if ffmpeg or chromaprint is
+  missing it reports itself not configured rather than passing
+  or flagging. In the web app it runs inside Run integrity
+  checks once the video has been downloaded, and the integrity
+  cell shows the similarity.
   Separately, `check_package` scans the submitted transcript for
   instruction-like text (demands to ignore instructions, demands for
   full marks, an embedded fake result block, and similar;
@@ -234,7 +248,7 @@ SHA-256, Graded at, Grade receipt).
 python3 tests/test_audit.py
 ```
 
-63 checks. Fixtures are synthetic: a 300 s, 16 kHz mono WAV
+112 checks. Fixtures are synthetic: a 300 s, 16 kHz mono WAV
 generated in code and a v2 HTML package whose fingerprints are
 computed from the fixtures, packaged as a ZIP with fixed
 1980-01-01 entry timestamps. Grade receipts are computed with a
@@ -257,10 +271,16 @@ exports contain no YouTube link and no verification data, with
 unique codes not in submission order; download watermarking keyed
 by the ZIP SHA-256; the absence of the removed listening check;
 the YouTube acoustic cross-check (same fingerprint passes,
-different fingerprint flags, a duration mismatch flags even with
-the same fingerprint, a missing video is neither a pass nor a
-flag, and — through the real ffmpeg — an AAC-transcoded copy of a
-take passes while a different take flags); the absence of the
+different fingerprint flags, similarity 0.9851 with a 2.7 s
+duration difference passes unflagged, no fingerprint comparison
+with a large duration difference is neither a pass nor a flag,
+a missing video is neither a pass nor a flag, and — through
+the real ffmpeg — an AAC-transcoded copy of a take passes
+while a different take flags); the absence of any binding
+check (a legacy bound bundle verifies with its video hash
+ignored and no binding request is made) and a bundle
+claiming “none” beside a linked package reporting
+`youtube_id_ok` None; the absence of the
 removed re-grade machinery; cleanup refusals and deletion,
 `package.zip` included. (There is no listening check: it was
 removed in v14 at the teacher's direction — it had never been

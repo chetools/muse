@@ -994,6 +994,11 @@ check("F3: job whose transcript hash does not match its transcript rejected",
 }
 
 // ------------------------------------------------------- finalize (turn a graded job into the submission)
+// 2.7.4: finalize binds no video. It marks the job final, enforces
+// one final per recording, and holds the graded bundle in the
+// no-video form (youtube_video_sha256 "none"). youtube_* fields an
+// older page still sends are accepted and ignored: the token is
+// not verified.
 {
   const finBody = {
     pkg: "test-package v1", retrieval_code: "pushone9",
@@ -1003,24 +1008,59 @@ check("F3: job whose transcript hash does not match its transcript rejected",
   };
   r = await call("/jobs/finalize", { body: { ...finBody, retrieval_code: "wrongcode9" } });
   check("finalize with wrong code returns 403", r.status === 403);
-  r = await call("/jobs/finalize", { body: { ...finBody, youtube_token: "bogus" } });
-  check("finalize with a bad YouTube token rejected", r.status === 400);
   const before = db._tables.jobs.find((j) => j.job_id === pushJob);
   const oldReceipt = before.receipt;
-  r = await call("/jobs/finalize", { body: finBody });
-  check("finalize of a graded practice job succeeds", r.status === 200 && r.body.ok === true);
+  // (a) Finalize carrying youtube fields succeeds and binds
+  // nothing; the token is ignored, so even a bogus one passes.
+  r = await call("/jobs/finalize", { body: { ...finBody, youtube_token: "bogus" } });
+  check("(a) finalize with youtube fields succeeds; the token is ignored, not verified",
+    r.status === 200 && r.body.ok === true);
   const after = db._tables.jobs.find((j) => j.job_id === pushJob);
   const bundle2 = JSON.parse(after.result_json);
-  const expectHash = await sha256Hex("dQw4w9WgXcQ");
-  check("finalize sets kind final and the video hash everywhere",
-    after.kind === "final" && after.youtube_video_sha256 === expectHash &&
-    bundle2.youtube_video_sha256 === expectHash && after.receipt !== oldReceipt &&
+  check("(a) finalize marks the job final and binds nothing (no-video form everywhere)",
+    after.kind === "final" && after.youtube_video_sha256 === null &&
+    after.youtube_status === "none" &&
+    bundle2.youtube_video_sha256 === "none" && after.receipt === oldReceipt &&
     bundle2.receipt === after.receipt && bundle2.t === JSON.parse(before.result_json).t);
+  check("(a) finalize writes no binding history",
+    db._tables.job_bindings.filter((b) => b.job_id === pushJob).length === 0);
   const { injection_flags, ...verifyBody } = bundle2;
   r = await call("/verify-grade", { body: verifyBody });
-  check("re-signed bundle verifies after finalize", r.status === 200 && r.body.valid === true);
+  check("(a) the no-video bundle verifies after finalize", r.status === 200 && r.body.valid === true);
+  // Already-final re-finalize (same job, same recording) is
+  // idempotent: the new page calls finalize on every Generate ZIP
+  // confirm, including for a job an earlier ZIP generation already
+  // marked final, and that succeeds with the same receipt.
   r = await call("/jobs/finalize", { body: finBody });
-  check("finalize of an already-final job rejected", r.status === 409);
+  check("re-finalize of an already-final job succeeds idempotently (200, same receipt)",
+    r.status === 200 && r.body.ok === true && r.body.receipt === oldReceipt);
+  r = await call("/jobs/finalize", { body: { pkg: "test-package v1", retrieval_code: "pushone9" } });
+  check("(b) finalize without youtube fields works identically (already-final job)",
+    r.status === 200 && r.body.ok === true && r.body.receipt === oldReceipt);
+  // (b) The same on a fresh graded job: no youtube fields at all.
+  r = await call("/jobs", { body: { ...jobBase, retrieval_code: "finnofields9", audio_sha256: "d8".repeat(32) } });
+  check("(b) setup: fresh practice job created", r.status === 200 && !r.body.duplicate);
+  const noFieldsJob = r.body.job_id;
+  await call("/grading/claim", { token: GRADING, body: { job_id: noFieldsJob } });
+  r = await call("/grading/result", {
+    token: GRADING,
+    body: { job_id: noFieldsJob, completeness: 4, accuracy: 4, critique: "No-fields finalize grade." },
+  });
+  check("(b) setup: fresh job graded", r.status === 200 && r.body.ok === true);
+  const noFieldsReceipt = r.body.receipt;
+  r = await call("/jobs/finalize", { body: { pkg: "test-package v1", retrieval_code: "finnofields9" } });
+  check("(b) finalize without youtube fields succeeds on a graded job",
+    r.status === 200 && r.body.ok === true && r.body.receipt === noFieldsReceipt);
+  {
+    const row = db._tables.jobs.find((j) => j.job_id === noFieldsJob);
+    const bundle = JSON.parse(row.result_json);
+    check("(b) the field-less finalize produces the same no-video form",
+      row.kind === "final" && row.youtube_video_sha256 === null &&
+      bundle.youtube_video_sha256 === "none");
+    const { injection_flags: _dropNF, ...verifyNF } = bundle;
+    r = await call("/verify-grade", { body: verifyNF });
+    check("(b) the field-less finalize bundle verifies", r.status === 200 && r.body.valid === true);
+  }
   // Under 2.6.0 a job for a fingerprint with a live final is a
   // duplicate of that final, not a new job: the live final for
   // AUDIO_FINAL_SHA is the one created after the first final
@@ -1033,7 +1073,7 @@ check("F3: job whose transcript hash does not match its transcript rejected",
   r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "finconflict9" } });
   check("alias code for the duplicate retrieves the final job",
     r.status === 200 && r.body.status === "queued");
-  // Finalize's own one-final guard still applies when a final
+  // (c) Finalize's own one-final guard still applies when a final
   // already exists for the recording: set it up by direct row
   // edit, since POST /jobs can no longer create the second job.
   r = await call("/jobs", { body: { ...jobBase, retrieval_code: "finpractice9", audio_sha256: "e5".repeat(32) } });
@@ -1048,111 +1088,21 @@ check("F3: job whose transcript hash does not match its transcript rejected",
     row.audio_sha256 = "e5".repeat(32);
   }
   r = await call("/jobs/finalize", { body: { ...finBody, retrieval_code: "finpractice9" } });
-  check("finalize blocked when a final already exists for the recording", r.status === 409);
+  check("(c) finalize blocked when a different final job already exists for the recording", r.status === 409);
 }
 
-// ------------------------------------------------------- superseding rebind, binding history, release (2.7.3)
-// The finalize block above left pushJob final, bound to
-// dQw4w9WgXcQ, with its initial bind recorded.
+// ------------------------------------------------------- binding eliminated (2.7.4)
+// The 2.7.3 binding routes are removed entirely and /jobs/status
+// carries no binding field. pushJob above is a graded (ready),
+// final job, so its status response is the ready form.
 {
-  const shaA = await sha256Hex("dQw4w9WgXcQ");
-  const shaB = await sha256Hex("abc123XYZ_-");
-  const shaC = await sha256Hex("ZZZ999yyy-x");
-  const ytB = await call("/youtube-check", { body: { url: "https://www.youtube.com/watch?v=abc123XYZ_-" } });
-  const supBody = {
-    pkg: "test-package v1", retrieval_code: "pushone9",
-    youtube_video_id: "abc123XYZ_-",
-    youtube_token: ytB.body.token,
-    youtube_checked_at: ytB.body.checked_at,
-  };
-  r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "pushone9" } });
-  check("status reports the current binding and the initial bind in its history",
-    r.status === 200 && r.body.binding && r.body.binding.current_sha256 === shaA &&
-    r.body.binding.history.length === 1 && r.body.binding.history[0].action === "bind" &&
-    r.body.binding.history[0].video_sha256 === shaA);
-  r = await call("/jobs/finalize", { body: { ...supBody, youtube_token: "bogus" } });
-  check("supersede with an invalid token refused", r.status === 400);
-  const oldTs = new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString();
-  const staleTok = await hmacB64u(env.SIGNING_SECRET, `abc123XYZ_-\nok\n${oldTs}`);
-  r = await call("/jobs/finalize", {
-    body: { ...supBody, youtube_token: staleTok, youtube_checked_at: oldTs },
-  });
-  check("supersede with a stale token refused", r.status === 400);
-  const rowBefore = db._tables.jobs.find((j) => j.job_id === pushJob);
-  const bundleBefore = JSON.parse(rowBefore.result_json);
-  const receiptBefore = rowBefore.receipt;
-  r = await call("/jobs/finalize", { body: supBody });
-  check("superseding finalize of an already-final job succeeds",
-    r.status === 200 && r.body.ok === true && r.body.superseded === true);
-  const rowAfter = db._tables.jobs.find((j) => j.job_id === pushJob);
-  const bundleAfter = JSON.parse(rowAfter.result_json);
-  check("supersede rebinds the video hash everywhere and changes nothing else signed",
-    rowAfter.kind === "final" && rowAfter.youtube_video_sha256 === shaB &&
-    bundleAfter.youtube_video_sha256 === shaB &&
-    bundleAfter.completeness === bundleBefore.completeness &&
-    bundleAfter.accuracy === bundleBefore.accuracy &&
-    bundleAfter.transcript_sha256 === bundleBefore.transcript_sha256 &&
-    bundleAfter.audio_sha256 === bundleBefore.audio_sha256 &&
-    bundleAfter.critique_sha256 === bundleBefore.critique_sha256 &&
-    bundleAfter.t === bundleBefore.t && rowAfter.receipt !== receiptBefore);
-  const { injection_flags: _drop, ...verifyBody2 } = bundleAfter;
-  r = await call("/verify-grade", { body: verifyBody2 });
-  check("superseded bundle verifies after the rebind", r.status === 200 && r.body.valid === true);
-  let hist = db._tables.job_bindings.filter((b) => b.job_id === pushJob);
-  check("history records bind then supersede, in order",
-    hist.length === 2 && hist[0].seq === 1 && hist[0].action === "bind" &&
-    hist[0].video_sha256 === shaA && hist[1].seq === 2 &&
-    hist[1].action === "supersede" && hist[1].video_sha256 === shaB &&
-    hist[1].prev_video_sha256 === shaA && !!hist[1].created_at);
-  // A second supersede chains.
-  const ytC = await call("/youtube-check", { body: { url: "https://www.youtube.com/watch?v=ZZZ999yyy-x" } });
-  r = await call("/jobs/finalize", {
-    body: {
-      pkg: "test-package v1", retrieval_code: "pushone9",
-      youtube_video_id: "ZZZ999yyy-x",
-      youtube_token: ytC.body.token,
-      youtube_checked_at: ytC.body.checked_at,
-    },
-  });
-  check("second supersede succeeds", r.status === 200 && r.body.superseded === true);
-  hist = db._tables.job_bindings.filter((b) => b.job_id === pushJob);
-  check("history chains the second supersede",
-    hist.length === 3 && hist[2].action === "supersede" &&
-    hist[2].video_sha256 === shaC && hist[2].prev_video_sha256 === shaB);
   r = await call("/jobs/binding", { body: { job_id: pushJob } });
-  check("/jobs/binding reports the current hash and the full history",
-    r.status === 200 && r.body.current_sha256 === shaC && r.body.history.length === 3);
-  r = await call("/jobs/binding", { body: { job_id: "no-such-job" } });
-  check("/jobs/binding with an unknown job returns 404", r.status === 404);
-  // Teacher release: auth, effect, and the fresh bind afterwards.
-  r = await call("/admin/jobs/release-binding", { body: { job_id: pushJob } });
-  check("release without the admin token refused", r.status === 401);
+  check("(d) POST /jobs/binding returns 404 (route removed)", r.status === 404);
   r = await call("/admin/jobs/release-binding", { body: { job_id: pushJob }, token: ADMIN });
-  check("release with the admin token succeeds", r.status === 200 && r.body.ok === true);
-  const rowRel = db._tables.jobs.find((j) => j.job_id === pushJob);
-  const bundleRel = JSON.parse(rowRel.result_json);
-  check("release clears the binding back to unbound everywhere",
-    rowRel.kind === "practice" && rowRel.youtube_video_sha256 === null &&
-    rowRel.youtube_status === "none" && bundleRel.youtube_video_sha256 === "none");
-  const { injection_flags: _drop2, ...verifyBody3 } = bundleRel;
-  r = await call("/verify-grade", { body: verifyBody3 });
-  check("released bundle verifies in its unbound form", r.status === 200 && r.body.valid === true);
-  hist = db._tables.job_bindings.filter((b) => b.job_id === pushJob);
-  check("release is recorded in the history",
-    hist.length === 4 && hist[3].action === "release" &&
-    hist[3].video_sha256 === null && hist[3].prev_video_sha256 === shaC);
-  r = await call("/admin/jobs/release-binding", { body: { job_id: pushJob }, token: ADMIN });
-  check("release of an unbound job refused", r.status === 409);
+  check("(d) POST /admin/jobs/release-binding returns 404 (route removed)", r.status === 404);
   r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "pushone9" } });
-  check("status reports the released job as unbound, history kept",
-    r.status === 200 && r.body.binding.current_sha256 === "none" &&
-    r.body.binding.history.length === 4);
-  r = await call("/jobs/finalize", { body: supBody });
-  check("finalize after a release binds fresh",
-    r.status === 200 && r.body.ok === true && r.body.superseded !== true);
-  hist = db._tables.job_bindings.filter((b) => b.job_id === pushJob);
-  check("the fresh bind is appended to the history",
-    hist.length === 5 && hist[4].action === "bind" && hist[4].video_sha256 === shaB);
+  check("(e) ready status response has no binding key",
+    r.status === 200 && r.body.status === "ready" && !("binding" in r.body));
 }
 
 // ------------------------------------------------------- replacement check
@@ -1244,7 +1194,7 @@ const FP_F = makeFp(5151, 60);
 const FP_A_SHIFTED = [...makeFp(777, 3), ...FP_A];
 
 r = await call("/", { method: "GET" });
-check("health: version is 2.7.3", r.status === 200 && r.body.version === "2.7.3");
+check("health: version is 2.7.4", r.status === 200 && r.body.version === "2.7.4");
 check("health: semester databases are discovered from the env bindings",
   r.body.databases === 2);
 
@@ -1330,7 +1280,8 @@ check("alias code finalizes the graded job", r.status === 200 && r.body.ok === t
 {
   const row = db._tables.jobs.find((j) => j.job_id === dedupJob);
   check("finalize via alias sets kind final on the original job",
-    row.kind === "final" && row.youtube_status === "ok");
+    row.kind === "final" && row.youtube_status === "none" &&
+    row.youtube_video_sha256 === null);
 }
 
 // Transcript retention (c): a queued job still returns its
@@ -1575,10 +1526,11 @@ check("duplicate response for a ready job also returns transcript and chromaprin
     rr2.status === 200 && rr2.body.valid === false);
 }
 
-// (3b) Finalize re-signing preserves a pre-2.7.0 bundle's form:
-// rewrite the retrieval job's stored bundle in the old form (old
-// canonical, no chromaprint_sha256), then finalize it — the
-// re-signed bundle must verify and must not gain the field.
+// (3b) Finalize preserves a pre-2.7.0 bundle's form: rewrite the
+// retrieval job's stored bundle in the old form (old canonical, no
+// chromaprint_sha256, already in the no-video form), then finalize
+// it — the bundle must verify unchanged and must not gain the
+// field (2.7.4: finalize does not re-sign a no-video bundle).
 {
   const row = db._tables.jobs.find((j) => j.job_id === retJob);
   const legacyStored = {
@@ -1615,13 +1567,56 @@ check("duplicate response for a ready job also returns transcript and chromaprin
   });
   check("finalize of a pre-2.7.0 graded job succeeds", rr.status === 200 && rr.body.ok === true);
   const bundle2 = JSON.parse(row.result_json);
-  check("finalize keeps the pre-2.7.0 bundle's form (no chromaprint_sha256 added)",
+  check("finalize keeps the pre-2.7.0 bundle's form (no chromaprint_sha256 added, still no-video)",
     !("chromaprint_sha256" in bundle2) &&
-    bundle2.youtube_video_sha256 === (await sha256Hex("dQw4w9WgXcQ")));
+    bundle2.youtube_video_sha256 === "none" &&
+    bundle2.receipt === legacyStored.receipt);
   const { injection_flags, ...verifyBody } = bundle2;
   const rv = await call("/verify-grade", { body: verifyBody });
-  check("re-signed pre-2.7.0 bundle verifies in the old form",
+  check("pre-2.7.0 bundle still verifies in the old form after finalize",
     rv.status === 200 && rv.body.valid === true);
+}
+
+// (3c) A bundle bound under an earlier version is brought to the
+// no-video form by finalize: rewrite a graded job's bundle with a
+// video hash (signed correctly in its own 2.7.0 form) and mark the
+// row bound, then finalize — the bundle must come back "none",
+// re-signed, and verify, with nothing else signed changed.
+{
+  r = await call("/jobs", { body: { ...jobBase, retrieval_code: "boundconv9", audio_sha256: "c8".repeat(32) } });
+  check("(3c) setup: job created", r.status === 200 && !r.body.duplicate);
+  const convJob = r.body.job_id;
+  await call("/grading/claim", { token: GRADING, body: { job_id: convJob } });
+  r = await call("/grading/result", {
+    token: GRADING,
+    body: { job_id: convJob, completeness: 3, accuracy: 5, critique: "Bound-bundle conversion grade." },
+  });
+  check("(3c) setup: job graded", r.status === 200 && r.body.ok === true);
+  const row = db._tables.jobs.find((j) => j.job_id === convJob);
+  const bound = JSON.parse(row.result_json);
+  const vidSha = await sha256Hex("dQw4w9WgXcQ");
+  bound.youtube_video_sha256 = vidSha;
+  const boundCanonical = [
+    "2", bound.job_id, bound.audio_sha256, bound.transcript_sha256,
+    bound.pkg, bound.pkg_content_sha256, "3", "5",
+    bound.critique_sha256, vidSha, bound.chromaprint_sha256, bound.t,
+  ].join("\n");
+  bound.receipt = await hmacB64u(env.SIGNING_SECRET, boundCanonical);
+  row.result_json = JSON.stringify(bound);
+  row.receipt = bound.receipt;
+  row.youtube_video_sha256 = vidSha;
+  row.youtube_status = "ok";
+  const rr = await call("/jobs/finalize", { body: { pkg: "test-package v1", retrieval_code: "boundconv9" } });
+  check("(3c) finalize of a job with a bound bundle succeeds", rr.status === 200 && rr.body.ok === true);
+  const bundle2 = JSON.parse(row.result_json);
+  check("(3c) finalize converts the bound bundle to the no-video form and re-signs it",
+    row.kind === "final" && row.youtube_video_sha256 === null &&
+    row.youtube_status === "none" && bundle2.youtube_video_sha256 === "none" &&
+    bundle2.receipt !== bound.receipt && bundle2.receipt === row.receipt &&
+    bundle2.t === bound.t && bundle2.critique_sha256 === bound.critique_sha256);
+  const { injection_flags, ...verifyBody } = bundle2;
+  const rv = await call("/verify-grade", { body: verifyBody });
+  check("(3c) converted bundle verifies", rv.status === 200 && rv.body.valid === true);
 }
 
 // (4) A job graded without a fingerprint gets chromaprint_sha256

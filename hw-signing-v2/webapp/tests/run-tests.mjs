@@ -35,7 +35,6 @@ import {
   submitJob, fetchJobStatus, finalizeJob,
   bundleChromaprintSha, verifyFingerprintContents,
   kindFromResultBundle, duplicateJobEntry, collapseSameJobEntries,
-  bundleBoundVideoSha,
   generateRetrievalToken, RECOVERY_TOKEN_LENGTH, entryPollable,
 } from '../js/jobs.js';
 import { encodeRawFingerprint, decodeRawFingerprint } from '../js/fingerprint.js';
@@ -509,7 +508,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.18');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.19');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -581,12 +580,37 @@ await test('youtube id: all accepted forms parse; others rejected', () => {
   assert.equal(canonicalWatchUrl(id), 'https://www.youtube.com/watch?v=' + id);
 });
 
-await test('bound video: the signed bundle decides which video a row accepts (2.6.16)', () => {
-  const sha = 'a'.repeat(64);
-  assert.equal(bundleBoundVideoSha({ youtube_video_sha256: sha }), sha);
-  assert.equal(bundleBoundVideoSha({ youtube_video_sha256: 'none' }), null);
-  assert.equal(bundleBoundVideoSha({}), null);
-  assert.equal(bundleBoundVideoSha(null), null);
+await test('no binding: a legacy bundle carrying a video hash packages a different link (2.6.19)', () => {
+  // A job finalised under Worker 2.7.3 carries the SHA-256 of
+  // video A in its signed bundle. The page no longer consults
+  // that hash: packaging with video B's link writes B's link and
+  // no rejection arises. assemblePackage is the packaging step;
+  // the wiring tests below prove no bundle-hash comparison
+  // remains in the page flow.
+  const videoA = 'boundVideo1';
+  const videoB = 'def456UVWxy';
+  const bundle = {
+    v: 2, job_id: 'job-legacy1', audio_sha256: SHA_A,
+    transcript_sha256: SHA_B, pkg: 'test v1', pkg_content_sha256: SHA_C,
+    completeness: 5, accuracy: 4, critique: '1. A critique point.',
+    critique_sha256: SHA_C,
+    youtube_video_sha256: nodeSha256(videoA),
+    t: '2026-11-26T15:00:00.000Z', receipt: 'receipt-legacy',
+  };
+  const html = assemblePackage({
+    youtubeLink: canonicalWatchUrl(videoB),
+    audioFileName: 'submission-audio.wav', durationS: 12.5,
+    chunks: [{ start: 0, text: 'alpha bravo' }],
+    bundle,
+  });
+  const parsed = parsePackageVerification(html);
+  assert.equal(parsed.verification['YouTube link'], canonicalWatchUrl(videoB),
+    'the ZIP carries the row link (video B), not the legacy bound video A');
+  assert.ok(!html.includes('Not the video bound to this job'),
+    'no bound-video rejection text is packaged');
+  const jobs = readFileSync(new URL('../js/jobs.js', import.meta.url), 'utf8');
+  assert.ok(!jobs.includes('bundleBoundVideoSha'),
+    'jobs.js no longer exposes a bound-video helper');
 });
 await test('retrieval code: rule matches the Worker', () => {
   assert.ok(!RETRIEVAL_CODE_RE.test('7'));
@@ -742,11 +766,14 @@ await test('job calls: submit posts to /jobs; status maps 403 to forbidden', asy
   assert.equal(st.data, null);
 });
 
-await test('job calls: finalize posts the check to /jobs/finalize', async () => {  const seen = [];
+await test('job calls: finalize sends NO youtube fields; an already-final 409 is success (2.6.19)', async () => {
+  const seen = [];
   const mockOk = async (url, opts) => {
     seen.push({ url, body: JSON.parse(opts.body) });
     return { ok: true, status: 200, json: async () => ({ ok: true, receipt: 'r1' }) };
   };
+  // Even a payload still carrying youtube fields must not send
+  // them: finalize marks the job final and binds nothing.
   const payload = { pkg: 'hw3 v2', retrieval_code: 'code1234' };
   payload['youtube' + '_token'] = 'tok';
   payload.youtube_video_id = 'abc123XYZ_-';
@@ -754,7 +781,20 @@ await test('job calls: finalize posts the check to /jobs/finalize', async () => 
   const out = await finalizeJob('https://g.example.workers.dev', payload, mockOk);
   assert.equal(out.ok, true);
   assert.equal(seen[0].url, 'https://g.example.workers.dev/jobs/finalize');
-  assert.equal(seen[0].body.youtube_video_id, 'abc123XYZ_-');
+  assert.deepEqual(Object.keys(seen[0].body).sort(), ['pkg', 'retrieval_code'],
+    'the finalize body is exactly pkg + retrieval_code');
+  assert.ok(!('youtube_token' in seen[0].body) &&
+    !('youtube_video_id' in seen[0].body) &&
+    !('youtube_checked_at' in seen[0].body), 'no youtube fields are sent');
+  // An already-final response for this same job is success: the
+  // caller proceeds to fetch status and package.
+  const mockAlready = async () => ({ ok: false, status: 409, json: async () => ({ error: 'job already final' }) });
+  const again = await finalizeJob('https://g.example.workers.dev',
+    { pkg: 'hw3 v2', retrieval_code: 'code1234' }, mockAlready);
+  assert.equal(again.ok, true);
+  assert.equal(again.already_final, true);
+  // A different 409 — another job already final for the recording
+  // — still throws with the Worker's message.
   const mock409 = async () => ({ ok: false, status: 409, json: async () => ({ error: 'a final job already exists for this recording' }) });
   await assert.rejects(() => finalizeJob('https://g.example.workers.dev', payload, mock409),
     /a final job already exists/);
@@ -1002,7 +1042,11 @@ await test('wiring: ZIP verification uses the link kept with the entry, from its
   assert.ok(main.includes('Keep a re-entered YouTube link with the job'),
     're-entered link is kept with the stored entry');
   assert.ok(main.includes('pending ? pending.videoId : parseYouTubeVideoId(link)'),
-    'with a pending binding the verified video is the one the click checked');
+    'with a checked video pending the packaged video is the one the click checked');
+  assert.ok(!main.includes('bundleBoundVideoSha'),
+    'no bundle bound-video comparison remains anywhere in the page (2.6.19)');
+  assert.ok(!main.includes('youtube_video_sha256'),
+    'the page flow never consults the bundle video hash (2.6.19)');
 });
 await test('wiring: conversion panel and step-6 link field removed; finalise runs from the row (2.6.16)', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -1013,8 +1057,12 @@ await test('wiring: conversion panel and step-6 link field removed; finalise run
   assert.ok(!index.includes('kindFinal'), 'no final radio');
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes('finalizeJob('), 'page calls finalize');
-  assert.ok(main.includes("review.pending.mode !== 'same'"),
-    'the review confirm finalises a pending bind or supersede (2.6.18)');
+  assert.ok(main.includes('await finalizeJob(cfg.worker, {'),
+    'the review confirm finalises the job (2.6.19)');
+  assert.ok(!main.includes('review.pending.mode') && !main.includes('pending.mode'),
+    'no bind/supersede mode remains in the review flow (2.6.19)');
+  assert.ok(!main.includes('youtube_token') && !main.includes('youtube_video_id'),
+    'the page sends no youtube fields at finalize (2.6.19)');
   assert.ok(main.includes('await downloadSubmissionZip(entry, bundle, btn,'),
     'Generate ZIP runs the check and prepares the review, binding nothing');
   assert.ok(!main.includes('refreshFinPanel'), 'no conversion panel refresh remains');
@@ -1130,7 +1178,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.18');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.19');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1247,12 +1295,16 @@ await test('wiring: preview elements present; the check sits at the click, insid
     'editing the playing row’s link clears the player with it');
   assert.ok(main.includes('previewMaybeClear(key, null)'),
     'clearing the playing row’s link clears the player with it');
-  assert.ok(main.includes("'Bind this video and download the ZIP'"),
-    'the review confirm label names the binding it performs');
+  assert.ok(main.includes("dlBtn.textContent = 'Download submission ZIP';"),
+    'the review confirm label is always "Download submission ZIP" (2.6.19)');
+  assert.ok(!main.includes('Bind this video'),
+    'no bind label remains (2.6.19)');
   assert.ok(main.includes('This link is also on your '),
     'the review warns when the link is also on another row');
-  assert.ok(main.includes('currently a different '),
-    'the review carries the supersede notice for a bound job');
+  assert.ok(!main.includes('currently a different '),
+    'the review carries no supersede notice (2.6.19)');
+  assert.ok(!/supersede/i.test(main.replace('superseded by a newer recording', '')),
+    'no supersede path or text remains in the page flow (2.6.19)');
   assert.ok(main.includes('Transcript starts: '),
     'the review shows the opening words of the graded transcript');
   assert.ok(!main.includes(': chunks;'), 'no fallback to the on-page transcript at ZIP time');

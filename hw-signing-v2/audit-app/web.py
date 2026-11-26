@@ -1126,19 +1126,6 @@ def hw_package_status(cfg, pkg, status, trial=None, override_reason=None):
         raise
 
 
-def release_video_binding(cfg, job_id):
-    """Teacher backstop (v57): clear one job's video binding on
-    the Worker (POST /admin/jobs/release-binding, Worker 2.7.3),
-    through the same admin-token channel as the package actions.
-    The Worker re-signs the job's bundle in its unbound form,
-    returns the job to unbound, and records the release in the
-    job's binding history; the student's next Generate ZIP then
-    binds a fresh video."""
-    require_admin_token(cfg)
-    return worker_admin(cfg, "POST", "/admin/jobs/release-binding",
-                        {"job_id": job_id})
-
-
 def hw_package_meta(cfg, pkg):
     """One package version's record without its text: status,
     content hash, trial, job counts. A one-character slice of the
@@ -1865,11 +1852,6 @@ def suggested_final(check):
         return None
     if check.get("youtube_id_ok") is False:
         return None
-    if check.get("binding_status") in ("superseded", "unknown"):
-        # A superseded ZIP is not the submission of record, and a
-        # binding in no record is an integrity failure: neither
-        # contributes a suggested grade (v57).
-        return None
     if check.get("injection_suspected"):
         return None
     if check.get("youtube", {}).get("youtube_flag"):
@@ -2017,7 +1999,12 @@ def _youtube_only_entry(cfg, pkg, base_entry):
 # what its result means — never for a release as such. A stored
 # fingerprint with no schema entry predates v38 and is judged
 # on its remaining inputs (see _check_mode).
-CHECK_SCHEMA = 2
+# Schema 3 (v59): the binding-currency check is gone, the
+# YouTube cross-check follows the fingerprint similarity only
+# (duration no longer passes or flags), and youtube_id_ok is
+# None when the bundle claims no video hash — stored checks
+# written under the old meanings are re-done.
+CHECK_SCHEMA = 3
 
 _SAMPLE_BYTES = 1024 * 1024
 
@@ -2088,8 +2075,8 @@ def _acoustic_degraded(existing):
     """True when the stored acoustic result never measured
     anything: the YouTube video was present, but no
     similarity was computed — Chromaprint unavailable or the
-    fingerprinting failed — so the result rests on duration
-    alone, or on nothing. (The no-link and not-downloaded
+    fingerprinting failed — so the result rests on nothing.
+    (The no-link and not-downloaded
     states have available False and are complete as they
     stand.) Since v37 a degraded result is owed one retry
     only when the acoustic tooling in the check fingerprint
@@ -2383,12 +2370,6 @@ def _integrity_text(check):
         flags = check.get("injection_flags") or []
         return ("injection flag @ " + audit.mmss(flags[0]["at_s"])
                 if flags else "injection flag")
-    if check.get("binding_status") == "superseded":
-        # The headline for a displaced binding (v57): not a pass,
-        # not an integrity failure — the video in this ZIP was
-        # replaced by a later binding.
-        at = check.get("binding_superseded_at") or ""
-        return "superseded" + (" — video replaced " + at[:10] if at else "")
     if check and (not check.get("internally_consistent", True)
                   or check.get("youtube_id_ok") is False):
         return "integrity FAILED"
@@ -3499,16 +3480,6 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
             warnings.append(f"{student}: YouTube video ID mismatch — "
                             "the link in the submission is not the "
                             "video checked before grading")
-        if _check.get("binding_status") == "superseded":
-            _at = _check.get("binding_superseded_at") or ""
-            warnings.append(f"{student}: superseded submission — "
-                            "the video in this ZIP was replaced by a "
-                            f"later binding{(' on ' + _at[:10]) if _at else ''}; "
-                            "it is not the submission of record")
-        if _check.get("binding_status") == "unknown":
-            warnings.append(f"{student}: video binding not on record — "
-                            "the video in this ZIP appears in no binding "
-                            "for its job")
         # Preview-only fields (v35): the signed grade from the
         # check's estimated grades, and whether a teacher entry
         # differs from it, so the preview can highlight the
@@ -4277,7 +4248,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
 <p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. Submissions are not re-graded: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's grade.</p>
-<p class="mut"><strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one.</p>
+<p class="mut"><strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity only (which survives YouTube transcoding; duration is not used), and shows "YouTube similarity …" or "YouTube FLAGGED · similarity …" under Integrity; a flagged submission's final grade stays blank until you enter one.</p>
 <p class="mut"><strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full.</p>
 <p class="mut"><strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. With the default sort, students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
@@ -4729,34 +4700,15 @@ function integCell(c, downloaded){
   const gsig = !downloaded || c.grade_receipt_ok===undefined ? "" :
     "<br>"+badge(c.grade_receipt_ok===true,"grade signature OK","grade signature FAILED");
   const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.youtube_id_ok===false?"youtube id":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
+  const ytSim = c.youtube && c.youtube.similarity!=null ? Number(c.youtube.similarity).toFixed(4) : null;
   const yt = !downloaded || !c.youtube ? "" :
     c.youtube.error ? '<br><span class="mut">YouTube: error</span>' :
-    c.youtube.youtube_flag ? '<br><span class="badge bad">YouTube FLAGGED · similarity '+esc(c.youtube.similarity)+' · duration diff '+esc(c.youtube.duration_diff_s)+' s</span>' :
-    (c.youtube.passed && c.youtube.similarity!=null) ? '<br><span class="mut">YouTube passed · similarity '+esc(c.youtube.similarity)+"</span>" :
-    c.youtube.passed ? '<br><span class="mut">YouTube passed on duration · acoustic not available</span>' :
+    c.youtube.youtube_flag ? '<br><span class="badge bad">YouTube FLAGGED'+(ytSim!=null ? ' · similarity '+esc(ytSim) : "")+"</span>" :
+    (c.youtube.passed && ytSim!=null) ? '<br><span class="badge ok">YouTube similarity '+esc(ytSim)+"</span>" :
     c.youtube.available ? '<br><span class="mut">YouTube: acoustic check not available (ffmpeg/chromaprint)</span>' :
     '<br><span class="mut">YouTube: video not downloaded yet</span>';
   const flg = flags ? '<br><span class="badge warn">'+esc(flags)+"</span>" : "";
-  const bnd = !downloaded || !c.binding_status ? "" :
-    c.binding_status==="superseded" ? '<br><span class="badge warn">superseded — video replaced'+(c.binding_superseded_at? " "+esc(String(c.binding_superseded_at).slice(0,10)) : "")+'; not the submission of record</span>' :
-    c.binding_status==="unchecked" ? '<br><span class="badge warn">binding currency not checked (Worker unreachable)</span>' :
-    c.binding_status==="unknown" ? '<br><span class="badge bad">video binding not on record</span>' : "";
-  const rel = downloaded && c.job_id && c.binding_status && c.binding_status!=="unchecked" ?
-    '<br><button class="quiet" onclick="releaseBinding(\''+esc(c.job_id)+'\', this)">Release video binding</button>' : "";
-  return integ+gsig+yt+flg+bnd+rel;
-}
-async function releaseBinding(jobId, btn){
-  if(!confirm("Release this job's video binding? The job returns to unbound, and the student's next Generate ZIP binds a fresh video. The release is recorded in the job's binding history.")) return;
-  btn.disabled = true;
-  try{
-    const r = await fetch("/api/release-binding", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({job_id: jobId})});
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.error || ("HTTP "+r.status));
-    btn.textContent = "Binding released — re-run checks";
-  }catch(e){
-    btn.disabled = false;
-    alert("Release failed: "+e.message);
-  }
+  return integ+gsig+yt+flg;
 }
 // Final-grade auto-save and difference shading (v35). The
 // field's rendered value is kept in dataset.init: leaving a
@@ -7317,14 +7269,6 @@ class Handler(BaseHTTPRequestHandler):
                                       else "saved")
                                    + " (Packages page)")
             self._send(200, public_status(cfg))
-        elif u.path == "/api/release-binding":
-            job_id = str(body.get("job_id") or "")
-            if not job_id:
-                raise ValueError("the release needs a job id")
-            rec = release_video_binding(cfg, job_id)
-            log_activity("system",
-                         f"video binding released for job {job_id}")
-            self._send(200, rec)
         elif u.path == "/api/hw-packages/status":
             pkg = str(body.get("pkg") or "")
             target = str(body.get("status") or "")

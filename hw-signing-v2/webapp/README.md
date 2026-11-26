@@ -32,15 +32,23 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
    shows its grades in its row and its critique in its details row.
    An ungraded job is kept for 7 days; a graded job is kept for
    180 days after grading. Each ready row carries its own YouTube
-   link field: pasting a link checks it automatically (a Studio
-   address is converted to the watch form; the Worker reports the
-   video reachable; its length is compared with the job's
-   recording; a job already bound to a video accepts only that
-   video), a failed check states its reason in the row's cell, and
-   a passed check produces the row's Generate ZIP button.
-   Generating the ZIP finalises the job first when no video is
-   bound yet (the Worker re-signs the bundle with the video hash),
-   then verifies and builds the submission ZIP — one file for
+   link field: no check runs while the student types or pastes
+   (a Studio address is converted to the watch form), and the
+   row's Generate ZIP button is present while the field holds a
+   readable link. Clicking it runs the Worker's reachability
+   check while preparing the review; a private or missing video,
+   or a failed check, states its reason in the row's cell and
+   packages nothing. The review states the job's course and
+   assignment, the video's title, and the graded transcript's
+   opening words, and warns when the same link is on another row.
+   Confirming ("Download submission ZIP") finalises the job —
+   `/jobs/finalize` marks it final and sends no YouTube fields;
+   no video is bound to the job — then verifies and builds the
+   submission ZIP, which carries the row's link as package data.
+   A job whose signed bundle carries a video hash from an earlier
+   version works like any other row: the page does not consult
+   that hash, and a ZIP generated with a different link packages
+   that link. The submission ZIP is one file for
    Canvas, downloaded under a per-job name (2.4.4):
    `C<course>H<homework>-G<total grade>-Y<HHMM>-<YYMMDD>.zip`, the Y
    segment being the job's YouTube link check time (grading time for
@@ -108,11 +116,9 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   `GET /` for service info; fetch injected), the YouTube video-ID
   parser (watch, youtu.be, shorts, live, embed, and — since 2.6.16 —
   Studio edit addresses, which the page converts to the watch form),
-  the signed bundle's bound video (`bundleBoundVideoSha`), the
-  duration comparison bands (`classifyDuration`: pass at
-  a difference of at most 1 s; confirm — the student's
-  played-and-confirmed tick — up to max(2 s, 2% of the audio); block
-  beyond), the pre-ZIP bundle verification (`verifyBundleContents`),
+  `/jobs/finalize` as marking a job final (no YouTube fields are
+  sent; an "already final" response for the same job is treated
+  as success), the pre-ZIP bundle verification (`verifyBundleContents`),
   and the
   localStorage entries under `hw-signing.jobs.v2`: `{pkg, course, asg,
   retrieval_code, kind, youtube_link, youtube_title,
@@ -169,8 +175,7 @@ the WAV bytes' SHA-256, the canonical transcript's SHA-256 (built
 from the job recording's own cached chunks, never from the
 transcript currently on the page; a removal list that differs from
 the one used at send time fails this check and the error says so),
-the critique's SHA-256, and the locally kept YouTube link's video-ID
-hash — and shows a panel identifying what will be packaged (course,
+the critique's SHA-256 — and shows a panel identifying what will be packaged (course,
 grades, recording file name/duration/fingerprint/opening words,
 video title and link, each marked verified); the panel's button then
 builds the ZIP from those verified parts.
@@ -186,21 +191,19 @@ builds the ZIP from those verified parts.
   the job itself: scrubbed transcript, two fingerprints, package ID
   and content hash, component versions. No audio, no name, no
   YouTube link (the link check is a separate Worker call that stores
-  nothing about the link; only its token and the video ID are sent
-  with a final job).
+  nothing about the link; jobs are sent with no link, and the
+  finalize call that marks a job final sends no YouTube fields —
+  the link enters only the ZIP built on this machine).
 - Browser storage is the settled exception to v1's "stores nothing"
   rule, and it holds recordings and job entries only — never the
   scrub list, never the grades.
-- Duration statistics: when a link check's preview reports the
-  video's length, the page sends the Worker the two durations, the
-  flow name (`send`/`convert`) and the package label — no video ID,
-  no link, nothing about the student — so the duration bands can be
-  recalibrated from measured same-recording differences
-  (`POST /stats/duration`, one report per video/recording pair).
+- No duration statistics are sent: the page no longer compares
+  the video's length with the recording's and reports nothing
+  about either (removed in 2.6.18).
 
 ## Tests
 
-43 checks, all passing (`node tests/run-tests.mjs`): configuration
+109 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip including `ph`; scrub and canonical form;
 checksum against Node; suspected identifiers; WAV; cache-key rules
 (course/pkg excluded, model/glossary included) and stored-chunk
@@ -225,8 +228,7 @@ a removal-list change blocked the ZIP with the transcript-checksum
 message, and the downloaded ZIP's entries and audio bytes verified.
 Not exercised: Web Audio decode of a real recording, the Parakeet
 model run, and the YouTube IFrame player against a real video (the
-sandbox browser cannot reach YouTube); the duration watch's band
-logic is Node-tested through `classifyDuration`.
+sandbox browser cannot reach YouTube).
 
 ## Decisions taken where the SPEC was silent
 
@@ -297,8 +299,8 @@ logic is Node-tested through `classifyDuration`.
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle
   change changes the glossary string and thereby every cache key.
-- **Jobs list and the YouTube link (2.6.16; binding flow
-  2.6.18)**: section 7 is a
+- **Jobs list and the YouTube link (2.6.16; no binding
+  2.6.19)**: section 7 is a
   table (Job | Grades | YouTube link | Actions; stacked on phone
   widths) with a fixed, muted preview player above it — hovering a
   populated row's link cell for about 400 ms plays that video
@@ -311,7 +313,7 @@ logic is Node-tested through `classifyDuration`.
   There is no Practice/Final
   label. The page has no manual job-retrieval control: a job is
   listed on the browser that holds its entry.
-- **No check on paste; binding at confirmation (2.6.18)**:
+- **No check on paste; no binding (2.6.18, 2.6.19)**:
   pasting or editing a row's link runs no check and shows no
   status; while the field holds no readable link the cell shows
   only “Add a YouTube link to download the ZIP.”, and a readable
@@ -321,14 +323,17 @@ logic is Node-tested through `classifyDuration`.
   private or missing video opens no review and shows its reason
   in the cell — and the review states the job's course and
   assignment, the video's title, and the graded transcript's
-  opening words; it warns when the same link is on another row,
-  and, for a job bound to a different video, that confirming
-  replaces that binding. Binding happens only at the review's
-  confirmation (the button reads “Bind this video and download
-  the ZIP” when a binding will be made or replaced): an unbound
-  job is finalised, a differently bound job is rebound through
-  the Worker's superseding finalize, and cancelling binds
-  nothing.
+  opening words; it warns when the same link is on another row.
+  Since 2.6.19 no video is bound to a job at any point: the
+  review's confirmation button reads “Download submission ZIP”
+  for every job, confirming calls `/jobs/finalize` with no
+  YouTube fields (it marks the job final; an "already final"
+  response for the same job is treated as success), and the ZIP
+  carries the row's checked link as package data. A job finalised
+  under an earlier version, whose signed bundle carries a video
+  hash, works like any other row — the page never consults that
+  hash, and a ZIP generated with a different link packages that
+  link.
 - **Package transcript timestamps use total minutes** (`[75:20]`),
   carried over from v1, because the audit app's timestamp stripping
   reads `mm:ss`.

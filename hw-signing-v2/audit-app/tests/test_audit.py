@@ -73,16 +73,6 @@ def transport_for(secret, capture=None):
     def post(url, body):
         if capture is not None:
             capture.append((url, dict(body)))
-        if url.endswith("/jobs/binding"):
-            # Worker 2.7.3 binding view for the fixture job: the
-            # fixture video is the current binding.
-            claimed = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
-            return {"job_id": body.get("job_id"),
-                    "current_sha256": claimed,
-                    "history": [{"seq": 1, "action": "bind",
-                                 "video_sha256": claimed,
-                                 "prev_video_sha256": None,
-                                 "created_at": GRADED_AT}]}
         expected = grade_receipt(secret, body)
         return {"valid": hmac_mod.compare_digest(expected,
                                                  body["receipt"])}
@@ -114,16 +104,6 @@ def transport_for2(secret, capture=None):
     def post(url, body):
         if capture is not None:
             capture.append((url, dict(body)))
-        if url.endswith("/jobs/binding"):
-            # Worker 2.7.3 binding view for the fixture job: the
-            # fixture video is the current binding.
-            claimed = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
-            return {"job_id": body.get("job_id"),
-                    "current_sha256": claimed,
-                    "history": [{"seq": 1, "action": "bind",
-                                 "video_sha256": claimed,
-                                 "prev_video_sha256": None,
-                                 "created_at": GRADED_AT}]}
         expected = grade_receipt2(secret, body)
         return {"valid": hmac_mod.compare_digest(expected,
                                                  body["receipt"])}
@@ -195,7 +175,8 @@ def build_html_v2(chunks, audio_sha, completeness=4, accuracy=4,
                   ver_completeness=None, ver_accuracy=None,
                   webapp_version=None, marked=False,
                   chromaprint_sha=None,
-                  audio_file="submission-audio.wav"):
+                  audio_file="submission-audio.wav",
+                  claimed_video_sha=None):
     """A v2 package HTML, signed as the grading Worker signs it.
     With chromaprint_sha (a Worker 2.7.0 bundle), the receipt is
     computed over the new canonical form and the verification
@@ -205,7 +186,8 @@ def build_html_v2(chunks, audio_sha, completeness=4, accuracy=4,
     canonical = audit.canonical_transcript(lines, with_markers=marked)
     transcript_sha = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     critique_sha = hashlib.sha256(critique.encode("utf-8")).hexdigest()
-    yt_sha = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
+    yt_sha = claimed_video_sha if claimed_video_sha is not None \
+        else hashlib.sha256(VIDEO_ID.encode()).hexdigest()
     bundle = {"v": "2", "job_id": JOB_ID, "audio_sha256": audio_sha,
               "transcript_sha256": transcript_sha, "pkg": PKG,
               "pkg_content_sha256": PKG_CONTENT_SHA,
@@ -390,67 +372,41 @@ def main():
           and body["t"] == GRADED_AT,
           "verify-grade body carries the bundle fields, grades taken "
           "from the HTML")
-    check(any(u.endswith("/jobs/binding") and b.get("job_id") == JOB_ID
-              for u, b in capture),
-          "the binding currency check posts the job id to "
-          "/jobs/binding (v57)")
-
-    # 2c. Binding currency (v57): the package's video hash
-    # against the Worker's current binding and history.
-    claimed_sha = hashlib.sha256(VIDEO_ID.encode()).hexdigest()
-    other_sha = hashlib.sha256(b"aDifferentVid").hexdigest()
-
-    def binding_view(current, history):
-        return lambda jid: {"job_id": jid, "current_sha256": current,
-                            "history": history}
-
-    rep = audit.check_package(
-        audio_path, html_path, cfg,
-        post_fn=transport_for(TEST_SECRET, []),
-        binding_fn=binding_view(claimed_sha, [
-            {"seq": 1, "action": "bind", "video_sha256": claimed_sha,
-             "prev_video_sha256": None, "created_at": GRADED_AT}]))
-    check(rep["binding_status"] == "current"
+    # 2c. No binding (v59): the good package above is a legacy
+    # bound bundle — its bundle carries a real video hash — and
+    # it verifies exactly as before on its other checks, with
+    # the hash never compared with anything outside the package:
+    # the transport capture shows no /jobs/binding request, and
+    # the report carries no binding status of any kind.
+    check(not any(u.endswith("/jobs/binding") for u, b in capture),
+          "v59: check_package makes no /jobs/binding request — "
+          "a legacy bundle's video hash is ignored")
+    check("binding_status" not in rep
+          and "binding_superseded_at" not in rep
+          and "binding_note" not in rep
           and rep["internally_consistent"],
-          "binding: the ZIP's video is the current binding")
-    rep = audit.check_package(
-        audio_path, html_path, cfg,
-        post_fn=transport_for(TEST_SECRET, []),
-        binding_fn=binding_view(other_sha, [
-            {"seq": 1, "action": "bind", "video_sha256": claimed_sha,
-             "prev_video_sha256": None, "created_at": GRADED_AT},
-            {"seq": 2, "action": "supersede",
-             "video_sha256": other_sha,
-             "prev_video_sha256": claimed_sha,
-             "created_at": "2026-11-26T21:05:00Z"}]))
-    check(rep["binding_status"] == "superseded"
-          and rep["binding_superseded_at"] == "2026-11-26T21:05:00Z"
-          and rep["internally_consistent"]
-          and rep["grade_receipt_ok"],
-          "binding: a displaced video is superseded — reported, "
-          "not failed")
-    rep = audit.check_package(
-        audio_path, html_path, cfg,
-        post_fn=transport_for(TEST_SECRET, []),
-        binding_fn=binding_view(other_sha, [
-            {"seq": 1, "action": "bind", "video_sha256": other_sha,
-             "prev_video_sha256": None, "created_at": GRADED_AT}]))
-    check(rep["binding_status"] == "unknown"
-          and not rep["internally_consistent"],
-          "binding: a video in no binding is an integrity failure")
+          "v59: no binding status in the check report, and the "
+          "legacy bound bundle is internally consistent")
+    check(not hasattr(audit, "worker_binding")
+          and not hasattr(audit, "classify_binding"),
+          "v59: no binding machinery in audit.py")
 
-    def binding_boom(jid):
-        raise RuntimeError("worker unreachable")
-
-    rep = audit.check_package(
-        audio_path, html_path, cfg,
-        post_fn=transport_for(TEST_SECRET, []),
-        binding_fn=binding_boom)
-    check(rep["binding_status"] == "unchecked"
-          and rep["internally_consistent"]
-          and "not checked" in (rep["binding_note"] or ""),
-          "binding: an unreachable Worker is reported as not "
-          "checked, never silently passed")
+    # 2d. No video claim (v59): a bundle claiming "none" while
+    # the package carries a YouTube link — youtube_id_ok is None
+    # (no claim was made; the link is package data) and internal
+    # consistency is unaffected by it.
+    none_path = tmp / "submission-novideo.html"
+    none_path.write_text(
+        build_html_v2(CHUNKS, audio_sha, claimed_video_sha="none"),
+        encoding="utf-8")
+    rep = audit.check_package(audio_path, none_path, cfg,
+                              post_fn=transport_for(TEST_SECRET))
+    check(rep["youtube_id_ok"] is None
+          and rep["grade_receipt_ok"] is True
+          and rep["internally_consistent"] is True,
+          "v59: a bundle claiming \"none\" beside a linked "
+          "package reports youtube_id_ok None and stays "
+          "internally consistent")
 
     # 2b. A package from webapp 2.4.2, whose signed transcript
     # checksum covers the canonical form with [mm:ss] markers,
@@ -634,15 +590,48 @@ def main():
     yt = audit.youtube_cross_check(yt_canvas, yt_same, parsed_yt, cfg,
                                    fingerprint_fn=lambda p: None)
     check(yt["acoustic_configured"] is False and yt["similarity"] is None
-          and yt["duration_ok"] is True and yt["passed"] is True,
-          "youtube cross-check: no chromaprint - duration still "
-          "checked, similarity reported as unavailable")
+          and yt["passed"] is None and not yt["youtube_flag"],
+          "youtube cross-check: no chromaprint — with no "
+          "fingerprint comparison, passed stays None (duration "
+          "is not a fallback test, v59)")
+    # (c, v59) No fingerprint comparison and a large duration
+    # difference (20 s canvas against the 12 s take): still
+    # passed None, no flag — duration never becomes the test.
     yt = audit.youtube_cross_check(yt_canvas, yt_short, parsed_yt, cfg,
-                                   fingerprint_fn=fp_same)
-    check(yt["duration_flag"] and yt["youtube_flag"]
-          and yt["passed"] is False and yt["duration_diff_s"] == 8.0,
-          "youtube cross-check: same fingerprint but wrong duration "
-          "flags (trimmed or different take)")
+                                   fingerprint_fn=lambda p: None)
+    check(yt["passed"] is None and not yt["youtube_flag"]
+          and yt["duration_flag"] is False
+          and yt["duration_diff_s"] == 8.0,
+          "v59: no fingerprint comparison plus an 8 s duration "
+          "difference is neither a pass nor a flag; the "
+          "difference is recorded as a diagnostic only")
+    # (a, v59) High similarity with a large duration difference:
+    # a 17.3 s video against the 20 s canvas (2.7 s, beyond the
+    # old max(2 s, 2%) tolerance), fingerprints at similarity
+    # exactly 0.9851 (298 of 625*32 bits differ). The check
+    # passes and does not flag — duration is not used at all.
+    yt_173 = tmp / "yt-17s.wav"
+    with wave.open(str(yt_173), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(16000)
+        w.writeframes(b"\x00\x00" * int(17.3 * 16000))
+    rng59 = random.Random(59)
+    fp_hi_a = [rng59.getrandbits(32) for _ in range(625)]
+    fp_hi_b = list(fp_hi_a)
+    for i in range(298):
+        fp_hi_b[i] ^= 1 << (i % 32)
+    yt = audit.youtube_cross_check(
+        yt_canvas, yt_173, parsed_yt, cfg,
+        fingerprint_fn=lambda p: fp_hi_a if "canvas" in str(p)
+        else fp_hi_b)
+    check(yt["similarity"] == 0.9851 and yt["passed"] is True
+          and yt["youtube_flag"] is False
+          and yt["duration_diff_s"] == 2.7
+          and yt["duration_flag"] is False,
+          "v59: similarity 0.9851 with a 2.7 s duration "
+          "difference passes, unflagged — the flag follows the "
+          "fingerprint comparison only")
     shifted = audit.compare_fingerprints(fp_a, [fp_b[0]] * 3 + fp_a)
     check(shifted["offset_items"] == 3 and shifted["similarity"] == 1.0,
           "fingerprint comparison finds a 3-item start offset "
@@ -1191,6 +1180,35 @@ def main():
           "recording — 10 blocks of 30 s, the whole-file result "
           "kept alongside, the span agreeing with the claimed "
           "duration")
+
+    # v59, fingerprint form: the span-versus-claimed check no
+    # longer counts as a measurement and no longer flags. A
+    # package claiming 290 s for a fingerprint spanning about
+    # 300 s passes on the per-block comparison alone, the
+    # difference recorded as a diagnostic.
+    parsed_fp59 = {"verification": {"duration_s": 290,
+                                    "youtube_link": YOUTUBE}}
+    yt = audit.youtube_cross_check(
+        fp_paths["fingerprint_path"], audio_path, parsed_fp59, cfg,
+        fingerprint_fn=lambda p: fp_items)
+    check(yt["passed"] is True and not yt["youtube_flag"]
+          and yt["duration_flag"] is False
+          and yt["claimed_diff_s"] is not None
+          and yt["claimed_diff_s"] > 1.0,
+          "v59: fingerprint form — a span/claimed difference "
+          "over 1 s is a diagnostic only; the per-block "
+          "comparison passes the check")
+    # v59, fingerprint form, no comparison possible: the video's
+    # fingerprint is unreadable, so passed stays None even
+    # though the span and the claimed duration are both known —
+    # the span check is not a fallback measurement.
+    yt = audit.youtube_cross_check(
+        fp_paths["fingerprint_path"], audio_path, parsed_fp59, cfg,
+        fingerprint_fn=lambda p: None)
+    check(yt["passed"] is None and not yt["youtube_flag"]
+          and yt["acoustic_configured"] is False,
+          "v59: fingerprint form — no fingerprint comparison "
+          "means passed None, not a pass on the span check")
 
     # A segment of two blocks replaced by another recording's
     # items: the signed-hash check fails, and the per-block rule
