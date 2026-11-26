@@ -44,7 +44,7 @@
 
 export const FORMAT_VERSION = '2';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 2.6.11',
+  webapp: 'hw-signing-webapp 2.6.12',
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };
@@ -115,9 +115,14 @@ export function assemblePackage(input) {
   const linkHtml = link
     ? '<a href="' + escapeHtml(link) + '">' + escapeHtml(link) + '</a>'
     : 'not provided';
+  // 2.6.12: the two grades were the only bundle fields concatenated
+  // unescaped; a bundle carrying a string grade (a compromised or
+  // impersonated Worker response) could inject markup into the
+  // submission HTML the teacher later opens. Escape them as every
+  // sibling field is escaped.
   const grades =
-    'Completeness: <span data-grade="completeness">' + bundle.completeness +
-    '</span>/5 · Accuracy: <span data-grade="accuracy">' + bundle.accuracy +
+    'Completeness: <span data-grade="completeness">' + escapeHtml(bundle.completeness) +
+    '</span>/5 · Accuracy: <span data-grade="accuracy">' + escapeHtml(bundle.accuracy) +
     '</span>/5';
   const transcriptLines = (input.chunks || [])
     .map((c) => '[' + formatTranscriptTimestamp(c.start) + '] ' + oneLine(c.text))

@@ -28,8 +28,17 @@ export function scrubText(text, words) {
   const ordered = [...(words || [])].filter(Boolean)
     .sort((a, b) => b.length - a.length);
   for (const w of ordered) {
+    // 2.6.12: a removal entry also matches its separator variants —
+    // the words of the entry joined by any run of spaces, hyphens
+    // or commas — so "Ann-Marie Lee" removes "Ann Marie Lee" and
+    // "Ann, Marie Lee" as well as the exact form. (A name spoken as
+    // one joined word, e.g. "CarlosCo", still cannot be matched
+    // safely and is left to the identifier review in section 5.)
+    const pattern = String(w).split(/[\s-]+/).filter(Boolean)
+      .map(escapeRegExp).join('(?:[,\\s-]+)');
+    if (!pattern) continue;
     const re = new RegExp(
-      '(?<![A-Za-z0-9])' + escapeRegExp(w) + '(?![A-Za-z0-9])', 'gi');
+      '(?<![A-Za-z0-9])' + pattern + '(?![A-Za-z0-9])', 'gi');
     out = out.replace(re, () => { removed += 1; return ''; });
   }
   if (removed) {

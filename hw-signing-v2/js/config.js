@@ -32,7 +32,28 @@ export function parseConfig(search) {
 
 export function normaliseWorkerBase(w) {
   if (!w) return null;
-  return String(w).replace(/\/+$/, '');
+  // 2.6.12: the Worker address comes from the teacher's link, and
+  // the page sends retrieval codes and transcripts to it. Accept
+  // only a plain https address: no http (codes would travel in
+  // clear), no embedded credentials, and no query string or
+  // fragment (which would be smuggled into every API path). An
+  // address that fails is treated as no address.
+  let u;
+  try {
+    u = new URL(String(w).trim());
+  } catch {
+    return null;
+  }
+  // http is accepted for a loopback address only (local testing of
+  // a Worker on the same machine); codes never travel in clear
+  // over a network.
+  const loopback = u.hostname === '127.0.0.1' || u.hostname === 'localhost'
+    || u.hostname === '[::1]';
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && loopback)) {
+    return null;
+  }
+  if (u.username || u.password || u.search || u.hash) return null;
+  return (u.origin + u.pathname).replace(/\/+$/, '');
 }
 
 export function buildConfigLink(baseUrl, cfg) {

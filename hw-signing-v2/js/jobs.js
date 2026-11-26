@@ -264,6 +264,27 @@ function defaultStorage() {
   try { return globalThis.localStorage || null; } catch { return null; }
 }
 
+// 2.6.12: an entry is polled only against the Worker that created
+// it. Entries record their Worker address at creation; an entry
+// from before 2.6.12 has none and is polled only against the
+// production Worker. Without this, any link naming another Worker
+// address would send every stored retrieval code — the sole
+// retrieval credential — to that address on page load.
+export const CANONICAL_WORKER_HOST = 'hw-grading.carloscomail.workers.dev';
+
+export function entryPollable(entry, workerBase) {
+  const base = normaliseWorkerBase(workerBase);
+  if (!base) return false;
+  if (entry && entry.worker) {
+    return normaliseWorkerBase(entry.worker) === base;
+  }
+  try {
+    return new URL(base).hostname === CANONICAL_WORKER_HOST;
+  } catch {
+    return false;
+  }
+}
+
 export function loadJobEntries(storage) {
   const store = storage || defaultStorage();
   if (!store) return [];
@@ -456,6 +477,7 @@ export function duplicateJobEntry(response, submitted) {
     ? kindFromResultBundle(response.result) : submitted.kind;
   const isFinal = kind === 'final' && submitted.kind === 'final';
   return {
+    worker: submitted.worker || '',
     pkg: submitted.pkg,
     course: submitted.course,
     asg: submitted.asg,

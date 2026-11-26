@@ -37,7 +37,7 @@ import { fromCachedChunk, recordingFirstWords } from './cachekey.js';
 import {
   parseYouTubeVideoId, canonicalWatchUrl, classifyDuration,
   verifyBundleContents, bundleChromaprintSha, verifyFingerprintContents,
-  validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry,
+  validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry, entryPollable,
   removeJobEntry, saveJobEntries, kindFromResultBundle,
   duplicateJobEntry, collapseSameJobEntries,
   requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
@@ -146,7 +146,17 @@ function durationGateOk(dur) {
 const STATS_KEY = 'hw-signing.durationStats.v1';
 function reportDurationOnce(context, audioSha256, videoId, audioS, videoS) {
   if (!cfg.worker || !(audioS > 0) || !(videoS > 0)) return;
-  const key = videoId + '|' + (audioSha256 || '');
+  // 2.6.12: the stored record holds a hash of the pair, not the
+  // literal video ID next to the recording's SHA-256, so the list
+  // no longer reads as a video-to-recording linkage.
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  const pair = videoId + '|' + (audioSha256 || '');
+  for (let i = 0; i < pair.length; i++) {
+    const ch = pair.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  const key = (h1 >>> 0).toString(16) + (h2 >>> 0).toString(16);
   let sent = [];
   try { sent = JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); } catch { sent = []; }
   if (!Array.isArray(sent) || sent.includes(key)) return;
@@ -805,6 +815,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       // the grade or queue state from the response is shown in the
       // status line instead.
       const aliasEntry = duplicateJobEntry(res, {
+        worker: cfg.worker,
         pkg: cfg.pkg,
         course: cfg.course,
         asg: cfg.asg,
@@ -827,6 +838,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       return;
     }
     addJobEntry({
+      worker: cfg.worker,
       pkg: cfg.pkg,
       course: cfg.course,
       asg: cfg.asg,
@@ -1483,6 +1495,9 @@ async function renderJobsOnce() {
   // rebuilt twice, once per sequential fetch, so the ZIP buttons
   // vanished and moved on every 5-second cycle.)
   const results = await Promise.all(entries.map(async (entry) => {
+    // 2.6.12: never send a stored code to a Worker other than the
+    // one that created the entry (see entryPollable in jobs.js).
+    if (!entryPollable(entry, cfg.worker)) return null;
     try {
       return await fetchJobStatus(cfg.worker, {
         pkg: entry.pkg, retrieval_code: entry.retrieval_code,
