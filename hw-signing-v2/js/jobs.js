@@ -107,37 +107,14 @@ export function canonicalWatchUrl(videoId) {
 }
 
 /* ---------------- duration comparison ----------------
- * The page's audio duration (the decoded audio track) and the
- * YouTube player's duration (the whole transcoded presentation) are
- * not the same quantity, so an identical upload can differ by a
- * fraction of a second, and a camera file whose video track runs
- * past its audio by more. The comparison therefore has three bands:
- *   pass    — difference at most DURATION_PASS_S: no action needed.
- *   confirm — difference up to max(2 s, 2% of the audio): the link
- *             may be used only after the student plays the preview
- *             and explicitly confirms it is the same recording.
- *   block   — beyond that tolerance: the link cannot be used for
- *             this recording at all.
- * When either duration is unknown (the preview could not report
- * one), the band is 'unknown', which is handled like 'confirm': the
- * student must play the preview and confirm. The Worker stores one
- * anonymous statistic per reported comparison (POST /stats/duration)
- * so the pass band can be tightened later from measured data.
+ * Removed in 2.6.18: the page no longer compares the video's
+ * length with the recording's. The comparison depended on a cued
+ * player reporting a duration, which it often does not, and it
+ * was only ever a proxy for sameness of recording — which the
+ * teacher audit's acoustic cross-check on the submitted ZIP
+ * establishes directly. The Worker's /stats/duration endpoint
+ * remains, but the page no longer reports to it.
  */
-export const DURATION_PASS_S = 1.0;
-
-export function classifyDuration(audioS, videoS) {
-  const a = Number(audioS);
-  const v = Number(videoS);
-  if (!(a > 0) || !(v > 0)) {
-    return { band: 'unknown', diffS: null, tolS: null };
-  }
-  const diffS = Math.abs(v - a);
-  const tolS = Math.max(2, 0.02 * a);
-  const band = diffS <= DURATION_PASS_S ? 'pass'
-    : diffS <= tolS ? 'confirm' : 'block';
-  return { band, diffS, tolS };
-}
 
 /* ---------------- submission verification ----------------
  * Before a submission ZIP is built, the page recomputes the hashes
@@ -548,24 +525,6 @@ export async function finalizeJob(workerBase, payload, fetchFn) {
     throw new Error((data && data.error) || ('finalize failed (HTTP ' + status + ')'));
   }
   return data;
-}
-
-// POST /stats/duration {pkg, context, audio_s, video_s} → records
-// one anonymous duration comparison on the Worker (no video ID, no
-// link, no student information) so the duration bands can be
-// recalibrated from measured same-recording differences. Best
-// effort: returns true when stored, false otherwise; a failure never
-// affects the student's flow.
-export async function reportDurationStat(workerBase, stat, fetchFn) {
-  try {
-    const { ok } = await postJson(workerBase, '/stats/duration', {
-      pkg: stat.pkg || '',
-      context: stat.context || '',
-      audio_s: stat.audioS,
-      video_s: stat.videoS,
-    }, fetchFn);
-    return !!ok;
-  } catch { return false; }
 }
 
 // POST /jobs/retrieved → marks the job retrieved on the Worker.

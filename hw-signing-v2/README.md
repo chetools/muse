@@ -297,28 +297,38 @@ logic is Node-tested through `classifyDuration`.
   (`parakeet-tdt-0.6b-v2-int8`, `chemescribe-glossary-bundle
   ea2807d2`), since the pipeline and bundle are unchanged — a bundle
   change changes the glossary string and thereby every cache key.
-- **Jobs list and the YouTube link (2.6.16)**: section 7 is a
+- **Jobs list and the YouTube link (2.6.16; binding flow
+  2.6.18)**: section 7 is a
   table (Job | Grades | YouTube link | Actions; stacked on phone
   widths) with a fixed, muted preview player above it — hovering a
   populated row's link cell for about 400 ms plays that video
   there, without sound; clicking the link text under the field, or
-  the player, opens the video on YouTube. The step 6 link field
-  and the conversion panel are removed: sending takes no link, and
-  each ready row's field does the checking and the binding. Before
-  a check passes a row has no ZIP button, only the line “Add a
-  YouTube link to download the ZIP.”; a × at the field's right end
-  clears the field and the kept link. There is no Practice/Final
+  the player, opens the video on YouTube. Clearing the link that
+  loaded the player, or editing it into a different or unreadable
+  link, clears the player back to its placeholder; other rows'
+  edits leave it untouched. The step 6 link field
+  and the conversion panel are removed: sending takes no link.
+  There is no Practice/Final
   label. The page has no manual job-retrieval control: a job is
-  listed on the browser that holds its entry, and a bound job's
-  row link is verified against the bundle's signed video-ID hash,
-  so a wrong link cannot be packaged.
-- **Row-cell check text (2.6.17)**: a passed check reads only
-  “Link checks out.” — no reachability explanation, no video
-  title, and no duration line. The duration classification and
-  its gating are unchanged; only the block band still shows
-  text, as the failure reason in the cell: “Video … s,
-  recording … s — the lengths differ too much for the same
-  recording.”
+  listed on the browser that holds its entry.
+- **No check on paste; binding at confirmation (2.6.18)**:
+  pasting or editing a row's link runs no check and shows no
+  status; while the field holds no readable link the cell shows
+  only “Add a YouTube link to download the ZIP.”, and a readable
+  link brings the row's Generate ZIP button. The length check is
+  gone from the page entirely. Clicking Generate ZIP runs the
+  Worker's reachability check while preparing the review — a
+  private or missing video opens no review and shows its reason
+  in the cell — and the review states the job's course and
+  assignment, the video's title, and the graded transcript's
+  opening words; it warns when the same link is on another row,
+  and, for a job bound to a different video, that confirming
+  replaces that binding. Binding happens only at the review's
+  confirmation (the button reads “Bind this video and download
+  the ZIP” when a binding will be made or replaced): an unbound
+  job is finalised, a differently bound job is rebound through
+  the Worker's superseding finalize, and cancelling binds
+  nothing.
 - **Package transcript timestamps use total minutes** (`[75:20]`),
   carried over from v1, because the audit app's timestamp stripping
   reads `mm:ss`.
