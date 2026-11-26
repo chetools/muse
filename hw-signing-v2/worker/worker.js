@@ -24,7 +24,7 @@
 // jobs table keeps only youtube_status ("ok" / "none") and, for final
 // jobs, youtube_video_sha256 (SHA-256 hex of the video ID).
 
-const SERVICE_VERSION = "2.6.0";
+const SERVICE_VERSION = "2.6.1";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 // Job lifetime (2.6.0): an ungraded job is kept for up to
@@ -119,7 +119,10 @@ async function hmacBase64url(secret, text) {
 // exact-SHA dedup then applies). Comparison is the audit app's BER
 // logic (audit.py compare_fingerprints): bit error rate at the best
 // alignment over an offset search of ±8 items, similarity 1 - BER.
-const FP_MAX_ITEMS = 20000;
+// Cap (2.6.1): 3 hours of audio. Measured rate is about 29,055
+// items per hour (a 3,600 s file yields 29,055 items), so a full
+// 3-hour recording yields about 87,165 items; 87,200 covers it.
+const FP_MAX_ITEMS = 87200;
 const FP_MAX_OFFSET = 8;
 const FP_SIMILARITY_THRESHOLD = 0.85;
 

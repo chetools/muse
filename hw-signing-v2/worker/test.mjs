@@ -1120,7 +1120,7 @@ const FP_F = makeFp(5151, 60);
 const FP_A_SHIFTED = [...makeFp(777, 3), ...FP_A];
 
 r = await call("/", { method: "GET" });
-check("health: version is 2.6.0", r.status === 200 && r.body.version === "2.6.0");
+check("health: version is 2.6.1", r.status === 200 && r.body.version === "2.6.1");
 
 // Duplicate of a graded job returns the same bundle (practice and
 // final), and the submitted kind / YouTube token are ignored.
@@ -1283,11 +1283,17 @@ check("malformed fingerprint: job created normally", r.status === 200 && !r.body
 }
 r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp003", audio_sha256: "c2".repeat(32), chromaprint: Buffer.from([1, 2, 3]).toString("base64") } });
 check("fingerprint of 3 bytes (not a whole item): job created normally", r.status === 200 && !r.body.duplicate);
-r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp004", audio_sha256: "c4".repeat(32), chromaprint: fpBase64(makeFp(42, 20001)) } });
-check("oversize fingerprint (20001 items): job created normally", r.status === 200 && !r.body.duplicate);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp004", audio_sha256: "c4".repeat(32), chromaprint: fpBase64(makeFp(42, 87201)) } });
+check("oversize fingerprint (87201 items): job created normally", r.status === 200 && !r.body.duplicate);
 {
   const row = db._tables.jobs.find((j) => j.job_id === r.body.job_id);
   check("oversize fingerprint stored as NULL", row.chromaprint === null);
+}
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp007", audio_sha256: "c7".repeat(32), chromaprint: fpBase64(makeFp(43, 87200)) } });
+check("3-hour fingerprint (87200 items): job created normally", r.status === 200 && !r.body.duplicate);
+{
+  const row = db._tables.jobs.find((j) => j.job_id === r.body.job_id);
+  check("3-hour fingerprint stored in full", row.chromaprint === fpBase64(makeFp(43, 87200)));
 }
 r = await call("/jobs", { body: { ...jobBase, retrieval_code: "badfp005", audio_sha256: "c5".repeat(32), chromaprint: "" } });
 check("empty fingerprint: job created normally", r.status === 200 && !r.body.duplicate);

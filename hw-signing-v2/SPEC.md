@@ -208,8 +208,10 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   push_subscription?}`. `chromaprint` (2.6.0, optional) is the base64
   of the raw Chromaprint bytes for the normalised WAV (little-endian
   uint32 per item); it must decode to a byte length divisible by 4
-  with 1–20000 items, else the field is ignored and only the exact-SHA
-  dedup applies — a bad fingerprint never rejects a job. Validate:
+  with 1–87200 items (2.6.1: the cap is 3 hours of audio, at the
+  measured rate of about 29,055 items per hour), else the field is
+  ignored and only the exact-SHA dedup applies — a bad fingerprint
+  never rejects a job. Validate:
   package exists and the content hash matches that version's stored
   hash; the job is then resolved to the newest `open` version of the
   same package name when a newer one exists (the replacement check,
