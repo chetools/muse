@@ -381,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.0');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.1');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -986,7 +986,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.0');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.1');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1634,6 +1634,23 @@ await test('fresh computer: a retrieved job builds the fingerprint ZIP once the 
   ]);
   assert.deepEqual(unzipStored(zip).entries.map((e) => e.name),
     ['submission.html', 'submission-fingerprint.bin']);
+});
+
+await test('wiring: every job row can reveal its recovery code (2.6.1)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes("codeBtn.textContent = 'Show recovery code'"),
+    'each job row carries a Show recovery code button');
+  assert.ok(main.includes('entry.retrieval_code'),
+    'the revealed code is the job entry\u2019s stored code');
+  assert.ok(main.includes("'Hide recovery code'"),
+    'the button toggles back to hidden');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(!html.includes('picked at the time'),
+    'the retrieval note no longer mentions student-picked codes');
+  assert.ok(!html.includes('shows it once'),
+    'no page text still claims the code is shown only once');
+  assert.ok(!main.includes('it is not shown again'),
+    'the send-time line no longer claims the code is never shown again');
 });
 
 await test('wiring: fingerprint-form ZIP path is wired into the review and download steps (2.6.0)', () => {

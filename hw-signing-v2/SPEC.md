@@ -60,8 +60,11 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   webapp 2.5.4 the student picked the code; since 2.5.4 the page
   generates the code at send time
   (24 characters, uniform over the code alphabet, from
-  crypto.getRandomValues) and shows it once as the job's recovery
-  code; the student no longer picks or types one in the normal flow,
+  crypto.getRandomValues) and shows it at send time as the job's
+  recovery code; since webapp 2.6.1 the job's row in section 7 has a
+  Show recovery code button that reveals the stored code again, for
+  use on a different browser. The student no longer picks or types
+  one in the normal flow,
   and the manual box below section 7 — relabelled "Recovery code" —
   is the only place a code is typed. The Worker protocol is
   unchanged: the generated value is the retrieval code, and codes
