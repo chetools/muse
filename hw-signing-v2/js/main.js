@@ -120,22 +120,23 @@ function clearYtCheck() {
   if (!ytCheck) return;
   ytCheck = null;
   ytDur = null;
-  $('ytConfirmChk').checked = false;
   $('ytStatus').textContent =
-    'Recording changed: the earlier link check no longer stands. Check the link again.';
+    'Recording changed: the earlier link check no longer stands. Paste the link to check it again.';
   refreshYtDurationUi();
   updateJobEnabled();
 }
 
-// Whether a checked link may be used, given its duration band and
-// the student's explicit confirmation: 'pass' needs nothing;
-// 'confirm' and 'unknown' need the played-and-confirmed tick;
-// 'block' can never be used for this recording.
-function durationGateOk(dur, confirmChk) {
+// Whether a checked link may be used, given its duration band
+// (2.6.8: no played-preview confirmation — the length comparison
+// is the check). 'pass' and 'confirm' are within the tolerance and
+// may be used; 'unknown' (the preview reported no length) may be
+// used, because the Worker reachability check is the requirement
+// and sameness of recording is established by the teacher audit's
+// acoustic cross-check on the submitted ZIP; 'block' can never be
+// used for this recording.
+function durationGateOk(dur) {
   const band = dur ? dur.band : 'unknown';
-  if (band === 'pass') return true;
-  if (band === 'block') return false;
-  return !!(confirmChk && confirmChk.checked);
+  return band !== 'block';
 }
 
 // One anonymous duration statistic per (video, recording) pair is
@@ -517,44 +518,37 @@ $('confirmChk').addEventListener('change', () => {
 function updateJobEnabled() {
   const base = !!(cfg.worker && cfg.pkg && cfg.ph && transcriptionComplete && confirmed);
   // With a checked link, the duration gate also applies: a blocked
-  // link disables Send until the link is fixed or cleared, and a
-  // confirm-band link needs the student's explicit confirmation.
-  const linkOk = !ytCheck || durationGateOk(ytDur, $('ytConfirmChk'));
+  // link (length beyond the tolerance) disables Send until the link
+  // is fixed or cleared.
+  const linkOk = !ytCheck || durationGateOk(ytDur);
   $('submitJobBtn').disabled = !(base && linkOk);
 }
-$('ytConfirmChk').addEventListener('change', updateJobEnabled);
 
 // The duration verdict for the step-6 link, in its own status line
-// beside the preview, with the confirmation row shown exactly when
-// the band requires it.
+// beside the preview (2.6.8: a statement, not a gate — within the
+// tolerance the link may be used, beyond it it may not).
 function refreshYtDurationUi() {
   const el = $('ytDurStatus');
-  const row = $('ytConfirmRow');
-  if (!ytCheck) { el.textContent = ''; row.hidden = true; return; }
+  if (!ytCheck) { el.textContent = ''; return; }
   const band = ytDur ? ytDur.band : 'unknown';
   if (band === 'pass') {
     el.textContent = 'Lengths match: video ' + ytDur.videoS.toFixed(1) +
       ' s, audio ' + ytDur.audioS.toFixed(1) + ' s (difference ' +
       ytDur.diffS.toFixed(1) + ' s).';
-    row.hidden = true;
   } else if (band === 'confirm') {
     el.textContent = 'Video ' + ytDur.videoS.toFixed(1) +
       ' s, audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
-      ytDur.diffS.toFixed(1) + ' s. Play the preview above; if it is this ' +
-      'recording, tick the confirmation below.';
-    row.hidden = false;
+      ytDur.diffS.toFixed(1) + ' s, within the allowed ' +
+      ytDur.tolS.toFixed(1) + ' s.';
   } else if (band === 'block') {
     el.textContent = 'Video ' + ytDur.videoS.toFixed(1) +
       ' s, audio ' + ytDur.audioS.toFixed(1) + ' s — a difference of ' +
       ytDur.diffS.toFixed(1) + ' s, beyond the allowed ' + ytDur.tolS.toFixed(1) +
       ' s. This link cannot be used for this recording: enter the link for ' +
       'this recording, or clear the link and send without it.';
-    row.hidden = true;
   } else {
     el.textContent = 'No length has been reported by the preview, so ' +
-      'the lengths could not be compared. Play the preview above; if it is ' +
-      'this recording, tick the confirmation below.';
-    row.hidden = false;
+      'the lengths could not be compared. The link check above is what counts.';
   }
   updateJobEnabled();
 }
@@ -562,51 +556,52 @@ function refreshYtDurationUi() {
 // The same verdict for the conversion panel's link.
 function refreshFinDurationUi() {
   const el = $('finDurStatus');
-  const row = $('finConfirmRow');
-  if (!finCheck) { el.textContent = ''; row.hidden = true; updateFinConfirmEnabled(); return; }
+  if (!finCheck) { el.textContent = ''; updateFinConfirmEnabled(); return; }
   const band = finDur ? finDur.band : 'unknown';
   if (band === 'pass') {
     el.textContent = 'Lengths match: video ' + finDur.videoS.toFixed(1) +
       ' s, audio ' + finDur.audioS.toFixed(1) + ' s (difference ' +
       finDur.diffS.toFixed(1) + ' s).';
-    row.hidden = true;
   } else if (band === 'confirm') {
     el.textContent = 'Video ' + finDur.videoS.toFixed(1) +
       ' s, selected job’s audio ' + finDur.audioS.toFixed(1) +
-      ' s — a difference of ' + finDur.diffS.toFixed(1) + ' s. Play the ' +
-      'preview above; if it is that job’s recording, tick the confirmation below.';
-    row.hidden = false;
+      ' s — a difference of ' + finDur.diffS.toFixed(1) + ' s, within the ' +
+      'allowed ' + finDur.tolS.toFixed(1) + ' s.';
   } else if (band === 'block') {
     el.textContent = 'Video ' + finDur.videoS.toFixed(1) +
       ' s, selected job’s audio ' + finDur.audioS.toFixed(1) +
       ' s — a difference of ' + finDur.diffS.toFixed(1) + ' s, beyond the ' +
       'allowed ' + finDur.tolS.toFixed(1) + ' s. This link cannot be used ' +
       'for this job.';
-    row.hidden = true;
   } else {
     el.textContent = 'No length has been reported by the preview, so ' +
-      'the lengths could not be compared. Play the preview above; if it is ' +
-      'the selected job’s recording, tick the confirmation below.';
-    row.hidden = false;
+      'the lengths could not be compared. The link check above is what counts.';
   }
   updateFinConfirmEnabled();
 }
 
 function updateFinConfirmEnabled() {
   $('finConfirmBtn').disabled =
-    !(finCheck && durationGateOk(finDur, $('finConfirmChk')));
+    !(finCheck && durationGateOk(finDur));
 }
-$('finConfirmChk').addEventListener('change', updateFinConfirmEnabled);
 
-// YouTube: the link invalidates any earlier check when it changes.
+// YouTube: the link invalidates any earlier check when it changes,
+// and a recognisable link is checked by itself (2.6.8) — the check
+// runs after a short pause following the last keystroke, so typing
+// a link does not fire a check per character, and pasting fires one.
+let ytCheckTimer = null;
+let ytCheckBusy = false;
+let ytCheckRearms = 0;
 $('ytLink').addEventListener('input', () => {
   ytCheck = null;
   ytDur = null;
-  $('ytConfirmChk').checked = false;
+  ytCheckRearms = 0;
   $('ytStatus').textContent = '';
   $('ytPlayerWrap').hidden = true;
   refreshYtDurationUi();
   updateJobEnabled();
+  if (ytCheckTimer) clearTimeout(ytCheckTimer);
+  ytCheckTimer = setTimeout(runYtCheck, 700);
 });
 
 function loadYouTubeApi() {
@@ -632,14 +627,14 @@ function loadYouTubeApi() {
 // result goes to onDuration(videoS|null) once the player reports a
 // length, or after a wait of about 12 s with none: classifyDuration
 // turns it into the pass / confirm / block bands the send and
-// conversion flows gate on. A true acoustic fingerprint comparison
-// cannot run here, because the browser cannot read the video's audio
-// track (YouTube serves it only inside its own player); sameness of
-// recording is established by the teacher audit's acoustic
-// cross-check on the submitted ZIP. A preview failure (embedding
-// disabled, sign-in required) leaves the band 'unknown', which the
-// gate treats as needing the student's played-and-confirmed tick;
-// the Worker reachability check remains a requirement throughout.
+// conversion flows gate on (only 'block' bars use). A true acoustic
+// fingerprint comparison cannot run here, because the browser
+// cannot read the video's audio track (YouTube serves it only
+// inside its own player); sameness of recording is established by
+// the teacher audit's acoustic cross-check on the submitted ZIP. A
+// preview failure (embedding disabled, sign-in required) leaves the
+// band 'unknown', which does not bar use; the Worker reachability
+// check remains a requirement throughout.
 const ytPlayers = {};
 const durWatches = new Map(); // player element id -> interval timer
 function watchPlayerDuration(playerId, onDuration) {
@@ -681,25 +676,37 @@ async function previewYouTube(videoId, els, onDuration) {
   } catch { if (onDuration) onDuration(null); /* preview is best-effort */ }
 }
 
-$('ytCheckBtn').addEventListener('click', async () => {
-  clearError();
+async function runYtCheck() {
   const url = $('ytLink').value.trim();
   const videoId = parseYouTubeVideoId(url);
-  if (!videoId) {
-    $('ytStatus').textContent = 'That does not look like a YouTube video link.';
+  if (!videoId) return;
+  if (ytCheckBusy) {
+    // A check for an earlier link is still in flight; its result
+    // will be discarded as stale. Re-arm so this link is checked
+    // once that flight ends, instead of never being checked. The
+    // re-arms are capped: a flight that never settles must not
+    // leave a timer running with nothing on screen.
+    if (ytCheckRearms >= 40) {
+      $('ytStatus').textContent = 'The link check is taking a long time; edit the link to try again.';
+      return;
+    }
+    ytCheckRearms += 1;
+    $('ytStatus').textContent = 'Checking…';
+    if (ytCheckTimer) clearTimeout(ytCheckTimer);
+    ytCheckTimer = setTimeout(runYtCheck, 700);
     return;
   }
+  if (ytCheck && ytCheck.videoId === videoId) return; // already checked
+  ytCheckRearms = 0;
   if (!cfg.worker) {
     $('ytStatus').textContent = 'Open this page from the link your teacher put in Canvas to check the link.';
     return;
   }
+  ytCheckBusy = true;
   $('ytStatus').textContent = 'Checking…';
-  ytCheck = null;
-  ytDur = null;
-  $('ytConfirmChk').checked = false;
-  refreshYtDurationUi();
   try {
     const res = await requestYouTubeCheck(cfg.worker, canonicalWatchUrl(videoId));
+    if ($('ytLink').value.trim() !== url) return; // replaced while checking
     if (res.status === 'ok' && res.video_id === videoId && res.token) {
       // The check is bound to the recording loaded right now: its
       // fingerprint travels with the check, and changing the
@@ -717,6 +724,8 @@ $('ytCheckBtn').addEventListener('click', async () => {
   } catch (err) {
     $('ytStatus').textContent = 'Could not complete the check. Try again.';
     console.error(err);
+  } finally {
+    ytCheckBusy = false;
   }
   refreshYtDurationUi();
   if (ytCheck) {
@@ -732,7 +741,7 @@ $('ytCheckBtn').addEventListener('click', async () => {
       });
   }
   updateJobEnabled();
-});
+}
 
 // The queue state or grades of a duplicate response, for the
 // status line, when no alias was created and so no job row exists to
@@ -788,10 +797,8 @@ $('submitJobBtn').addEventListener('click', async () => {
     if (ytCheck && ytCheck.audioSha256 !== audioSha) {
       throw new Error('the YouTube link was checked against a different recording. Check the link again for this recording.');
     }
-    if (ytCheck && !durationGateOk(ytDur, $('ytConfirmChk'))) {
-      throw new Error(ytDur && ytDur.band === 'block'
-        ? 'the checked video’s length differs from this recording’s by more than the allowed tolerance. Enter the link for this recording, or clear the link and send without it.'
-        : 'play the preview and tick the confirmation that the checked video is this recording, or clear the link to send without it.');
+    if (ytCheck && !durationGateOk(ytDur)) {
+      throw new Error('the checked video’s length differs from this recording’s by more than the allowed tolerance. Enter the link for this recording, or clear the link and send without it.');
     }
     const transcript = canonical();
     const transcriptSha = await sha256Hex(transcript);
@@ -1823,7 +1830,6 @@ async function finJobAudioDurationS(cand) {
 function finResetCheck() {
   finCheck = null;
   finDur = null;
-  $('finConfirmChk').checked = false;
   $('finConfirmBtn').disabled = true;
   $('finStatus').textContent = '';
   $('finDone').textContent = '';
@@ -1831,35 +1837,54 @@ function finResetCheck() {
   refreshFinDurationUi();
 }
 $('finJobSel').addEventListener('change', finResetCheck);
+// As in step 6 (2.6.8): the link invalidates any earlier check when
+// it changes, and a recognisable link is checked by itself after a
+// short pause.
+let finCheckTimer = null;
+let finCheckBusy = false;
+let finCheckRearms = 0;
 $('finLink').addEventListener('input', () => {
   finCheck = null;
   finDur = null;
-  $('finConfirmChk').checked = false;
+  finCheckRearms = 0;
   $('finConfirmBtn').disabled = true;
   $('finPlayerWrap').hidden = true;
   refreshFinDurationUi();
+  if (finCheckTimer) clearTimeout(finCheckTimer);
+  finCheckTimer = setTimeout(runFinCheck, 700);
 });
 
-$('finCheckBtn').addEventListener('click', async () => {
-  clearError();
+async function runFinCheck() {
   const cand = finSelected();
   if (!cand) return;
-  const videoId = parseYouTubeVideoId($('finLink').value.trim());
-  if (!videoId) {
-    $('finStatus').textContent = 'That does not look like a YouTube video link.';
+  const url = $('finLink').value.trim();
+  const videoId = parseYouTubeVideoId(url);
+  if (!videoId) return;
+  if (finCheckBusy) {
+    // As in step 6: re-arm so the replacement link is checked once
+    // the in-flight check for the earlier link ends, capped so a
+    // flight that never settles leaves a message, not a timer.
+    if (finCheckRearms >= 40) {
+      $('finStatus').textContent = 'The link check is taking a long time; edit the link to try again.';
+      return;
+    }
+    finCheckRearms += 1;
+    $('finStatus').textContent = 'Checking…';
+    if (finCheckTimer) clearTimeout(finCheckTimer);
+    finCheckTimer = setTimeout(runFinCheck, 700);
     return;
   }
+  if (finCheck && finCheck.videoId === videoId) return; // already checked
+  finCheckRearms = 0;
   if (!cfg.worker) {
     $('finStatus').textContent = 'Open this page from the link your teacher put in Canvas to check the link.';
     return;
   }
+  finCheckBusy = true;
   $('finStatus').textContent = 'Checking…';
-  finCheck = null;
-  finDur = null;
-  $('finConfirmChk').checked = false;
-  refreshFinDurationUi();
   try {
     const res = await requestYouTubeCheck(cfg.worker, canonicalWatchUrl(videoId));
+    if ($('finLink').value.trim() !== url) return; // replaced while checking
     if (res.status === 'ok' && res.video_id === videoId && res.token) {
       finCheck = {
         videoId, tok: res.token, checkedAt: res.checked_at,
@@ -1875,6 +1900,8 @@ $('finCheckBtn').addEventListener('click', async () => {
   } catch (err) {
     $('finStatus').textContent = 'Could not complete the check. Try again.';
     console.error(err);
+  } finally {
+    finCheckBusy = false;
   }
   refreshFinDurationUi();
   if (finCheck) {
@@ -1894,7 +1921,7 @@ $('finCheckBtn').addEventListener('click', async () => {
         if (videoS) reportDurationOnce('convert', checkedSha, videoId, dur, videoS);
       });
   }
-});
+}
 
 $('finConfirmBtn').addEventListener('click', async () => {
   const cand = finSelected();
@@ -1903,10 +1930,8 @@ $('finConfirmBtn').addEventListener('click', async () => {
     $('finDone').textContent = 'Link check mismatch: it was made for a different job. Check the link again.';
     return;
   }
-  if (!durationGateOk(finDur, $('finConfirmChk'))) {
-    $('finDone').textContent = finDur && finDur.band === 'block'
-      ? 'Checked video and this job’s audio differ in length by more than the allowed tolerance. Enter the link for this job’s recording.'
-      : 'Play the preview and tick the confirmation that the checked video is this job’s recording.';
+  if (!durationGateOk(finDur)) {
+    $('finDone').textContent = 'Checked video and this job’s audio differ in length by more than the allowed tolerance. Enter the link for this job’s recording.';
     return;
   }
   $('finConfirmBtn').disabled = true;
