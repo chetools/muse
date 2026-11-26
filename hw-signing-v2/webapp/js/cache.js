@@ -18,7 +18,7 @@
 // All database access is lazy (inside the functions), so importing
 // this module outside a browser is harmless.
 
-import { cacheHit, toCachedChunk, recordingFirstWords } from './cachekey.js';
+import { cacheHit, resetStaleRecord, toCachedChunk, recordingFirstWords } from './cachekey.js';
 
 export const CACHE_DB_NAME = 'hw-signing-v2';
 export const CACHE_STORE = 'recordings';
@@ -80,6 +80,13 @@ export async function cacheInit(audioSha256, { model, glossary, wavBlob, duratio
   await withStore('readwrite', async (store) => {
     const existing = await requestToPromise(store.get(audioSha256));
     if (existing) {
+      // Stale-version record reset (2.6.15): a record made by an
+      // older model or glossary version is reset to a fresh
+      // transcript state under the current versions — see
+      // resetStaleRecord in cachekey.js.
+      const reset = resetStaleRecord(existing,
+        { model, glossary, wavBlob, duration_s, source_name });
+      if (reset) { store.put(reset); return; }
       // Refresh the WAV blob — the bytes are identical by fingerprint,
       // but a partial record may predate the blob being kept.
       let dirty = false;

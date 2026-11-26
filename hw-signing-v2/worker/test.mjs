@@ -1135,7 +1135,7 @@ const FP_F = makeFp(5151, 60);
 const FP_A_SHIFTED = [...makeFp(777, 3), ...FP_A];
 
 r = await call("/", { method: "GET" });
-check("health: version is 2.7.1", r.status === 200 && r.body.version === "2.7.1");
+check("health: version is 2.7.2", r.status === 200 && r.body.version === "2.7.2");
 check("health: semester databases are discovered from the env bindings",
   r.body.databases === 2);
 
@@ -1750,6 +1750,87 @@ check("package create without a binding follows db_meta current_binding",
   r.status === 200 && r.body.pkg === "defaulted-package v1" &&
   db2._tables.packages.some((p) => p.pkg === "defaulted-package") &&
   !db._tables.packages.some((p) => p.pkg === "defaulted-package"));
+db._tables.db_meta.length = 0;
+
+// (10) 2.7.2 regressions from the scenario campaign.
+// C-3: a repeat proven duplicate under the same code reports
+// alias_created true — the code does retrieve the job.
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "owner27101",
+  audio_sha256: "b7".repeat(32) } });
+check("repeat proven duplicate reports alias_created true (2.7.2)",
+  r.status === 200 && r.body.duplicate === true && r.body.alias_created === true);
+// C-1: a result is bound to its claim instance. Claim, let the
+// lease lapse (row reset as the sweep leaves it), claim again,
+// then the stale instance's result is refused and the live
+// instance's result lands.
+const FP_C1 = fpBase64(makeFp(71717, 60));
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "claimbind1",
+  audio_sha256: "d1".repeat(32), chromaprint: FP_C1 } });
+const c1Job = r.body.job_id;
+check("claim-binding setup: job created", r.status === 200 && !!c1Job);
+r = await call("/grading/claim", { token: GRADING, body: { job_id: c1Job } });
+const c1FirstClaim = r.body.claimed_at;
+check("claim response carries claimed_at (2.7.2)", r.status === 200 && typeof c1FirstClaim === "string");
+{
+  const row = db._tables.jobs.find((j) => j.job_id === c1Job);
+  row.status = "queued"; row.claimed_at = null; row.claim_expires = null;
+}
+r = await call("/grading/claim", { token: GRADING, body: { job_id: c1Job } });
+const c1SecondClaim = r.body.claimed_at;
+check("re-claim after the lease lapses issues a new claimed_at",
+  r.status === 200 && typeof c1SecondClaim === "string" && c1SecondClaim !== c1FirstClaim);
+r = await call("/grading/result", { token: env.GRADING_TOKEN,
+  body: { job_id: c1Job, claimed_at: c1FirstClaim, completeness: 1, accuracy: 1, critique: "Stale claim result." } });
+check("stale claim instance's result is refused (2.7.2)", r.status === 409);
+r = await call("/grading/result", { token: env.GRADING_TOKEN,
+  body: { job_id: c1Job, claimed_at: c1SecondClaim, completeness: 5, accuracy: 5, critique: "Live claim result." } });
+check("live claim instance's result lands (2.7.2)", r.status === 200 && r.body.ok === true);
+// C-2: a status change naming a database that does not hold the
+// package is refused and changes nothing.
+r = await rpStatus("spring-package v1", { status: "closed", db: "DB" });
+check("package status naming the wrong database is refused (2.7.2)", r.status === 404);
+{
+  const row = db2._tables.packages.find((p) => p.pkg === "spring-package");
+  check("the spring copy is untouched by the refused status change", row && row.status === "open");
+}
+// C-5: an oversized body sent without a Content-Length header
+// (streamed) is refused by the byte-counting cap.
+{
+  const big = JSON.stringify({ ...jobBase, retrieval_code: "streamed27",
+    audio_sha256: "e2".repeat(32), transcript: "x".repeat(1600000) });
+  const stream = new ReadableStream({
+    start(c) { c.enqueue(new TextEncoder().encode(big)); c.close(); },
+  });
+  const req = new Request("https://hw-grading.test/jobs", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: stream, duplex: "half",
+  });
+  const res = await worker.fetch(req, env);
+  check("oversized streamed body without Content-Length is refused (2.7.2)",
+    res.status === 400);
+}
+// C-4: dedup crosses semester databases. Identical package text
+// in both databases; a job graded under the fall copy is a
+// duplicate when the same recording is submitted after the
+// current-semester pointer moves to spring.
+const XD_TEXT = PKG_TEXT + "\nCross-semester dedup package.\n";
+const xdHash = await sha256Hex(XD_TEXT);
+r = await call("/admin/packages", { body: { pkg_name: "crossdup-package", text: XD_TEXT, binding: "DB" }, token: ADMIN });
+await rpStatus("crossdup-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 }, db: "DB" });
+await rpStatus("crossdup-package v1", { status: "open", db: "DB" });
+r = await call("/admin/packages", { body: { pkg_name: "crossdup-package", text: XD_TEXT, binding: "DB_2027SP" }, token: ADMIN });
+await rpStatus("crossdup-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 }, db: "DB_2027SP" });
+await rpStatus("crossdup-package v1", { status: "open", db: "DB_2027SP" });
+const FP_XD = fpBase64(makeFp(81818, 60));
+const xdBase = { ...jobBase, pkg: "crossdup-package v1", pkg_content_sha256: xdHash,
+  audio_sha256: "f3".repeat(32), chromaprint: FP_XD };
+r = await call("/jobs", { body: { ...xdBase, retrieval_code: "crossdup01" } });
+const xdJob = r.body.job_id;
+check("cross-semester setup: fall job created", r.status === 200 && !!xdJob && !r.body.duplicate);
+db._tables.db_meta.push({ key: "current_binding", value: "DB_2027SP" });
+r = await call("/jobs", { body: { ...xdBase, retrieval_code: "crossdup02" } });
+check("same recording under the same package text in the new semester is a duplicate (2.7.2)",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === xdJob);
 db._tables.db_meta.length = 0;
 
 // Unknown route

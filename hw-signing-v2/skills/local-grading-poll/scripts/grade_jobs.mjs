@@ -12,11 +12,15 @@
 //       is written to <claim-file>; stdout carries only a short
 //       summary. A 409 means another claim already holds the job:
 //       the command exits non-zero and writes nothing.
-//   node grade_jobs.mjs result <job_id> <result-file>
+//   node grade_jobs.mjs result <job_id> <result-file> --claim <claim-file>
 //       Post a grading result (POST /grading/result). The result file
 //       holds the grading sub-agent's structured result:
 //       {completeness, accuracy, critique, injection_flags}. The
-//       job_id is added by this command. Prints the worker's answer.
+//       job_id is added by this command, and so is the claim
+//       instance: the claimed_at value from the claim file is sent
+//       with the result, binding it to the claim that produced it
+//       (Worker 2.7.2) — a result from an expired, superseded claim
+//       is refused. Prints the worker's answer.
 //
 // Credentials come from config.json in the skill folder (one level up
 // from this script): {worker, gradingToken}. The token is sent only as
@@ -27,7 +31,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const USAGE =
   "usage: grade_jobs.mjs list | claim <job_id> --out <claim-file> | " +
-  "result <job_id> <result-file>";
+  "result <job_id> <result-file> --claim <claim-file>";
 
 const cmd = process.argv[2];
 const rest = process.argv.slice(3);
@@ -118,17 +122,26 @@ if (cmd === "list") {
   );
 } else if (cmd === "result") {
   const [jobId, file] = rest;
-  if (!jobId || !file) fail(USAGE);
+  const claimIdx = rest.indexOf("--claim");
+  const claimFile = claimIdx >= 0 ? rest[claimIdx + 1] : null;
+  if (!jobId || !file || !claimFile) fail(USAGE);
   let result;
   try {
     result = JSON.parse(readFileSync(file, "utf8"));
   } catch {
     fail("Cannot read or parse the result file: " + file);
   }
-  const r = await call("POST", "/grading/result", {
-    ...result,
-    job_id: jobId,
-  });
+  let claim;
+  try {
+    claim = JSON.parse(readFileSync(claimFile, "utf8"));
+  } catch {
+    fail("Cannot read or parse the claim file: " + claimFile);
+  }
+  const postBody = { ...result, job_id: jobId };
+  if (claim && typeof claim.claimed_at === "string") {
+    postBody.claimed_at = claim.claimed_at;
+  }
+  const r = await call("POST", "/grading/result", postBody);
   if (!r.ok) refuse("Posting the result for job " + jobId, r);
   console.log(JSON.stringify(r.data));
 } else {

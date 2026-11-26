@@ -79,27 +79,44 @@ const expandedJobs = new Set(); // "pkg|code" with the detail panel open (kept a
 
 // Errors belong beside the control that was used, in the part
 // of the window on screen — not in one banner at the top of a
-// long page (teacher's rule, 2026-11-09). The page's one error
-// box moves: showError takes the control whose action failed
-// and places the box directly after that control's row, then
-// scrolls it into view if it is off screen. With no anchor, the
-// box stays where it sits (at the top, for configuration errors
-// at page load).
+// long page (teacher's rule, 2026-11-09). The message always
+// goes into the page's error box at the top, and a copy of it
+// (an .errline element) is placed directly after the row of
+// the control whose action failed, then scrolled into view.
+// The box itself never moves (2.6.15): it used to be relocated
+// beside the anchor, but an anchor inside the recordings or
+// jobs list put the box inside a container those lists rebuild
+// from scratch, and the next rebuild destroyed the page's only
+// error box — after which every later error threw instead of
+// showing. The copy beside the control may be rebuilt away;
+// the box at the top keeps the message.
 function showError(message, err, anchor) {
   const box = $('errBox');
   box.textContent = message;
   box.style.display = 'block';
+  document.querySelectorAll('.errline').forEach((el) => el.remove());
   const host = anchor || (document.activeElement
     && document.activeElement !== document.body
     ? document.activeElement : null);
+  let line = null;
   if (host && host.isConnected && !box.contains(host)) {
     const row = host.closest('.row, .recrow, .jobrow') || host;
-    if (row.parentNode) row.after(box);
+    if (row.parentNode) {
+      line = document.createElement('div');
+      line.className = 'err errline';
+      line.style.display = 'block';
+      line.textContent = message;
+      row.after(line);
+    }
   }
-  if (box.scrollIntoView) box.scrollIntoView({ block: 'nearest' });
+  const shown = line || box;
+  if (shown.scrollIntoView) shown.scrollIntoView({ block: 'nearest' });
   if (err) console.error(err);
 }
-function clearError() { $('errBox').style.display = 'none'; }
+function clearError() {
+  $('errBox').style.display = 'none';
+  document.querySelectorAll('.errline').forEach((el) => el.remove());
+}
 
 function scrubWords() { return parseScrubWords($('scrubField').value); }
 function scrubbed() { return scrubChunks(chunks, scrubWords()); }
@@ -310,6 +327,12 @@ $('mediaFile').addEventListener('change', async (ev) => {
   clearError();
   clearYtCheck();
   const file = ev.target.files && ev.target.files[0];
+  // Clear the input's value at once (2.6.15): a file input fires
+  // no change event when the same file is chosen twice in a row,
+  // so without this, deleting the loaded recording and choosing
+  // its file again — the one recovery copy — silently did
+  // nothing until a page reload.
+  ev.target.value = '';
   pcm = null; wavBytes = null; audioSha = null; durationS = 0;
   chromaprint = null; chromaprintSha = null; chromaprintPending = null;
   chunks = []; windowsDoneBase = 0;
@@ -355,6 +378,13 @@ $('mediaFile').addEventListener('change', async (ev) => {
     refreshFingerprint();
   } catch (err) {
     $('mediaStatus').textContent = 'That file could not be decoded.';
+    // The state was emptied at the top of this handler; refresh
+    // the derived views too (2.6.15), so the previous recording's
+    // transcript, hash line and review text do not stay on screen
+    // over the emptied state with Send still enabled.
+    setAudioMeta();
+    updateRunEnabled();
+    refreshDerived();
     showError('This browser could not decode the chosen file as audio or video.', err, $('mediaFile'));
   }
 });
@@ -393,16 +423,28 @@ async function renderCacheList() {
     restoreBtn.textContent = 'Restore';
     restoreBtn.addEventListener('click', async () => {
       clearError();
-      clearYtCheck();
       try {
         const record = await cacheGet(entry.audio_sha256, VERSIONS.model, VERSIONS.glossary);
         if (!record) { showError('That saved recording was made by an older model or glossary version and cannot be restored.', null, restoreBtn); return; }
+        // The link check is voided only once the restore is known
+        // to proceed (2.6.15): a refused restore changes no
+        // recording, so a check that was standing must stand.
+        clearYtCheck();
         audioSha = entry.audio_sha256;
         sourceName = record.source_name || '';
         pcm = null;
         chromaprint = null; chromaprintSha = null; chromaprintPending = null;
         updateRunEnabled();
-        await adoptCacheRecord(record, 'Recording restored from this computer.');
+        // The status line says what was restored (2.6.15): a
+        // complete transcript, a partial one that Transcribe
+        // resumes, or a recording with no transcript yet — the
+        // one line for all three hid which state the page was in.
+        const note = record.complete && record.chunks && record.chunks.length
+          ? 'Recording and transcript restored from this computer — no transcription needed.'
+          : (record.chunks && record.chunks.length) || record.windows_done
+            ? 'Recording restored from this computer. An earlier transcription stopped partway; press Transcribe to resume it.'
+            : 'Recording restored from this computer. It has not been transcribed yet; press Transcribe.';
+        await adoptCacheRecord(record, note);
         updateRunEnabled();
         refreshFingerprint();
       } catch (err) { showError('That saved recording could not be restored.', err, restoreBtn); }
@@ -1070,7 +1112,7 @@ async function verifySubmissionParts(entry, bundle, anchor) {
 //   with the grade, and their SHA-256 must equal the signed
 //   chromaprint_sha256 in the bundle;
 // - the transcript comes from this recording's own cached chunks
-//   when this computer holds them, and otherwise from the
+//   when they reproduce the graded text, and otherwise from the
 //   transcript text the status response returned; either way its
 //   canonical SHA-256 must equal the signed transcript_sha256;
 // - the critique's SHA-256 must equal the signed critique_sha256;
@@ -1095,18 +1137,45 @@ async function verifyFingerprintParts(entry, bundle, anchor) {
     .catch(() => null);
   let scrubbedChunks = null;
   let transcriptSha = null;
+  let cacheCandidate = null;
+  let cacheMarkedSha = null;
   if (record && record.chunks && record.chunks.length) {
-    scrubbedChunks = scrubChunks(
+    cacheCandidate = scrubChunks(
       record.chunks.map(fromCachedChunk), scrubWords());
     const [markedSha, legacySha] = await Promise.all([
-      sha256Hex(canonicalTranscript(scrubbedChunks)),
-      sha256Hex(legacyCanonicalTranscript(scrubbedChunks)),
+      sha256Hex(canonicalTranscript(cacheCandidate)),
+      sha256Hex(legacyCanonicalTranscript(cacheCandidate)),
     ]);
-    transcriptSha = legacySha === bundle.transcript_sha256
-      ? legacySha : markedSha;
-  } else if (extras && typeof extras.transcript === 'string') {
-    transcriptSha = await sha256Hex(extras.transcript);
-    scrubbedChunks = chunksFromCanonical(extras.transcript);
+    cacheMarkedSha = markedSha;
+    if (markedSha === bundle.transcript_sha256) {
+      scrubbedChunks = cacheCandidate;
+      transcriptSha = markedSha;
+    } else if (legacySha === bundle.transcript_sha256) {
+      scrubbedChunks = cacheCandidate;
+      transcriptSha = legacySha;
+    }
+  }
+  if (!scrubbedChunks && extras && typeof extras.transcript === 'string') {
+    // Fall back to the graded transcript the Worker kept (2.6.15):
+    // the cache reconstruction above is scrubbed with the removal
+    // list as it stands now, so a list changed since send time
+    // cannot reproduce the graded text — the stored copy is the
+    // graded text itself and does not depend on the list. Before
+    // this, the fallback ran only when no cache record existed,
+    // and the same ZIP built correctly once the record was
+    // deleted.
+    const storedSha = await sha256Hex(extras.transcript);
+    if (storedSha === bundle.transcript_sha256) {
+      transcriptSha = storedSha;
+      scrubbedChunks = chunksFromCanonical(extras.transcript);
+    }
+  }
+  if (!scrubbedChunks && cacheCandidate) {
+    // Neither source reproduced the graded transcript: package
+    // nothing, and let the check below report the mismatch with
+    // its removal-list guidance.
+    scrubbedChunks = cacheCandidate;
+    transcriptSha = cacheMarkedSha;
   }
   if (!scrubbedChunks) {
     showError('The grading record for this job did not include its ' +
@@ -1321,6 +1390,9 @@ function renderJobRow(container, entry, statusInfo, unreachable) {
     statusText = 'can’t reach the grading service — retrying';
   }
   else if (statusInfo === null) statusText = 'checking…';
+  else if (statusInfo.status === 'foreign') {
+    statusText = 'sent to a different grading service — not checked from this page';
+  }
   else if (statusInfo.status === 'forbidden') statusText = 'Job not found.';
   else if (statusInfo.status === 'ready') statusText = 'ready';
   else if (statusInfo.status === 'claimed') statusText = 'being graded now';
@@ -1530,7 +1602,11 @@ async function renderJobsOnce() {
   const results = await Promise.all(entries.map(async (entry) => {
     // 2.6.12: never send a stored code to a Worker other than the
     // one that created the entry (see entryPollable in jobs.js).
-    if (!entryPollable(entry, cfg.worker)) return null;
+    // 2.6.15: a foreign entry is marked as such, not left as a
+    // failed fetch — it was counted as unreachable before, and
+    // after three rounds its row claimed the service could not
+    // be reached and was being retried, neither of which is true.
+    if (!entryPollable(entry, cfg.worker)) return { foreign: true };
     try {
       return await fetchJobStatus(cfg.worker, {
         pkg: entry.pkg, retrieval_code: entry.retrieval_code,
@@ -1542,6 +1618,16 @@ async function renderJobsOnce() {
   entries.forEach((entry, i) => {
     const key = jobKey(entry.pkg, entry.retrieval_code);
     const res = results[i];
+    if (res && res.foreign) {
+      // Sent to a different grading service than this page's:
+      // never polled from here, and not a failure. The row says
+      // so (renderJobRow, status 'foreign').
+      statusFailures.delete(key);
+      jobStates.set(key, { status: 'foreign' });
+      const bundle = readyBundles.get(key);
+      live.push({ entry, jobId: entry.job_id || (bundle && bundle.job_id) || null });
+      return;
+    }
     if (res && res.status === 'expired') {
       // The Worker has deleted the job; drop the entry and its row,
       // and any ZIP review open on it, so the poll is not left

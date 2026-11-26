@@ -25,7 +25,7 @@ import {
 } from '../js/media-mp4.js';
 import { buildVocabulary } from '../js/vocab.js';
 import { PAIRS } from '../chemescribe-base/corrections.js';
-import { cacheKey, cacheHit, toCachedChunk, fromCachedChunk, recordingFirstWords } from '../js/cachekey.js';
+import { cacheKey, cacheHit, resetStaleRecord, toCachedChunk, fromCachedChunk, recordingFirstWords } from '../js/cachekey.js';
 import { crc32, crc32Async, buildZipBytes, buildZipBytesAsync, ZIP_DOS_DATE, ZIP_DOS_TIME, submissionZipName } from '../js/zip.js';
 import {
   RETRIEVAL_CODE_RE, parseYouTubeVideoId, canonicalWatchUrl,
@@ -231,6 +231,69 @@ await test('wav: pcmFromWavBytes inverts encodeWavPcm16 within int16 quantisatio
       'sample ' + i + ' round-trips');
   }
   assert.equal(pcmFromWavBytes(new Uint8Array(10)).length, 0);
+});
+
+await test('cache reset: a stale-version record resets to a fresh transcript state (2.6.15)', () => {
+  const stale = {
+    audio_sha256: SHA_A, model: 'old-model', glossary: VERSIONS.glossary,
+    wavBlob: 'old-blob', chunks: [{ start_s: 0, end_s: 25, raw: 'r', corrected: 'c' }],
+    duration_s: 50, source_name: 'take.mp4', created_at: '2026-01-01T00:00:00Z',
+    windows_done: 2, complete: true,
+  };
+  const reset = resetStaleRecord(stale, {
+    model: VERSIONS.model, glossary: VERSIONS.glossary,
+    wavBlob: null, duration_s: 0, source_name: '',
+  });
+  assert.equal(reset.model, VERSIONS.model);
+  assert.equal(reset.glossary, VERSIONS.glossary);
+  assert.deepEqual(reset.chunks, []);
+  assert.equal(reset.windows_done, 0);
+  assert.equal(reset.complete, false);
+  assert.equal(reset.wavBlob, 'old-blob', 'WAV bytes are kept when none are supplied');
+  assert.equal(reset.duration_s, 50);
+  assert.equal(reset.source_name, 'take.mp4');
+  assert.equal(reset.created_at, '2026-01-01T00:00:00Z');
+  // A glossary-only change also resets, and fresh values win.
+  const reset2 = resetStaleRecord(stale, {
+    model: 'old-model', glossary: 'new-glossary',
+    wavBlob: 'new-blob', duration_s: 60, source_name: 'take2.mp4',
+  });
+  assert.equal(reset2.glossary, 'new-glossary');
+  assert.equal(reset2.wavBlob, 'new-blob');
+  assert.equal(reset2.duration_s, 60);
+  // A current record and an absent record need no reset.
+  assert.equal(resetStaleRecord(
+    { ...stale, model: VERSIONS.model }, {
+      model: VERSIONS.model, glossary: VERSIONS.glossary,
+      wavBlob: null, duration_s: 0, source_name: '',
+    }), null);
+  assert.equal(resetStaleRecord(null, {
+    model: VERSIONS.model, glossary: VERSIONS.glossary,
+    wavBlob: null, duration_s: 0, source_name: '',
+  }), null);
+});
+
+await test('wiring: 2.6.15 scenario-campaign fixes are in place', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const cache = readFileSync(new URL('../js/cache.js', import.meta.url), 'utf8');
+  assert.ok(!main.includes('row.after(box)'),
+    'the error box is never relocated into a rebuilt container');
+  assert.ok(main.includes("line.className = 'err errline'"),
+    'an error copy is placed beside the control that was used');
+  assert.ok(main.includes("ev.target.value = '';"),
+    'the file input is cleared so the same file can be chosen again');
+  assert.ok(main.includes('The link check is voided only once the restore is known'),
+    'a refused restore keeps a standing link check');
+  assert.ok(main.includes("'Recording and transcript restored from this computer"),
+    'the restore status line names what was restored');
+  assert.ok(main.includes('storedSha === bundle.transcript_sha256'),
+    'the fingerprint ZIP falls back to the graded transcript the Worker kept');
+  assert.ok(main.includes('return { foreign: true };'),
+    'an entry from another grading service is marked foreign, not failed');
+  assert.ok(main.includes("'sent to a different grading service — not checked from this page'"),
+    'a foreign entry\u2019s row says it is not checked from this page');
+  assert.ok(cache.includes('resetStaleRecord(existing,'),
+    'cacheInit resets stale-version records');
 });
 
 await test('wiring: restore leaves the recording transcribable, delete unloads the loaded recording, empty records are labelled not transcribed (2.6.14)', () => {
@@ -445,7 +508,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.14');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.15');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -1011,8 +1074,8 @@ await test('wiring: errors are shown beside the control that was used', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
   assert.ok(main.includes('function showError(message, err, anchor)'),
     'showError takes the control whose action failed');
-  assert.ok(main.includes("box.scrollIntoView({ block: 'nearest' })"),
-    'the error box is scrolled into view where it lands');
+  assert.ok(main.includes("shown.scrollIntoView({ block: 'nearest' })"),
+    'the error is scrolled into view where it lands');
   for (const a of ["$('loadBtn')", "$('mediaFile')", 'restoreBtn',
                    "$('runBtn')", "$('submitJobBtn')",
                    'downloadSubmissionZip(entry, bundle, zipBtn)']) {
@@ -1054,7 +1117,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.14');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.15');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');

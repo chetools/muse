@@ -25,6 +25,7 @@ const TOKEN = "test-grading-token-9c41";
 
 const CLAIM = {
   job_id: "job-1",
+  claimed_at: "2026-11-26T17:00:00.000Z",
   kind: "final",
   transcript: "[0:00 - 0:25] The widget flows because...",
   audio_sha256: "a".repeat(64),
@@ -184,7 +185,7 @@ try {
     }),
     "utf8",
   );
-  r = await run(["result", "job-1", resultFile]);
+  r = await run(["result", "job-1", resultFile, "--claim", claimFile]);
   check("result exits 0", r.status === 0, r.stderr);
   check(
     "worker answer is printed",
@@ -199,7 +200,8 @@ try {
       resultBody.accuracy === 4 &&
       resultBody.critique.startsWith("Complete on counting") &&
       Array.isArray(resultBody.injection_flags) &&
-      resultBody.injection_flags[0].at === "[03:12]",
+      resultBody.injection_flags[0].at === "[03:12]" &&
+      resultBody.claimed_at === "2026-11-26T17:00:00.000Z",
     JSON.stringify(resultBody),
   );
 

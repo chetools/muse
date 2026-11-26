@@ -25,6 +25,13 @@
 // the submission package prints no Chromaprint line for a
 // fingerprint-less job, so the audit app has no field to send for
 // exactly the bundles that were signed over "none".
+// 2.7.2: a grading result that names its claim instance
+// (claimed_at, issued at claim time) is bound to that instance;
+// the body-size cap counts bytes actually read, not the
+// Content-Length header; dedup crosses semester databases;
+// a package status change naming a database that does not hold
+// the package is refused; a repeat proven duplicate reports
+// alias_created as "the submitted code retrieves this job".
 // t is stamped from the server clock at result time, never taken from
 // the caller. receipt = base64url(HMAC-SHA-256(secret, canonical text)).
 // Verify recomputes the receipt from the claimed values; no stored
@@ -47,7 +54,7 @@
 // databases and merges by creation time, each entry tagged with
 // its binding.
 
-const SERVICE_VERSION = "2.7.1";
+const SERVICE_VERSION = "2.7.2";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 // Job lifetime (2.6.0): an ungraded job is kept for up to
@@ -273,15 +280,42 @@ function json(body, status = 200) {
 }
 
 async function readJson(request, maxBytes = 1500000) {
-  // 2.7.1: reject an oversize body before parsing it. The largest
+  // Reject an oversize body before parsing it. The largest
   // legitimate body is a job (a 200,000-character transcript plus a
   // fingerprint) or a package text (500,000 characters, given the
   // larger cap at that route); anything beyond the cap is refused
-  // without being materialised field by field.
+  // without being materialised field by field. 2.7.1 enforced the
+  // cap through the Content-Length header only, which a chunked or
+  // streamed body simply omits; 2.7.2 counts the bytes as they are
+  // read and refuses the moment the cap is passed, keeping the
+  // header check as a fast path.
   const len = Number(request.headers.get("content-length") || 0);
   if (Number.isFinite(len) && len > maxBytes) return null;
   try {
-    return await request.json();
+    let text;
+    if (request.body && typeof request.body.getReader === "function") {
+      const reader = request.body.getReader();
+      const chunks = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          try { await reader.cancel(); } catch { /* already refused */ }
+          return null;
+        }
+        chunks.push(value);
+      }
+      const buf = new Uint8Array(total);
+      let off = 0;
+      for (const c of chunks) { buf.set(c, off); off += c.byteLength; }
+      text = new TextDecoder().decode(buf);
+    } else {
+      text = await request.text();
+      if (text.length > maxBytes) return null;
+    }
+    return JSON.parse(text);
   } catch {
     return null;
   }
@@ -1106,9 +1140,18 @@ async function duplicateResponse(db, dupRow, requestedPkg, codeLookup, nowIso, p
         .run();
       aliasCreated = true;
     } catch {
-      // The alias already exists (a repeat duplicate under the same
-      // code): nothing new was created.
-      aliasCreated = false;
+      // The insert failed on the alias primary key: a repeat
+      // duplicate under the same code. The flag means "the
+      // submitted code retrieves this job" (SPEC), which a
+      // pre-existing alias for this job satisfies — report it
+      // (2.7.2); before, a repeat submission was told the code
+      // did not retrieve the job it plainly retrieves.
+      const existing = await db.prepare(
+        "SELECT job_id FROM job_code_aliases WHERE pkg = ? AND code_lookup = ?",
+      )
+        .bind(requestedPkg, codeLookup)
+        .first();
+      aliasCreated = !!(existing && existing.job_id === dupRow.job_id);
     }
   }
   const out = {
@@ -1247,13 +1290,33 @@ async function handleJobCreate(request, env) {
   // YouTube gate and the code-uniqueness check, so a duplicate
   // submission is answered as a duplicate even without a token or
   // with a code already used by another job.
-  const dup = await findLiveDuplicate(
+  let dup = await findLiveDuplicate(
     db,
     resolvedFull,
     body.audio_sha256.toLowerCase(),
     fpItems,
   );
-  if (dup) return duplicateResponse(db, dup, parsed.full, codeLookup, nowIso, { fpItems, transcriptSha256: body.transcript_sha256 });
+  let dupDb = db;
+  if (!dup) {
+    // Dedup crosses semester databases (2.7.2): the dedup key —
+    // the recording under the resolved package version — has no
+    // semester component, so a live job for the same recording
+    // under the same package text in another semester's database
+    // is the same duplicate. The response and any alias are bound
+    // to the database holding the job; retrieval already searches
+    // across databases.
+    for (const other of await semesterDbs(env)) {
+      if (other.db === db) continue;
+      const cross = await findLiveDuplicate(
+        other.db,
+        resolvedFull,
+        body.audio_sha256.toLowerCase(),
+        fpItems,
+      );
+      if (cross) { dup = cross; dupDb = other.db; break; }
+    }
+  }
+  if (dup) return duplicateResponse(dupDb, dup, parsed.full, codeLookup, nowIso, { fpItems, transcriptSha256: body.transcript_sha256 });
 
   // YouTube gate for final jobs. The check token is an HMAC over
   // video_id / status / checked_at, so the page returns all three;
@@ -1682,6 +1745,7 @@ async function handleClaim(request, env) {
     return json({ error: "job is not claimable" }, 409);
   }
   const claimExpires = new Date(now.getTime() + CLAIM_MINUTES * 60 * 1000);
+  const claimedAtIso = now.toISOString();
   // The claim is this UPDATE, guarded on the job still being queued —
   // not the status check above, which a racing poller can pass at the
   // same moment. Only the first UPDATE matches status = 'queued'; a
@@ -1692,7 +1756,7 @@ async function handleClaim(request, env) {
   )
     .bind(
       "claimed",
-      now.toISOString(),
+      claimedAtIso,
       claimExpires.toISOString(),
       row.job_id,
       "queued",
@@ -1708,6 +1772,11 @@ async function handleClaim(request, env) {
   if (!pkgRow) return json({ error: "package record missing" }, 500);
   return json({
     job_id: row.job_id,
+    // 2.7.2: the claim instance identifier. The grader returns it
+    // with the result, binding the result to this claim (see
+    // handleResult); claimed_at is unique to a claim because a job
+    // can hold only one live claim at a time.
+    claimed_at: claimedAtIso,
     kind: row.kind,
     transcript: row.transcript,
     audio_sha256: row.audio_sha256,
@@ -1767,7 +1836,8 @@ async function handleResult(request, env) {
     body.critique.length > MAX_CRITIQUE_CHARS ||
     (body.injection_flags !== undefined &&
       body.injection_flags !== null &&
-      !Array.isArray(body.injection_flags))
+      !Array.isArray(body.injection_flags)) ||
+    (body.claimed_at !== undefined && !isText(body.claimed_at, 64))
   ) {
     return json({ error: "invalid request body" }, 400);
   }
@@ -1796,6 +1866,20 @@ async function handleResult(request, env) {
     Date.parse(row.claim_expires) <= now.getTime()
   ) {
     return json({ error: "no live claim on this job" }, 409);
+  }
+  // Claim binding (2.7.2): a result that names its claim instance
+  // (claimed_at, issued by /grading/claim) is accepted only for
+  // that instance. The 2.7.1 guard alone could not tell the live
+  // claim from an earlier, expired one: after a takeover, the
+  // stale grader's result satisfied the guard on the strength of
+  // the new claim and was signed, and the live grader got 409.
+  // A result naming no instance keeps the 2.7.1 behaviour, so a
+  // grader that has not yet adopted the field is not locked out.
+  if (
+    typeof body.claimed_at === "string" &&
+    row.claimed_at !== body.claimed_at
+  ) {
+    return json({ error: "result does not match the live claim" }, 409);
   }
   const parsed = parsePkgId(row.pkg);
   const pkgRow = parsed
@@ -1845,11 +1929,13 @@ async function handleResult(request, env) {
   // UPDATE could still be overwritten by the first grader's result,
   // and two concurrent result posts could both land, the second
   // silently replacing the first (and invalidating its receipt).
+  const claimBound = typeof body.claimed_at === "string";
   const upd = await db.prepare(
     "UPDATE jobs SET status = ?, completeness = ?, accuracy = ?, " +
       "critique = ?, result_json = ?, receipt = ?, graded_at = ?, " +
       "expires_at = ?, claim_expires = NULL WHERE job_id = ? " +
-      "AND status = ? AND claim_expires > ?",
+      "AND status = ? AND claim_expires > ?" +
+      (claimBound ? " AND claimed_at = ?" : ""),
   )
     .bind(
       "ready",
@@ -1863,6 +1949,7 @@ async function handleResult(request, env) {
       row.job_id,
       "claimed",
       nowIso,
+      ...(claimBound ? [body.claimed_at] : []),
     )
     .run();
   if (!upd || !upd.meta || upd.meta.changes !== 1) {
@@ -2131,6 +2218,16 @@ async function handlePackageStatus(request, env, pkgId) {
   let found = null;
   if (body && typeof body === "object" && typeof body.db === "string") {
     found = holders.find((h) => h.binding === body.db) || null;
+    // 2.7.2: an explicit db tag that names no holder is refused,
+    // not silently satisfied from another semester's copy — a
+    // status change is a mutation, and acting on the wrong
+    // semester's package is worse than refusing.
+    if (!found) {
+      return json(
+        { error: "package is not held in the named database", db: body.db },
+        404,
+      );
+    }
   }
   if (!found) {
     if (holders.length > 1) {
