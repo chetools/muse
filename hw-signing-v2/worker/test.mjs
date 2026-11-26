@@ -17,7 +17,7 @@ import worker from "./worker.js";
 // index (2.6.0: one live job of any kind per pkg + audio
 // fingerprint), and the job_code_aliases primary key.
 function createDb() {
-  const tables = { packages: [], jobs: [], duration_stats: [], job_code_aliases: [] };
+  const tables = { packages: [], jobs: [], duration_stats: [], job_code_aliases: [], db_meta: [] };
 
   function resolveToken(tok, args, ptr) {
     tok = tok.trim();
@@ -128,6 +128,11 @@ function createDb() {
       if (table === "packages") {
         if (tables.packages.some((r) => r.pkg === row.pkg && r.version === row.version)) {
           throw new Error("UNIQUE constraint failed: packages.pkg, packages.version");
+        }
+      }
+      if (table === "db_meta") {
+        if (tables.db_meta.some((r) => r.key === row.key)) {
+          throw new Error("UNIQUE constraint failed: db_meta.key");
         }
       }
       tables[table].push(row);
@@ -260,8 +265,10 @@ globalThis.fetch = async (url, opts = {}) => {
 };
 
 const db = createDb();
+const db2 = createDb();
 const env = {
   DB: db,
+  DB_2027SP: db2,
   SIGNING_SECRET: "test-signing-secret-0123456789abcdef",
   ADMIN_TOKEN: "test-admin-token-0123456789",
   GRADING_TOKEN: "test-grading-token-0123456789",
@@ -841,8 +848,8 @@ check("result for the aged job succeeds", r.status === 200 && r.body.ok === true
   const row = db._tables.jobs.find((j) => j.job_id === weekendJob);
   check("grading resets expiry to graded_at + 180 days",
     Date.parse(row.expires_at) - Date.parse(row.graded_at) === 180 * 24 * 3600 * 1000);
-  check("grading nulls the transcript text but keeps its hash",
-    row.transcript === null && row.transcript_sha256 === TRANS_SHA);
+  check("grading keeps the transcript text and its hash (2.7.0)",
+    row.transcript === JOB_TRANSCRIPT && row.transcript_sha256 === TRANS_SHA);
 }
 r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "weekend99" } });
 check("ready status reports the graded expiry", r.status === 200 && r.body.status === "ready" &&
@@ -1120,7 +1127,9 @@ const FP_F = makeFp(5151, 60);
 const FP_A_SHIFTED = [...makeFp(777, 3), ...FP_A];
 
 r = await call("/", { method: "GET" });
-check("health: version is 2.6.1", r.status === 200 && r.body.version === "2.6.1");
+check("health: version is 2.7.0", r.status === 200 && r.body.version === "2.7.0");
+check("health: semester databases are discovered from the env bindings",
+  r.body.databases === 2);
 
 // Duplicate of a graded job returns the same bundle (practice and
 // final), and the submitted kind / YouTube token are ignored.
@@ -1144,9 +1153,9 @@ check("dedup setup: graded job returns a receipt", r.status === 200 && r.body.ok
 const dedupReceipt = r.body.receipt;
 {
   const row = db._tables.jobs.find((j) => j.job_id === dedupJob);
-  check("transcript nulling (a): graded job row transcript is NULL",
-    row.transcript === null);
-  check("transcript nulling (b): graded job keeps transcript_sha256 and the fingerprint",
+  check("transcript retention (a): graded job row keeps the transcript text",
+    row.transcript === JOB_TRANSCRIPT);
+  check("transcript retention (b): graded job keeps transcript_sha256 and the fingerprint",
     row.transcript_sha256 === TRANS_SHA && row.chromaprint === FP_A64);
   check("graded expires_at is graded_at + 180 days",
     Date.parse(row.expires_at) - Date.parse(row.graded_at) === 180 * 24 * 3600 * 1000);
@@ -1180,7 +1189,7 @@ check("duplicate of a queued job carries queue_ahead",
 // Alias retrieval: the alias code finds the graded job by status,
 // and a code already used by a different job is not aliased.
 r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "deduppb02" } });
-check("transcript nulling (b): alias status returns the result bundle for the graded job",
+check("transcript retention (b): alias status returns the result bundle for the graded job",
   r.status === 200 && r.body.status === "ready" && r.body.result &&
   r.body.result.receipt === dedupReceipt);
 r = await call("/jobs/retrieved", { body: { pkg: "test-package v1", retrieval_code: "deduppb02" } });
@@ -1207,20 +1216,20 @@ check("alias code finalizes the graded job", r.status === 200 && r.body.ok === t
     row.kind === "final" && row.youtube_status === "ok");
 }
 
-// Transcript nulling (c): a queued job still returns its transcript
-// on claim; grading it then nulls the transcript.
+// Transcript retention (c): a queued job still returns its
+// transcript on claim; grading it then keeps the transcript.
 r = await call("/grading/claim", { token: GRADING, body: { job_id: dedupOtherJob } });
-check("transcript nulling (c): queued job returns its transcript on claim",
+check("transcript retention (c): queued job returns its transcript on claim",
   r.status === 200 && r.body.transcript === JOB_TRANSCRIPT);
 r = await call("/grading/result", {
   token: GRADING,
   body: { job_id: dedupOtherJob, completeness: 3, accuracy: 4, critique: "Queued claim transcript check." },
 });
-check("transcript nulling (c): result for the claimed job succeeds", r.status === 200 && r.body.ok === true);
+check("transcript retention (c): result for the claimed job succeeds", r.status === 200 && r.body.ok === true);
 {
   const row = db._tables.jobs.find((j) => j.job_id === dedupOtherJob);
-  check("transcript nulling (c): transcript is NULL after grading",
-    row.transcript === null && row.transcript_sha256 === TRANS_SHA);
+  check("transcript retention (c): transcript is kept after grading",
+    row.transcript === JOB_TRANSCRIPT && row.transcript_sha256 === TRANS_SHA);
 }
 
 // Same audio under a new prompt version re-grades.
@@ -1372,6 +1381,328 @@ check("expired graded job frees the fingerprint for fresh grading",
   check("race: the loser's code retrieves the winning job via its alias",
     r.status === 200 && r.body.status === "queued");
 }
+
+// ------------------------------------------------------- 2.7.0
+// Retrieval payload (transcript + chromaprint), the signed
+// chromaprint hash, and one database per semester.
+async function sha256HexBytes(bytes) {
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return Buffer.from(d).toString("hex");
+}
+
+// (1) Status of a ready job returns the transcript and chromaprint;
+// (2) its bundle carries the signed chromaprint hash.
+const FP_G = makeFp(2027, 120);
+const FP_G64 = fpBase64(FP_G);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "ret270001", audio_sha256: "a7".repeat(32), chromaprint: FP_G64 } });
+check("2.7.0 setup: job with a fingerprint created", r.status === 200 && !r.body.duplicate);
+const retJob = r.body.job_id;
+await call("/grading/claim", { token: GRADING, body: { job_id: retJob } });
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: retJob, completeness: 5, accuracy: 4, critique: "Retrieval payload grade." },
+});
+check("2.7.0 setup: job graded", r.status === 200 && r.body.ok === true);
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "ret270001" } });
+check("ready status returns the transcript text and the chromaprint",
+  r.status === 200 && r.body.status === "ready" &&
+  r.body.transcript === JOB_TRANSCRIPT && r.body.chromaprint === FP_G64);
+const retBundle = r.body.result;
+const fpHashExpected = await sha256HexBytes(Buffer.from(FP_G64, "base64"));
+check("graded bundle carries chromaprint_sha256 of the raw fingerprint bytes",
+  retBundle && retBundle.chromaprint_sha256 === fpHashExpected);
+r = await call("/verify-grade", { body: retBundle });
+check("verify-grade accepts the bundle with the fingerprint hash",
+  r.status === 200 && r.body.valid === true);
+r = await call("/verify-grade", { body: { ...retBundle, chromaprint_sha256: "0".repeat(64) } });
+check("verify-grade rejects a tampered chromaprint_sha256",
+  r.status === 200 && r.body.valid === false);
+r = await call("/verify-grade", { body: { ...retBundle, chromaprint_sha256: "none" } });
+check("verify-grade rejects chromaprint_sha256 replaced by none",
+  r.status === 200 && r.body.valid === false);
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "ret270002", audio_sha256: "a7".repeat(32), chromaprint: FP_G64 } });
+check("duplicate response for a ready job also returns transcript and chromaprint",
+  r.status === 200 && r.body.duplicate === true && r.body.job_id === retJob &&
+  r.body.transcript === JOB_TRANSCRIPT && r.body.chromaprint === FP_G64);
+
+// (3) A pre-2.7.0 bundle (old canonical, no chromaprint_sha256)
+// still verifies; adding the field to it breaks the receipt.
+{
+  const legacyBundle = {
+    v: 2,
+    job_id: "legacy-job-2700",
+    audio_sha256: "1a".repeat(32),
+    transcript_sha256: TRANS_SHA,
+    pkg: "test-package v1",
+    pkg_content_sha256: pkgHash1,
+    completeness: 4,
+    accuracy: 5,
+    critique_sha256: await sha256Hex("Legacy critique."),
+    youtube_video_sha256: "none",
+    t: "2026-11-20T00:00:00.000Z",
+  };
+  const legacyCanonical = [
+    "2", legacyBundle.job_id, legacyBundle.audio_sha256,
+    legacyBundle.transcript_sha256, legacyBundle.pkg,
+    legacyBundle.pkg_content_sha256, "4", "5",
+    legacyBundle.critique_sha256, "none", legacyBundle.t,
+  ].join("\n");
+  legacyBundle.receipt = await hmacB64u(env.SIGNING_SECRET, legacyCanonical);
+  const rr = await call("/verify-grade", { body: legacyBundle });
+  check("pre-2.7.0 bundle in the old form still verifies",
+    rr.status === 200 && rr.body.valid === true);
+  const rr2 = await call("/verify-grade", {
+    body: { ...legacyBundle, chromaprint_sha256: "0".repeat(64) },
+  });
+  check("pre-2.7.0 bundle with an added chromaprint_sha256 rejected",
+    rr2.status === 200 && rr2.body.valid === false);
+}
+
+// (3b) Finalize re-signing preserves a pre-2.7.0 bundle's form:
+// rewrite the retrieval job's stored bundle in the old form (old
+// canonical, no chromaprint_sha256), then finalize it — the
+// re-signed bundle must verify and must not gain the field.
+{
+  const row = db._tables.jobs.find((j) => j.job_id === retJob);
+  const legacyStored = {
+    v: 2,
+    job_id: retJob,
+    audio_sha256: "a7".repeat(32),
+    transcript_sha256: TRANS_SHA,
+    pkg: "test-package v1",
+    pkg_content_sha256: pkgHash1,
+    completeness: 5,
+    accuracy: 4,
+    critique: "Retrieval payload grade.",
+    critique_sha256: retBundle.critique_sha256,
+    youtube_video_sha256: "none",
+    t: retBundle.t,
+    injection_flags: [],
+  };
+  const legacyCanonical = [
+    "2", legacyStored.job_id, legacyStored.audio_sha256,
+    legacyStored.transcript_sha256, legacyStored.pkg,
+    legacyStored.pkg_content_sha256, "5", "4",
+    legacyStored.critique_sha256, "none", legacyStored.t,
+  ].join("\n");
+  legacyStored.receipt = await hmacB64u(env.SIGNING_SECRET, legacyCanonical);
+  row.result_json = JSON.stringify(legacyStored);
+  row.receipt = legacyStored.receipt;
+  const rr = await call("/jobs/finalize", {
+    body: {
+      pkg: "test-package v1", retrieval_code: "ret270001",
+      youtube_video_id: "dQw4w9WgXcQ",
+      youtube_token: ytOk.body.token,
+      youtube_checked_at: ytOk.body.checked_at,
+    },
+  });
+  check("finalize of a pre-2.7.0 graded job succeeds", rr.status === 200 && rr.body.ok === true);
+  const bundle2 = JSON.parse(row.result_json);
+  check("finalize keeps the pre-2.7.0 bundle's form (no chromaprint_sha256 added)",
+    !("chromaprint_sha256" in bundle2) &&
+    bundle2.youtube_video_sha256 === (await sha256Hex("dQw4w9WgXcQ")));
+  const { injection_flags, ...verifyBody } = bundle2;
+  const rv = await call("/verify-grade", { body: verifyBody });
+  check("re-signed pre-2.7.0 bundle verifies in the old form",
+    rv.status === 200 && rv.body.valid === true);
+}
+
+// (4) A job graded without a fingerprint gets chromaprint_sha256
+// "none", and its status chromaprint is null.
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "nofp27001", audio_sha256: "b7".repeat(32) } });
+check("2.7.0 setup: job without a fingerprint created", r.status === 200 && !r.body.duplicate);
+const noFpJob = r.body.job_id;
+await call("/grading/claim", { token: GRADING, body: { job_id: noFpJob } });
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: noFpJob, completeness: 4, accuracy: 4, critique: "No fingerprint grade." },
+});
+check("2.7.0 setup: fingerprint-less job graded", r.status === 200 && r.body.ok === true);
+r = await call("/jobs/status", { body: { pkg: "test-package v1", retrieval_code: "nofp27001" } });
+check("fingerprint-less bundle carries chromaprint_sha256 none and a null chromaprint",
+  r.status === 200 && r.body.result &&
+  r.body.result.chromaprint_sha256 === "none" && r.body.chromaprint === null);
+{
+  const rr = await call("/verify-grade", { body: r.body.result });
+  check("fingerprint-less bundle verifies", rr.status === 200 && rr.body.valid === true);
+}
+
+// (5) A package created with binding DB_2027SP lives in the second
+// database through its whole lifecycle.
+const SP_TEXT = PKG_TEXT + "\nSpring package, version 1.\n";
+const spHash = await sha256Hex(SP_TEXT);
+r = await call("/admin/packages", { body: { pkg_name: "spring-package", text: SP_TEXT, binding: "DB_2027SP" }, token: ADMIN });
+check("package created with binding DB_2027SP", r.status === 200 && r.body.pkg === "spring-package v1");
+check("spring package row lives in the second database only",
+  db2._tables.packages.some((p) => p.pkg === "spring-package") &&
+  !db._tables.packages.some((p) => p.pkg === "spring-package"));
+r = await call("/admin/packages", { body: { pkg_name: "bogus-binding-package", text: "x", binding: "DB_1999FA" }, token: ADMIN });
+check("package create with a binding that names no database rejected", r.status === 400);
+await rpStatus("spring-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 } });
+r = await rpStatus("spring-package v1", { status: "open" });
+check("spring package opens in its own database", r.status === 200 && r.body.status === "open");
+const FP_SP64 = fpBase64(makeFp(60606, 70));
+const springBase = {
+  ...jobBase, pkg: "spring-package v1", pkg_content_sha256: spHash,
+  audio_sha256: "c7".repeat(32), retrieval_code: "spring2701",
+  chromaprint: FP_SP64,
+};
+r = await call("/jobs", { body: springBase });
+check("job under the spring package created", r.status === 200 && !r.body.duplicate);
+const springJob = r.body.job_id;
+check("spring job row lives in the second database only",
+  db2._tables.jobs.some((j) => j.job_id === springJob) &&
+  !db._tables.jobs.some((j) => j.job_id === springJob));
+r = await call("/grading/pending", { method: "GET", token: GRADING });
+check("pending tags the spring job with db DB_2027SP",
+  r.body.some((j) => j.job_id === springJob && j.db === "DB_2027SP"));
+r = await call("/grading/claim", { token: GRADING, body: { job_id: springJob } });
+check("claim without a db field finds the job in the second database",
+  r.status === 200 && r.body.transcript === JOB_TRANSCRIPT &&
+  r.body.package.text === SP_TEXT);
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: springJob, completeness: 5, accuracy: 5, critique: "Spring grade." },
+});
+check("result for the second-database job succeeds", r.status === 200 && r.body.ok === true);
+r = await call("/jobs/status", { body: { pkg: "spring-package v1", retrieval_code: "spring2701" } });
+check("status for the second-database job returns bundle, transcript and chromaprint",
+  r.status === 200 && r.body.status === "ready" && r.body.result &&
+  r.body.result.critique === "Spring grade." &&
+  r.body.transcript === JOB_TRANSCRIPT && r.body.chromaprint === FP_SP64);
+r = await call("/", { method: "GET" });
+check("health: two semester databases reported",
+  r.body.databases === 2);
+// Claim and result also honour an explicit db tag.
+r = await call("/jobs", { body: { ...springBase, retrieval_code: "spring2702", audio_sha256: "d7".repeat(32), chromaprint: fpBase64(makeFp(70707, 70)) } });
+check("second spring job created", r.status === 200 && !r.body.duplicate);
+const springJob2 = r.body.job_id;
+r = await call("/grading/claim", { token: GRADING, body: { job_id: springJob2, db: "DB_2027SP" } });
+check("claim with the db tag claims from that database", r.status === 200);
+r = await call("/grading/result", {
+  token: GRADING,
+  body: { job_id: springJob2, db: "DB_2027SP", completeness: 4, accuracy: 4, critique: "Tagged claim grade." },
+});
+check("result with the db tag succeeds", r.status === 200 && r.body.ok === true);
+
+// (6) Pending merges two databases' queued jobs in created_at
+// order, not database by database.
+r = await call("/jobs", { body: { ...jobBase, retrieval_code: "mergeprim1", audio_sha256: "e7".repeat(32) } });
+check("merge setup: primary job created", r.status === 200 && !r.body.duplicate);
+const mergePrimary = r.body.job_id;
+r = await call("/jobs", { body: { ...springBase, retrieval_code: "mergespr01", audio_sha256: "f7".repeat(32), chromaprint: fpBase64(makeFp(80808, 70)) } });
+check("merge setup: spring job created", r.status === 200 && !r.body.duplicate);
+const mergeSpring = r.body.job_id;
+{
+  const prow = db._tables.jobs.find((j) => j.job_id === mergePrimary);
+  const srow = db2._tables.jobs.find((j) => j.job_id === mergeSpring);
+  prow.created_at = new Date(Date.now() - 1000).toISOString();
+  srow.created_at = new Date(Date.now() - 60000).toISOString();
+}
+r = await call("/grading/pending", { method: "GET", token: GRADING });
+{
+  const ids = r.body.map((j) => j.job_id);
+  check("pending merges the databases in created_at order",
+    ids.indexOf(mergeSpring) !== -1 && ids.indexOf(mergePrimary) !== -1 &&
+    ids.indexOf(mergeSpring) < ids.indexOf(mergePrimary));
+  const pe = r.body.find((j) => j.job_id === mergePrimary);
+  check("pending tags the primary job with db DB", !!pe && pe.db === "DB");
+}
+
+// (7) The package list spans both databases, each with its db tag.
+r = await call("/admin/packages", { method: "GET", token: ADMIN });
+check("package list includes both databases' packages with db tags",
+  r.status === 200 &&
+  r.body.some((p) => p.pkg === "spring-package v1" && p.db === "DB_2027SP") &&
+  r.body.some((p) => p.pkg === "test-package v1" && p.db === "DB"));
+
+// (8) A package name may be reused across semesters: the same name
+// created in both databases starts a v1 lineage in each, and the
+// link's content hash decides which database a job belongs to.
+const SH_TEXT_A = PKG_TEXT + "\nShared package, fall text.\n";
+const SH_TEXT_B = PKG_TEXT + "\nShared package, spring text.\n";
+const shHashA = await sha256Hex(SH_TEXT_A);
+const shHashB = await sha256Hex(SH_TEXT_B);
+r = await call("/admin/packages", { body: { pkg_name: "shared-package", text: SH_TEXT_A }, token: ADMIN });
+check("shared name created in the primary database",
+  r.status === 200 && r.body.pkg === "shared-package v1");
+r = await call("/admin/packages", { body: { pkg_name: "shared-package", text: SH_TEXT_B, binding: "DB_2027SP" }, token: ADMIN });
+check("the same name created in the second database starts its own v1",
+  r.status === 200 && r.body.pkg === "shared-package v1");
+check("each database holds its own shared-package v1 row",
+  db._tables.packages.some((p) => p.pkg === "shared-package" && p.version === 1) &&
+  db2._tables.packages.some((p) => p.pkg === "shared-package" && p.version === 1));
+// Admin status without a db must be unique: with the name and
+// version in both databases it is refused, naming the candidates.
+r = await rpStatus("shared-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 } });
+check("package status without db is 409 when two databases hold the name and version",
+  r.status === 409 && Array.isArray(r.body.candidates) &&
+  r.body.candidates.includes("DB") && r.body.candidates.includes("DB_2027SP"));
+// With the db field it acts on the named database's copy.
+r = await rpStatus("shared-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 }, db: "DB" });
+check("package status with db DB trials the primary copy",
+  r.status === 200 && r.body.status === "trialled");
+r = await rpStatus("shared-package v1", { status: "open", db: "DB" });
+check("primary shared package opens", r.status === 200 && r.body.status === "open");
+r = await rpStatus("shared-package v1", { status: "trialled", trial: { completeness: 5, accuracy: 5 }, db: "DB_2027SP" });
+check("package status with db DB_2027SP trials the spring copy",
+  r.status === 200 && r.body.status === "trialled");
+r = await rpStatus("shared-package v1", { status: "open", db: "DB_2027SP" });
+check("spring shared package opens", r.status === 200 && r.body.status === "open");
+check("the two copies' statuses were set independently",
+  db._tables.packages.find((p) => p.pkg === "shared-package").status === "open" &&
+  db2._tables.packages.find((p) => p.pkg === "shared-package").status === "open");
+// Jobs under each copy land in their own database, decided by the
+// link's content hash.
+const shBaseA = { ...jobBase, pkg: "shared-package v1", pkg_content_sha256: shHashA };
+const shBaseB = { ...jobBase, pkg: "shared-package v1", pkg_content_sha256: shHashB };
+r = await call("/jobs", { body: { ...shBaseA, retrieval_code: "sharedfa01", audio_sha256: "1a".repeat(32) } });
+check("job under the fall link created", r.status === 200 && !r.body.duplicate);
+const shJobA = r.body.job_id;
+r = await call("/jobs", { body: { ...shBaseB, retrieval_code: "sharedsp01", audio_sha256: "1b".repeat(32) } });
+check("job under the spring link created", r.status === 200 && !r.body.duplicate);
+const shJobB = r.body.job_id;
+check("each shared-name job lives in its link's database",
+  db._tables.jobs.some((j) => j.job_id === shJobA) &&
+  !db2._tables.jobs.some((j) => j.job_id === shJobA) &&
+  db2._tables.jobs.some((j) => j.job_id === shJobB) &&
+  !db._tables.jobs.some((j) => j.job_id === shJobB));
+// A hash matching neither copy is a content hash mismatch, and a
+// name + version no database holds is an unknown package.
+r = await call("/jobs", { body: { ...shBaseA, pkg_content_sha256: "0".repeat(64), retrieval_code: "sharedbad1", audio_sha256: "1c".repeat(32) } });
+check("job with a hash matching neither copy is a content hash mismatch",
+  r.status === 400 && r.body.error === "package content hash mismatch");
+r = await call("/jobs", { body: { ...shBaseA, pkg: "shared-package v9", retrieval_code: "sharedbad2", audio_sha256: "1d".repeat(32) } });
+check("job for a version no database holds is an unknown package",
+  r.status === 404 && r.body.error === "unknown package");
+// Grade both copies' jobs; each status lookup by code returns its
+// own semester's grade.
+r = await call("/grading/claim", { token: GRADING, body: { job_id: shJobA } });
+check("fall shared job claimed with its own package text",
+  r.status === 200 && r.body.package.text === SH_TEXT_A);
+r = await call("/grading/result", { token: GRADING, body: { job_id: shJobA, completeness: 5, accuracy: 4, critique: "Fall shared grade." } });
+check("fall shared job graded", r.status === 200 && r.body.ok === true);
+r = await call("/grading/claim", { token: GRADING, body: { job_id: shJobB } });
+check("claim with no db tag grades the second database's shared job",
+  r.status === 200 && r.body.package.text === SH_TEXT_B);
+r = await call("/grading/result", { token: GRADING, body: { job_id: shJobB, completeness: 4, accuracy: 5, critique: "Spring shared grade." } });
+check("spring shared job graded", r.status === 200 && r.body.ok === true);
+r = await call("/jobs/status", { body: { pkg: "shared-package v1", retrieval_code: "sharedfa01" } });
+check("status by the fall code returns the fall grade",
+  r.status === 200 && r.body.result && r.body.result.critique === "Fall shared grade.");
+r = await call("/jobs/status", { body: { pkg: "shared-package v1", retrieval_code: "sharedsp01" } });
+check("status by the spring code returns the spring grade",
+  r.status === 200 && r.body.result && r.body.result.critique === "Spring shared grade.");
+
+// (9) Package creation without a binding follows db_meta's
+// current_binding in the primary database.
+db._tables.db_meta.push({ key: "current_binding", value: "DB_2027SP" });
+r = await call("/admin/packages", { body: { pkg_name: "defaulted-package", text: "Defaulted text." }, token: ADMIN });
+check("package create without a binding follows db_meta current_binding",
+  r.status === 200 && r.body.pkg === "defaulted-package v1" &&
+  db2._tables.packages.some((p) => p.pkg === "defaulted-package") &&
+  !db._tables.packages.some((p) => p.pkg === "defaulted-package"));
+db._tables.db_meta.length = 0;
 
 // Unknown route
 r = await call("/nope", { method: "GET" });

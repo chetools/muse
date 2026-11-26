@@ -1297,8 +1297,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/44.0",
-          "user agent bumped to 44.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/48.0",
+          "user agent bumped to 48.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3412,6 +3412,75 @@ def main():
           and b"privblock" not in dash45,
           "v47: critiques wrap only numerical grades and "
           "the Activity log wraps only known names and IDs")
+
+    # ---------------------------------------------------------
+    # 26. v48: the front end discovers fingerprint-form
+    # packages. A package folder holding submission.html +
+    # submission-fingerprint.bin (no audio file) is found by
+    # downloaded_packages and downloaded_attempt_packages, its
+    # record's media path naming the fingerprint file (the
+    # audit checks decide the form from that name); it runs
+    # through the front end's own check path; and the
+    # redownload presence test accepts the fingerprint file
+    # in the WAV's place.
+    cfg48 = web.load_web_config()
+    KEY999 = "101_202_999"
+    unit999 = data_dir / "downloads" / "101" / "202" / "999"
+    unit999.mkdir(parents=True, exist_ok=True)
+    (unit999 / "submission.html").write_text(
+        build_html(audit.sha256_file(wav_tmp)), encoding="utf-8")
+    fp_bytes48 = b"\x01\x02\x03\x04" * 64
+    (unit999 / "submission-fingerprint.bin").write_bytes(fp_bytes48)
+    (unit999 / "package.zip").write_bytes(b"zip")
+    att999 = unit999 / "attempt-1"
+    att999.mkdir()
+    (att999 / "submission.html").write_text(
+        build_html(audit.sha256_file(wav_tmp)), encoding="utf-8")
+    (att999 / "submission-fingerprint.bin").write_bytes(fp_bytes48)
+    pkgs48 = {p["key"]: p for p in web.downloaded_packages(cfg48)}
+    check(KEY999 in pkgs48
+          and pkgs48[KEY999]["audio_path"].endswith(
+              "submission-fingerprint.bin"),
+          "v48: a fingerprint-form package folder is discovered, "
+          "its media path naming the fingerprint file")
+    atts48 = {p["attempt_key"]: p
+              for p in web.downloaded_attempt_packages(cfg48)}
+    check(KEY999 + "::a1" in atts48
+          and atts48[KEY999 + "::a1"]["audio_path"].endswith(
+              "submission-fingerprint.bin"),
+          "v48: a fingerprint-form previous attempt is "
+          "discovered the same way")
+    bare998 = data_dir / "downloads" / "101" / "202" / "998"
+    bare998.mkdir(parents=True, exist_ok=True)
+    (bare998 / "submission.html").write_text(
+        build_html(audit.sha256_file(wav_tmp)), encoding="utf-8")
+    check("101_202_998" not in
+          {p["key"] for p in web.downloaded_packages(cfg48)},
+          "v48: an HTML-only folder is still not a package")
+    # The fixture's HTML carries no signed Chromaprint SHA-256,
+    # so the package cannot be internally consistent; what is
+    # tested is that the check runs and reports the form.
+    entry48 = web._check_one_package(cfg48, pkgs48[KEY999], {})
+    check(entry48.get("package_form") == "fingerprint"
+          and "error" not in entry48,
+          "v48: the front end checks a fingerprint package and "
+          "the result reports the fingerprint form")
+    state48 = {"101:202:999": {
+        "attempt": 1, "submitted_at": "2026-11-20T09:00:00Z",
+        "submission_id": 9999}}
+    check(web._rd_needs(state48, unit999, "101:202:999", 1,
+                        "2026-11-20T09:00:00Z", 9999, False)
+          is False,
+          "v48: _rd_needs accepts the fingerprint file in the "
+          "WAV's place — a downloaded fingerprint package is "
+          "not owed a fetch")
+    (unit999 / "submission-fingerprint.bin").unlink()
+    check(web._rd_needs(state48, unit999, "101:202:999", 1,
+                        "2026-11-20T09:00:00Z", 9999, False)
+          is True,
+          "v48: _rd_needs still owes the fetch when neither "
+          "media entry is on disk")
+    (unit999 / "submission-fingerprint.bin").write_bytes(fp_bytes48)
 
     (web.fetch_courses, web.fetch_assignments,
      web.fetch_submissions_for, web.fetch_assignment_for,

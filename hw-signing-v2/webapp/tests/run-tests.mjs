@@ -15,8 +15,8 @@ import {
   canonicalTranscript, legacyCanonicalTranscript, findSuspects, formatDuration,
 } from '../js/transcript.js';
 import {
-  VERSIONS, assemblePackage, parsePackageVerification,
-  formatTranscriptTimestamp,
+  VERSIONS, FINGERPRINT_FILE_NAME, assemblePackage, parsePackageVerification,
+  chunksFromCanonical, formatTranscriptTimestamp,
 } from '../js/package.js';
 import { encodeWavPcm16, wavDurationS, channelsToMono, createStreamResampler, decodeFileTo16kMono } from '../js/media.js';
 import {
@@ -33,6 +33,7 @@ import {
   validateJobPayload, buildJobPayload,
   loadJobEntries, addJobEntry, removeJobEntry, pruneExpiredEntries,
   submitJob, fetchJobStatus, finalizeJob,
+  bundleChromaprintSha, verifyFingerprintContents,
   kindFromResultBundle, duplicateJobEntry, collapseSameJobEntries,
   generateRetrievalToken, RECOVERY_TOKEN_LENGTH,
 } from '../js/jobs.js';
@@ -380,7 +381,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.5.4');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.0');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -985,7 +986,7 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.5.4');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.0');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
@@ -1454,6 +1455,207 @@ await test('wiring: tier-2 gate loads no mp4box, and the page names the fallback
   assert.ok(main.includes('That file could not be decoded.'), 'final failure text unchanged');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(!index.includes('media-mp4'), 'tier 2 is not loaded on the normal path');
+});
+
+/* ---------------- fingerprint-form submissions (2.6.0) ---------------- */
+
+// A fingerprint fixture: items, their base64 (as the status
+// response carries them), the raw bytes, and the signed SHA-256.
+const fpItemsFixture = new Uint32Array([0, 1, 0x12345678, 0xffffffff, 42, 7]);
+const fpB64 = encodeRawFingerprint(fpItemsFixture);
+const fpDecoded = decodeRawFingerprint(fpB64);
+const fpBytes = new Uint8Array(
+  fpDecoded.buffer, fpDecoded.byteOffset, fpDecoded.byteLength);
+const FP_SHA = await sha256Hex(fpBytes);
+
+await test('package v2: fingerprint form adds the Chromaprint SHA-256 line and names the fingerprint file', () => {
+  const fpHtml = assemblePackage({ ...pkgInput, fingerprintSha256: FP_SHA });
+  const v = parsePackageVerification(fpHtml).verification;
+  assert.equal(v['Chromaprint SHA-256'], FP_SHA);
+  assert.equal(v['Audio file'], 'submission-fingerprint.bin');
+  assert.equal(v['Audio file'], FINGERPRINT_FILE_NAME);
+  const iAudio = fpHtml.indexOf('<dt>Audio SHA-256</dt>');
+  const iFp = fpHtml.indexOf('<dt>Chromaprint SHA-256</dt>');
+  const iTr = fpHtml.indexOf('<dt>Transcript SHA-256</dt>');
+  assert.ok(iAudio >= 0 && iFp > iAudio && iTr > iFp,
+    'the line sits immediately after Audio SHA-256');
+  // Everything else is identical to the WAV-form assembly: removing
+  // the one added line and restoring the file name recovers it.
+  const stripped = fpHtml
+    .replace('<dt>Chromaprint SHA-256</dt><dd>' + FP_SHA + '</dd>\n', '')
+    .replace('<dt>Audio file</dt><dd>' + FINGERPRINT_FILE_NAME + '</dd>',
+      '<dt>Audio file</dt><dd>submission-audio.wav</dd>');
+  assert.equal(stripped, html);
+});
+
+await test('package v2: no fingerprint hash, "none", or a malformed value leaves the assembly unchanged', () => {
+  assert.equal(assemblePackage(pkgInput), html);
+  assert.equal(assemblePackage({ ...pkgInput, fingerprintSha256: 'none' }), html);
+  assert.equal(assemblePackage({ ...pkgInput, fingerprintSha256: 'zz' }), html);
+  assert.ok(!('Chromaprint SHA-256' in parsePackageVerification(html).verification));
+});
+
+await test('chunksFromCanonical: round-trips canonicalTranscript output', () => {
+  const chunks = [
+    { start: 0, text: 'Hello world this is the feed' },
+    { start: 25.7, text: 'a later chunk' },
+    { start: 4520, text: 'much later chunk about reflux' },
+  ];
+  const canon = canonicalTranscript(chunks);
+  const parsed = chunksFromCanonical(canon);
+  assert.deepEqual(parsed, [
+    { start: 0, text: 'Hello world this is the feed' },
+    { start: 25, text: 'a later chunk' },
+    { start: 4520, text: 'much later chunk about reflux' },
+  ]);
+  assert.equal(canonicalTranscript(parsed), canon);
+  // A line with no marker is kept, at start 0 — never dropped.
+  assert.deepEqual(chunksFromCanonical('no marker on this line'),
+    [{ start: 0, text: 'no marker on this line' }]);
+  assert.deepEqual(chunksFromCanonical(''), []);
+});
+
+await test('fingerprint form decision: a real signed sha takes the fingerprint form; "none" and pre-2.7.0 bundles do not', () => {
+  assert.equal(bundleChromaprintSha({ chromaprint_sha256: FP_SHA }), FP_SHA);
+  assert.equal(bundleChromaprintSha({ chromaprint_sha256: 'none' }), null);
+  assert.equal(bundleChromaprintSha({ ...bundle }), null,
+    'a pre-2.7.0 bundle has no chromaprint_sha256 field');
+  assert.equal(bundleChromaprintSha({ chromaprint_sha256: 'A'.repeat(64) }), null,
+    'uppercase is not the hex form the Worker signs');
+  assert.equal(bundleChromaprintSha(null), null);
+});
+
+await test('fingerprint verification: exact contents pass; a tampered fingerprint fails by name', async () => {
+  const fpBundle = {
+    chromaprint_sha256: FP_SHA, transcript_sha256: SHA_B,
+    critique_sha256: SHA_C,
+  };
+  const good = {
+    fingerprintSha256: FP_SHA, transcriptSha256: SHA_B,
+    critiqueSha256: SHA_C,
+  };
+  assert.deepEqual(verifyFingerprintContents(fpBundle, good), []);
+  // The tamper the page refuses on: bytes that do not hash to the
+  // signed chromaprint_sha256.
+  const tampered = new Uint8Array(fpBytes);
+  tampered[0] ^= 0xff;
+  const tamperedSha = await sha256Hex(tampered);
+  assert.notEqual(tamperedSha, FP_SHA);
+  assert.deepEqual(
+    verifyFingerprintContents(fpBundle, { ...good, fingerprintSha256: tamperedSha }),
+    ['fingerprint']);
+  assert.deepEqual(
+    verifyFingerprintContents(fpBundle, { ...good, transcriptSha256: SHA_A }),
+    ['transcript']);
+  assert.deepEqual(
+    verifyFingerprintContents(fpBundle, { ...good, critiqueSha256: SHA_A }),
+    ['critique']);
+  assert.equal(verifyFingerprintContents(null, good).length, 3);
+});
+
+await test('fingerprint ZIP: entries are exactly the HTML and the fingerprint bin; the bin hashes to the signed sha', async () => {
+  const fpHtml = assemblePackage({
+    ...pkgInput, audioFileName: FINGERPRINT_FILE_NAME,
+    fingerprintSha256: FP_SHA,
+  });
+  const zip = buildZipBytes([
+    { name: 'submission.html', data: new TextEncoder().encode(fpHtml) },
+    { name: FINGERPRINT_FILE_NAME, data: fpBytes },
+  ]);
+  const { entries } = unzipStored(zip);
+  assert.deepEqual(entries.map((e) => e.name),
+    ['submission.html', 'submission-fingerprint.bin']);
+  assert.deepEqual(entries[1].data, fpBytes);
+  assert.equal(await sha256Hex(entries[1].data), FP_SHA);
+  assert.ok(!entries.some((e) => e.name.endsWith('.wav')), 'no WAV entry');
+});
+
+await test('fresh computer: a retrieved job builds the fingerprint ZIP once the correct YouTube link is supplied; a wrong link refuses', async () => {
+  const videoId = 'abc123XYZ_-';
+  const chunks = [
+    { start: 0, text: 'Hello world this is the feed' },
+    { start: 25, text: 'explains the reflux ratio' },
+  ];
+  const canon = canonicalTranscript(chunks);
+  const retrievedBundle = {
+    ...bundle,
+    transcript_sha256: await sha256Hex(canon),
+    critique_sha256: await sha256Hex(bundle.critique),
+    youtube_video_sha256: await sha256Hex(videoId),
+    chromaprint_sha256: FP_SHA,
+  };
+  assert.equal(bundleChromaprintSha(retrievedBundle), FP_SHA,
+    'the retrieved bundle takes the fingerprint form');
+  // No local entry and no local audio: the transcript comes from
+  // the status response's text, parsed back into chunks, and its
+  // canonical hash must equal the signed one.
+  const parsedChunks = chunksFromCanonical(canon);
+  assert.equal(await sha256Hex(canonicalTranscript(parsedChunks)),
+    retrievedBundle.transcript_sha256);
+  // The fingerprint bytes decode from the status response's base64
+  // and hash to the signed chromaprint_sha256.
+  const items = decodeRawFingerprint(fpB64);
+  const bytes = new Uint8Array(items.buffer, items.byteOffset, items.byteLength);
+  assert.equal(await sha256Hex(bytes), retrievedBundle.chromaprint_sha256);
+  assert.deepEqual(verifyFingerprintContents(retrievedBundle, {
+    fingerprintSha256: await sha256Hex(bytes),
+    transcriptSha256: await sha256Hex(canonicalTranscript(parsedChunks)),
+    critiqueSha256: await sha256Hex(retrievedBundle.critique),
+  }), []);
+  // The supplied link is accepted only when its video ID hashes to
+  // the signed youtube_video_sha256 — the check the page performs
+  // before anything is packaged.
+  const suppliedId = parseYouTubeVideoId('https://youtu.be/' + videoId);
+  assert.equal(suppliedId, videoId);
+  assert.equal(await sha256Hex(suppliedId), retrievedBundle.youtube_video_sha256);
+  const wrongId = parseYouTubeVideoId('https://youtu.be/ZZZ123XYZ_-');
+  assert.ok(wrongId && (await sha256Hex(wrongId)) !== retrievedBundle.youtube_video_sha256,
+    'a different video fails the signed check, so no ZIP is built');
+  // Duration with no local record: fingerprint items × 0.124 s.
+  assert.ok(Math.abs(items.length * 0.124 - 0.744) < 1e-9);
+  // The package built from the parsed chunks carries the signed
+  // lines and the retrieved transcript, line for line.
+  const fpHtml = assemblePackage({
+    youtubeLink: canonicalWatchUrl(videoId),
+    audioFileName: FINGERPRINT_FILE_NAME,
+    durationS: items.length * 0.124,
+    chunks: parsedChunks,
+    bundle: retrievedBundle,
+    fingerprintSha256: retrievedBundle.chromaprint_sha256,
+  });
+  const parsed = parsePackageVerification(fpHtml);
+  assert.equal(parsed.verification['Chromaprint SHA-256'], FP_SHA);
+  assert.equal(parsed.verification['Audio file'], 'submission-fingerprint.bin');
+  assert.equal(parsed.verification['Audio duration'], '0.7');
+  assert.deepEqual(parsed.transcriptLines, canon.split('\n'));
+  const zip = buildZipBytes([
+    { name: 'submission.html', data: new TextEncoder().encode(fpHtml) },
+    { name: FINGERPRINT_FILE_NAME, data: bytes },
+  ]);
+  assert.deepEqual(unzipStored(zip).entries.map((e) => e.name),
+    ['submission.html', 'submission-fingerprint.bin']);
+});
+
+await test('wiring: fingerprint-form ZIP path is wired into the review and download steps (2.6.0)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('bundleChromaprintSha(bundle)'),
+    'the signed bundle decides the ZIP form at verification time');
+  assert.ok(main.includes('verifyFingerprintParts(entry, bundle, anchor)'),
+    'the fingerprint verification step is the branch taken for that form');
+  assert.ok(main.includes('verifyFingerprintContents(bundle, {'),
+    'fingerprint contents are checked against the signed hashes');
+  assert.ok(main.includes('decodeRawFingerprint(extras.chromaprint)'),
+    'fingerprint bytes are decoded from the status response');
+  assert.ok(main.includes('chunksFromCanonical(extras.transcript)'),
+    'the retrieved transcript is parsed back into chunks');
+  assert.ok(main.includes('res.data.transcript') && main.includes('res.data.chromaprint'),
+    'the status response transcript and chromaprint are surfaced per job');
+  assert.ok(main.includes('items.length * 0.124'),
+    'the packaged duration falls back to the fingerprint length');
+  assert.ok(main.includes('name: FINGERPRINT_FILE_NAME'),
+    'the ZIP fingerprint entry carries the fingerprint file name');
+  assert.ok(main.includes('fingerprintSha256: bundle.chromaprint_sha256'),
+    'the HTML assembly is told the signed fingerprint hash');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed, ' + skipped + ' skipped');

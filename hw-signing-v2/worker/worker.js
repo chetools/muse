@@ -14,6 +14,12 @@
 //   v (=2), job_id, audio_sha256, transcript_sha256, pkg,
 //   pkg_content_sha256, completeness, accuracy, critique_sha256,
 //   youtube_video_sha256 (or "none"), t
+// Bundles graded from 2.7.0 carry one more line,
+// chromaprint_sha256 (the SHA-256 hex of the raw fingerprint bytes,
+// or "none"), between youtube_video_sha256 and t; bundles graded
+// earlier have no such line and keep the form above. Verify accepts
+// both forms and recomputes with the form the submitted bundle
+// carries, so a tampered chromaprint_sha256 fails verification.
 // t is stamped from the server clock at result time, never taken from
 // the caller. receipt = base64url(HMAC-SHA-256(secret, canonical text)).
 // Verify recomputes the receipt from the claimed values; no stored
@@ -23,18 +29,31 @@
 // "video_id\nstatus\nchecked_at"). Nothing about a link is stored; the
 // jobs table keeps only youtube_status ("ok" / "none") and, for final
 // jobs, youtube_video_sha256 (SHA-256 hex of the video ID).
+//
+// Semester databases (2.7.0): one D1 database per semester. The DB
+// binding is the primary database and the Fall 2026 semester
+// database; later semesters arrive as bindings named DB_<TERM>
+// (e.g. DB_2027SP) with a redeploy. There is no routing registry:
+// every handler finds its package or job by CHECKING the semester
+// databases (an indexed lookup in each), so the databases
+// themselves are the record. The primary database's db_meta table
+// holds only the current pointer — the binding new packages are
+// created in. The grading pending list fans out over all semester
+// databases and merges by creation time, each entry tagged with
+// its binding.
 
-const SERVICE_VERSION = "2.6.1";
+const SERVICE_VERSION = "2.7.0";
 const FORMAT_V = "2";
 const CLAIM_MINUTES = 15;
 // Job lifetime (2.6.0): an ungraded job is kept for up to
 // UNGRADED_TTL_MS after creation, so a submission made while the
 // teacher's Muse is not polling is not lost; once graded, the job
-// (result bundle, hashes and fingerprint — the transcript text
-// itself is nulled at grading, see handleResult) is kept for
-// GRADED_TTL_MS after grading and then expires. Before 2.4.1 every
-// job expired 48 h after creation, graded or not; graded jobs were
-// kept 48 h after grading before 2.6.0.
+// (result bundle, hashes, fingerprint and — from 2.7.0 — the
+// transcript text, which is no longer nulled at grading; see
+// handleResult) is kept for GRADED_TTL_MS after grading and then
+// expires. Before 2.4.1 every job expired 48 h after creation,
+// graded or not; graded jobs were kept 48 h after grading before
+// 2.6.0.
 const UNGRADED_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const GRADED_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const YOUTUBE_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -148,6 +167,29 @@ function decodeChromaprint(value) {
       0;
   }
   return out;
+}
+
+// The raw bytes a stored fingerprint decodes to (little-endian
+// uint32 per item), or null when the stored value is absent or
+// invalid. Built from decodeChromaprint's validated items so the
+// byte form can never drift from the comparison form; the grade
+// bundle's chromaprint_sha256 (2.7.0) is the SHA-256 of these bytes.
+function decodeChromaprintBytes(value) {
+  const items = decodeChromaprint(value);
+  if (!items) return null;
+  const bytes = new Uint8Array(items.length * 4);
+  const view = new DataView(bytes.buffer);
+  for (let i = 0; i < items.length; i++) {
+    view.setUint32(i * 4, items[i], true);
+  }
+  return bytes;
+}
+
+// SHA-256 hex of the raw fingerprint bytes, or "none" when the job
+// has no valid fingerprint (the bundle field's empty form).
+async function chromaprintSha256(value) {
+  const bytes = decodeChromaprintBytes(value);
+  return bytes ? sha256Hex(bytes) : "none";
 }
 
 function popcount32(x) {
@@ -298,18 +340,147 @@ function requireDb(env) {
 
 // ---------------------------------------------------------------- D1
 
-async function getPackageRow(env, name, version) {
-  return env.DB.prepare(
+async function getPackageRow(db, name, version) {
+  return db.prepare(
     "SELECT * FROM packages WHERE pkg = ? AND version = ?",
   )
     .bind(name, version)
     .first();
 }
 
-async function getJobRow(env, jobId) {
-  return env.DB.prepare("SELECT * FROM jobs WHERE job_id = ?")
+async function getJobRow(db, jobId) {
+  return db.prepare("SELECT * FROM jobs WHERE job_id = ?")
     .bind(jobId)
     .first();
+}
+
+// ------------------------------------------------- semester databases
+// (2.7.0). One database per semester, discovered from the env
+// bindings: the primary "DB" plus every DB_<TERM> binding present
+// in env. There is no routing registry — a package or a job is
+// found by checking the semester databases (an indexed lookup in
+// each). db_meta, read only in the primary database, holds just
+// the current pointer: current_binding (where NEW packages go) and
+// current_semester. A primary database without db_meta (pre-
+// migration) reads as current = the primary DB.
+
+// Every semester database the Worker can reach, in a fixed order:
+// the primary "DB" first, then the DB_<TERM> bindings sorted by
+// binding name.
+async function semesterDbs(env) {
+  const out = [];
+  if (env.DB && typeof env.DB.prepare === "function") {
+    out.push({ binding: "DB", db: env.DB });
+  }
+  const terms = Object.keys(env)
+    .filter(
+      (k) =>
+        /^DB_[A-Z0-9_]+$/.test(k) &&
+        env[k] &&
+        typeof env[k].prepare === "function",
+    )
+    .sort();
+  for (const binding of terms) out.push({ binding, db: env[binding] });
+  return out;
+}
+
+// Every semester database holding package `name` at `version`, as
+// {binding, db, row} entries in semesterDbs order.
+async function packageHolders(env, name, version) {
+  const out = [];
+  for (const { binding, db } of await semesterDbs(env)) {
+    const row = await getPackageRow(db, name, version);
+    if (row) out.push({ binding, db, row });
+  }
+  return out;
+}
+
+// Resolve the one database for a package named by name + version.
+// Preference order when several semester databases hold it: the
+// current semester's database first, then the primary DB, then the
+// remaining bindings in sorted order (semesterDbs already yields
+// DB first and the rest sorted, so after the current-binding
+// candidate the holders' own order applies). Null when no semester
+// database holds the package.
+async function resolvePackage(env, name, version) {
+  const holders = await packageHolders(env, name, version);
+  if (!holders.length) return null;
+  if (holders.length === 1) return holders[0];
+  const current = await currentBinding(env);
+  return holders.find((h) => h.binding === current) || holders[0];
+}
+
+// Resolve the database for student job creation and link
+// verification, which carry the package name + version AND the
+// link's content hash: the match is the semester database whose
+// package row's content_sha256 equals the hash. Exactly one
+// database can match (the same name in another semester has
+// different text, so a different hash). Returns {match, sawRow}:
+// match is the {binding, db, row} or null; sawRow records whether
+// any semester database holds the name + version at all, so the
+// caller can tell an unknown package from a hash mismatch.
+async function resolvePackageByHash(env, name, version, contentSha256) {
+  let sawRow = false;
+  for (const { binding, db } of await semesterDbs(env)) {
+    const row = await getPackageRow(db, name, version);
+    if (!row) continue;
+    sawRow = true;
+    if (
+      timingSafeEqual(
+        row.content_sha256.toLowerCase(),
+        String(contentSha256).toLowerCase(),
+      )
+    ) {
+      return { match: { binding, db, row }, sawRow };
+    }
+  }
+  return { match: null, sawRow };
+}
+
+// The database holding a job, by primary-key lookup across the
+// semester databases: {binding, db, row}, or null when no semester
+// database holds the job.
+async function findJobDb(env, jobId) {
+  for (const { binding, db } of await semesterDbs(env)) {
+    const row = await getJobRow(db, jobId);
+    if (row) return { binding, db, row };
+  }
+  return null;
+}
+
+// The database holding the job a retrieval code names, found by
+// trying the retrieval lookup in each semester database in turn
+// (each database is swept first, as the single-database code swept
+// its one database): {binding, db, row}, or {error} with the
+// retrieval error Response when no database holds the job.
+async function jobByRetrievalAnyDb(env, body) {
+  const nowIso = new Date().toISOString();
+  let error = null;
+  for (const { binding, db } of await semesterDbs(env)) {
+    await sweep(db, nowIso);
+    const row = await jobByRetrieval(db, body);
+    if (!isErrorResponse(row)) return { binding, db, row };
+    error = row;
+  }
+  return { error };
+}
+
+// The binding new packages go to: db_meta's current_binding in the
+// primary database, falling back to "DB".
+async function currentBinding(env) {
+  try {
+    const row = await env.DB.prepare(
+      "SELECT value FROM db_meta WHERE key = ?",
+    )
+      .bind("current_binding")
+      .first();
+    if (row && typeof row.value === "string" && row.value) {
+      return row.value;
+    }
+  } catch {
+    // No db_meta yet: the primary database is the default.
+  }
+  return "DB";
 }
 
 // Job lifecycle maintenance, run at the start of job-related calls:
@@ -337,10 +508,10 @@ function effectiveExpiresAt(row) {
   return row.expires_at;
 }
 
-async function sweep(env, nowIso) {
+async function sweep(db, nowIso) {
   // Graded (ready) jobs expire GRADED_TTL_MS after grading, measured
   // from graded_at so jobs graded before 2.4.1 follow the same rule.
-  await env.DB.prepare(
+  await db.prepare(
     "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
       "result_json = NULL, push_json = NULL " +
       "WHERE status = ? AND graded_at <= ?",
@@ -353,7 +524,7 @@ async function sweep(env, nowIso) {
     .run();
   // Any other non-queued status (none is defined today) expires at
   // its stored expires_at.
-  await env.DB.prepare(
+  await db.prepare(
     "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
       "result_json = NULL, push_json = NULL " +
       "WHERE expires_at <= ? AND status <> ? " +
@@ -368,7 +539,7 @@ async function sweep(env, nowIso) {
     Date.parse(nowIso) - UNGRADED_TTL_MS,
   ).toISOString();
   for (const st of ["queued", "claimed"]) {
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE jobs SET status = ?, transcript = NULL, critique = NULL, " +
         "result_json = NULL, push_json = NULL " +
         "WHERE status = ? AND created_at <= ?",
@@ -379,19 +550,19 @@ async function sweep(env, nowIso) {
   // Aliases whose job has expired are deleted (2.6.0): a code
   // submitted with a duplicate job retrieves that job only while
   // the job is live.
-  const { results: expiredRows } = await env.DB.prepare(
+  const { results: expiredRows } = await db.prepare(
     "SELECT job_id FROM jobs WHERE status = ?",
   )
     .bind("expired")
     .all();
   for (const r of expiredRows || []) {
-    await env.DB.prepare(
+    await db.prepare(
       "DELETE FROM job_code_aliases WHERE job_id = ?",
     )
       .bind(r.job_id)
       .run();
   }
-  await env.DB.prepare(
+  await db.prepare(
     "UPDATE jobs SET status = ?, claimed_at = NULL, claim_expires = NULL " +
       "WHERE status = ? AND claim_expires <= ?",
   )
@@ -399,8 +570,8 @@ async function sweep(env, nowIso) {
     .run();
 }
 
-async function jobCounts(env, pkgFull) {
-  const { results } = await env.DB.prepare(
+async function jobCounts(db, pkgFull) {
+  const { results } = await db.prepare(
     "SELECT status FROM jobs WHERE pkg = ?",
   )
     .bind(pkgFull)
@@ -410,7 +581,7 @@ async function jobCounts(env, pkgFull) {
   return counts;
 }
 
-async function packageMeta(env, row) {
+async function packageMeta(db, row) {
   const full = `${row.pkg} v${row.version}`;
   return {
     pkg: full,
@@ -418,7 +589,7 @@ async function packageMeta(env, row) {
     content_sha256: row.content_sha256,
     status: row.status,
     trial: row.trial_json ? JSON.parse(row.trial_json) : null,
-    jobs: await jobCounts(env, full),
+    jobs: await jobCounts(db, full),
     created_at: row.created_at,
   };
 }
@@ -534,7 +705,7 @@ async function encryptPushPayload(subscription, payloadText) {
 // Send the "result ready" push for a job. Fire-and-forget by contract:
 // any failure is swallowed, except that a 404/410 from the push service
 // clears the stored subscription (the endpoint is gone).
-async function sendPush(env, job) {
+async function sendPush(env, db, job) {
   if (!job.push_json || !env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return;
   let subscription;
   try {
@@ -576,7 +747,7 @@ async function sendPush(env, job) {
       body,
     });
     if (res.status === 404 || res.status === 410) {
-      await env.DB.prepare("UPDATE jobs SET push_json = NULL WHERE job_id = ?")
+      await db.prepare("UPDATE jobs SET push_json = NULL WHERE job_id = ?")
         .bind(job.job_id)
         .run();
     }
@@ -592,6 +763,7 @@ async function handleRoot(env) {
     service: "hw-grading",
     version: SERVICE_VERSION,
     storage: "d1",
+    databases: env.DB ? (await semesterDbs(env)).length : 0,
   };
   if (env.VAPID_PUBLIC_KEY) body.vapid_public_key = env.VAPID_PUBLIC_KEY;
   return json(body);
@@ -737,8 +909,8 @@ function validPushSubscription(p) {
 // fingerprint), or null. The jobs_one_final partial unique index in
 // schema.sql enforces this invariant in the database; this lookup is
 // the friendly pre-check and the post-race arbiter.
-async function findLiveFinal(env, pkgFull, audioSha256) {
-  return env.DB.prepare(
+async function findLiveFinal(db, pkgFull, audioSha256) {
+  return db.prepare(
     "SELECT job_id FROM jobs WHERE pkg = ? AND audio_sha256 = ? " +
       "AND kind = ? AND status <> ?",
   )
@@ -756,8 +928,8 @@ async function findLiveFinal(env, pkgFull, audioSha256) {
 // inserted, for the post-insert race re-check) is skipped.
 // Earliest created_at wins; the ORDER BY is stable in the D1 shim
 // and in practice in D1, so equal timestamps keep insertion order.
-async function findLiveDuplicate(env, pkgFull, audioSha256, fpItems, excludeJobId = null) {
-  const { results: shaRows } = await env.DB.prepare(
+async function findLiveDuplicate(db, pkgFull, audioSha256, fpItems, excludeJobId = null) {
+  const { results: shaRows } = await db.prepare(
     "SELECT * FROM jobs WHERE pkg = ? AND audio_sha256 = ? " +
       "AND status <> ? ORDER BY created_at",
   )
@@ -767,7 +939,7 @@ async function findLiveDuplicate(env, pkgFull, audioSha256, fpItems, excludeJobI
     if (row.job_id !== excludeJobId) return row;
   }
   if (!fpItems) return null;
-  const { results } = await env.DB.prepare(
+  const { results } = await db.prepare(
     "SELECT * FROM jobs WHERE pkg = ? AND status <> ? ORDER BY created_at",
   )
     .bind(pkgFull, "expired")
@@ -787,16 +959,16 @@ async function findLiveDuplicate(env, pkgFull, audioSha256, fpItems, excludeJobI
 // job (keyed by the REQUESTED pkg string) unless that code is
 // already used by a different job for the pkg, in which case no
 // alias is stored. The submitted kind and YouTube token are ignored.
-async function duplicateResponse(env, dupRow, requestedPkg, codeLookup, nowIso) {
+async function duplicateResponse(db, dupRow, requestedPkg, codeLookup, nowIso) {
   let aliasCreated = false;
-  const codeJob = await env.DB.prepare(
+  const codeJob = await db.prepare(
     "SELECT job_id FROM jobs WHERE code_lookup = ?",
   )
     .bind(codeLookup)
     .first();
   let usedByDifferent = !!(codeJob && codeJob.job_id !== dupRow.job_id);
   if (!usedByDifferent) {
-    const aliasRow = await env.DB.prepare(
+    const aliasRow = await db.prepare(
       "SELECT job_id FROM job_code_aliases WHERE pkg = ? AND code_lookup = ?",
     )
       .bind(requestedPkg, codeLookup)
@@ -807,7 +979,7 @@ async function duplicateResponse(env, dupRow, requestedPkg, codeLookup, nowIso) 
   }
   if (!usedByDifferent) {
     try {
-      await env.DB.prepare(
+      await db.prepare(
         "INSERT INTO job_code_aliases (pkg, code_lookup, job_id, created_at) " +
           "VALUES (?, ?, ?, ?)",
       )
@@ -830,12 +1002,16 @@ async function duplicateResponse(env, dupRow, requestedPkg, codeLookup, nowIso) 
     alias_created: aliasCreated,
   };
   if (dupRow.status === "queued" || dupRow.status === "claimed") {
-    out.queue_ahead = await queueAhead(env, dupRow);
+    out.queue_ahead = await queueAhead(db, dupRow);
   }
   if (dupRow.status === "ready" && dupRow.result_json) {
     const bundle = JSON.parse(dupRow.result_json);
     delete bundle.injection_flags;
     out.result = bundle;
+    // 2.7.0: as in /jobs/status, the code holder also receives the
+    // stored transcript and fingerprint with a ready job's bundle.
+    out.transcript = dupRow.transcript;
+    out.chromaprint = dupRow.chromaprint ?? null;
   }
   return json(out);
 }
@@ -889,18 +1065,25 @@ async function handleJobCreate(request, env) {
 
   const now = new Date();
   const nowIso = now.toISOString();
-  await sweep(env, nowIso);
-
-  const requestedRow = await getPackageRow(env, parsed.name, parsed.version);
-  if (!requestedRow) return json({ error: "unknown package" }, 404);
-  if (
-    !timingSafeEqual(
-      requestedRow.content_sha256.toLowerCase(),
-      body.pkg_content_sha256.toLowerCase(),
-    )
-  ) {
-    return json({ error: "package content hash mismatch" }, 400);
+  // Semester databases (2.7.0): every semester database is swept,
+  // and the database for this job is the one whose package row
+  // matches the requested name, version AND the link's content
+  // hash (see resolvePackageByHash). The package and dedup queries
+  // and the insert all run on that database.
+  for (const { db } of await semesterDbs(env)) await sweep(db, nowIso);
+  const resolved = await resolvePackageByHash(
+    env,
+    parsed.name,
+    parsed.version,
+    body.pkg_content_sha256,
+  );
+  if (!resolved.match) {
+    return resolved.sawRow
+      ? json({ error: "package content hash mismatch" }, 400)
+      : json({ error: "unknown package" }, 404);
   }
+  const db = resolved.match.db;
+  const requestedRow = resolved.match.row;
 
   // Replacement check (worker 2.5.0): a job sent under an issued
   // link for one version is graded under the newest OPEN version of
@@ -915,7 +1098,7 @@ async function handleJobCreate(request, env) {
   // the requested version — code_lookup below is computed from the
   // link's pkg string, and jobByRetrieval finds the job by that
   // lookup alone.
-  const newestOpen = await env.DB.prepare(
+  const newestOpen = await db.prepare(
     "SELECT * FROM packages WHERE pkg = ? AND status = ? " +
       "ORDER BY version DESC LIMIT 1",
   )
@@ -946,12 +1129,12 @@ async function handleJobCreate(request, env) {
   // submission is answered as a duplicate even without a token or
   // with a code already used by another job.
   const dup = await findLiveDuplicate(
-    env,
+    db,
     resolvedFull,
     body.audio_sha256.toLowerCase(),
     fpItems,
   );
-  if (dup) return duplicateResponse(env, dup, parsed.full, codeLookup, nowIso);
+  if (dup) return duplicateResponse(db, dup, parsed.full, codeLookup, nowIso);
 
   // YouTube gate for final jobs. The check token is an HMAC over
   // video_id / status / checked_at, so the page returns all three;
@@ -987,7 +1170,7 @@ async function handleJobCreate(request, env) {
   // The lookup embeds the requested pkg string while the job row is
   // stored under the resolved version, so the clash check — like
   // retrieval — keys on the lookup alone.
-  const codeClash = await env.DB.prepare(
+  const codeClash = await db.prepare(
     "SELECT job_id FROM jobs WHERE code_lookup = ?",
   )
     .bind(codeLookup)
@@ -1001,7 +1184,7 @@ async function handleJobCreate(request, env) {
   const jobId = crypto.randomUUID();
   const expiresIso = new Date(now.getTime() + UNGRADED_TTL_MS).toISOString();
   try {
-    await env.DB.prepare(
+    await db.prepare(
       "INSERT INTO jobs (job_id, pkg, retrieval_name, code_lookup, code_salt, code_hash, " +
         "kind, status, transcript, audio_sha256, transcript_sha256, chromaprint, " +
         "versions_json, youtube_status, youtube_video_sha256, completeness, " +
@@ -1052,13 +1235,13 @@ async function handleJobCreate(request, env) {
     // package). A dedup match is returned as the duplicate, as the
     // one-final catch did before 2.6.0. (Review fix F2, extended.)
     const raced = await findLiveDuplicate(
-      env,
+      db,
       resolvedFull,
       body.audio_sha256.toLowerCase(),
       fpItems,
     );
     if (raced) {
-      return duplicateResponse(env, raced, parsed.full, codeLookup, nowIso);
+      return duplicateResponse(db, raced, parsed.full, codeLookup, nowIso);
     }
     return json({ error: "retrieval code already used for this package" }, 409);
   }
@@ -1069,17 +1252,17 @@ async function handleJobCreate(request, env) {
   // rows). If one is found, delete the row just inserted and return
   // the earlier one as the duplicate instead.
   const earlier = await findLiveDuplicate(
-    env,
+    db,
     resolvedFull,
     body.audio_sha256.toLowerCase(),
     fpItems,
     jobId,
   );
   if (earlier && Date.parse(earlier.created_at) < Date.parse(nowIso)) {
-    await env.DB.prepare("DELETE FROM jobs WHERE job_id = ?")
+    await db.prepare("DELETE FROM jobs WHERE job_id = ?")
       .bind(jobId)
       .run();
-    return duplicateResponse(env, earlier, parsed.full, codeLookup, nowIso);
+    return duplicateResponse(db, earlier, parsed.full, codeLookup, nowIso);
   }
   return json({
     job_id: jobId,
@@ -1095,7 +1278,7 @@ async function handleJobCreate(request, env) {
 // testing the salted hash of each of the package's remaining jobs.
 // An unknown code and a wrong code deliberately return the identical
 // 403 body. Returns the job row, or an error Response.
-async function jobByRetrieval(env, body) {
+async function jobByRetrieval(db, body) {
   if (
     !body ||
     typeof body !== "object" ||
@@ -1109,13 +1292,13 @@ async function jobByRetrieval(env, body) {
   // created under, while the job row is stored under the package
   // version that grades it (the newest open version at intake,
   // worker 2.5.0) — so the lookup alone is the key, not the pair.
-  const row = await env.DB.prepare(
+  const row = await db.prepare(
     "SELECT * FROM jobs WHERE code_lookup = ?",
   )
     .bind(lookup)
     .first();
   if (row) return row;
-  const legacy = await env.DB.prepare("SELECT * FROM jobs WHERE pkg = ?")
+  const legacy = await db.prepare("SELECT * FROM jobs WHERE pkg = ?")
     .bind(body.pkg)
     .all();
   for (const cand of legacy.results || []) {
@@ -1128,38 +1311,38 @@ async function jobByRetrieval(env, body) {
   // Alias lookup (2.6.0): a code submitted with a duplicate job is
   // stored in job_code_aliases keyed by the requested pkg string,
   // and retrieves the existing job exactly as its own code does.
-  const alias = await env.DB.prepare(
+  const alias = await db.prepare(
     "SELECT job_id FROM job_code_aliases WHERE pkg = ? AND code_lookup = ?",
   )
     .bind(body.pkg, lookup)
     .first();
   if (alias) {
-    const aliased = await getJobRow(env, alias.job_id);
+    const aliased = await getJobRow(db, alias.job_id);
     if (aliased) return aliased;
   }
   return json({ error: "invalid retrieval code" }, 403);
 }
 
-// How many jobs are ahead of this one in the grading queue. The
-// grading side claims jobs in created_at order across all packages
-// (the /jobs/pending order), so the count is global: every job
-// currently claimed (being graded), plus every queued job created
-// earlier. For a claimed job, the jobs claimed before it.
-async function queueAhead(env, row) {
+// How many jobs are ahead of this one in the grading queue, within
+// the job's own semester database (2.7.0; the /jobs/pending order
+// itself merges all semester databases): every job in that
+// database currently claimed (being graded), plus every queued job
+// created earlier. For a claimed job, the jobs claimed before it.
+async function queueAhead(db, row) {
   if (row.status === "claimed") {
-    const r = await env.DB.prepare(
+    const r = await db.prepare(
       "SELECT COUNT(*) AS n FROM jobs WHERE status = ? AND claimed_at < ?",
     )
       .bind("claimed", row.claimed_at)
       .first();
     return r ? r.n : 0;
   }
-  const claimed = await env.DB.prepare(
+  const claimed = await db.prepare(
     "SELECT COUNT(*) AS n FROM jobs WHERE status = ?",
   )
     .bind("claimed")
     .first();
-  const earlier = await env.DB.prepare(
+  const earlier = await db.prepare(
     "SELECT COUNT(*) AS n FROM jobs WHERE status = ? AND created_at < ?",
   )
     .bind("queued", row.created_at)
@@ -1175,9 +1358,12 @@ async function handleJobStatus(request, env) {
   const badDb = requireDb(env);
   if (badDb) return badDb;
   const body = await readJson(request);
-  await sweep(env, new Date().toISOString());
-  const row = await jobByRetrieval(env, body);
-  if (isErrorResponse(row)) return row;
+  // Semester databases (2.7.0): the job is found by checking the
+  // retrieval code against each semester database in turn.
+  const found = await jobByRetrievalAnyDb(env, body);
+  if (found.error) return found.error;
+  const db = found.db;
+  const row = found.row;
   // The sweep above has already expired every job that is due, under
   // the ungraded cap or the graded expiry as its status requires, so
   // the stored status is the whole determination here.
@@ -1186,12 +1372,17 @@ async function handleJobStatus(request, env) {
   }
   const out = { status: row.status, expires_at: effectiveExpiresAt(row) };
   if (row.status === "queued" || row.status === "claimed") {
-    out.queue_ahead = await queueAhead(env, row);
+    out.queue_ahead = await queueAhead(db, row);
   }
   if (row.status === "ready" && row.result_json) {
     const bundle = JSON.parse(row.result_json);
     delete bundle.injection_flags;
     out.result = bundle;
+    // 2.7.0: the code holder also receives the stored transcript
+    // and the stored fingerprint, so the submission package can be
+    // rebuilt on a computer that never held the recording.
+    out.transcript = row.transcript;
+    out.chromaprint = row.chromaprint ?? null;
   }
   return json(out);
 }
@@ -1213,9 +1404,10 @@ async function handleJobFinalize(request, env) {
   if (badDb) return badDb;
   const body = await readJson(request);
   const now = new Date();
-  await sweep(env, now.toISOString());
-  const row = await jobByRetrieval(env, body);
-  if (isErrorResponse(row)) return row;
+  const found = await jobByRetrievalAnyDb(env, body);
+  if (found.error) return found.error;
+  const db = found.db;
+  const row = found.row;
   if (row.status === "expired") {
     return json({ error: "job expired" }, 410);
   }
@@ -1243,7 +1435,7 @@ async function handleJobFinalize(request, env) {
   if (age < -5 * 60 * 1000 || age > YOUTUBE_TOKEN_MAX_AGE_MS) {
     return json({ error: "YouTube check token too old" }, 400);
   }
-  const priorFinal = await findLiveFinal(env, row.pkg, row.audio_sha256);
+  const priorFinal = await findLiveFinal(db, row.pkg, row.audio_sha256);
   if (priorFinal) {
     return json({ error: "a final job already exists for this recording" }, 409);
   }
@@ -1253,12 +1445,16 @@ async function handleJobFinalize(request, env) {
   if (row.status === "ready" && row.result_json) {
     const bundle = JSON.parse(row.result_json);
     bundle.youtube_video_sha256 = videoSha;
+    // gradeCanonical signs in the bundle's own form (2.7.0): a
+    // bundle carrying chromaprint_sha256 is re-signed with it, a
+    // pre-2.7.0 bundle without the field keeps the old canonical
+    // and does not gain the field.
     receipt = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(bundle));
     bundle.receipt = receipt;
     resultJson = JSON.stringify(bundle);
   }
   try {
-    await env.DB.prepare(
+    await db.prepare(
       "UPDATE jobs SET kind = ?, youtube_status = ?, " +
         "youtube_video_sha256 = ?, result_json = ?, receipt = ? " +
         "WHERE job_id = ?",
@@ -1275,14 +1471,15 @@ async function handleJobRetrieved(request, env) {
   const badDb = requireDb(env);
   if (badDb) return badDb;
   const body = await readJson(request);
-  await sweep(env, new Date().toISOString());
-  const row = await jobByRetrieval(env, body);
-  if (isErrorResponse(row)) return row;
+  const found = await jobByRetrievalAnyDb(env, body);
+  if (found.error) return found.error;
+  const db = found.db;
+  const row = found.row;
   if (row.status === "expired") {
     return json({ error: "job expired" }, 410);
   }
   if (!row.retrieved_at) {
-    await env.DB.prepare("UPDATE jobs SET retrieved_at = ? WHERE job_id = ?")
+    await db.prepare("UPDATE jobs SET retrieved_at = ? WHERE job_id = ?")
       .bind(new Date().toISOString(), row.job_id)
       .run();
   }
@@ -1295,25 +1492,37 @@ async function handlePending(request, env) {
   const badDb = requireDb(env);
   if (badDb) return badDb;
   const nowIso = new Date().toISOString();
-  await sweep(env, nowIso);
-  // The sweep has expired every due job, so a job still in status
+  // Semester fan-out (2.7.0): sweep and read every semester
+  // database, merge the queued jobs, and sort by created_at across
+  // databases. Each entry carries its database's binding as `db`,
+  // which claim and result pass back to reach the same database.
+  // The sweeps have expired every due job, so a job still in status
   // queued is live — including a pre-2.4.1 job whose stored
   // expires_at (creation + 48 h) has passed while it waits.
-  const { results } = await env.DB.prepare(
-    "SELECT job_id, pkg, kind, created_at, transcript FROM jobs " +
-      "WHERE status = ? ORDER BY created_at",
-  )
-    .bind("queued")
-    .all();
-  return json(
-    results.map((r) => ({
-      job_id: r.job_id,
-      pkg: r.pkg,
-      kind: r.kind,
-      created_at: r.created_at,
-      transcript_chars: r.transcript ? r.transcript.length : 0,
-    })),
+  const merged = [];
+  for (const { binding, db } of await semesterDbs(env)) {
+    await sweep(db, nowIso);
+    const { results } = await db.prepare(
+      "SELECT job_id, pkg, kind, created_at, transcript FROM jobs " +
+        "WHERE status = ? ORDER BY created_at",
+    )
+      .bind("queued")
+      .all();
+    for (const r of results || []) {
+      merged.push({
+        job_id: r.job_id,
+        pkg: r.pkg,
+        kind: r.kind,
+        created_at: r.created_at,
+        transcript_chars: r.transcript ? r.transcript.length : 0,
+        db: binding,
+      });
+    }
+  }
+  merged.sort((a, b) =>
+    a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0,
   );
+  return json(merged);
 }
 
 async function handleClaim(request, env) {
@@ -1326,9 +1535,25 @@ async function handleClaim(request, env) {
     return json({ error: "invalid request body" }, 400);
   }
   const now = new Date();
-  await sweep(env, now.toISOString());
-  const row = await getJobRow(env, body.job_id);
-  if (!row) return json({ error: "unknown job" }, 404);
+  // Semester databases (2.7.0): the body's `db` (a binding name, as
+  // tagged by /grading/pending) names the database when it holds
+  // the job; otherwise the job is located across the semester
+  // databases. Every database is swept first, as before.
+  const nowIso = now.toISOString();
+  const dbs = await semesterDbs(env);
+  for (const { db } of dbs) await sweep(db, nowIso);
+  let target = null;
+  if (typeof body.db === "string") {
+    const named = dbs.find((d) => d.binding === body.db);
+    if (named) {
+      const namedRow = await getJobRow(named.db, body.job_id);
+      if (namedRow) target = { binding: named.binding, db: named.db, row: namedRow };
+    }
+  }
+  if (!target) target = await findJobDb(env, body.job_id);
+  if (!target) return json({ error: "unknown job" }, 404);
+  const db = target.db;
+  const row = target.row;
   // After the sweep, a claimable job (queued, or claimed with an
   // expired lease) is exactly a job in status "queued".
   if (row.status !== "queued") {
@@ -1339,7 +1564,7 @@ async function handleClaim(request, env) {
   // not the status check above, which a racing poller can pass at the
   // same moment. Only the first UPDATE matches status = 'queued'; a
   // loser sees changes === 0 and gets 409. (Review fix F1.)
-  const upd = await env.DB.prepare(
+  const upd = await db.prepare(
     "UPDATE jobs SET status = ?, claimed_at = ?, claim_expires = ? " +
       "WHERE job_id = ? AND status = ?",
   )
@@ -1356,7 +1581,7 @@ async function handleClaim(request, env) {
   }
   const parsed = parsePkgId(row.pkg);
   const pkgRow = parsed
-    ? await getPackageRow(env, parsed.name, parsed.version)
+    ? await getPackageRow(db, parsed.name, parsed.version)
     : null;
   if (!pkgRow) return json({ error: "package record missing" }, 500);
   return json({
@@ -1374,9 +1599,15 @@ async function handleClaim(request, env) {
   });
 }
 
-// Canonical signed text for a v2 grade (see header comment).
+// Canonical signed text for a v2 grade (see header comment). The
+// form is chosen by the bundle itself: a bundle carrying a
+// chromaprint_sha256 string (graded from 2.7.0) signs with that
+// line between youtube_video_sha256 and t; a pre-2.7.0 bundle
+// without the field signs with the original form. Signing,
+// re-signing at finalize, and verification all go through this one
+// function, so each bundle keeps the form it was created in.
 function gradeCanonical(f) {
-  return [
+  const lines = [
     FORMAT_V,
     f.job_id,
     f.audio_sha256,
@@ -1387,8 +1618,12 @@ function gradeCanonical(f) {
     String(f.accuracy),
     f.critique_sha256,
     f.youtube_video_sha256,
-    f.t,
-  ].join("\n");
+  ];
+  if (typeof f.chromaprint_sha256 === "string") {
+    lines.push(f.chromaprint_sha256);
+  }
+  lines.push(f.t);
+  return lines.join("\n");
 }
 
 async function handleResult(request, env) {
@@ -1415,9 +1650,24 @@ async function handleResult(request, env) {
     return json({ error: "invalid request body" }, 400);
   }
   const now = new Date();
-  await sweep(env, now.toISOString());
-  const row = await getJobRow(env, body.job_id);
-  if (!row) return json({ error: "unknown job" }, 404);
+  // Semester databases (2.7.0): resolved exactly as in claim — the
+  // body's `db` binding when it holds the job, else a lookup across
+  // the semester databases; the grading UPDATE below runs there.
+  const nowIso = now.toISOString();
+  const dbs = await semesterDbs(env);
+  for (const { db } of dbs) await sweep(db, nowIso);
+  let target = null;
+  if (typeof body.db === "string") {
+    const named = dbs.find((d) => d.binding === body.db);
+    if (named) {
+      const namedRow = await getJobRow(named.db, body.job_id);
+      if (namedRow) target = { binding: named.binding, db: named.db, row: namedRow };
+    }
+  }
+  if (!target) target = await findJobDb(env, body.job_id);
+  if (!target) return json({ error: "unknown job" }, 404);
+  const db = target.db;
+  const row = target.row;
   if (
     row.status !== "claimed" ||
     !row.claim_expires ||
@@ -1427,7 +1677,7 @@ async function handleResult(request, env) {
   }
   const parsed = parsePkgId(row.pkg);
   const pkgRow = parsed
-    ? await getPackageRow(env, parsed.name, parsed.version)
+    ? await getPackageRow(db, parsed.name, parsed.version)
     : null;
   if (!pkgRow) return json({ error: "package record missing" }, 500);
 
@@ -1445,6 +1695,10 @@ async function handleResult(request, env) {
     critique: body.critique,
     critique_sha256: critiqueSha256,
     youtube_video_sha256: row.youtube_video_sha256 || "none",
+    // 2.7.0: the fingerprint's hash is signed into the bundle, so
+    // the fingerprint a student later presents with the bundle can
+    // be checked against the grade it belongs to.
+    chromaprint_sha256: await chromaprintSha256(row.chromaprint),
     t,
   };
   bundle.receipt = await hmacBase64url(
@@ -1454,20 +1708,19 @@ async function handleResult(request, env) {
   const stored = { ...bundle, injection_flags: body.injection_flags || [] };
   // Grading starts the job's remaining lifetime: it now expires
   // GRADED_TTL_MS after grading, replacing the ungraded cap. The
-  // transcript text is nulled in the same UPDATE (2.6.0 transcript
-  // minimisation): transcript_sha256, the acoustic fingerprint, the
-  // result bundle, the code lookup/hash/salt and any aliases are
-  // kept for the 180 days. Nothing still needs the text — pending
-  // lists it only for queued jobs, claim returns it only for queued
-  // jobs, and status returns the bundle, built above from
-  // transcript_sha256, not from the text.
+  // transcript text is kept (2.7.0, reversing the 2.6.0 transcript
+  // minimisation): the text, transcript_sha256, the acoustic
+  // fingerprint, the result bundle, the code lookup/hash/salt and
+  // any aliases are kept for the 180 days, and status returns the
+  // transcript and fingerprint with the bundle. The text is removed
+  // only when the job expires (see sweep).
   const gradedExpires = new Date(
     Date.parse(t) + GRADED_TTL_MS,
   ).toISOString();
-  await env.DB.prepare(
+  await db.prepare(
     "UPDATE jobs SET status = ?, completeness = ?, accuracy = ?, " +
       "critique = ?, result_json = ?, receipt = ?, graded_at = ?, " +
-      "expires_at = ?, claim_expires = NULL, transcript = NULL WHERE job_id = ?",
+      "expires_at = ?, claim_expires = NULL WHERE job_id = ?",
   )
     .bind(
       "ready",
@@ -1481,7 +1734,7 @@ async function handleResult(request, env) {
       row.job_id,
     )
     .run();
-  await sendPush(env, { ...row, job_id: row.job_id, expires_at: gradedExpires });
+  await sendPush(env, db, { ...row, job_id: row.job_id, expires_at: gradedExpires });
   return json({ ok: true, receipt: bundle.receipt });
 }
 
@@ -1505,6 +1758,11 @@ async function handleVerifyGrade(request, env) {
       body.youtube_video_sha256 === "none" ||
       isHash(body.youtube_video_sha256)
     ) ||
+    !(
+      body.chromaprint_sha256 === undefined ||
+      body.chromaprint_sha256 === "none" ||
+      isHash(body.chromaprint_sha256)
+    ) ||
     !isText(body.t, 64) ||
     Number.isNaN(Date.parse(body.t)) ||
     typeof body.receipt !== "string" ||
@@ -1527,6 +1785,15 @@ async function handleVerifyGrade(request, env) {
         : body.youtube_video_sha256.toLowerCase(),
     t: body.t,
   };
+  // Dual form (2.7.0): a bundle carrying a chromaprint_sha256
+  // string is recomputed with the new canonical, a bundle without
+  // the field with the pre-2.7.0 canonical (see gradeCanonical).
+  if (typeof body.chromaprint_sha256 === "string") {
+    f.chromaprint_sha256 =
+      body.chromaprint_sha256 === "none"
+        ? "none"
+        : body.chromaprint_sha256.toLowerCase();
+  }
   const expected = await hmacBase64url(env.SIGNING_SECRET, gradeCanonical(f));
   return json({ valid: timingSafeEqual(expected, body.receipt) });
 }
@@ -1546,12 +1813,36 @@ async function handlePackageCreate(request, env) {
     !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(body.pkg_name) ||
     typeof body.text !== "string" ||
     body.text.length < 1 ||
-    body.text.length > MAX_PACKAGE_CHARS
+    body.text.length > MAX_PACKAGE_CHARS ||
+    (body.binding !== undefined &&
+      body.binding !== null &&
+      typeof body.binding !== "string")
   ) {
     return json({ error: "invalid request body" }, 400);
   }
+  // Semester databases (2.7.0): the package lands in the database
+  // named by `binding`, defaulting to db_meta's current_binding in
+  // the primary database. The binding must name a semester
+  // database that exists in env (the primary "DB" or a DB_<TERM>
+  // binding). A name that already exists in another semester's
+  // database is allowed: it starts that name's version lineage in
+  // this database, and later lookups tell the copies apart by
+  // content hash (job creation, links) or by an explicit db field
+  // (admin status).
+  const binding = body.binding ?? (await currentBinding(env));
+  const db =
+    binding === "DB"
+      ? env.DB
+      : /^DB_[A-Z0-9_]+$/.test(binding) &&
+          env[binding] &&
+          typeof env[binding].prepare === "function"
+        ? env[binding]
+        : null;
+  if (!db) {
+    return json({ error: "unknown database binding" }, 400);
+  }
   const contentSha256 = await sha256Hex(body.text);
-  const dupe = await env.DB.prepare(
+  const dupe = await db.prepare(
     "SELECT version FROM packages WHERE pkg = ? AND content_sha256 = ?",
   )
     .bind(body.pkg_name, contentSha256)
@@ -1559,14 +1850,14 @@ async function handlePackageCreate(request, env) {
   if (dupe) {
     return json({ error: "identical package text already stored" }, 409);
   }
-  const maxRow = await env.DB.prepare(
+  const maxRow = await db.prepare(
     "SELECT MAX(version) AS max_version FROM packages WHERE pkg = ?",
   )
     .bind(body.pkg_name)
     .first();
   const version = (maxRow && maxRow.max_version ? maxRow.max_version : 0) + 1;
   const createdAt = new Date().toISOString();
-  await env.DB.prepare(
+  await db.prepare(
     "INSERT INTO packages (pkg, version, text, content_sha256, status, " +
       "trial_json, override_reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   )
@@ -1594,12 +1885,19 @@ async function handlePackageList(request, env) {
   if (badAuth) return badAuth;
   const badDb = requireDb(env);
   if (badDb) return badDb;
-  await sweep(env, new Date().toISOString());
-  const { results } = await env.DB.prepare(
-    "SELECT * FROM packages ORDER BY pkg, version",
-  ).all();
+  // Semester fan-out (2.7.0): packages from every semester
+  // database, each meta tagged with its database's binding as `db`.
+  const nowIso = new Date().toISOString();
   const out = [];
-  for (const row of results) out.push(await packageMeta(env, row));
+  for (const { binding, db } of await semesterDbs(env)) {
+    await sweep(db, nowIso);
+    const { results } = await db.prepare(
+      "SELECT * FROM packages ORDER BY pkg, version",
+    ).all();
+    for (const row of results || []) {
+      out.push({ ...(await packageMeta(db, row)), db: binding });
+    }
+  }
   return json(out);
 }
 
@@ -1610,9 +1908,14 @@ async function handlePackageShow(request, env, pkgId) {
   if (badDb) return badDb;
   const parsed = parsePkgId(pkgId);
   if (!parsed) return json({ error: "unknown package" }, 404);
-  const row = await getPackageRow(env, parsed.name, parsed.version);
-  if (!row) return json({ error: "unknown package" }, 404);
-  const meta = await packageMeta(env, row);
+  // Semester databases (2.7.0): the package is found by checking
+  // each semester database for the name + version (resolvePackage
+  // states the preference order when several hold it).
+  const found = await resolvePackage(env, parsed.name, parsed.version);
+  if (!found) return json({ error: "unknown package" }, 404);
+  const db = found.db;
+  const row = found.row;
+  const meta = await packageMeta(db, row);
   // Optional text slicing: ?text_offset=N&text_length=M returns
   // only that slice of the package text, with text_total set to
   // the full length. The teacher audit app reads large package
@@ -1662,9 +1965,37 @@ async function handlePackageStatus(request, env, pkgId) {
   if (badDb) return badDb;
   const parsed = parsePkgId(pkgId);
   if (!parsed) return json({ error: "unknown package" }, 404);
-  const row = await getPackageRow(env, parsed.name, parsed.version);
-  if (!row) return json({ error: "unknown package" }, 404);
   const body = await readJson(request);
+  // Semester databases (2.7.0): the package is found by checking
+  // each semester database for the name + version. An optional
+  // `db` body field (a binding name, validated as in claim and
+  // result) names the database directly. Without it the match must
+  // be unique: when several semester databases hold the same name
+  // + version, the request is refused 409 with the candidate
+  // bindings in the error body, rather than silently acting on one
+  // semester's copy.
+  const holders = await packageHolders(env, parsed.name, parsed.version);
+  if (!holders.length) return json({ error: "unknown package" }, 404);
+  let found = null;
+  if (body && typeof body === "object" && typeof body.db === "string") {
+    found = holders.find((h) => h.binding === body.db) || null;
+  }
+  if (!found) {
+    if (holders.length > 1) {
+      return json(
+        {
+          error:
+            "package name and version exist in more than one " +
+            "semester database; name one with db",
+          candidates: holders.map((h) => h.binding),
+        },
+        409,
+      );
+    }
+    found = holders[0];
+  }
+  const db = found.db;
+  const row = found.row;
   if (!body || typeof body !== "object" || typeof body.status !== "string") {
     return json({ error: "invalid request body" }, 400);
   }
@@ -1708,14 +2039,14 @@ async function handlePackageStatus(request, env, pkgId) {
       accuracy: trial.accuracy,
     });
   }
-  await env.DB.prepare(
+  await db.prepare(
     "UPDATE packages SET status = ?, trial_json = ?, override_reason = ? " +
       "WHERE pkg = ? AND version = ?",
   )
     .bind(target, trialJson, overrideReason, parsed.name, parsed.version)
     .run();
-  const updated = await getPackageRow(env, parsed.name, parsed.version);
-  return json(await packageMeta(env, updated));
+  const updated = await getPackageRow(db, parsed.name, parsed.version);
+  return json(await packageMeta(db, updated));
 }
 
 // --------------------------------------------------------------- router

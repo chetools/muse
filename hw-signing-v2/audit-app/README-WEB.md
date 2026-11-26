@@ -18,6 +18,70 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v48 (2026-11-26) — fingerprint-form packages, per-block YouTube comparison, WAV repair
+
+- **Two package forms.** A submission ZIP now arrives in one of two
+  forms, decided by its entry set alone: the audio form
+  (`submission.html` + `submission-audio.wav`), as always, or the
+  fingerprint form (`submission.html` +
+  `submission-fingerprint.bin`), which carries the recording's raw
+  Chromaprint bytes instead of the WAV. Which form a student builds
+  follows the job's signed grade bundle: a bundle carrying a signed
+  Chromaprint SHA-256 (Worker 2.7.0 and later) produces the
+  fingerprint form; an older bundle produces the audio form. A mixed
+  or partial entry set is neither form and is rejected, as a wrong
+  set always was. There is no flag day — old ZIPs keep checking
+  exactly as before.
+- **Fingerprint-form checks.** The submitted fingerprint's SHA-256
+  must equal the value the Worker signed into the bundle (shown in
+  the package's verification section as "Chromaprint SHA-256", and
+  included in the receipt offered to the Worker's /verify-grade —
+  the Worker accepts receipts in both the old and the new canonical
+  form). The bundle's Audio SHA-256 names the original WAV, which
+  this form does not carry; the signed receipt binds it, so no
+  audio hash is recomputed. Transcript, critique, grades, receipt,
+  YouTube-ID and injection checks are unchanged.
+- **YouTube cross-check, per block.** In the fingerprint form the
+  submitted fingerprint is compared against the downloaded video's
+  fingerprint in blocks of 242 items (30 s), each block at its own
+  best offset over ±16 items, instead of at one global offset for
+  the whole file. The check passes when the median block similarity
+  is at least 0.90 and at least 90% of blocks score at least 0.85;
+  the result reports the median, the fraction at or above 0.85, the
+  block count and the worst block, and keeps the whole-file
+  comparison alongside. The rule is set from the twelve past
+  packages measured on 2026-11-26: every same-recording block
+  scored at least 0.929, 99.9% of cross-recording blocks scored
+  below 0.842, and one real pair that scored only 0.796 at a single
+  global offset scored 0.926–0.991 in every block at per-block
+  offsets. The claimed duration is the fingerprint span (items ×
+  0.124 s), checked against the package's Audio duration line
+  within 1 s and against the video's audio duration within
+  max(2 s, 2%), as before.
+- **WAV repair.** Five of the twelve past packages carry a WAV
+  whose "fmt " chunk identifier is zeroed while the sound data is
+  intact; ffmpeg cannot open such a file, and those packages
+  silently recorded no YouTube result. The audio form now retries
+  a failed decode once against a repaired copy — a canonical
+  header (PCM, 16-bit, 16 000 Hz, mono) over the submitted bytes
+  from offset 44 — and the result notes `wav_repaired` when the
+  repair was used. Hash checks always run over the original
+  submitted bytes, never the repair.
+- **Check schema 2.** The check schema rises from 1 to 2, so
+  packages checked under the old checks are re-checked under v48
+  on the next pass.
+- **Front end.** The web front end discovers both forms on
+  disk: a downloaded package is found by its HTML plus either
+  media entry, and its record's media path names the
+  fingerprint file for a fingerprint package (the checks
+  decide the form from that name). The redownload presence
+  test accepts the fingerprint file in the WAV's place, so a
+  fingerprint package is not fetched again on every scan.
+  Nothing in the front end serves or plays a package's own
+  media — the wall and the single view play the downloaded
+  YouTube take — so a fingerprint package appears there
+  exactly as an audio package does.
+
 ## v35 (2026-11-13) — previous attempts checked and downloaded, final grades auto-save, grade differences highlighted
 
 - **Previous attempts are checked like current ones.** Every

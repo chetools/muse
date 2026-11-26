@@ -81,6 +81,7 @@ import string
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import wave
 import zipfile
@@ -134,7 +135,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/44.0"
+USER_AGENT = "HWSigning-Teacher-Audit/48.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -337,7 +338,8 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
 
     Skip rule (v32): a package whose stored watermark already
     matches the listing's submission id, submitted_at and attempt
-    — and whose three files are on disk — is skipped WITHOUT
+    — and whose files are on disk (ZIP, HTML and the media entry,
+    a WAV or a fingerprint file since v48) — is skipped WITHOUT
     fetching its bytes. (Before v32 the bytes were fetched first
     and the SHA-256 compared; the redownload tool's time estimate
     depends on present packages costing no download.) When the
@@ -481,13 +483,25 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
                 f"{base_key}:attempt-{item['attempt']}"
             zip_path = folder / "package.zip"
             audio_path = folder / "submission-audio.wav"
+            fingerprint_path = folder / FINGERPRINT_ENTRY_NAME
             html_path = folder / "submission.html"
             listing = {"submission_id": item["submission_id"],
                        "submitted_at": item["submitted_at"],
                        "attempt": item["attempt"]}
             stored = state.get(key)
-            present = zip_path.exists() and audio_path.exists() \
-                and html_path.exists()
+            present = zip_path.exists() and html_path.exists() \
+                and (audio_path.exists() or fingerprint_path.exists())
+
+            def media_fields():
+                # The package's media entry, whichever form was
+                # extracted: the WAV (audio form) or the
+                # fingerprint file (fingerprint form, v48).
+                fields = {}
+                if audio_path.exists():
+                    fields["audio_path"] = str(audio_path)
+                if fingerprint_path.exists():
+                    fields["fingerprint_path"] = str(fingerprint_path)
+                return fields
             if not force and not is_current and stored is not None \
                     and stored.get("rejected") and \
                     all(stored.get(k) == v for k, v in listing.items()):
@@ -506,7 +520,7 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
                     all(stored.get(k) == v for k, v in listing.items()):
                 emit({"user_id": user_id,
                       "user_name": user.get("name"),
-                      "audio_path": str(audio_path),
+                      **media_fields(),
                       "html_path": str(html_path),
                       "zip_path": str(zip_path),
                       "skipped": True, "fetched_bytes": 0,
@@ -518,7 +532,7 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
             if not force and stored == mark and present:
                 emit({"user_id": user_id,
                       "user_name": user.get("name"),
-                      "audio_path": str(audio_path),
+                      **media_fields(),
                       "html_path": str(html_path),
                       "zip_path": str(zip_path),
                       "skipped": True,
@@ -554,7 +568,7 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
             state[key] = mark
             save_state()
             emit({"user_id": user_id, "user_name": user.get("name"),
-                  "audio_path": str(audio_path),
+                  **media_fields(),
                   "html_path": str(html_path),
                   "zip_path": str(zip_path),
                   "fetched_bytes": len(zip_bytes),
@@ -651,6 +665,13 @@ def estimate_download(items, rate_bps):
 # ---------------------------------------------------------------- package ZIP
 
 PACKAGE_ZIP_NAMES = ("submission.html", "submission-audio.wav")
+# v48: the fingerprint form (webapp 2.6.0, for packages whose
+# signed bundle carries a chromaprint_sha256) holds the raw
+# Chromaprint bytes instead of the WAV. The ZIP entry set alone
+# decides which form a package is; a mixed or partial set is
+# neither and is rejected.
+FINGERPRINT_ENTRY_NAME = "submission-fingerprint.bin"
+PACKAGE_ZIP_NAMES_FP = ("submission.html", FINGERPRINT_ENTRY_NAME)
 MAX_ZIP_ENTRY_BYTES = 200 * 1024 * 1024   # 200 MB per entry
 MAX_ZIP_TOTAL_BYTES = 250 * 1024 * 1024   # 250 MB total, uncompressed
 
@@ -658,8 +679,10 @@ MAX_ZIP_TOTAL_BYTES = 250 * 1024 * 1024   # 250 MB total, uncompressed
 def extract_package_zip(zip_bytes, folder):
     """Safely extract a v2 submission ZIP into folder.
 
-    The ZIP must hold exactly submission.html and
-    submission-audio.wav. Raises ValueError (with the reason) for:
+    The ZIP must hold exactly one of the two package forms:
+    submission.html + submission-audio.wav (audio form), or
+    submission.html + submission-fingerprint.bin (fingerprint
+    form, v48). Raises ValueError (with the reason) for:
     an unreadable ZIP, an absolute or parent-traversing entry path,
     any entry other than the two expected (including directory
     entries and duplicates), an entry over MAX_ZIP_ENTRY_BYTES, or
@@ -684,10 +707,15 @@ def extract_package_zip(zip_bytes, folder):
                 or ".." in parts:
             raise ValueError(f"unsafe entry path: {name!r}")
     names = [info.filename for info in infos]
-    if sorted(names) != sorted(PACKAGE_ZIP_NAMES):
+    if sorted(names) == sorted(PACKAGE_ZIP_NAMES):
+        form, entry_names = "audio", PACKAGE_ZIP_NAMES
+    elif sorted(names) == sorted(PACKAGE_ZIP_NAMES_FP):
+        form, entry_names = "fingerprint", PACKAGE_ZIP_NAMES_FP
+    else:
         raise ValueError(
-            f"ZIP must hold exactly {list(PACKAGE_ZIP_NAMES)}, "
-            f"found {names}")
+            f"ZIP must hold exactly {list(PACKAGE_ZIP_NAMES)} "
+            f"(audio form) or {list(PACKAGE_ZIP_NAMES_FP)} "
+            f"(fingerprint form), found {names}")
     total = sum(info.file_size for info in infos)
     for info in infos:
         if info.file_size > MAX_ZIP_ENTRY_BYTES:
@@ -703,7 +731,7 @@ def extract_package_zip(zip_bytes, folder):
     current = None
     streamed_total = 0
     try:
-        for name in PACKAGE_ZIP_NAMES:
+        for name in entry_names:
             dest = folder / name
             current = dest
             count = 0
@@ -734,8 +762,13 @@ def extract_package_zip(zip_bytes, folder):
         if isinstance(e, ValueError):
             raise
         raise ValueError(f"cannot extract package ZIP ({e})") from e
-    return {"html_path": str(written["submission.html"]),
-            "audio_path": str(written["submission-audio.wav"])}
+    out = {"html_path": str(written["submission.html"]),
+           "package_form": form}
+    if form == "audio":
+        out["audio_path"] = str(written["submission-audio.wav"])
+    else:
+        out["fingerprint_path"] = str(written[FINGERPRINT_ENTRY_NAME])
+    return out
 
 
 # ---------------------------------------------------------------- hashes
@@ -767,6 +800,7 @@ VERIFICATION_LABELS = {
     "model version": "model",
     "glossary version": "glossary",
     "audio sha-256": "audio_sha256",
+    "chromaprint sha-256": "chromaprint_sha256",
     "transcript sha-256": "transcript_sha256",
     "signed at": "t",
     "receipt": "receipt",
@@ -938,6 +972,8 @@ def parse_package(html_text):
                 (ver.get("pkg_content_sha256") or "").lower() or None,
             "versions": versions,
             "audio_sha256": (ver.get("audio_sha256") or "").lower(),
+            "chromaprint_sha256":
+                (ver.get("chromaprint_sha256") or "").lower() or None,
             "transcript_sha256": (ver.get("transcript_sha256") or "").lower(),
             "t": ver.get("t"),
             "receipt": ver.get("receipt"),
@@ -1073,6 +1109,13 @@ def worker_verify_grade(cfg, ver, grades, post_fn=None):
         "t": ver.get("graded_at"),
         "receipt": ver.get("grade_receipt"),
     }
+    if ver.get("chromaprint_sha256"):
+        # Packages graded by Worker 2.7.0 or later carry the
+        # signed fingerprint hash; their receipts verify over the
+        # canonical form that includes it. Older packages carry
+        # no such line and the field stays absent — the Worker
+        # accepts both canonical forms.
+        body["chromaprint_sha256"] = ver["chromaprint_sha256"]
     url = cfg["worker_base_url"].rstrip("/") + "/verify-grade"
     result = post_fn(url, body)
     return bool(result.get("valid"))
@@ -1082,7 +1125,10 @@ def worker_verify_grade(cfg, ver, grades, post_fn=None):
 
 def check_package(audio_path, html_path, cfg, post_fn=None):
     """Recompute fingerprints and verify the grade receipt for one
-    v2 package.
+    v2 package. audio_path is the package's media entry: the WAV
+    (audio form) or submission-fingerprint.bin (fingerprint form,
+    v48) — the file's name decides the form, as the ZIP entry set
+    decided it at extraction.
 
     Checks, per the v2 SPEC: the audio fingerprint and the
     transcript checksum are recomputed; the critique SHA-256 is
@@ -1094,12 +1140,27 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
     too — grades_match). A package whose format version is not 2 is
     not internally consistent (format_ok False) and its receipt is
     never offered to /verify-grade.
+
+    In the fingerprint form the recomputed "audio fingerprint" is
+    the SHA-256 of the submitted fingerprint bytes, checked
+    against the chromaprint_sha256 the Worker signed into the
+    bundle. The bundle's audio_sha256 names the original WAV,
+    which this form does not carry; the receipt binds that value,
+    and no hash of it can or need be recomputed here.
     """
+    media_path = Path(audio_path) if audio_path else None
+    form = "fingerprint" if (media_path is not None
+                             and media_path.name
+                             == FINGERPRINT_ENTRY_NAME) else "audio"
     html_text = Path(html_path).read_text(encoding="utf-8")
     parsed = parse_package(html_text)
     ver = parsed["verification"]
     format_ok = str(ver.get("v") or "") == "2"
-    audio_ok = sha256_file(audio_path) == ver["audio_sha256"]
+    if form == "fingerprint":
+        audio_ok = bool(ver.get("chromaprint_sha256")) and \
+            sha256_file(media_path) == ver["chromaprint_sha256"]
+    else:
+        audio_ok = sha256_file(audio_path) == ver["audio_sha256"]
     transcript_ok = sha256_bytes(
         parsed["canonical_transcript"].encode("utf-8")) == ver["transcript_sha256"]
     critique_ok = bool(ver.get("critique_sha256")) and sha256_bytes(
@@ -1140,6 +1201,7 @@ def check_package(audio_path, html_path, cfg, post_fn=None):
     injection_matches = scan_injection(parsed["canonical_transcript"])
     return {
         "format_ok": format_ok,
+        "package_form": form,
         "audio_fingerprint_ok": audio_ok,
         "transcript_checksum_ok": transcript_ok,
         "critique_ok": critique_ok,
@@ -1428,6 +1490,101 @@ def compare_fingerprints(a, b, max_offset=8):
             "compared_items": n, "thirds": thirds}
 
 
+# ------------------------------------------------- per-block comparison (v48)
+#
+# The fingerprint form's YouTube cross-check compares per block
+# rather than at one global offset: blocks of FP_BLOCK_ITEMS
+# items (30 s at FP_ITEM_S = 0.124 s per item), each block at its
+# own best offset over ±FP_BLOCK_MAX_OFFSET items, similarity
+# 1 - BER per block as in compare_fingerprints. The rule —
+# median block similarity at least FP_BLOCK_MEDIAN_MIN and at
+# least FP_BLOCK_PASS_FRACTION of blocks at or above
+# FP_BLOCK_SIM_MIN — is set from the measurement over the twelve
+# packages checked on 2026-11-26: every one of the 658
+# same-recording blocks scored at least 0.929, while 99.9% of
+# 6,090 cross-recording blocks scored below 0.842 (the few above
+# 0.85 were silence matching silence, which the median and
+# fraction absorb). One real pair scored only 0.796 under the
+# single global ±8-item offset while every block scored
+# 0.926-0.991 at its own offset — alignment drift over a long
+# take is exactly what the per-block offsets absorb.
+
+FP_BLOCK_ITEMS = 242          # 30 s at FP_ITEM_S = 0.124 s per item
+FP_BLOCK_MAX_OFFSET = 16
+FP_BLOCK_MIN_TAIL = 60        # a shorter final block joins the previous
+FP_BLOCK_SIM_MIN = 0.85
+FP_BLOCK_MEDIAN_MIN = 0.90
+FP_BLOCK_PASS_FRACTION = 0.90
+
+
+def _fp_block_bounds(n):
+    """Block [start, end) spans over a fingerprint of n items:
+    blocks of FP_BLOCK_ITEMS, with a final partial block shorter
+    than FP_BLOCK_MIN_TAIL merged into the previous block."""
+    bounds = []
+    start = 0
+    while start < n:
+        bounds.append((start, min(n, start + FP_BLOCK_ITEMS)))
+        start += FP_BLOCK_ITEMS
+    if len(bounds) > 1 \
+            and bounds[-1][1] - bounds[-1][0] < FP_BLOCK_MIN_TAIL:
+        bounds[-2] = (bounds[-2][0], bounds[-1][1])
+        bounds.pop()
+    return bounds
+
+
+def _fp_block_similarity(a, b, start, end):
+    """Best-offset similarity of one block of a against b: the
+    block stays at its own position in a and is compared against
+    b shifted by each offset in ±FP_BLOCK_MAX_OFFSET items.
+    None when no offset gives the block any overlap with b."""
+    best = None
+    for off in range(-FP_BLOCK_MAX_OFFSET, FP_BLOCK_MAX_OFFSET + 1):
+        b_start = start + off
+        a_off = 0
+        if b_start < 0:
+            a_off = -b_start
+            b_start = 0
+        n = min(end - start - a_off, len(b) - b_start)
+        if n <= 0:
+            continue
+        ber = _fp_ber(a[start + a_off:start + a_off + n],
+                      b[b_start:b_start + n], 0)
+        if ber is not None and (best is None or ber < best):
+            best = ber
+    return None if best is None else 1 - best
+
+
+def compare_fingerprints_blockwise(a, b):
+    """Per-block comparison of two Chromaprint fingerprints (the
+    fingerprint form's YouTube rule, v48): every block of a at its
+    own best offset against b. Passes when the median block
+    similarity is at least FP_BLOCK_MEDIAN_MIN and at least
+    FP_BLOCK_PASS_FRACTION of the blocks reach FP_BLOCK_SIM_MIN."""
+    sims = []
+    for start, end in _fp_block_bounds(len(a)):
+        sim = _fp_block_similarity(a, b, start, end)
+        if sim is not None:
+            sims.append(sim)
+    if not sims:
+        return {"block_count": 0, "block_median": None,
+                "block_fraction_ge_085": None, "block_worst": None,
+                "block_similarities": [], "block_passed": False}
+    ordered = sorted(sims)
+    mid = len(ordered) // 2
+    median = ordered[mid] if len(ordered) % 2 \
+        else (ordered[mid - 1] + ordered[mid]) / 2
+    fraction = sum(1 for s in sims if s >= FP_BLOCK_SIM_MIN) / len(sims)
+    return {"block_count": len(sims),
+            "block_median": round(median, 4),
+            "block_fraction_ge_085": round(fraction, 4),
+            "block_worst": round(min(sims), 4),
+            "block_similarities": [round(s, 4) for s in sims],
+            "block_passed": bool(
+                median >= FP_BLOCK_MEDIAN_MIN
+                and fraction >= FP_BLOCK_PASS_FRACTION)}
+
+
 def media_duration_s(path):
     """Duration of a media file's audio, via ffprobe; WAV files are
     read directly. For a video file the audio stream's duration is
@@ -1461,6 +1618,42 @@ def media_duration_s(path):
     return None
 
 
+def _repaired_wav_temp(path):
+    """A temporary WAV holding path's PCM payload under a
+    canonical 44-byte header, or None when path is not a RIFF/WAVE
+    file with a payload to repair.
+
+    Five of the twelve packages in the 2026-11-26 check carry a
+    WAV whose "fmt " chunk identifier (bytes 12-15) is zeroed
+    while the PCM data from byte 44 is intact; ffmpeg cannot open
+    such a file and the wave module cannot read it, so those
+    packages silently recorded no YouTube result. The repair is
+    the webapp's normalised format — PCM, 16-bit, 16 000 Hz,
+    mono — written over the submitted bytes from offset 44. It
+    exists only for decoding (fingerprint extraction, duration);
+    hash checks always run over the original submitted bytes.
+    The caller deletes the returned file."""
+    try:
+        data = Path(path).read_bytes()
+    except OSError:
+        return None
+    if len(data) <= 44 or data[0:4] != b"RIFF" \
+            or data[8:12] != b"WAVE":
+        return None
+    fd, tmp = tempfile.mkstemp(prefix="audit-repair-", suffix=".wav")
+    os.close(fd)
+    try:
+        with wave.open(tmp, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(16000)
+            w.writeframes(data[44:])
+    except Exception:  # noqa: BLE001 - not repairable in this form
+        Path(tmp).unlink(missing_ok=True)
+        return None
+    return Path(tmp)
+
+
 def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
                         cfg, ffmpeg=None, fingerprint_fn=None):
     """Acoustic cross-check: Canvas WAV against the downloaded
@@ -1471,7 +1664,19 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
     for tests; the production default is chromaprint_fingerprint.
     When the video has not been downloaded yet the result is
     available False with passed None - not a pass, not a flag; the
-    next pass after the download completes it."""
+    next pass after the download completes it.
+
+    v48: when the package's media entry is the fingerprint file
+    (fingerprint form), the submitted fingerprint is decoded from
+    it directly and compared against the video's fingerprint per
+    block (compare_fingerprints_blockwise) — the flag follows the
+    per-block rule, with the whole-file comparison kept in the
+    result for continuity; the claimed duration is the fingerprint
+    span, cross-checked against the package's Audio duration line
+    within 1 s as well as against the video's duration. In the
+    audio form, a WAV the normal route cannot decode is retried
+    once against a repaired copy (_repaired_wav_temp) and the
+    result notes wav_repaired when the repair was used."""
     threshold = float(cfg.get("acoustic_threshold", 0.85))
     out = {"available": False, "youtube_flag": False, "passed": None,
            "threshold": threshold, "similarity": None, "ber": None,
@@ -1481,7 +1686,22 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
         out["reason"] = "YouTube video not downloaded yet"
         return out
     out["available"] = True
-    canvas_dur = media_duration_s(canvas_audio_path)
+    fp_form = Path(canvas_audio_path).name == FINGERPRINT_ENTRY_NAME
+    submitted_fp = None
+    if fp_form:
+        try:
+            raw = Path(canvas_audio_path).read_bytes()
+            submitted_fp = list(struct.unpack(
+                f"<{len(raw) // 4}I", raw[:len(raw) // 4 * 4]))
+        except OSError:
+            submitted_fp = None
+    if fp_form:
+        # The fingerprint span is the canvas duration: the items
+        # are the submitted evidence, at FP_ITEM_S seconds each.
+        canvas_dur = (len(submitted_fp) * FP_ITEM_S
+                      if submitted_fp else None)
+    else:
+        canvas_dur = media_duration_s(canvas_audio_path)
     yt_dur = media_duration_s(youtube_media_path)
     claimed = (parsed.get("verification") or {}).get("duration_s")
     out["canvas_duration_s"] = (round(canvas_dur, 1)
@@ -1489,38 +1709,89 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
     out["youtube_duration_s"] = (round(yt_dur, 1)
                                   if yt_dur is not None else None)
     out["claimed_duration_s"] = claimed
+    fp_fn = fingerprint_fn or (
+        lambda p: chromaprint_fingerprint(p, ffmpeg=ffmpeg))
+    if fp_form:
+        fp_canvas = submitted_fp
+        try:
+            fp_yt = fp_fn(youtube_media_path)
+        except Exception as e:  # noqa: BLE001 - recorded, not fatal
+            out["error"] = f"{type(e).__name__}: {e}"
+            fp_yt = None
+    else:
+        try:
+            fp_canvas = fp_fn(canvas_audio_path)
+            fp_yt = fp_fn(youtube_media_path)
+        except Exception as e:  # noqa: BLE001 - recorded, not fatal
+            out["error"] = f"{type(e).__name__}: {e}"
+            fp_canvas = fp_yt = None
+        if not fp_canvas or canvas_dur is None:
+            # WAV repair (v48): retry whichever of the fingerprint
+            # and the duration the normal route could not read,
+            # once, against a repaired copy of the WAV. Only a
+            # retry that yields a value counts as a repair used.
+            repaired = _repaired_wav_temp(canvas_audio_path)
+            if repaired is not None:
+                try:
+                    if not fp_canvas:
+                        try:
+                            fp_canvas = fp_fn(repaired) or fp_canvas
+                        except Exception:  # noqa: BLE001
+                            pass
+                    if canvas_dur is None:
+                        canvas_dur = media_duration_s(repaired)
+                    if fp_canvas or canvas_dur is not None:
+                        out["wav_repaired"] = True
+                        if canvas_dur is not None:
+                            out["canvas_duration_s"] = round(
+                                canvas_dur, 1)
+                finally:
+                    repaired.unlink(missing_ok=True)
     duration_checked = canvas_dur is not None and yt_dur is not None
+    claimed_ok = None
+    if fp_form and claimed is not None and canvas_dur is not None:
+        # The fingerprint span must agree with the duration the
+        # package itself claims (its Audio duration line) within
+        # 1 s: the span is derived from the submitted evidence, so
+        # a package claiming a materially different length than
+        # its fingerprint spans is inconsistent on its face.
+        claimed_diff = abs(canvas_dur - claimed)
+        out["claimed_diff_s"] = round(claimed_diff, 1)
+        claimed_ok = claimed_diff <= 1.0
     if duration_checked:
         diff = abs(canvas_dur - yt_dur)
         tol = max(2.0, 0.02 * canvas_dur)
         out["duration_diff_s"] = round(diff, 1)
         out["duration_tolerance_s"] = round(tol, 1)
-        out["duration_ok"] = diff <= tol
+        out["duration_ok"] = diff <= tol \
+            and (claimed_ok is None or claimed_ok)
         out["duration_flag"] = not out["duration_ok"]
-    fp_fn = fingerprint_fn or (
-        lambda p: chromaprint_fingerprint(p, ffmpeg=ffmpeg))
-    try:
-        fp_canvas = fp_fn(canvas_audio_path)
-        fp_yt = fp_fn(youtube_media_path)
-    except Exception as e:  # noqa: BLE001 - recorded, not fatal
-        out["error"] = f"{type(e).__name__}: {e}"
-        fp_canvas = fp_yt = None
+    elif claimed_ok is not None:
+        out["duration_ok"] = claimed_ok
+        out["duration_flag"] = not claimed_ok
     configured = bool(fp_canvas and fp_yt)
     out["acoustic_configured"] = configured
     content_flag = False
     if configured:
         comp = compare_fingerprints(fp_canvas, fp_yt)
         out.update(comp)
-        content_flag = (comp["similarity"] is not None
-                        and comp["similarity"] < threshold)
+        if fp_form:
+            blocks = compare_fingerprints_blockwise(fp_canvas, fp_yt)
+            out.update(blocks)
+            content_flag = not blocks["block_passed"]
+        else:
+            content_flag = (comp["similarity"] is not None
+                            and comp["similarity"] < threshold)
     out["content_flag"] = content_flag
     flagged = bool(out["duration_flag"] or content_flag)
     out["youtube_flag"] = flagged
     # A pass requires that something was actually measured: the
-    # fingerprint comparison, or at least the durations. With
-    # neither, passed stays None (not configured / not readable).
-    out["passed"] = (not flagged) if (configured or duration_checked) \
-        else None
+    # fingerprint comparison, or at least the durations (in the
+    # fingerprint form, the span-versus-claimed check counts too).
+    # With none of those, passed stays None (not configured / not
+    # readable).
+    measured = configured or duration_checked or claimed_ok is not None
+    out["passed"] = (not flagged) if measured else None
     return out
 
 
@@ -1604,8 +1875,10 @@ def main(argv=None):
             if root.exists() else []
         for html_path in htmls:
             audio_path = html_path.parent / "submission-audio.wav"
-            if audio_path.exists():
-                rep = check_package(audio_path, html_path, cfg)
+            fp_path = html_path.parent / FINGERPRINT_ENTRY_NAME
+            media_path = audio_path if audio_path.exists() else fp_path
+            if media_path.exists():
+                rep = check_package(media_path, html_path, cfg)
                 rep.pop("parsed")
                 rep["user_id"] = html_path.parent.name
                 reports.append(rep)
@@ -1625,11 +1898,13 @@ def main(argv=None):
         for html_path in htmls:
             folder = html_path.parent
             audio_path = folder / "submission-audio.wav"
-            if audio_path.exists():
+            fp_path = folder / FINGERPRINT_ENTRY_NAME
+            media_path = audio_path if audio_path.exists() else fp_path
+            if media_path.exists():
                 packages.append({
                     "user_id": folder.name,
                     "user_name": None,
-                    "audio_path": str(audio_path),
+                    "audio_path": str(media_path),
                     "html_path": str(html_path),
                     "submitted_at": (state.get(folder.name) or {})
                     .get("submitted_at"),

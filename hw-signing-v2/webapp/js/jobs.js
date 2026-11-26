@@ -142,6 +142,42 @@ export function verifyBundleContents(bundle, actual) {
   return failures;
 }
 
+/* ---------------- fingerprint-form submissions (2.6.0) ----------------
+ * The ZIP form is decided by the job's signed bundle, never by
+ * date: a bundle graded under Worker 2.7.0 carries a signed
+ * chromaprint_sha256 — the SHA-256 of the raw Chromaprint bytes —
+ * when the job had a fingerprint, and the submission ZIP then holds
+ * the fingerprint bytes instead of the WAV. The string "none" (the
+ * job had no fingerprint) and a missing field (the job was graded
+ * before Worker 2.7.0) both mean the WAV form, exactly as before.
+ */
+export function bundleChromaprintSha(bundle) {
+  const v = bundle && bundle.chromaprint_sha256;
+  return typeof v === 'string' && SHA256_HEX.test(v) ? v : null;
+}
+
+// The fingerprint form's counterpart of verifyBundleContents: the
+// hashes of the exact contents about to be packaged — the raw
+// fingerprint bytes the status response returned, the canonical
+// transcript, and the critique in the result bundle — compared
+// with the hashes the grading Worker signed. Returns a list of
+// failure codes (empty when everything matches): 'fingerprint',
+// 'transcript', 'critique'. Pure; the caller supplies the hashes.
+export function verifyFingerprintContents(bundle, actual) {
+  const failures = [];
+  if (!bundle || !actual) return ['fingerprint', 'transcript', 'critique'];
+  if (actual.fingerprintSha256 !== bundle.chromaprint_sha256) {
+    failures.push('fingerprint');
+  }
+  if (actual.transcriptSha256 !== bundle.transcript_sha256) {
+    failures.push('transcript');
+  }
+  if (actual.critiqueSha256 !== bundle.critique_sha256) {
+    failures.push('critique');
+  }
+  return failures;
+}
+
 // Client-side mirror of the Worker's POST /jobs validation. Returns
 // { ok: true } or { ok: false, reason } — the reason of the FIRST
 // failed check, in the Worker's order of concern.
@@ -438,7 +474,11 @@ export function duplicateJobEntry(response, submitted) {
 // (the result bundle when ready; queue_ahead — how many jobs are
 // ahead in the grading queue — while waiting), or null on 403: the
 // Worker returns the same 403 for every wrong code, and the page
-// preserves that indistinguishability.
+// preserves that indistinguishability. For a ready job the body
+// also carries the Worker's stored transcript text and chromaprint
+// (Worker 2.7.0) as top-level fields beside the result bundle; they
+// reach the caller through data unchanged and feed the
+// fingerprint-form ZIP path.
 export async function fetchJobStatus(workerBase, creds, fetchFn) {
   const { status, ok, data } = await postJson(workerBase, '/jobs/status', {
     pkg: creds.pkg,

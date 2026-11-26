@@ -45,8 +45,10 @@ CREATE TABLE IF NOT EXISTS packages (
 -- days); on expiry transcript, critique, result_json and push_json
 -- are nulled. chromaprint (2.6.0) is the base64 of the raw
 -- fingerprint bytes (little-endian uint32 per item), or NULL when
--- the page did not send one; the transcript text itself is nulled
--- at grading (2.6.0), while transcript_sha256 is kept.
+-- the page did not send one. The transcript text is kept at
+-- grading (2.7.0, reversing the 2.6.0 nulling at grading) for the
+-- graded job's 180 days, alongside transcript_sha256, and is
+-- removed only on expiry.
 CREATE TABLE IF NOT EXISTS jobs (
   job_id TEXT PRIMARY KEY,
   pkg TEXT,
@@ -130,4 +132,18 @@ CREATE TABLE IF NOT EXISTS duration_stats (
   video_s REAL,
   diff_s REAL,
   abs_diff_s REAL
+);
+
+-- Semester databases (2.7.0): one database per semester. This
+-- schema is applied to every semester database. db_meta is read
+-- only in the primary database (binding DB, the Fall 2026
+-- semester database), where it holds just the current pointer:
+-- current_binding (the binding new packages are created in —
+-- "DB" for the primary, "DB_<TERM>", e.g. DB_2027SP, for later
+-- semesters) and current_semester (its label, e.g. "2026fa").
+-- There is no routing registry: the Worker finds a package or a
+-- job by checking the semester databases.
+CREATE TABLE IF NOT EXISTS db_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT
 );

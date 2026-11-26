@@ -105,8 +105,15 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
   superseded 2026-11-12). The full job row is kept for that period,
   including the result bundle (completeness, accuracy, critique,
   receipt), the acoustic fingerprint, the hashes, the code lookup
-  and salt, and the aliases, except the transcript text, which is
-  nulled at grading (see `/grading/result`). (Before 2.4.1 every job
+  and salt, and the aliases, and — since Worker 2.7.0 (decided
+  2026-11-26) — the transcript text, which is kept for the whole
+  graded lifetime and removed only by the expiry sweep. (From
+  2.6.0 to 2.6.1 the transcript was nulled at grading, a
+  data-minimisation decision of 2026-11-12; 2.7.0 reverses it so a
+  graded job's transcript can be retrieved with its grade — see
+  `/jobs/status` — which the fingerprint submission form below
+  depends on, and so a regrade from the Worker is possible again.)
+  (Before 2.4.1 every job
   expired 48 h after creation, which deleted ungraded submissions
   whenever grading did not run within 48 h.) On expiry the result
   bundle and remaining fields are nulled and the row is marked
@@ -129,6 +136,34 @@ Nothing in v1 is modified. All v2 code lives in `~/workspace/hw-signing-v2/`.
 - The submission is ONE file: a ZIP containing exactly
   `submission.html` and `submission-audio.wav`, ZIP entries written with
   a fixed timestamp (1980-01-01) so a rebuilt ZIP is byte-identical.
+- Fingerprint submission form (2.7.0; webapp 2.6.0; audit app v48):
+  a ZIP's form is decided by the job's signed grade bundle, not by
+  date. A bundle carrying a signed `chromaprint_sha256` (the SHA-256
+  of the job's raw fingerprint bytes, or `none`) with a real hash
+  value packages in the fingerprint form: the ZIP contains exactly
+  `submission.html` and `submission-fingerprint.bin`, where the .bin
+  is the job's raw Chromaprint bytes exactly as stored on the Worker,
+  and the HTML's verification block names the Chromaprint SHA-256
+  and lists the .bin as the audio file. Any other bundle packages in
+  the audio form above; old ZIPs stay valid. The webapp builds the
+  fingerprint form from what `/jobs/status` returns for a ready job
+  (transcript and Chromaprint, 2.7.0), verifying both against the
+  signed bundle before packaging, so the ZIP can be built on a
+  computer that does not hold the recording; the YouTube link comes
+  from the student's local record or is re-entered and verified
+  against the signed video hash. The audit app decides the form from
+  the ZIP's entry set, verifies the .bin's SHA-256 against the
+  signed value, and cross-checks the fingerprint against the YouTube
+  video per 30 s block (242 items, per-block offset search ±16
+  items; pass = median block similarity ≥ 0.90 and at least 90% of
+  blocks ≥ 0.85 — measured 2026-11-26 on the Fall 2026 cohort:
+  same-recording blocks all ≥ 0.929, cross-recording blocks 99.9%
+  below 0.842), because a single whole-file offset misjudges real
+  matches whose alignment drifts. In the audio form the audit app
+  retries a WAV that no decoder can open once with a canonical
+  44-byte PCM header over the payload from byte 44 (five Fall 2026
+  recordings have a zeroed `fmt ` tag with intact audio); hashes are
+  always computed over the submitted bytes, never the repair.
   The file is downloaded under a per-job name (webapp 2.4.4):
   `C<course number>H<homework number>-G<total grade>-Y<HHMM>-<YYMMDD>.zip`,
   where the numbers are taken from the course and assignment labels,
@@ -147,6 +182,29 @@ Secrets/bindings: `SIGNING_SECRET` (HMAC, as v1), `ADMIN_TOKEN`,
 Tokens are compared in constant time. No secret value is ever logged or
 returned.
 
+Semester databases (2.7.0): jobs and packages live in one D1 database
+per semester. The primary binding `DB` is the Fall 2026 database;
+each later semester adds a database `hw-grading-<term>` bound as
+`DB_<TERM>` (e.g. `DB_2027SP`). The Worker discovers its semester
+databases from the bindings present in its environment and resolves
+every package or job by CHECKING them — an indexed lookup in each
+database; there is no routing table. Where several databases hold
+the same package name and version, a caller carrying the package's
+content hash resolves to the database whose stored hash matches;
+a caller with only the name prefers the current semester's database,
+then the primary, then the remaining bindings in sorted order. The
+primary database alone holds a `db_meta` table whose
+`current_binding` / `current_semester` values say where NEW packages
+are created by default. `worker/semester_setup.py <term>` creates a
+semester's database, applies the schema, adds its binding (verifying
+all existing bindings survive), and moves the current pointer;
+`worker/migrate_semesters.py` records the initial pointer on the
+Fall 2026 database. Package names may be reused across semesters:
+each database holds its own version lineage for the name. The
+grading queue is merged across semester databases by creation time
+(see `/grading/pending`); a job's `queue_ahead` count is within its
+own semester database.
+
 Tables (SQL in `worker/schema.sql`):
 - `packages(pkg TEXT, version INTEGER, text TEXT, content_sha256 TEXT,
   status TEXT, trial_json TEXT, override_reason TEXT, created_at TEXT,
@@ -156,6 +214,11 @@ Tables (SQL in `worker/schema.sql`):
   TEXT, pkg TEXT, context TEXT, audio_s REAL, video_s REAL, diff_s
   REAL, abs_diff_s REAL)` — anonymous duration comparisons from the
   student page (2.4.0); no video ID, link or student information.
+- `db_meta(key TEXT PRIMARY KEY, value TEXT)` (2.7.0) — primary
+  database only: the current-semester pointer (`current_binding`,
+  `current_semester`) described under Semester databases above.
+  Every semester database is created from the same `schema.sql`;
+  the tables above exist in each of them.
 - `jobs(job_id TEXT PRIMARY KEY, pkg TEXT, retrieval_name TEXT,
   code_lookup TEXT, code_salt TEXT, code_hash TEXT, kind TEXT, status TEXT,
   transcript TEXT, audio_sha256 TEXT, transcript_sha256 TEXT,
@@ -181,7 +244,9 @@ Tables (SQL in `worker/schema.sql`):
 
 Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
 
-- `GET /` → `{service:"hw-grading", version, storage:"d1"}`.
+- `GET /` → `{service:"hw-grading", version, storage:"d1",
+  databases}` (2.7.0: `databases` counts the semester database
+  bindings present in the environment).
 - `POST /youtube-check` `{url}` → parse the video ID (watch, youtu.be,
   shorts, live, embed forms; reject anything else 400). Call YouTube
   oEmbed (`https://www.youtube.com/oembed?url=<watch url>&format=json`)
@@ -241,8 +306,10 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   queue_ahead?, result?, alias_created}` where `status` is the
   existing job's status, `queue_ahead` is present when it is queued
   or claimed (same definition as `/jobs/status`), `result` is the
-  existing result bundle when it is ready, and `alias_created` says
-  whether the submitted code now retrieves the job. On no match: the
+  existing result bundle when it is ready — with the job's
+  `transcript` and `chromaprint` returned alongside it (2.7.0, as
+  in `/jobs/status`) — and `alias_created` says whether the
+  submitted code now retrieves the job. On no match: the
   retrieval code must be unique for the pkg (by its lookup hash),
   else 409; store the code's lookup hash and a salted SHA-256, and
   the fingerprint when sent.
@@ -263,10 +330,14 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   creation + 7 days while ungraded, graded_at + 180 days once graded) and,
   while `queued` or `claimed`, `queue_ahead`: the
   number of jobs ahead in the grading queue — every claimed job plus
-  every queued job created earlier (for a claimed job, the jobs
-  claimed before it); the grading queue is global across packages in
-  created_at order, the `/grading/pending` order. When `ready`, the
-  full result bundle (below) is returned and nothing is marked.
+  every queued job created earlier in the job's own semester
+  database (for a claimed job, the jobs claimed before it);
+  `/grading/pending` merges the semester databases in created_at
+  order. When `ready`, the
+  full result bundle (below) is returned and nothing is marked;
+  since 2.7.0 the ready response also carries the job's `transcript`
+  and `chromaprint` (the stored base64 fingerprint, or null), which
+  the fingerprint submission form is built from.
   Every wrong code returns the same 403 body.
 - `POST /jobs/retrieved` `{pkg, retrieval_code}` → find the job as
   in `/jobs/status` (alias lookup included, 2.6.0); mark
@@ -286,39 +357,46 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   one instead.
   → `{ok:true, receipt}`.
 - `GET /grading/pending` (GRADING_TOKEN) → queued jobs and jobs whose
-  claim expired: `[{job_id, pkg, kind, created_at, transcript_chars}]`.
-- `POST /grading/claim` (GRADING_TOKEN) `{job_id}` → if queued or claim
+  claim expired, merged across all semester databases in created_at
+  order: `[{job_id, pkg, kind, created_at, transcript_chars, db}]`
+  (2.7.0: `db` names the semester database binding holding the job;
+  older grading tools ignore it).
+- `POST /grading/claim` (GRADING_TOKEN) `{job_id, db?}` → if queued or claim
   expired: set status `claimed`, claim_expires = now + 15 min; return
   `{job_id, kind, transcript, audio_sha256, transcript_sha256, versions,
-  package:{pkg, text, content_sha256}}`. Else 409.
-- `POST /grading/result` (GRADING_TOKEN) `{job_id, completeness,
-  accuracy, critique, injection_flags}` → validate claim is live;
+  package:{pkg, text, content_sha256}}`. Else 409. (2.7.0: the
+  optional `db` names the job's semester database; without it the
+  Worker finds the job by checking the databases.)
+- `POST /grading/result` (GRADING_TOKEN) `{job_id, db?, completeness,
+  accuracy, critique, injection_flags}` → validate claim is live
+  (the optional `db` is as in claim);
   scores are integers 0–5; critique non-empty ≤ 20,000 chars. Compute
   the result bundle, sign it (below), store, status `ready`,
-  graded_at set, `expires_at` reset to graded_at + 180 days, and
-  `transcript` set to NULL in the same UPDATE (2.6.0: the transcript
-  text is kept only until grading; transcript_sha256, audio_sha256,
+  graded_at set, `expires_at` reset to graded_at + 180 days. The
+  transcript is KEPT in the same row (2.7.0, reversing the 2.6.0
+  nulling at grading): transcript, transcript_sha256, audio_sha256,
   the acoustic fingerprint, completeness, accuracy, critique,
-  result_json, receipt, code lookup/hash/salt and aliases are kept
-  for 180 days. This is safe because the transcript is read only for
-  queued jobs: `/grading/pending` uses it only for transcript_chars
-  on queued jobs, and `/grading/claim` returns it only for queued
-  jobs; ready jobs are never claimed, and `/jobs/status` returns the
-  result bundle, not the transcript. Ungraded jobs keep the
-  transcript until grading or the 7-day expiry, when the sweep
-  already nulls it.) If a push subscription is stored, send the Web Push
+  result_json, receipt, code lookup/hash/salt and aliases are all
+  kept until the job expires 180 days after grading, when the sweep
+  nulls the row's fields as before. If a push subscription is stored, send the Web Push
   (payload: `{"title":"HW Signing","body":"Your grade and critique are
   ready."}`, TTL = seconds until job expiry, urgency `normal`); push
   failure never fails the result call. → `{ok:true, receipt}`.
 - `POST /verify-grade` — body: the result bundle fields + `receipt` →
   `{valid}` by recomputation (as v1 /verify).
-- `POST /admin/packages` (ADMIN_TOKEN) `{pkg_name, text}` → version =
-  max existing + 1 (or 1); compute content_sha256; insert as `draft`;
-  reject if identical text already stored under that name. → `{pkg,
-  version, content_sha256, status:"draft"}`.
-- `GET /admin/packages` (ADMIN_TOKEN) → all versions with metadata
+- `POST /admin/packages` (ADMIN_TOKEN) `{pkg_name, text, binding?}` → version =
+  max existing + 1 (or 1) within the target database; compute content_sha256; insert as `draft`;
+  reject if identical text already stored under that name in that
+  database. → `{pkg,
+  version, content_sha256, status:"draft"}`. (2.7.0: `binding`
+  names the semester database to create in, defaulting to the
+  current-semester pointer; the same name in another semester's
+  database is a separate lineage and no obstacle.)
+- `GET /admin/packages` (ADMIN_TOKEN) → all versions in all semester
+  databases with metadata
   (pkg, version, content_sha256, status, trial grades, job counts,
-  created_at) — no text.
+  created_at, db) — no text (2.7.0: the `db` tag names each
+  version's database).
 - `GET /admin/packages/<pkg>` (ADMIN_TOKEN) → full record including text.
   With `?text_offset=N&text_length=M` (Worker 2.3.0, for the
   teacher audit app's Packages page) → the same record with `text`
@@ -327,10 +405,13 @@ Endpoints (JSON; CORS `*`; OPTIONS → bodyless 204, as the v1 fix):
   code points, and a length above 20,000 is rejected. Without
   parameters the response is unchanged.
 - `POST /admin/packages/<pkg>/status` (ADMIN_TOKEN) `{status,
-  trial?, override_reason?}` → enforce transitions: draft→trialled
+  trial?, override_reason?, db?}` → enforce transitions: draft→trialled
   requires trial {completeness:5, accuracy:5} or trial +
   override_reason; trialled→open; open→closed; closed→retired;
-  draft→retired. Store trial_json.
+  draft→retired. Store trial_json. (2.7.0: the optional `db` names
+  the semester database holding the version; without it the version
+  must exist in exactly one semester database, else 409 with the
+  candidate bindings.)
 - `POST /test/push` is NOT an endpoint; push is tested via a job result.
 
 Result bundle and grade signing (format v2). Canonical signed text,
@@ -338,12 +419,19 @@ one value per line, in this order:
 `v` (=`2`), `job_id`, `audio_sha256`, `transcript_sha256`, `pkg`,
 `pkg_content_sha256`, `completeness`, `accuracy`, `critique_sha256`,
 `youtube_video_sha256` (or `none`), `t` (Worker time at result).
+Bundles signed by Worker 2.7.0 or later carry one further line,
+`chromaprint_sha256`, between `youtube_video_sha256` and `t`: the
+SHA-256 of the job's raw fingerprint bytes, or `none` when the job
+has no stored fingerprint. A bundle's form is told by whether the
+field is present: bundles without it (signed before 2.7.0) keep the
+original canonical text, and signing, finalize re-signing and
+`/verify-grade` all choose the form from the bundle itself.
 `critique_sha256` = SHA-256 hex of the critique exactly as stored.
 receipt = base64url(HMAC-SHA-256(SIGNING_SECRET, canonical)).
 The bundle returned to the student and printed in the HTML is:
 `{v, job_id, audio_sha256, transcript_sha256, pkg, pkg_content_sha256,
 completeness, accuracy, critique, critique_sha256,
-youtube_video_sha256, t, receipt}`.
+youtube_video_sha256, chromaprint_sha256 (2.7.0 bundles), t, receipt}`.
 
 Web Push: RFC 8291/8292 with the VAPID keys from the environment,
 implemented with WebCrypto (ES256 JWT, ECDH P-256, HKDF-SHA-256,

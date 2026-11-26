@@ -12,7 +12,10 @@ youtube_video_sha256, t — one per line — HMAC-SHA-256, base64url),
 with a test secret. The /verify-grade transport used by
 check_package is a fake that recomputes the same way, mirroring the
 v1 suite's fallback pattern; the real Worker's cryptography is
-covered by the Worker suite.
+covered by the Worker suite. Packages carrying a chromaprint_sha256
+(Worker 2.7.0, the v48 fixtures) sign over the same text with that
+field inserted after youtube_video_sha256; grade_receipt2 mirrors
+both canonical forms, as the Worker accepts both.
 """
 
 import base64
@@ -24,6 +27,7 @@ import json
 import math
 import random
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -70,6 +74,37 @@ def transport_for(secret, capture=None):
         if capture is not None:
             capture.append((url, dict(body)))
         expected = grade_receipt(secret, body)
+        return {"valid": hmac_mod.compare_digest(expected,
+                                                 body["receipt"])}
+    return post
+
+
+def grade_receipt2(secret, b):
+    """The Worker 2.7.0 canonicalisation: the v2 field list with
+    chromaprint_sha256 inserted after youtube_video_sha256 when
+    the bundle carries it; without the field it is exactly
+    grade_receipt's canonical text."""
+    fields = [b["v"], b["job_id"], b["audio_sha256"],
+              b["transcript_sha256"], b["pkg"],
+              b["pkg_content_sha256"], b["completeness"],
+              b["accuracy"], b["critique_sha256"],
+              b["youtube_video_sha256"]]
+    if b.get("chromaprint_sha256") is not None:
+        fields.append(b["chromaprint_sha256"])
+    fields.append(b["t"])
+    canonical = "\n".join(str(x) for x in fields)
+    sig = hmac_mod.new(secret.encode(), canonical.encode(),
+                       hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(sig).decode().rstrip("=")
+
+
+def transport_for2(secret, capture=None):
+    """A fake POST /verify-grade accepting both canonical forms,
+    as the Worker 2.7.0 endpoint does."""
+    def post(url, body):
+        if capture is not None:
+            capture.append((url, dict(body)))
+        expected = grade_receipt2(secret, body)
         return {"valid": hmac_mod.compare_digest(expected,
                                                  body["receipt"])}
     return post
@@ -138,8 +173,14 @@ def make_wav(path):
 def build_html_v2(chunks, audio_sha, completeness=4, accuracy=4,
                   critique=CRITIQUE, youtube_link=YOUTUBE,
                   ver_completeness=None, ver_accuracy=None,
-                  webapp_version=None, marked=False):
-    """A v2 package HTML, signed as the grading Worker signs it."""
+                  webapp_version=None, marked=False,
+                  chromaprint_sha=None,
+                  audio_file="submission-audio.wav"):
+    """A v2 package HTML, signed as the grading Worker signs it.
+    With chromaprint_sha (a Worker 2.7.0 bundle), the receipt is
+    computed over the new canonical form and the verification
+    section carries the Chromaprint SHA-256 line after the Audio
+    SHA-256 line, as webapp 2.6.0 emits it."""
     lines = transcript_lines(chunks)
     canonical = audit.canonical_transcript(lines, with_markers=marked)
     transcript_sha = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -151,7 +192,12 @@ def build_html_v2(chunks, audio_sha, completeness=4, accuracy=4,
               "completeness": completeness, "accuracy": accuracy,
               "critique_sha256": critique_sha,
               "youtube_video_sha256": yt_sha, "t": GRADED_AT}
-    receipt = grade_receipt(TEST_SECRET, bundle)
+    if chromaprint_sha is not None:
+        bundle["chromaprint_sha256"] = chromaprint_sha
+    receipt = grade_receipt2(TEST_SECRET, bundle)
+    chromaprint_dd = (
+        f"\n<dt>Chromaprint SHA-256</dt><dd>{chromaprint_sha}</dd>"
+        if chromaprint_sha is not None else "")
     pre = "\n".join(lines)
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Submission</title></head>
@@ -181,9 +227,9 @@ def build_html_v2(chunks, audio_sha, completeness=4, accuracy=4,
 <dt>Model version</dt><dd>{VERSIONS['model']}</dd>
 <dt>Glossary version</dt><dd>{VERSIONS['glossary']}</dd>
 <dt>YouTube link</dt><dd>{youtube_link}</dd>
-<dt>Audio file</dt><dd>submission-audio.wav</dd>
+<dt>Audio file</dt><dd>{audio_file}</dd>
 <dt>Audio duration</dt><dd>{DURATION_S}</dd>
-<dt>Audio SHA-256</dt><dd>{audio_sha}</dd>
+<dt>Audio SHA-256</dt><dd>{audio_sha}</dd>{chromaprint_dd}
 <dt>Transcript SHA-256</dt><dd>{transcript_sha}</dd>
 <dt>Completeness</dt><dd>{completeness if ver_completeness is None else ver_completeness}</dd>
 <dt>Accuracy</dt><dd>{accuracy if ver_accuracy is None else ver_accuracy}</dd>
@@ -986,6 +1032,168 @@ def main():
     check(fetch34c["n"] == 2,
           "a current attempt's rejected ZIP is retried on the next "
           "run (v34)")
+
+    # 9d. v48: fingerprint-form packages (Worker 2.7.0 bundles,
+    # webapp 2.6.0 ZIPs), the per-block YouTube comparison, and
+    # the WAV repair. The fixture fingerprint spans the same
+    # 300 s as the fixture recording: 2420 items at 0.124 s.
+    rng48 = random.Random(48)
+    fp_items = [rng48.getrandbits(32) for _ in range(2420)]
+    fp_bytes = struct.pack(f"<{len(fp_items)}I", *fp_items)
+    fp_sha = hashlib.sha256(fp_bytes).hexdigest()
+    fp_html = build_html_v2(
+        CHUNKS, audio_sha, chromaprint_sha=fp_sha,
+        audio_file="submission-fingerprint.bin")
+    fp_zip = make_zip({"submission.html": fp_html.encode("utf-8"),
+                       "submission-fingerprint.bin": fp_bytes})
+    fp_paths = audit.extract_package_zip(fp_zip, tmp / "extract-fp")
+    check(fp_paths.get("package_form") == "fingerprint"
+          and Path(fp_paths["fingerprint_path"]).read_bytes()
+          == fp_bytes
+          and Path(fp_paths["html_path"]).read_bytes()
+          == fp_html.encode("utf-8"),
+          "v48: fingerprint-form ZIP extracts, its form decided "
+          "by the entry set")
+    for bad, label in [
+            (make_zip({"submission.html": b"x",
+                       "submission-audio.wav": b"y",
+                       "submission-fingerprint.bin": b"z"}),
+             "mixed ZIP (html + wav + bin) rejected"),
+            (make_zip({"submission-fingerprint.bin": b"z"}),
+             "fingerprint file without HTML rejected")]:
+        try:
+            audit.extract_package_zip(bad, tmp / "bad-fp")
+            check(False, f"v48: {label}")
+        except ValueError:
+            check(True, f"v48: {label}")
+    capture_fp = []
+    rep = audit.check_package(
+        fp_paths["fingerprint_path"], fp_paths["html_path"], cfg,
+        post_fn=transport_for2(TEST_SECRET, capture_fp))
+    check(rep["package_form"] == "fingerprint"
+          and rep["audio_fingerprint_ok"] is True
+          and rep["grade_receipt_ok"] is True
+          and rep["transcript_checksum_ok"] is True
+          and rep["internally_consistent"] is True,
+          "v48: fingerprint-form package passes — the fingerprint "
+          "hash matches the signed value and the receipt verifies "
+          "over the new canonical form")
+    check(capture_fp
+          and capture_fp[-1][1].get("chromaprint_sha256") == fp_sha,
+          "v48: the /verify-grade payload carries chromaprint_sha256")
+    capture_old = []
+    rep = audit.check_package(audio_path, html_path, cfg,
+                              post_fn=transport_for(TEST_SECRET,
+                                                    capture_old))
+    check(rep["package_form"] == "audio"
+          and "chromaprint_sha256" not in capture_old[-1][1],
+          "v48: an old package reports the audio form and its "
+          "/verify-grade payload carries no chromaprint field")
+
+    # The YouTube cross-check of the fingerprint form: the video
+    # side is the fixture WAV itself (300 s), fingerprinted by the
+    # injected function as the same recording.
+    parsed_fp = audit.parse_package(fp_html)
+    yt = audit.youtube_cross_check(
+        fp_paths["fingerprint_path"], audio_path, parsed_fp, cfg,
+        fingerprint_fn=lambda p: fp_items)
+    check(yt["passed"] is True and not yt["youtube_flag"]
+          and yt["block_count"] == 10 and yt["block_median"] == 1.0
+          and yt["block_fraction_ge_085"] == 1.0
+          and yt["block_worst"] == 1.0
+          and yt["duration_ok"] is True and yt["similarity"] == 1.0,
+          "v48: YouTube per-block check passes for the same "
+          "recording — 10 blocks of 30 s, the whole-file result "
+          "kept alongside, the span agreeing with the claimed "
+          "duration")
+
+    # A segment of two blocks replaced by another recording's
+    # items: the signed-hash check fails, and the per-block rule
+    # fails on the fraction (8 of 10 blocks at 1.0, median 1.0).
+    rng49 = random.Random(49)
+    fp_seg = list(fp_items)
+    for i in range(484, 968):
+        fp_seg[i] = rng49.getrandbits(32)
+    seg_dir = tmp / "seg"
+    seg_dir.mkdir()
+    seg_path = seg_dir / "submission-fingerprint.bin"
+    seg_path.write_bytes(struct.pack(f"<{len(fp_seg)}I", *fp_seg))
+    rep = audit.check_package(
+        seg_path, fp_paths["html_path"], cfg,
+        post_fn=transport_for2(TEST_SECRET))
+    check(rep["audio_fingerprint_ok"] is False,
+          "v48: a fingerprint with a replaced segment fails the "
+          "signed-hash check")
+    yt = audit.youtube_cross_check(
+        seg_path, audio_path, parsed_fp, cfg,
+        fingerprint_fn=lambda p: fp_items)
+    check(yt["block_passed"] is False and yt["content_flag"]
+          and yt["youtube_flag"] and yt["passed"] is False
+          and yt["block_fraction_ge_085"] == 0.8
+          and yt["block_median"] == 1.0,
+          "v48: two replaced blocks fail the per-block rule on "
+          "the fraction (0.8 < 0.90) while the median still "
+          "passes — the rule needs both")
+
+    # A re-encoded fingerprint of the same recording: a few bits
+    # differ, so the bytes (and their hash) differ, but the
+    # content is the same and the per-block comparison passes.
+    # The two outcomes are reported distinctly.
+    fp_re = list(fp_items)
+    for i in range(0, len(fp_re), 200):
+        fp_re[i] ^= 0x3
+    re_dir = tmp / "reenc"
+    re_dir.mkdir()
+    re_path = re_dir / "submission-fingerprint.bin"
+    re_path.write_bytes(struct.pack(f"<{len(fp_re)}I", *fp_re))
+    rep = audit.check_package(
+        re_path, fp_paths["html_path"], cfg,
+        post_fn=transport_for2(TEST_SECRET))
+    check(rep["audio_fingerprint_ok"] is False,
+          "v48: a re-encoded fingerprint (same content, different "
+          "bytes) fails the signed-hash check")
+    yt = audit.youtube_cross_check(
+        re_path, audio_path, parsed_fp, cfg,
+        fingerprint_fn=lambda p: fp_items)
+    check(yt["block_passed"] is True and yt["passed"] is True
+          and yt["block_median"] > 0.99,
+          "v48: the same re-encoded fingerprint passes the "
+          "per-block comparison — hash and content are separate "
+          "outcomes")
+
+    # WAV repair: a zeroed "fmt " chunk identifier makes the WAV
+    # undecodable by the normal route; the repair yields the
+    # YouTube result, and the hash check still runs over the
+    # original submitted bytes.
+    if shutil.which("ffmpeg") and audit.chromaprint_fingerprint(yt_canvas):
+        broken_path = tmp / "broken-fmt.wav"
+        broken = bytearray(yt_canvas.read_bytes())
+        broken[12:16] = b"\x00\x00\x00\x00"
+        broken_path.write_bytes(bytes(broken))
+        check(audit.chromaprint_fingerprint(broken_path) is None
+              and audit.media_duration_s(broken_path) is None,
+              "v48: a WAV with a zeroed fmt tag cannot be decoded "
+              "by the normal route")
+        yt = audit.youtube_cross_check(broken_path, yt_same,
+                                       parsed_yt, cfg)
+        check(yt.get("wav_repaired") is True
+              and yt["acoustic_configured"] and yt["passed"] is True
+              and yt["similarity"] > 0.95
+              and yt["duration_ok"] is True,
+              "v48: the repair route yields the YouTube result "
+              "the broken WAV silently lost")
+        broken_html = tmp / "broken.html"
+        broken_html.write_text(
+            build_html_v2(CHUNKS, audit.sha256_file(broken_path)),
+            encoding="utf-8")
+        rep = audit.check_package(broken_path, broken_html, cfg,
+                                  post_fn=transport_for(TEST_SECRET))
+        check(rep["audio_fingerprint_ok"] is True
+              and rep["package_form"] == "audio",
+              "v48: the audio hash check runs over the original "
+              "submitted bytes, never the repair")
+    else:
+        print("skip: v48 WAV repair checks (no chromaprint ffmpeg)")
 
     # 10. Cleanup refuses without confirmation, and deletes with it.
     try:

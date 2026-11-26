@@ -316,6 +316,43 @@ stays readable. The log re-renders when the roster
 arrives or changes and when privacy is toggled, so a
 line written before the roster loaded is covered
 too. A name the roster does not hold is not caught.
+
+v48: packages arrive in two forms, and the checks cover
+both (the audit functions are in audit.py; the check schema
+rises to 2, so every stored check is re-done under the new
+semantics on the next pass). A package whose signed bundle
+carries a chromaprint_sha256 (Worker 2.7.0) is submitted as
+submission.html + submission-fingerprint.bin — the raw
+Chromaprint bytes in place of the WAV — and the form is
+decided by the ZIP's entry set alone. In that form the
+fingerprint check is the SHA-256 of the submitted bytes
+against the signed value (the result's audio_fingerprint_ok
+keeps its name and meaning), the receipt is offered to
+/verify-grade with the new field included, and the YouTube
+cross-check compares the submitted fingerprint against the
+video's per 30-second block, each block at its own best
+offset, passing on a median block similarity of at least
+0.90 with at least 90% of blocks at or above 0.85; the
+claimed duration is the fingerprint span, checked against
+the package's duration line within 1 s as well as against
+the video. Old packages keep the WAV form and every check
+they had. And a WAV whose "fmt " chunk identifier was
+zeroed in transit — intact PCM, unreadable header — is
+decoded through a one-off repaired copy for the YouTube
+cross-check, so the five packages that silently recorded
+no YouTube result in the 2026-11-26 check record one now;
+hash checks still run over the submitted bytes, never the
+repair. The front end discovers both forms on disk: a
+downloaded package is found by its HTML plus either media
+entry, its record's media path naming the fingerprint file
+for a fingerprint package (the audit checks decide the
+form from that name), and the redownload presence test
+accepts the fingerprint file in the WAV's place, so a
+fingerprint package is listed, counted, checked and left
+alone like an audio one. Nothing in the front end serves
+or plays a package's own media — the wall and the single
+view play the downloaded YouTube take — so a fingerprint
+package appears there exactly as an audio package does.
 """
 
 import argparse
@@ -1415,14 +1452,22 @@ def downloaded_packages(cfg):
         wavs = list(folder.glob("*.wav")) + list(folder.glob("*.mp3")) \
             + list(folder.glob("*.m4a")) + list(folder.glob("*.webm"))
         htmls = list(folder.glob("*.html"))
-        if wavs and htmls:
+        # The media entry is an audio file in the audio form and
+        # the fingerprint file in the fingerprint form (v48); the
+        # record's audio_path names whichever the folder holds,
+        # and the audit checks decide the form from that file's
+        # name — the same convention as the records the download
+        # code itself builds.
+        media = wavs[0] if wavs else \
+            folder / audit.FINGERPRINT_ENTRY_NAME
+        if (wavs or media.exists()) and htmls:
             key = unit_key(course_id, assignment_id, user_id) \
                 if course_id and assignment_id else str(user_id)
             zip_file = folder / "package.zip"
             into.append({"user_id": str(user_id), "key": key,
                          "course_id": course_id,
                          "assignment_id": assignment_id,
-                         "audio_path": str(wavs[0]),
+                         "audio_path": str(media),
                          "html_path": str(htmls[0]),
                          "zip_path": str(zip_file)
                          if zip_file.exists() else None})
@@ -1460,7 +1505,8 @@ def downloaded_packages(cfg):
 
 def downloaded_attempt_packages(cfg):
     """Previous-attempt packages on disk (v35): for each canonical
-    unit, every attempt-<n>/ subfolder holding its own audio and
+    unit, every attempt-<n>/ subfolder holding its own media file
+    (an audio file, or the fingerprint file in the v48 form) and
     submission.html. Each record mirrors a downloaded_packages
     record and adds "attempt_no", "attempt_key" ("<unit>::a<n>",
     the audit-results key for that attempt's own check) and
@@ -1482,11 +1528,13 @@ def downloaded_attempt_packages(cfg):
             wavs = list(sub.glob("*.wav")) + list(sub.glob("*.mp3")) \
                 + list(sub.glob("*.m4a")) + list(sub.glob("*.webm"))
             htmls = list(sub.glob("*.html"))
-            if not wavs or not htmls:
+            media = wavs[0] if wavs else \
+                sub / audit.FINGERPRINT_ENTRY_NAME
+            if (not wavs and not media.exists()) or not htmls:
                 continue
             zip_file = sub / "package.zip"
             out.append({**pkg,
-                        "audio_path": str(wavs[0]),
+                        "audio_path": str(media),
                         "html_path": str(htmls[0]),
                         "zip_path": str(zip_file)
                         if zip_file.exists() else None,
@@ -1658,7 +1706,7 @@ def _youtube_only_entry(cfg, pkg, base_entry):
 # what its result means — never for a release as such. A stored
 # fingerprint with no schema entry predates v38 and is judged
 # on its remaining inputs (see _check_mode).
-CHECK_SCHEMA = 1
+CHECK_SCHEMA = 2
 
 _SAMPLE_BYTES = 1024 * 1024
 
@@ -2090,7 +2138,9 @@ def _rd_needs(state, folder, wkey, attempt, submitted_at, sub_id,
               force):
     """Whether one package must be fetched: mirrors the download
     code's pre-fetch skip (watermark attempt + submitted_at +
-    submission id, and the three files on disk)."""
+    submission id, and the package files on disk — the ZIP, the
+    HTML, and the media entry: the WAV, or the fingerprint file
+    in its place in the v48 form)."""
     if force:
         return True
     mark = state.get(wkey)
@@ -2102,7 +2152,9 @@ def _rd_needs(state, folder, wkey, attempt, submitted_at, sub_id,
         return True
     return not ((folder / "package.zip").exists()
                 and (folder / "submission.html").exists()
-                and (folder / "submission-audio.wav").exists())
+                and ((folder / "submission-audio.wav").exists()
+                     or (folder / audit.FINGERPRINT_ENTRY_NAME)
+                     .exists()))
 
 
 def _record_attempt_formats(cfg, entries):
@@ -3702,7 +3754,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <p class="mut" id="rdestimate"></p>
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
-<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted WAV by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
+<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. There is no re-grade: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's. <strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity (which survives YouTube transcoding) and by duration, and shows "YouTube passed · similarity …" or "YouTube FLAGGED" under Integrity; a flagged submission's final grade stays blank until you enter one. <strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full. <strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. Students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
 <div id="viewctl">
 <label>Course <select id="fcourse"><option value="">All courses</option></select></label>
