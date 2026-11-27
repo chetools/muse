@@ -5,7 +5,7 @@
 // beyond a loopback bridge:
 //   - the real worker.js, loaded in Node, backed by a D1 shim (adapted
 //     from worker/test.mjs), with fetch stubbed only for YouTube oEmbed
-//     and the push service;
+//     (fetch stubbed only for YouTube oEmbed);
 //   - the real pkg_admin.mjs and grade_jobs.mjs scripts (copied with
 //     their skill folders to a temp dir so a test config.json can be
 //     written; the scripts themselves are byte-identical), talking to
@@ -40,7 +40,8 @@ const zipMod = await import(path.join(ROOT, "webapp", "js", "zip.js"));
 // Adapted verbatim from worker/test.mjs (the statement shapes are the
 // ones worker.js uses).
 function createDb() {
-  const tables = { packages: [], jobs: [], job_bindings: [] };
+  const tables = { packages: [], jobs: [], db_meta: [] };
+
   function resolveToken(tok, args, ptr) {
     tok = tok.trim();
     if (tok === "?") return args[ptr.i++];
@@ -49,6 +50,7 @@ function createDb() {
     const n = Number(tok);
     return Number.isNaN(n) ? tok : n;
   }
+
   function evalConds(row, condStr, args, ptr) {
     if (!condStr) return true;
     return condStr.split(/\s+AND\s+/i).every((c) => {
@@ -61,7 +63,7 @@ function createDb() {
       if (m) {
         const val = args[ptr.i++];
         const set = new Set(
-          (tables[m[3]] || []).filter((r) => r[m[4]] === val).map((r) => r[m[2]]),
+          tables[m[3]].filter((r) => r[m[4]] === val).map((r) => r[m[2]]),
         );
         return set.has(row[m[1]]);
       }
@@ -80,10 +82,13 @@ function createDb() {
       return false;
     });
   }
+
   function execSelect(sql, args) {
     const m = /^SELECT\s+(.+?)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?(?:\s+ORDER\s+BY\s+(.+))?$/is.exec(sql.trim());
     if (!m) throw new Error("unsupported SELECT: " + sql);
     const [, list, table, where, order] = m;
+    // Bind arguments are consumed per row: each row's condition
+    // evaluation starts from a fresh pointer.
     let rows = tables[table].filter((r) => evalConds(r, where, args, { i: 0 }));
     if (order) {
       const terms = order.split(",").map((s) => s.trim());
@@ -100,7 +105,9 @@ function createDb() {
     const agg = /^COUNT\(\*\)\s+AS\s+(\w+)$/i.exec(list.trim());
     if (agg) return [{ [agg[1]]: rows.length }];
     const mx = /^MAX\((\w+)\)\s+AS\s+(\w+)$/i.exec(list.trim());
-    if (mx) return [{ [mx[2]]: rows.length ? Math.max(...rows.map((r) => r[mx[1]])) : null }];
+    if (mx) {
+      return [{ [mx[2]]: rows.length ? Math.max(...rows.map((r) => r[mx[1]])) : null }];
+    }
     if (list.trim() === "*") return rows.map((r) => ({ ...r }));
     const cols = list.split(",").map((s) => s.trim());
     return rows.map((r) => {
@@ -109,6 +116,7 @@ function createDb() {
       return o;
     });
   }
+
   function execWrite(sql, args) {
     sql = sql.trim();
     let m = /^INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)$/is.exec(sql);
@@ -120,18 +128,37 @@ function createDb() {
       const row = {};
       cols.forEach((c, i) => { row[c] = resolveToken(toks[i], args, ptr); });
       if (table === "jobs") {
-        if (tables.jobs.some((r) => r.job_id === row.job_id)) throw new Error("UNIQUE constraint failed: jobs.job_id");
+        if (tables.jobs.some((r) => r.job_id === row.job_id)) {
+          throw new Error("UNIQUE constraint failed: jobs.job_id");
+        }
         if (row.code_lookup != null &&
             tables.jobs.some((r) => r.pkg === row.pkg && r.code_lookup === row.code_lookup)) {
           throw new Error("UNIQUE constraint failed: jobs.pkg, jobs.code_lookup");
         }
-      }
-      if (table === "job_bindings") {
-        if (tables.job_bindings.some((r) => r.job_id === row.job_id && r.seq === row.seq)) throw new Error("UNIQUE constraint failed: job_bindings.job_id, job_bindings.seq");
+        // Partial unique index jobs_one_final (schema.sql): among
+        // non-expired finals, (pkg, audio_sha256) is unique.
+        if (row.kind === "final" && row.status !== "expired" &&
+            tables.jobs.some((r) => r.kind === "final" && r.status !== "expired" &&
+              r.pkg === row.pkg && r.audio_sha256 === row.audio_sha256)) {
+          throw new Error("UNIQUE constraint failed: index 'jobs_one_final'");
+        }
+        // Partial unique index jobs_one_per_recording (2.6.0):
+        // among non-expired jobs of any kind, (pkg, audio_sha256)
+        // is unique.
+        if (row.status !== "expired" &&
+            tables.jobs.some((r) => r.status !== "expired" &&
+              r.pkg === row.pkg && r.audio_sha256 === row.audio_sha256)) {
+          throw new Error("UNIQUE constraint failed: index 'jobs_one_per_recording'");
+        }
       }
       if (table === "packages") {
         if (tables.packages.some((r) => r.pkg === row.pkg && r.version === row.version)) {
           throw new Error("UNIQUE constraint failed: packages.pkg, packages.version");
+        }
+      }
+      if (table === "db_meta") {
+        if (tables.db_meta.some((r) => r.key === row.key)) {
+          throw new Error("UNIQUE constraint failed: db_meta.key");
         }
       }
       tables[table].push(row);
@@ -159,7 +186,6 @@ function createDb() {
     m = /^DELETE\s+FROM\s+(\w+)\s+WHERE\s+(.+)$/is.exec(sql);
     if (m) {
       const [, table, where] = m;
-      if (!tables[table]) { tables[table] = []; return 0; }
       const before = tables[table].length;
       tables[table] = tables[table].filter(
         (row) => !evalConds(row, where, args, { i: 0 }));
@@ -167,19 +193,30 @@ function createDb() {
     }
     throw new Error("unsupported statement: " + sql);
   }
+
   function prepare(sql) {
     let bound = [];
     const stmt = {
       bind(...a) { bound = a; return stmt; },
-      async first() { const r = execSelect(sql, bound); return r.length ? r[0] : null; },
+      async first() {
+        const r = execSelect(sql, bound);
+        return r.length ? r[0] : null;
+      },
       async all() {
-        if (/^\s*(INSERT|UPDATE)/i.test(sql)) { execWrite(sql, bound); return { results: [] }; }
+        if (/^\s*(INSERT|UPDATE)/i.test(sql)) {
+          execWrite(sql, bound);
+          return { results: [] };
+        }
         return { results: execSelect(sql, bound) };
       },
-      async run() { const changes = execWrite(sql, bound); return { success: true, meta: { changes } }; },
+      async run() {
+        const changes = execWrite(sql, bound);
+        return { success: true, meta: { changes } };
+      },
     };
     return stmt;
   }
+
   return { prepare, _tables: tables };
 }
 
@@ -192,21 +229,14 @@ globalThis.fetch = async (url, opts = {}) => {
       status: 200, headers: { "content-type": "application/json" },
     });
   }
-  if (u.startsWith("https://push.example")) return new Response("", { status: 201 });
   return realFetch(url, opts);
 };
 
-const vapidKeys = await crypto.subtle.generateKey(
-  { name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-const vapidPubRaw = new Uint8Array(await crypto.subtle.exportKey("raw", vapidKeys.publicKey));
-const vapidJwk = await crypto.subtle.exportKey("jwk", vapidKeys.privateKey);
 const env = {
   DB: createDb(),
   SIGNING_SECRET: "e2e-signing-secret-0123456789abcdef",
   ADMIN_TOKEN: "e2e-admin-token-0123456789",
   GRADING_TOKEN: "e2e-grading-token-0123456789",
-  VAPID_PUBLIC_KEY: Buffer.from(vapidPubRaw).toString("base64url"),
-  VAPID_PRIVATE_KEY: vapidJwk.d,
 };
 
 // Loopback HTTP bridge: the skills' scripts and the audit's transport
@@ -293,6 +323,16 @@ function makeWav(seconds = 2, rate = 16000) {
 }
 const WAV = makeWav();
 const AUDIO_SHA = sha256(WAV);
+// Fingerprint-form fixture (2.7.0/2.8.0: the only ZIP form): raw
+// little-endian uint32 items, carried base64 in the job payload and
+// as raw bytes in submission-fingerprint.bin.
+const FP_BYTES = (() => {
+  const b = Buffer.alloc(200 * 4);
+  for (let i = 0; i < 200; i++) b.writeUInt32LE((i * 2654435761) >>> 0, i * 4);
+  return new Uint8Array(b);
+})();
+const FP_B64 = Buffer.from(FP_BYTES).toString("base64");
+const FP_SHA = sha256(FP_BYTES);
 const TRANSCRIPT_SHA = sha256(TRANSCRIPT);
 
 // ------------------------------------------------------------ step harness
@@ -315,7 +355,7 @@ async function auditCheck(dir) {
   const { stdout } = await execFileP("python3", [
     path.join(HERE, "audit_check.py"),
     path.join(ROOT, "audit-app", "audit.py"),
-    path.join(dir, "submission-audio.wav"),
+    path.join(dir, "submission-fingerprint.bin"),
     path.join(dir, "submission.html"),
     BASE,
   ], { encoding: "utf8" });
@@ -358,20 +398,22 @@ await step("youtube-check through the real Worker (oEmbed stubbed 200)", async (
   });
   ytCheck = await res.json();
   assert(res.status === 200, "youtube-check HTTP " + res.status);
-  assert(ytCheck.status === "ok" && ytCheck.video_id === VIDEO_ID && ytCheck.token,
-    "unexpected check result: " + JSON.stringify(ytCheck));
+  assert(ytCheck.status === "ok" && ytCheck.video_id === VIDEO_ID && !("token" in ytCheck),
+    "unexpected check result (2.8.0: no token is issued): " + JSON.stringify(ytCheck));
 });
 
-await step("webapp jobs.js builds and validates the practice payload (no link at send)", async () => {
+await step("webapp jobs.js builds and validates the payload (no kind, no link at send)", async () => {
   const payload = jobsMod.buildJobPayload({
-    pkg: pkgId, pkgContentSha256: pkgHash, kind: "practice",
+    pkg: pkgId, pkgContentSha256: pkgHash,
     transcript: TRANSCRIPT, audioSha256: AUDIO_SHA, transcriptSha256: TRANSCRIPT_SHA,
+    chromaprint: FP_B64,
     versions: pkgMod.VERSIONS,
     retrievalCode: "e2ecode1234",
   });
   const v = jobsMod.validateJobPayload(payload);
   assert(v.ok, "payload failed webapp validation: " + v.reason);
-  assert(!("youtube_video_id" in payload), "practice payload carries youtube fields");
+  assert(!("kind" in payload) && !("youtube_video_id" in payload),
+    "payload carries kind or youtube fields");
   return payload;
 }).then((p) => { step.payload = p; });
 
@@ -411,18 +453,14 @@ await step("retrieval via webapp fetchJobStatus returns the signed bundle under 
   assert(bundle.completeness === 4 && bundle.accuracy === 5, "bundle grades differ");
   assert(bundle.critique === CRITIQUE, "bundle critique differs from posted critique");
   assert(bundle.pkg_content_sha256 === pkgHash, "bundle pkg hash differs");
-  assert(bundle.youtube_video_sha256 === "none", "practice bundle should carry no video hash");
+  assert(bundle.youtube_video_sha256 === "none", "bundle should carry no video hash");
+  assert(bundle.chromaprint_sha256 === FP_SHA, "bundle fingerprint hash differs");
 });
 
-await step("finalize via webapp finalizeJob turns the graded job into the submission (no video bound, 2.7.4)", async () => {
-  // The 2.6.19 page sends no youtube fields at all (finalizeJob
-  // drops any a caller still passes); finalize marks the job final
-  // and binds nothing.
-  const finPayload = { pkg: pkgId, retrieval_code: "e2ecode1234" };
-  finPayload["youtube" + "_token"] = ytCheck.token;
-  finPayload.youtube_video_id = ytCheck.video_id;
-  finPayload.youtube_checked_at = ytCheck.checked_at;
-  const out = await jobsMod.finalizeJob(BASE, finPayload);
+await step("finalize via webapp finalizeJob turns the graded job into the submission (2.8.0)", async () => {
+  // finalizeJob sends only {pkg, retrieval_code}; finalize marks
+  // the job final and binds nothing.
+  const out = await jobsMod.finalizeJob(BASE, { pkg: pkgId, retrieval_code: "e2ecode1234" });
   assert(out.ok === true && out.receipt, "finalize not accepted: " + JSON.stringify(out));
   const st = await jobsMod.fetchJobStatus(BASE, {
     pkg: pkgId, retrieval_code: "e2ecode1234",
@@ -439,16 +477,16 @@ await step("finalize via webapp finalizeJob turns the graded job into the submis
 
 await step("webapp package.js builds submission.html; zip.js builds submission.zip", async () => {
   htmlText = pkgMod.assemblePackage({
-    youtubeLink: WATCH_URL, audioFileName: "submission-audio.wav",
+    youtubeLink: WATCH_URL, fingerprintSha256: FP_SHA,
     durationS: 67, chunks: CHUNKS, bundle,
   });
   zipBytes = zipMod.buildZipBytes([
     { name: "submission.html", data: enc.encode(htmlText) },
-    { name: "submission-audio.wav", data: WAV },
+    { name: "submission-fingerprint.bin", data: FP_BYTES },
   ]);
   const again = zipMod.buildZipBytes([
     { name: "submission.html", data: enc.encode(htmlText) },
-    { name: "submission-audio.wav", data: WAV },
+    { name: "submission-fingerprint.bin", data: FP_BYTES },
   ]);
   assert(Buffer.from(zipBytes).equals(Buffer.from(again)), "ZIP is not deterministic");
 });
@@ -458,11 +496,11 @@ await step("audit check_package on the unzipped package: internally_consistent, 
   await unzipTo(zipBytes, dir);
   const chk = await auditCheck(dir);
   assert(chk.format_ok === true, "format_ok false: " + JSON.stringify(chk));
-  assert(chk.audio_fingerprint_ok === true, "audio check failed: " + JSON.stringify(chk));
+  assert(chk.audio_fingerprint_ok === true, "fingerprint check failed: " + JSON.stringify(chk));
   assert(chk.transcript_checksum_ok === true, "transcript check failed: " + JSON.stringify(chk));
   assert(chk.critique_ok === true, "critique check failed: " + JSON.stringify(chk));
-  assert(chk.youtube_id_ok === null,
-    "youtube id check should be null (the bundle claims no video): " + JSON.stringify(chk));
+  assert(!("youtube_id_ok" in chk) && !("grades_match" in chk),
+    "audit still reports removed checks: " + JSON.stringify(chk));
   assert(chk.grade_receipt_ok === true, "grade receipt failed against the real Worker: " + JSON.stringify(chk));
   assert(chk.internally_consistent === true, "not internally consistent: " + JSON.stringify(chk));
   assert(!("binding_status" in chk), "audit still reports a binding status: " + JSON.stringify(chk));
@@ -474,7 +512,7 @@ await step("tamper (i): completeness span 4→5 fails the grade check", async ()
   assert(bad !== htmlText, "span replacement did not apply");
   const zb = zipMod.buildZipBytes([
     { name: "submission.html", data: enc.encode(bad) },
-    { name: "submission-audio.wav", data: WAV },
+    { name: "submission-fingerprint.bin", data: FP_BYTES },
   ]);
   const dir = path.join(tmp, "pkg-tamper-grade");
   await unzipTo(zb, dir);
@@ -490,7 +528,7 @@ await step("tamper (ii): one critique word changed fails the critique check", as
   assert(bad !== htmlText, "critique replacement did not apply");
   const zb = zipMod.buildZipBytes([
     { name: "submission.html", data: enc.encode(bad) },
-    { name: "submission-audio.wav", data: WAV },
+    { name: "submission-fingerprint.bin", data: FP_BYTES },
   ]);
   const dir = path.join(tmp, "pkg-tamper-critique");
   await unzipTo(zb, dir);
@@ -501,23 +539,23 @@ await step("tamper (ii): one critique word changed fails the critique check", as
     "failure is not isolated to the critique check: " + JSON.stringify(chk));
 });
 
-await step("tamper (iii): one WAV byte flipped fails the audio check", async () => {
-  const badWav = new Uint8Array(WAV);
-  badWav[100] = badWav[100] ^ 0xff;
+await step("tamper (iii): one fingerprint byte flipped fails the fingerprint check", async () => {
+  const badFp = new Uint8Array(FP_BYTES);
+  badFp[100] = badFp[100] ^ 0xff;
   const zb = zipMod.buildZipBytes([
     { name: "submission.html", data: enc.encode(htmlText) },
-    { name: "submission-audio.wav", data: badWav },
+    { name: "submission-fingerprint.bin", data: badFp },
   ]);
   const dir = path.join(tmp, "pkg-tamper-audio");
   await unzipTo(zb, dir);
   const chk = await auditCheck(dir);
-  assert(chk.internally_consistent === false, "tampered audio accepted");
-  assert(chk.audio_fingerprint_ok === false, "audio fingerprint still matches after a byte flip");
+  assert(chk.internally_consistent === false, "tampered fingerprint accepted");
+  assert(chk.audio_fingerprint_ok === false, "fingerprint still matches after a byte flip");
   assert(chk.critique_ok === true && chk.grade_receipt_ok === true,
-    "failure is not isolated to the audio check: " + JSON.stringify(chk));
+    "failure is not isolated to the fingerprint check: " + JSON.stringify(chk));
 });
 
-await step("second ZIP, different link: re-finalize is idempotent and binds nothing (2.7.4)", async () => {
+await step("second ZIP, different link: re-finalize is idempotent and binds nothing (2.8.0)", async () => {
   const out = await jobsMod.finalizeJob(BASE, {
     pkg: pkgId, retrieval_code: "e2ecode1234",
   });
@@ -534,14 +572,14 @@ await step("second ZIP, different link: re-finalize is idempotent and binds noth
   bundle = b2;
 });
 
-await step("audit accepts the second ZIP (different link) as a current-form package (v59)", async () => {
+await step("audit accepts the second ZIP (different link) as a current-form package (v62)", async () => {
   const html2 = pkgMod.assemblePackage({
-    youtubeLink: WATCH_URL2, audioFileName: "submission-audio.wav",
+    youtubeLink: WATCH_URL2, fingerprintSha256: FP_SHA,
     durationS: 67, chunks: CHUNKS, bundle,
   });
   const zb = zipMod.buildZipBytes([
     { name: "submission.html", data: enc.encode(html2) },
-    { name: "submission-audio.wav", data: WAV },
+    { name: "submission-fingerprint.bin", data: FP_BYTES },
   ]);
   const dir = path.join(tmp, "pkg-second");
   await unzipTo(zb, dir);
@@ -550,8 +588,6 @@ await step("audit accepts the second ZIP (different link) as a current-form pack
   assert(chk.grade_receipt_ok === true, "second ZIP grade receipt failed: " + JSON.stringify(chk));
   assert(chk.internally_consistent === true,
     "second ZIP not internally consistent: " + JSON.stringify(chk));
-  assert(chk.youtube_id_ok === null,
-    "second ZIP youtube id check should be null (no video claimed): " + JSON.stringify(chk));
   assert(!("binding_status" in chk),
     "second ZIP audit still reports a binding status: " + JSON.stringify(chk));
 });

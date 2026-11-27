@@ -12,8 +12,8 @@ secrets' text values, which are never readable.)
 
 Before running: create the Worker in the dashboard (any starter
 code), create the D1 database and bind it as DB, apply schema.sql,
-and set the five secrets (SIGNING_SECRET, ADMIN_TOKEN, GRADING_TOKEN,
-VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY). See README.md. This script is
+and set the three secrets (SIGNING_SECRET, ADMIN_TOKEN, GRADING_TOKEN).
+See README.md. This script is
 run manually at deploy time; it is never run by tests or the build.
 """
 import json, sys, urllib.request, urllib.error, uuid
@@ -28,8 +28,6 @@ EXPECTED_SECRETS = [
     "SIGNING_SECRET",
     "ADMIN_TOKEN",
     "GRADING_TOKEN",
-    "VAPID_PUBLIC_KEY",
-    "VAPID_PRIVATE_KEY",
 ]
 
 

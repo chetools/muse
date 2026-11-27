@@ -1,45 +1,19 @@
-// HW Signing v2 service worker: Web Push only.
+// HW Signing v2 service worker: tombstone (2.7.0).
 //
-// The Worker's push payload is {"title": "HW Signing", "body":
-// "Your grade and critique are ready."} — it carries no grade and no
-// transcript. Clicking the notification opens the configured page
-// URL: the page stored its own full URL (with the configuration
-// parameters) in the 'hw-signing-v2-config' cache at subscribe time,
-// because a service worker cannot otherwise know the query string of
-// the link the student used. Fallback is the worker's scope URL.
+// The page no longer uses Web Push or any service-worker feature.
+// This worker exists only so a browser that still holds the old
+// push worker replaces it: on activation it deletes every cache
+// the old worker kept and unregisters itself. It has no fetch
+// handler and intercepts nothing.
 
-self.addEventListener('push', (event) => {
-  let data = { title: 'HW Signing', body: 'Your grade and critique are ready.' };
-  try {
-    const parsed = event.data ? event.data.json() : null;
-    if (parsed && typeof parsed === 'object') data = { ...data, ...parsed };
-  } catch { /* keep the defaults */ }
-  event.waitUntil(
-    self.registration.showNotification(data.title, { body: data.body })
-  );
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    let target = self.registration.scope;
-    try {
-      const cache = await caches.open('hw-signing-v2-config');
-      const stored = await cache.match('page-url');
-      if (stored) {
-        // 2.6.12: open the stored address only when it is on this
-        // service worker's own origin; anything else falls back to
-        // the scope URL.
-        const candidate = await stored.text();
-        if (new URL(candidate).origin === self.location.origin) {
-          target = candidate;
-        }
-      }
-    } catch { /* fall back to the scope URL */ }
-    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of clients) {
-      if (client.url === target && 'focus' in client) return client.focus();
-    }
-    return self.clients.openWindow(target);
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    await self.registration.unregister();
   })());
 });

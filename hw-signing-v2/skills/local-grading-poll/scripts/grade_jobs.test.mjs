@@ -26,7 +26,6 @@ const TOKEN = "test-grading-token-9c41";
 const CLAIM = {
   job_id: "job-1",
   claimed_at: "2026-11-26T17:00:00.000Z",
-  kind: "final",
   transcript: "[0:00 - 0:25] The widget flows because...",
   audio_sha256: "a".repeat(64),
   transcript_sha256: "b".repeat(64),
@@ -41,14 +40,12 @@ const PENDING = [
   {
     job_id: "job-1",
     pkg: "widget-flow v1",
-    kind: "final",
-    created_at: "2026-11-09T10:00:00Z",
+      created_at: "2026-11-09T10:00:00Z",
     transcript_chars: 4200,
   },
   {
     job_id: "job-2",
     pkg: "widget-flow v1",
-    kind: "practice",
     created_at: "2026-11-09T10:01:00Z",
     transcript_chars: 3100,
   },

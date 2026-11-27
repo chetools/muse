@@ -1,4 +1,50 @@
-# Teacher audit app — HW Signing v2 (audit app v61)
+# Teacher audit app — HW Signing v2 (audit app v62)
+
+**v62 (2026-11-27).** A simplification pass; the check
+schema rises to 4, so stored checks are re-done. (1)
+`youtube_id_ok` is removed entirely: no check in
+`check_package`, no gate in the suggested final grade, and
+no flag displays. A legacy bundle claiming a real
+`youtube_video_sha256` is treated as claiming none — the
+hash is ignored (the field is still parsed and still sent
+in the `/verify-grade` body, whose canonical forms are
+unchanged). (2) The YouTube cross-check stores no duration
+diagnostics: no `duration_diff_s`, `duration_tolerance_s`,
+`duration_ok` or `duration_flag` is computed or stored.
+(3) The cross-check's verdict, and the similarity it
+displays, both follow the per-block comparison
+(`compare_fingerprints_blockwise`): the displayed
+similarity is the median block similarity, the quantity
+the verdict rule compares against its 0.90 minimum (the
+rule also requires 90% of blocks at or above 0.85). The
+global `compare_fingerprints` comparison no longer takes
+part in the cross-check (the function remains for other
+callers). (4) There is no audio ZIP form:
+`extract_package_zip` accepts the fingerprint entry set
+only (`submission.html` + `submission-fingerprint.bin`); a
+WAV-form package is rejected as not in the current format.
+The cross-check's audio verdict rule (global similarity
+against the configurable threshold) and the WAV-repair
+retry are removed. The `acoustic_threshold` setting is
+kept: it is still consumed by the Setup settings
+validation and by the check-input fingerprint, so a change
+to it still earns an acoustic re-check — it no longer
+decides any verdict. (5) `grades_match` is removed from
+`check_package` and from internal consistency (the Worker
+receipt check covers grade agreement), and the duplicated
+receipt fields collapse to the single `grade_receipt_ok`.
+(6) The suggested final grade has no separate second
+receipt test; internal consistency remains its gate.
+(7) Check invalidation has one diff classification
+(`_classify_check_diff`), called by both `_check_mode` and
+the `/api/youtube-check` handler. (8) Downloads are
+current-attempt only: `download_packages` loses the
+`include_history` attempt-folder machinery and its
+not_in_format and rejected-mark records, and the
+download-rate calibration (stats load/record, effective
+rate, time estimate) is removed — the redownload tool
+reports counts and bytes only. The watermark skip is
+unchanged. Everything else is as in v61, below.
 
 **v61 (2026-11-26).** Three fixes. (1) The Activity panel
 starts blank when the page loads: lines logged before the
@@ -168,10 +214,11 @@ grade of record.
    - `worker_base_url` — the HW Signing v2 grading Worker address
      (its `/verify-grade` verifies grade receipts).
    - `course_id`, `assignment_id` — the Canvas File Upload assignment.
-   - `acoustic_threshold` — YouTube cross-check fingerprint
-     similarity band (0–1, default 0.85). The same recording after
-     YouTube transcoding measures about 0.99; a different recording
-     about 0.5.
+   - `acoustic_threshold` — retained in the config (0–1,
+     default 0.85) and still read by the Setup settings
+     validation and the check-input fingerprint, so changing
+     it earns an acoustic re-check; since v62 it decides no
+     verdict (the cross-check follows the per-block rule).
    - `appeal_period_passed` — retained in the config for
      compatibility; cleanup no longer consults it (it requires only
      `--confirm`).
@@ -198,7 +245,9 @@ python3 audit.py --config config.json cleanup --confirm
 - `download` — lists submissions for the assignment and downloads
   the ZIP of each student's most recent attempt whose attempt holds
   a `.zip` attachment. The ZIP is stored as `package.zip` and
-  extracted beside it (`submission.html`, `submission-audio.wav`);
+  extracted beside it (`submission.html`,
+  `submission-fingerprint.bin`); a ZIP in the older audio form
+  is rejected as not in the current format;
   extraction rejects absolute paths, `..` components, any entry set
   other than exactly those two names, and oversize entries (200 MB
   per entry, 250 MB total). A structurally invalid ZIP produces an
@@ -214,16 +263,12 @@ python3 audit.py --config config.json cleanup --confirm
   hashed as UTF-8), and verifies the grade receipt with the grading
   Worker's `/verify-grade`. The verification request carries the
   grades shown in the HTML, so it passes only when the shown grades
-  are the signed grades; the verification section's own grade lines
-  are compared against the shown grades as a separate check
-  (`grades_match`). When the package's bundle claims a real
-  video hash, the YouTube link's video ID is hashed and compared
-  with the claimed value (`youtube_id_ok`); a bundle claiming
-  “none” reports None. It is reported separately and does not
-  enter internal consistency.
+  are the signed grades (v62: there is no separate grades-match
+  check, and no YouTube video-ID check — a bundle's claimed
+  video hash is ignored, treated as claiming none).
   Reports each check separately; a package whose format version is
-  not 2, or with any of the audio, transcript, critique, receipt or
-  grade-match checks failing, is internally inconsistent.
+  not 2, or with any of the audio, transcript, critique or receipt
+  checks failing, is internally inconsistent.
 - `export` — writes each package's grading section only (no summary, so
   no YouTube link; no verification section) to `exports/<CODE>.html`,
   with a random 6-character code per package from a CSPRNG, assigned in
@@ -232,18 +277,15 @@ python3 audit.py --config config.json cleanup --confirm
   only (permissions 0600 where the OS supports it) and never leaves
   this machine.
 - `youtube-check` — the acoustic cross-check that the YouTube
-  portfolio video is the same recording as the submitted WAV.
-  Compares their Chromaprint fingerprints only, computed by
-  ffmpeg over the whole recording: similarity is 1 minus the
-  fingerprint bit error rate at the best alignment within about
-  1 s, reported overall and per third of the recording. Duration
-  is not used in the check: the measured durations are recorded
-  in the result as diagnostics and affect nothing. A byte hash
-  cannot do this — YouTube transcodes every upload — but the
-  fingerprint is built from the spectrogram and survives
-  transcoding (measured: 0.99+ similarity for the same take
-  after AAC or Opus transcoding, about 0.5 for a different
-  take). Below `acoustic_threshold` the package is flagged. No
+  portfolio video is the same recording as the submitted one.
+  It compares the package's submitted Chromaprint fingerprint
+  against the video's per 30-second block, each block at its
+  own best offset; it passes when the median block similarity
+  is at least 0.90 and at least 90% of blocks reach 0.85, and
+  the similarity it reports is that median block similarity.
+  No duration diagnostics are recorded. A byte hash cannot do
+  this — YouTube transcodes every upload — but the fingerprint
+  is built from the spectrogram and survives transcoding. No
   transcription is involved, so the check takes seconds and
   needs no re-transcription setup; if ffmpeg or chromaprint is
   missing it reports itself not configured rather than passing
@@ -264,7 +306,7 @@ python3 audit.py --config config.json cleanup --confirm
 ## Package format the app reads
 
 One ZIP per submission, `submission.zip`, containing exactly
-`submission.html` and `submission-audio.wav` (the webapp writes
+`submission.html` and `submission-fingerprint.bin` (the webapp writes
 fixed 1980-01-01 entry timestamps, so a rebuilt ZIP is
 byte-identical). The HTML sections are in plan order —
 `<section id="summary">` (clickable YouTube link; signed grades as
@@ -285,7 +327,7 @@ SHA-256, Graded at, Grade receipt).
 python3 tests/test_audit.py
 ```
 
-112 checks. Fixtures are synthetic: a 300 s, 16 kHz mono WAV
+106 checks. Fixtures are synthetic: a 300 s, 16 kHz mono WAV
 generated in code and a v2 HTML package whose fingerprints are
 computed from the fixtures, packaged as a ZIP with fixed
 1980-01-01 entry timestamps. Grade receipts are computed with a
@@ -295,11 +337,9 @@ and `/verify-grade` is a fake transport that recomputes the same
 way; the Worker's own cryptography is covered by the Worker suite.
 Covered: a good v2 package passes every check; the SPEC tamper
 cases — a grade edited in the HTML spans fails the grade
-signature, a grade line edited in the verification section fails
-`grades_match`, an edited critique fails its hash, wrong audio
+signature, an edited critique fails its hash, wrong audio
 bytes fail the fingerprint, an edited transcript fails its
-checksum, a receipt from a foreign secret fails, a YouTube link
-to a different video fails `youtube_id_ok`, a v1-format HTML is
+checksum, a receipt from a foreign secret fails, a v1-format HTML is
 not internally consistent, a ZIP with an extra entry is rejected
 at download, traversal and absolute entries are rejected with
 nothing written outside the package folder, and oversize entries
@@ -307,17 +347,19 @@ are rejected; a v1 two-file attempt does not qualify; coded
 exports contain no YouTube link and no verification data, with
 unique codes not in submission order; download watermarking keyed
 by the ZIP SHA-256; the absence of the removed listening check;
-the YouTube acoustic cross-check (same fingerprint passes,
-different fingerprint flags, similarity 0.9851 with a 2.7 s
-duration difference passes unflagged, no fingerprint comparison
-with a large duration difference is neither a pass nor a flag,
-a missing video is neither a pass nor a flag, and — through
+the YouTube acoustic cross-check (same fingerprint passes
+under the per-block rule with the reported similarity equal
+to the median block similarity, a different fingerprint
+flags, no fingerprint comparison is neither a pass nor a
+flag, a missing video is neither a pass nor a flag, an
+audio-form package is reported as not in the current
+format, no duration diagnostics are stored, and — through
 the real ffmpeg — an AAC-transcoded copy of a take passes
 while a different take flags); the absence of any binding
 check (a legacy bound bundle verifies with its video hash
-ignored and no binding request is made) and a bundle
-claiming “none” beside a linked package reporting
-`youtube_id_ok` None; the absence of the
+ignored and no binding request is made), of `youtube_id_ok`
+and `grades_match`, of the WAV-repair retry and of the
+download-rate calibration helpers; the absence of the
 removed re-grade machinery; cleanup refusals and deletion,
 `package.zip` included. (There is no listening check: it was
 removed in v14 at the teacher's direction — it had never been

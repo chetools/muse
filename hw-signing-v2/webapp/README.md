@@ -19,13 +19,17 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 2. The fingerprint is checked against the IndexedDB recordings cache.
    A complete hit restores the transcript with no transcription; a
    partial hit resumes transcription from the last completed window.
-3. The student scrubs identifying words, reviews the suspected
-   identifiers, and ticks the confirmation. Nothing leaves the machine
-   before that confirmation.
+3. The student scrubs identifying words and reviews the suspected
+   identifiers (the scan runs at send time and on demand, not per
+   scrub-field keystroke). Nothing leaves the machine before the
+   send.
 4. The student sends a grading job; the page generates the job's
    retrieval code itself and keeps it in the job's entry. Sending
-   takes no YouTube link, and there is no Practice/Final choice.
-   The teacher's Muse grades it; the Worker signs the result.
+   takes no YouTube link, sends no job kind, and there is no
+   Practice/Final choice. If the recording could not be
+   fingerprinted, the send is blocked with an error beside the
+   Send button. The teacher's Muse grades it; the Worker signs
+   the result.
 5. The jobs list is a table — Job | Grades | YouTube link |
    Actions — refreshing every 5 seconds while the page is open: a
    waiting job shows how many jobs are ahead of it, and a ready job
@@ -35,16 +39,19 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
    link field: no check runs while the student types or pastes
    (a Studio address is converted to the watch form), and the
    row's Generate ZIP button is present while the field holds a
-   readable link. Clicking it runs the Worker's reachability
-   check while preparing the review; a private or missing video,
-   or a failed check, states its reason in the row's cell and
-   packages nothing. The review states the job's course and
-   assignment, the video's title, and the graded transcript's
-   opening words, and warns when the same link is on another row.
-   Confirming ("Download submission ZIP") finalises the job —
-   `/jobs/finalize` marks it final and sends no YouTube fields;
-   no video is bound to the job — then verifies and builds the
-   submission ZIP, which carries the row's link as package data.
+   readable link. Generate ZIP is one click (2.7.0): it runs the
+   Worker's reachability check; on a pass the row's link cell
+   shows the video's title and the graded transcript's opening
+   words, the click finalises the job — `/jobs/finalize` marks
+   it final and sends no YouTube fields; no video is bound to
+   the job, and the entry's local `finalised` flag is set — the
+   status is re-fetched, and the submission ZIP is packaged and
+   downloaded, carrying the row's link as package data. The
+   canonical watch address is built from the video ID the Worker
+   returned at the check. A private or missing video, a failed
+   check, or any later failure states its reason in the row's
+   cell in small red text and packages nothing. There is no ZIP
+   review panel.
    A job whose signed bundle carries a video hash from an earlier
    version works like any other row: the page does not consult
    that hash, and a ZIP generated with a different link packages
@@ -67,9 +74,11 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 - `chemescribe-base/` — the copied ChemEScribe page (Parakeet pipeline,
   `corrections.js` glossary bundle, vendored parakeet.js 1.4.4 and
   ONNX Runtime Web 1.24.1). Reused, never edited.
-- `js/config.js` — configuration link: parse `w`, `pkg`, `ph`,
-  `course`, `asg`; teacher setup mode (`?setup=1`) builds the finished
-  link. v1's `pkgurl` is gone: the prompt package is never published
+- `js/config.js` — the one webapp version constant
+  (`export const VERSION = '2.7.0'`; `js/package.js` derives its
+  package version string from it) and the configuration link:
+  parse `w`, `pkg`, `ph`, `course`, `asg`; teacher setup mode
+  (`?setup=1`) builds the finished link. v1's `pkgurl` is gone: the prompt package is never published
   and the page never fetches it; `ph` (the package content SHA-256)
   binds the link to the exact package text. *(Pure.)*
 - `js/hash.js` — SHA-256 lowercase hex (Web Crypto). *(Pure.)*
@@ -78,8 +87,8 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   vendored `rusty-chromaprint-wasm` 0.1.5 module (hand-rolled loader,
   no bundler) and returns `{rawBase64, items}` — the base64 of the
   raw fingerprint bytes (little-endian uint32 per item) — or `null`
-  on any failure, so a fingerprint failure never blocks a
-  submission. The base64 helpers are pure and Node-tested.
+  on any failure. Since 2.7.0 a `null` fingerprint blocks the
+  send (see Flow). The base64 helpers are pure and Node-tested.
 - `vendor/chromaprint/` — vendored `rusty-chromaprint-wasm` 0.1.5
   (MIT): the glue `rusty_chromaprint_wasm_bg.js` and the
   `rusty_chromaprint_wasm_bg.wasm`; see its README.md.
@@ -111,18 +120,25 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   status, finalize and retrieved calls do not apply it, so codes
   created before 2.4.1 with fewer characters still retrieve), the
   POST /jobs payload
-  mirror of the Worker's validation, the Worker calls (`/youtube-check`,
+  mirror of the Worker's validation (since 2.7.0 the payload
+  carries no kind and no YouTube fields), the Worker calls (`/youtube-check`,
   `/jobs`, `/jobs/status`, `/jobs/finalize`, `/jobs/retrieved`, `/stats/duration`,
   `GET /` for service info; fetch injected), the YouTube video-ID
   parser (watch, youtu.be, shorts, live, embed, and — since 2.6.16 —
-  Studio edit addresses, which the page converts to the watch form),
+  Studio edit addresses, which the page converts to the watch form;
+  it now serves only to gate the Generate ZIP button's presence),
   `/jobs/finalize` as marking a job final (no YouTube fields are
   sent; an "already final" response for the same job is treated
-  as success), the pre-ZIP bundle verification (`verifyBundleContents`),
-  and the
+  as success), the pre-ZIP fingerprint verification
+  (`verifyFingerprintContents`: the locally held fingerprint
+  bytes' hash against the signed `chromaprint_sha256` — the only
+  re-hash left; the critique and Worker-supplied parts are not
+  re-hashed), and the
   localStorage entries under `hw-signing.jobs.v2`: `{pkg, course, asg,
-  retrieval_code, kind, youtube_link, youtube_title,
-  created_at, expires_at}`. The `youtube_link` and `youtube_title`
+  retrieval_code, finalised, youtube_link, youtube_title,
+  created_at, expires_at}`. Entries stored by older versions
+  carry `kind` instead of `finalised`; on load, `kind: 'final'`
+  is read as `finalised: true`. The `youtube_link` and `youtube_title`
   fields are held **only** in the
   student's browser so the HTML can be built at ZIP creation on a
   later visit; they are never sent with the job. An entry stays
@@ -137,12 +153,17 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   carries creation + 48 hours, which the Worker no longer applies to
   a still-ungraded job — and drops the entry only on an "expired"
   report.
-- `js/push.js` / `sw.js` — Web Push pieces retained from the pre-2.1.0
-  design. Since 2.1.0 the page does not subscribe to push and there is
-  no notification: the jobs list auto-refreshes every 5 seconds.
+- `sw.js` — a tombstone service worker (2.7.0): `js/push.js` is
+  deleted, and the worker exists only so a browser holding the
+  old push worker replaces it — on install it skips waiting, on
+  activate it deletes all caches and unregisters itself, and it
+  has no fetch handler. The jobs list auto-refreshes every
+  5 seconds; a poll whose fetched states match the rendered
+  states skips the table rebuild.
 - `js/zip.js` — a minimal deterministic ZIP writer: stored entries,
   local CRC-32, fixed DOS timestamp 1980-01-01, entry order
-  `submission.html` then `submission-audio.wav`. Rebuilding a ZIP from
+  `submission.html` then the fingerprint file (the only ZIP form
+  since 2.7.0; there is no audio form). Rebuilding a ZIP from
   the same contents gives byte-identical output. *(Pure bytes
   function, Node-tested.)*
 - `js/package.js` — HTML package format v2 assembly and a parse-back
@@ -169,16 +190,16 @@ SHA-256 (or `none`), Graded at, Grade receipt. There is no v1
 Session/Signed-at/Receipt: the job ID and the Worker's grade receipt
 over the signed result bundle take their place. The HTML is built
 only at retrieval, from the signed bundle, so the grades and critique
-in it are exactly what the Worker signed. Downloading is two steps:
-Generate ZIP first verifies the exact contents against the signed bundle —
-the WAV bytes' SHA-256, the canonical transcript's SHA-256 (built
-from the job recording's own cached chunks, never from the
-transcript currently on the page; a removal list that differs from
-the one used at send time fails this check and the error says so),
-the critique's SHA-256 — and shows a panel identifying what will be packaged (course,
-grades, recording file name/duration/fingerprint/opening words,
-video title and link, each marked verified); the panel's button then
-builds the ZIP from those verified parts.
+in it are exactly what the Worker signed. Downloading is one
+click (2.7.0): Generate ZIP checks the link, finalises the job,
+re-fetches its status, verifies the one hash still re-checked —
+the fingerprint bytes' SHA-256 against the signed
+`chromaprint_sha256` — and builds the fingerprint-form ZIP
+(the graded transcript text the status response returned, or
+this recording's own cached chunks when the Worker sent none).
+The critique and Worker-supplied parts are not re-hashed. A
+job whose bundle carries no signed fingerprint hash cannot be
+packaged.
 
 ## Privacy invariants
 
@@ -203,7 +224,7 @@ builds the ZIP from those verified parts.
 
 ## Tests
 
-109 checks, all passing (`node tests/run-tests.mjs`): configuration
+116 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip including `ph`; scrub and canonical form;
 checksum against Node; suspected identifiers; WAV; cache-key rules
 (course/pkg excluded, model/glossary included) and stored-chunk
@@ -218,6 +239,20 @@ entry add/replace/remove/prune; VAPID base64url round-trip; and
 wiring guards over `main.js`, `index.html`, and `sw.js`, including
 the 2.4.1 guard that the status expiry is stored back into the job
 entry.
+
+- **Simplification (2.7.0)**: job kind is eliminated — the send
+  payload carries no kind and no YouTube fields, local entries
+  carry a boolean `finalised` flag instead (set when a finalize
+  call from this browser succeeds), and duplicate/collapse logic
+  is based on that flag. Web Push is removed (`js/push.js`
+  deleted; `sw.js` is a tombstone). The submission ZIP is
+  fingerprint-form only. The ZIP review panel is removed:
+  Generate ZIP is one click, and the identity it showed (video
+  title, transcript opening words) is shown in the job's row.
+  The suspects scan runs at send time, not per scrub keystroke,
+  and the recordings list re-renders from memory while typing.
+  One `VERSION` constant in `js/config.js` feeds the package
+  version string.
 
 ## Not run live
 

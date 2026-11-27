@@ -18,6 +18,28 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v62 (2026-11-27) — Simplification: fingerprint form only, one receipt field, one check-diff classification
+
+The audit changes are in `audit.py` and summarised in
+`README.md`: `youtube_id_ok` and `grades_match` are gone,
+the receipt fields collapse to `grade_receipt_ok`, the
+YouTube cross-check follows the per-block fingerprint rule
+only (its displayed similarity is the median block
+similarity; no duration diagnostics are stored), package
+ZIPs are fingerprint-form only, downloads are
+current-attempt only with no download-rate calibration,
+and the check schema rises to 4. In this front end: the
+suggested final grade keeps internal consistency as its
+only receipt-related gate, check invalidation judges input
+differences through the one `_classify_check_diff` used by
+both `_check_mode` and the `/api/youtube-check` handler,
+and the redownload tool downloads current attempts only
+and estimates counts and bytes (no time estimate). The
+`acoustic_threshold` setting remains in Setup — the
+settings validation and the check-input fingerprint still
+consume it — but it decides no verdict. Everything else
+is as in v61, below.
+
 ## v61 (2026-11-26) — Activity starts blank; the zoom video recovers; browser Back closes the zoom
 
 - **The Activity panel starts blank.** On page load the

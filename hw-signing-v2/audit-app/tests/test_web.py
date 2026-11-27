@@ -299,10 +299,13 @@ def build_html(audio_sha):
 
 
 def make_zip_bytes(html_text, audio_bytes):
+    # v62: the only current package form is the fingerprint
+    # form; the second argument's bytes are stored as the
+    # fingerprint entry.
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:
         for name, data in (("submission.html", html_text.encode("utf-8")),
-                           ("submission-audio.wav", audio_bytes)):
+                           ("submission-fingerprint.bin", audio_bytes)):
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
             z.writestr(info, data)
     return buf.getvalue()
@@ -474,18 +477,20 @@ def main():
           "dashboard carries the v29 select/sort/filter/group "
           "controls and a Submitted column")
     chk = subs[0]["check"]
-    check(chk["internally_consistent"] and chk["receipt_ok"]
+    check(chk["internally_consistent"] and chk["grade_receipt_ok"]
+          and "receipt_ok" not in chk
           and chk["estimated_grades"] == {"completeness": 4, "accuracy": 4},
-          "check result shows receipt, fingerprints and grades")
+          "check result shows the single grade_receipt_ok field, "
+          "fingerprints and grades (v62: receipt_ok collapsed)")
     check(subs[0].get("pkg") == PKG and chk.get("pkg") == PKG,
           "submissions row and its stored check carry the prompt "
           "package (v50)")
     check(chk.get("grade_receipt_ok") is True
           and chk.get("signed_grades") == {"completeness": 4,
                                            "accuracy": 4}
-          and chk.get("youtube_id_ok") is True,
-          "check result records the v2 grade receipt, signed grades "
-          "and YouTube video-ID comparison")
+          and "youtube_id_ok" not in chk and "grades_match" not in chk,
+          "check result records the v2 grade receipt and signed "
+          "grades (v62: no youtube_id_ok, no grades_match)")
     status, main_page2 = call("GET", "/", raw=True)
     check(b"grade signature OK" in main_page2
           and b"grade signature FAILED" in main_page2,
@@ -989,10 +994,10 @@ def main():
     check(status == 200 and out["downloaded"] == 1 and out["errors"] == 0
           and (nested222 / "package.zip").read_bytes() == zip222
           and (nested222 / "submission.html").exists()
-          and (nested222 / "submission-audio.wav").exists(),
+          and (nested222 / "submission-fingerprint.bin").exists(),
           "download endpoint stores the ZIP as package.zip and "
-          "extracts both entries (v22; nested per course/"
-          "assignment since v16)")
+          "extracts both entries of the fingerprint form (v62; "
+          "nested per course/assignment since v16)")
     status, subs = call("GET", "/api/submissions")
     row222 = [r for r in subs if r["user_id"] == "222"]
     check(len(row222) == 1 and row222[0]["student_score"] == 8
@@ -1465,15 +1470,19 @@ def main():
     check(web.suggested_final({
         "internally_consistent": True, "injection_suspected": False,
         "grade_receipt_ok": False, "youtube": {"youtube_flag": False},
-        "estimated_grades": {"completeness": 4, "accuracy": 4}}) is None,
-        "a failed grade signature holds back the suggested grade "
-        "(v22, explicit hold-back)")
+        "estimated_grades": {"completeness": 4, "accuracy": 4}})
+        == {"completeness": 4, "accuracy": 4},
+        "v62: suggested_final has no separate second receipt "
+        "test — a stored check whose internally_consistent is "
+        "True stands on that gate alone (a failed receipt makes "
+        "internally_consistent False in a real check)")
     check(web.suggested_final({
         "internally_consistent": True, "injection_suspected": False,
         "youtube_id_ok": False, "youtube": {"youtube_flag": False},
-        "estimated_grades": {"completeness": 4, "accuracy": 4}}) is None,
-        "a YouTube video ID mismatch holds back the suggested "
-        "grade (v22)")
+        "estimated_grades": {"completeness": 4, "accuracy": 4}})
+        == {"completeness": 4, "accuracy": 4},
+        "v62: youtube_id_ok is gone — a legacy False value in a "
+        "stored check no longer holds back the suggested grade")
     (data_dir / "videos").mkdir(exist_ok=True)
     (data_dir / "videos" / "111.mp4").write_bytes(b"not a real video")
     status, yt = call("POST", "/api/youtube-check", {"user_id": "111"})
@@ -1486,10 +1495,8 @@ def main():
     audit.youtube_cross_check = lambda *a, **k: {
         "available": True, "youtube_flag": True, "passed": False,
         "threshold": 0.85, "similarity": 0.51, "ber": 0.49,
-        "acoustic_configured": True, "duration_ok": False,
-        "duration_flag": True, "duration_diff_s": 42.0,
-        "canvas_duration_s": 300, "youtube_duration_s": 258,
-        "thirds": []}
+        "acoustic_configured": True,
+        "canvas_duration_s": 300, "youtube_duration_s": 258}
     try:
         status, out = call("POST", "/api/check-all", {})
     finally:
@@ -1526,8 +1533,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/61.0",
-          "user agent bumped to 61.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/62.0",
+          "user agent bumped to 62.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2109,24 +2116,20 @@ def main():
           "dashboard section 2 carries the redownload panel with "
           "its filters, scope radios, force and estimate line (v32)")
 
-    # (b) Estimate, uncalibrated: nothing downloaded for these
-    # students yet, so both packages are to-fetch at the assumed
-    # rate; then a filtered estimate for one student only.
+    # (b) Estimate (v62: counts and bytes only — no download-rate
+    # calibration, no time estimate): nothing downloaded for
+    # these students yet, so both packages are to-fetch; then a
+    # filtered estimate for one student only.
     stats_file = data_dir / "download-stats.json"
-    stats_saved = stats_file.read_bytes() if stats_file.exists() \
-        else None
-    if stats_file.exists():
-        stats_file.unlink()
     status, est = call("POST", "/api/redownload-estimate", {})
     mb = len(zip222)
     check(status == 200 and est["packages"] == 2
           and est["to_fetch"] == 2 and est["present"] == 0
-          and est["bytes"] == 2 * mb and est["calibrated"] is False
-          and est["rate_bps"] == audit.ASSUMED_DOWNLOAD_RATE_BPS
-          and abs(est["seconds"] - 2 * mb
-                  / audit.ASSUMED_DOWNLOAD_RATE_BPS) < 1e-6,
-          "redownload estimate: both packages to fetch at the "
-          "assumed rate, marked uncalibrated (v32)")
+          and est["bytes"] == 2 * mb
+          and "calibrated" not in est and "seconds" not in est
+          and "rate_bps" not in est,
+          "redownload estimate: both packages to fetch, counts "
+          "and bytes only, no calibration or time estimate (v62)")
     status, est1 = call("POST", "/api/redownload-estimate",
                         {"student": "Amy"})
     check(status == 200 and est1["packages"] == 1
@@ -2134,10 +2137,10 @@ def main():
           "redownload estimate honours the student filter (v32)")
     status, estp = call("POST", "/api/redownload-estimate",
                         {"student": "Amy", "scope": "previous"})
-    check(status == 200 and estp["packages"] == 2
-          and estp["bytes"] == mb + len(zip333a1),
-          "redownload estimate with previous scope counts the "
-          "earlier ZIP attempt and skips the non-ZIP one (v32)")
+    check(status == 200 and estp["packages"] == 1
+          and estp["bytes"] == mb,
+          "v62: a previous-scope estimate counts the current "
+          "attempt only (previous attempts are not downloaded)")
 
     # (c) Run the tool for Amy only, previous scope; poll to done.
     status, started = call("POST", "/api/redownload",
@@ -2152,26 +2155,31 @@ def main():
             break
         _t32.sleep(0.1)
     unit333 = data_dir / "downloads" / "101" / "202" / "333"
-    check(not st32.get("running") and st32.get("downloaded") == 2
+    check(not st32.get("running") and st32.get("downloaded") == 1
           and (unit333 / "submission.html").exists()
-          and (unit333 / "attempt-1" / "submission.html").exists()
-          and not (unit333 / "attempt-2").exists()
+          and not (unit333 / "attempt-1").exists()
           and not (data_dir / "downloads" / "101" / "202" / "444")
           .exists()
           and st32.get("seconds") is not None
-          and st32.get("estimate", {}).get("to_fetch") == 2,
-          "redownload run fetches only the filtered student's "
-          "current + previous packages, and its closing state "
-          "carries the actual time beside the estimate (v32)")
-    check(stats_file.exists()
-          and len(audit.load_download_stats(cfg32)) >= 1,
-          "the finished run leaves a calibration record (v32)")
+          and st32.get("estimate", {}).get("to_fetch") == 1,
+          "v62: a previous-scope redownload run fetches only the "
+          "filtered student's current package (no attempt "
+          "folders), and its closing state carries the actual "
+          "time beside the estimate")
+    check(not stats_file.exists(),
+          "v62: the finished run leaves no download-rate "
+          "calibration record")
+    # Seed Amy's previous attempt on disk by hand (as an older
+    # version left it) so the wall attempts rows below still
+    # exercise attempt folders that exist on disk.
+    audit.extract_package_zip(zip333a1, unit333 / "attempt-1")
+    (unit333 / "attempt-1" / "package.zip").write_bytes(zip333a1)
     status, est2 = call("POST", "/api/redownload-estimate",
                         {"student": "Amy", "scope": "previous"})
     check(status == 200 and est2["to_fetch"] == 0
-          and est2["present"] == 2 and est2["calibrated"] is True,
+          and est2["present"] == 1,
           "after the run the same selection estimates zero to "
-          "fetch, all present, now calibrated (v32)")
+          "fetch, the current package present (v62)")
     status, estf = call("POST", "/api/redownload-estimate",
                         {"student": "Amy", "force": True})
     check(status == 200 and estf["to_fetch"] == 1,
@@ -2233,10 +2241,7 @@ def main():
     web._SCAN["at"] = 0.0
     web._SCAN["subs"] = {}
     web._SCAN["rosters"] = {}
-    if stats_saved is None:
-        stats_file.unlink(missing_ok=True)
-    else:
-        stats_file.write_bytes(stats_saved)
+    stats_file.unlink(missing_ok=True)
 
     # 12. v33: table attempt rows, table → wall selection and
     # focus wiring, hover-panel layout fix. Students: Pat (555,
@@ -2339,11 +2344,21 @@ def main():
 
     st = run_redownload33({"student": "Pat", "scope": "previous"})
     unit555 = data_dir / "downloads" / "101" / "202" / "555"
-    check(st.get("downloaded") == 3
-          and (unit555 / "attempt-1" / "submission.html").exists()
+    check(st.get("downloaded") == 1
+          and (unit555 / "submission.html").exists()
+          and not (unit555 / "attempt-1").exists(),
+          "v62 setup: a previous-scope redownload downloads "
+          "Pat's current attempt only")
+    # Seed Pat's previous attempts on disk by hand (as an older
+    # version left them) so the table attempt rows below still
+    # exercise attempt folders that exist on disk.
+    audit.extract_package_zip(zip_pat_a1, unit555 / "attempt-1")
+    (unit555 / "attempt-1" / "package.zip").write_bytes(zip_pat_a1)
+    audit.extract_package_zip(zip_pat_a2, unit555 / "attempt-2")
+    (unit555 / "attempt-2" / "package.zip").write_bytes(zip_pat_a2)
+    check((unit555 / "attempt-1" / "submission.html").exists()
           and (unit555 / "attempt-2" / "submission.html").exists(),
-          "setup: Pat's current + two previous attempts downloaded "
-          "(v33)")
+          "setup: Pat's previous attempts seeded on disk (v62)")
     run_redownload33({"student": "Rita", "scope": "current"})
     unit777 = data_dir / "downloads" / "101" / "202" / "777"
     check((unit777 / "submission.html").exists()
@@ -2532,83 +2547,79 @@ def main():
     check("planning" in phases34,
           "the run's status passes through a planning phase (v34)")
     dl34 = Path(cfg34["data_dir"]) / "downloads"
-    check(st34.get("target_errors") == 1
-          and "1 assignment(s) could not be read"
-          in st34.get("summary", "")
+    check(st34.get("target_errors") == 0
           and (dl34 / "101" / "202" / "111"
                / "submission.html").exists()
           and (dl34 / "101" / "203" / "222"
+               / "submission.html").exists()
+          and (dl34 / "101" / "204" / "333"
                / "submission.html").exists(),
-          "one target's history failure is counted in the closing "
-          "summary and the run completes the other targets (v34)")
-    check(HIST_CALLS34["n"] == 4,
-          "one history walk per target serves plan and run "
-          "(3 walks + 1 retry of the failed target, not three "
-          f"walks per target; got {HIST_CALLS34['n']}) (v34)")
+          "v62: the run downloads every target's current "
+          "attempts; the broken target's history is never "
+          "walked, so no target error is counted")
+    check(HIST_CALLS34["n"] == 0,
+          "v62: plan and run make no history walk at all "
+          f"(got {HIST_CALLS34['n']})")
 
     # (b) The format student: estimate lists the non-package
     # attempt; the run reports it and the rejected ZIP.
     status, e34a = call("POST", "/api/redownload-estimate",
                         {"scope": "previous", "student": "format"})
     nif34a = e34a.get("not_in_format") or []
-    check(len(nif34a) == 1 and nif34a[0]["attempt"] == 1
-          and nif34a[0]["holds"] == "audio + html files, no ZIP"
-          and e34a.get("rejected") == 1
+    check(nif34a == [] and e34a.get("rejected") == 0
           and e34a.get("packages") == 1
           and e34a.get("to_fetch") == 0,
-          "estimate lists the two-file previous attempt as not "
-          "in package format (with what it holds) and the "
-          "rejected attempt from the record, neither in the "
-          "fetch set (v34)")
+          "v62: the estimate covers the current attempt only — "
+          "the two-file and bad-ZIP previous attempts are not "
+          "listed, counted or fetched")
     call("POST", "/api/redownload",
          {"scope": "previous", "student": "format"})
     st34b, _ = wait_redl34()
-    check("not in package format" in st34b.get("summary", "")
-          and "rejected" in st34b.get("summary", "")
-          and FETCH34.get("mem://f2bad") == 1
+    check("not in package format" not in st34b.get("summary", "")
+          and FETCH34.get("mem://f2bad") is None
           and (dl34 / "101" / "202" / "444"
                / "submission.html").exists(),
-          "run reports the not-in-format attempt and the "
-          "rejected ZIP, and downloads the valid current "
-          "attempt (v34)")
+          "v62: the run downloads the valid current attempt "
+          "and never fetches the bad previous attempt's ZIP")
     state34 = json.loads((Path(cfg34["data_dir"])
                           / "download-state.json").read_text())
-    check(state34.get("101:202:444:attempt-2", {})
-          .get("rejected") is True,
-          "the rejected mark is in download-state.json for the "
-          "failed previous attempt (v34)")
+    check("101:202:444:attempt-2" not in state34,
+          "v62: no rejected mark is watermarked for a previous "
+          "attempt")
 
     # (c) Second estimate + run: the rejected attempt is
     # reported from the record and never re-fetched.
     status, e34b = call("POST", "/api/redownload-estimate",
                         {"scope": "previous", "student": "format"})
-    check(e34b.get("rejected") == 1 and e34b.get("packages") == 1
+    check(e34b.get("rejected") == 0 and e34b.get("packages") == 1
           and e34b.get("to_fetch") == 0,
-          "second estimate reports the rejected attempt from "
-          "the record and excludes it from the fetch set (v34)")
+          "v62: a second estimate still covers the current "
+          "attempt only")
     call("POST", "/api/redownload",
          {"scope": "previous", "student": "format"})
     wait_redl34()
-    check(FETCH34.get("mem://f2bad") == 1,
-          "a second run fetches zero bytes for the rejected "
-          "attempt (v34)")
+    check(FETCH34.get("mem://f2bad") is None,
+          "v62: a second run also never fetches the previous "
+          "attempt's bad ZIP")
 
     # (d) The wall's attempts fetch shares the same cached walk.
     n_hist34 = HIST_CALLS34["n"]
     web.fetch_unit_attempts(cfg34, "101_202_444")
-    check(HIST_CALLS34["n"] == n_hist34,
-          "the wall's attempts fetch reuses the cached history "
-          "walk (v34)")
+    check(HIST_CALLS34["n"] == n_hist34 + 1,
+          "v62: the wall's attempts fetch makes its own single "
+          "history walk (plan and run no longer walk history, "
+          "so there is no cached walk to reuse)")
 
     # (e) The table's accounting distinguishes the causes from
     # local records only.
     status, rows34 = call("GET", "/api/submissions?attempts=1")
     fred34 = next(r for r in rows34 if r["user_id"] == "444")
-    check(fred34.get("attempts_missing") == 0
-          and fred34.get("attempts_not_format") == 1
-          and fred34.get("attempts_rejected") == 1,
-          "table attempts accounting: 0 not downloaded, 1 not "
-          "in package format, 1 rejected (v34)")
+    check(fred34.get("attempts_missing") == 2
+          and fred34.get("attempts_not_format") == 0
+          and fred34.get("attempts_rejected") == 0,
+          "v62: table attempts accounting — both previous "
+          "attempts simply not downloaded; no not-in-format or "
+          "rejected records exist for them")
 
     # (f) Page wiring for the three v34 items.
     status, dash34 = call("GET", "/", raw=True)
@@ -3388,10 +3399,12 @@ def main():
             web.run_checks(cfg36, force=True)
         finally:
             web.write_json_atomic = _orig_wj38
-        check(writes38["n"] == 1,
+        jobs38 = counts38["pkg"] - base38["pkg"]
+        check(writes38["n"] == 1 + jobs38 // 10,
               "v38: a run over several packages writes the "
-              "results file once at the end, not once per "
-              "package")
+              "results file at the ten-completion checkpoints "
+              "and once at the end, not once per package "
+              f"({jobs38} packages, {writes38['n']} writes)")
     finally:
         audit.check_package = _orig_cp38
         audit.youtube_cross_check = _orig_yt38

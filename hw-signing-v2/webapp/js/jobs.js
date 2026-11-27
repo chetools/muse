@@ -105,63 +105,31 @@ export function canonicalWatchUrl(videoId) {
  * remains, but the page no longer reports to it.
  */
 
-/* ---------------- submission verification ----------------
- * Before a submission ZIP is built, the page recomputes the hashes
- * of the exact contents it is about to package — the WAV bytes, the
- * canonical transcript built from the job recording's own cached
- * chunks, and the critique in the result bundle — and compares them
- * with the hashes the grading Worker signed. Returns a list of
- * failure codes (empty when everything matches): 'audio',
- * 'transcript', 'critique'. Pure; the caller supplies the hashes it
- * computed so this stays Node-testable.
- */
-export function verifyBundleContents(bundle, actual) {
-  const failures = [];
-  if (!bundle || !actual) return ['audio', 'transcript', 'critique'];
-  if (actual.wavSha256 !== bundle.audio_sha256) failures.push('audio');
-  if (actual.transcriptSha256 !== bundle.transcript_sha256) {
-    failures.push('transcript');
-  }
-  if (actual.critiqueSha256 !== bundle.critique_sha256) {
-    failures.push('critique');
-  }
-  return failures;
-}
-
-/* ---------------- fingerprint-form submissions (2.6.0) ----------------
- * The ZIP form is decided by the job's signed bundle, never by
- * date: a bundle graded under Worker 2.7.0 carries a signed
- * chromaprint_sha256 — the SHA-256 of the raw Chromaprint bytes —
- * when the job had a fingerprint, and the submission ZIP then holds
- * the fingerprint bytes instead of the WAV. The string "none" (the
- * job had no fingerprint) and a missing field (the job was graded
- * before Worker 2.7.0) both mean the WAV form, exactly as before.
+/* ---------------- fingerprint-form submissions ----------------
+ * Since webapp 2.7.0 the fingerprint form is the only submission
+ * ZIP form: there is no audio (WAV) form. A bundle graded under
+ * Worker 2.7.0 carries a signed chromaprint_sha256 — the SHA-256
+ * of the raw Chromaprint bytes — when the job had a fingerprint,
+ * and the submission ZIP holds the fingerprint bytes. The string
+ * "none" (the job had no fingerprint) and a missing field (the job
+ * was graded before Worker 2.7.0) mean no fingerprint form can be
+ * built for that job.
  */
 export function bundleChromaprintSha(bundle) {
   const v = bundle && bundle.chromaprint_sha256;
   return typeof v === 'string' && SHA256_HEX.test(v) ? v : null;
 }
 
-// The fingerprint form's counterpart of verifyBundleContents: the
-// hashes of the exact contents about to be packaged — the raw
-// fingerprint bytes the status response returned, the canonical
-// transcript, and the critique in the result bundle — compared
-// with the hashes the grading Worker signed. Returns a list of
-// failure codes (empty when everything matches): 'fingerprint',
-// 'transcript', 'critique'. Pure; the caller supplies the hashes.
+// The fingerprint form's verification (2.7.0): the only re-hash
+// left before packaging is the locally held fingerprint bytes
+// against the signed chromaprint_sha256. The critique is not
+// re-hashed, and Worker-supplied parts (the fallback transcript)
+// are not re-hashed either. Returns ['fingerprint'] on a mismatch,
+// [] when the bytes match. Pure; the caller supplies the hash.
 export function verifyFingerprintContents(bundle, actual) {
-  const failures = [];
-  if (!bundle || !actual) return ['fingerprint', 'transcript', 'critique'];
-  if (actual.fingerprintSha256 !== bundle.chromaprint_sha256) {
-    failures.push('fingerprint');
-  }
-  if (actual.transcriptSha256 !== bundle.transcript_sha256) {
-    failures.push('transcript');
-  }
-  if (actual.critiqueSha256 !== bundle.critique_sha256) {
-    failures.push('critique');
-  }
-  return failures;
+  if (!bundle || !actual) return ['fingerprint'];
+  return actual.fingerprintSha256 !== bundle.chromaprint_sha256
+    ? ['fingerprint'] : [];
 }
 
 // Client-side mirror of the Worker's POST /jobs validation. Returns
@@ -173,9 +141,6 @@ export function validateJobPayload(body) {
   if (!body.pkg || String(body.pkg).length > 128) return fail('No prompt package in this link.');
   if (!SHA256_HEX.test(body.pkg_content_sha256 || '')) {
     return fail('This link is incomplete. Use the link your teacher put in Canvas.');
-  }
-  if (body.kind !== 'practice' && body.kind !== 'final') {
-    return fail('Job kind is missing.');
   }
   if (typeof body.transcript !== 'string' || !body.transcript.trim()) {
     return fail('Your transcript is empty.');
@@ -191,29 +156,17 @@ export function validateJobPayload(body) {
       !RETRIEVAL_CODE_RE.test(body.retrieval_code)) {
     return fail('This job could not be prepared for sending. Reload the page and send again.');
   }
-  if (body.kind === 'final') {
-    if (!body.youtube_token) return fail('A submission with a link needs the YouTube link checked first.');
-    if (!body.youtube_video_id || !/^[A-Za-z0-9_-]{11}$/.test(body.youtube_video_id)) {
-      return fail('No video ID came back from the check.');
-    }
-    if (!body.youtube_checked_at || Number.isNaN(Date.parse(body.youtube_checked_at))) {
-      return fail('No check time came back from the check.');
-    }
-  }
   return { ok: true };
 }
 
-// Assemble the POST /jobs body from page state. youtube fields are
-// included only for final jobs; the link itself is never sent — only
-// the Worker's check token and the video ID. chromaprint (2.6.0) is
-// the raw Chromaprint as base64, included only when the page computed
-// one; a job sent without it is graded the same and dedupes on the
-// exact audio hash only.
+// Assemble the POST /jobs body from page state (2.7.0): no kind
+// and no YouTube fields are sent. chromaprint is the raw
+// Chromaprint as base64; the send flow blocks when no fingerprint
+// was computed, so in practice it is always present.
 export function buildJobPayload(state) {
   const body = {
     pkg: state.pkg,
     pkg_content_sha256: state.pkgContentSha256,
-    kind: state.kind,
     transcript: state.transcript,
     audio_sha256: state.audioSha256,
     transcript_sha256: state.transcriptSha256,
@@ -221,18 +174,17 @@ export function buildJobPayload(state) {
     retrieval_code: state.retrievalCode,
   };
   if (state.chromaprint) body.chromaprint = state.chromaprint;
-  if (state.kind === 'final') {
-    body.youtube_token = state.youtubeToken;
-    body.youtube_video_id = state.youtubeVideoId;
-    body.youtube_checked_at = state.youtubeCheckedAt;
-  }
   return body;
 }
 
 /* ---------------- localStorage job entries ----------------
- * A list of { pkg, course, asg, retrieval_code, kind,
+ * A list of { pkg, course, asg, retrieval_code, finalised,
  * youtube_link, youtube_title, youtube_checked_at, created_at,
  * expires_at }.
+ * finalised (2.7.0) is a boolean set when finalizeJob succeeds in
+ * this browser (the already-final 409-as-success path included).
+ * Entries stored by older versions carry kind instead: on load,
+ * kind 'final' is read as finalised true (see loadJobEntries).
  * youtube_title is the title the Worker returned at the link check,
  * kept locally so the student can recognise the video again at ZIP
  * time; it is never sent with the job. youtube_checked_at (2.4.4) is
@@ -276,7 +228,14 @@ export function loadJobEntries(storage) {
   if (!store) return [];
   try {
     const parsed = JSON.parse(store.getItem(JOBS_STORAGE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // 2.7.0 compat: an entry stored by an older version carries
+    // kind instead of finalised; kind 'final' reads as finalised.
+    return parsed.map((e) => {
+      if (!e || typeof e !== 'object') return e;
+      const { kind, ...rest } = e;
+      return { ...rest, finalised: e.finalised === true || kind === 'final' };
+    });
   } catch { return []; }
 }
 
@@ -334,7 +293,7 @@ export function pruneExpiredEntries(entries, nowMs) {
  * no known jobId are always kept (nothing proves they are the same
  * job). Within a same-job group the survivor is the entry most
  * able to build the ZIP — one carrying a YouTube link first, then
- * a final entry, then the earliest created — and the locally kept
+ * a finalised entry, then the earliest created — and the locally kept
  * YouTube fields (link, title, check time) are merged onto it from
  * every group member that has them, so the surviving row is the
  * working one. The survivor's entry gains job_id. Pure: the caller
@@ -356,7 +315,7 @@ export function collapseSameJobEntries(items) {
       continue;
     }
     const score = (entry) =>
-      (entry.youtube_link ? 4 : 0) + (entry.kind === 'final' ? 2 : 0) +
+      (entry.youtube_link ? 4 : 0) + (entry.finalised ? 2 : 0) +
       (entry.youtube_title ? 1 : 0);
     const ranked = [...idxs].sort((a, b) => {
       const d = score(items[b].entry) - score(items[a].entry);
@@ -371,7 +330,7 @@ export function collapseSameJobEntries(items) {
       for (const f of ['youtube_link', 'youtube_title', 'youtube_checked_at']) {
         if (!keep.entry[f] && e[f]) keep.entry[f] = e[f];
       }
-      if (e.kind === 'final') keep.entry.kind = 'final';
+      if (e.finalised) keep.entry.finalised = true;
       dropped.add(i);
     }
     keep.entry.job_id = keep.jobId;
@@ -436,32 +395,21 @@ export async function submitJob(workerBase, payload, fetchFn) {
  * `queue_ahead` is present while it is queued or claimed.
  */
 
-// The kind of a job from its result bundle: a bundle whose signed
-// youtube_video_sha256 names a checked video is a final job; 'none'
-// (or a missing value) is a practice job. The same rule the manual
-// retrieval path uses to label a job it did not create.
-export function kindFromResultBundle(bundle) {
-  return bundle && bundle.youtube_video_sha256 &&
-    bundle.youtube_video_sha256 !== 'none' ? 'final' : 'practice';
-}
-
 // Build the localStorage entry for a duplicate response, or null
 // when nothing is to be stored. The entry is filed under the
-// submitted code (the alias) so the existing job renders through the
-// normal jobs-list path — queue state while queued or claimed,
+// submitted code (the alias) so the existing job renders through
+// the normal jobs-list path — queue state while queued or claimed,
 // grades and critique when ready — and finalize and ZIP work from
 // it exactly as from the original entry. When alias_created is
 // false the submitted code is already used by a different job for
 // the pkg, so it does not retrieve this job and nothing is stored
-// under it. The entry's kind follows the existing job: the result
-// bundle decides it when the job is ready; while the job is still
-// queued or claimed there is no result yet, so the submitted kind
-// stands until the jobs list learns the ready bundle.
+// under it. The entry's finalised flag and its locally kept
+// YouTube fields are the submitted ones: a job is finalised only
+// by a finalizeJob call from a browser, and the flag records that
+// this browser made one succeed.
 export function duplicateJobEntry(response, submitted) {
   if (!response || !response.duplicate || !response.alias_created) return null;
-  const kind = response.result
-    ? kindFromResultBundle(response.result) : submitted.kind;
-  const isFinal = kind === 'final' && submitted.kind === 'final';
+  const isFinalised = submitted.finalised === true;
   return {
     worker: submitted.worker || '',
     pkg: submitted.pkg,
@@ -469,10 +417,10 @@ export function duplicateJobEntry(response, submitted) {
     asg: submitted.asg,
     retrieval_code: submitted.retrieval_code,
     job_id: response.job_id || '',
-    kind,
-    youtube_link: isFinal ? (submitted.youtube_link || '') : '',
-    youtube_title: isFinal ? (submitted.youtube_title || '') : '',
-    youtube_checked_at: isFinal ? (submitted.youtube_checked_at || '') : '',
+    finalised: isFinalised,
+    youtube_link: isFinalised ? (submitted.youtube_link || '') : '',
+    youtube_title: isFinalised ? (submitted.youtube_title || '') : '',
+    youtube_checked_at: isFinalised ? (submitted.youtube_checked_at || '') : '',
     created_at: response.created_at,
     expires_at: response.expires_at,
   };
@@ -523,11 +471,3 @@ export async function finalizeJob(workerBase, payload, fetchFn) {
   return data;
 }
 
-// POST /jobs/retrieved → marks the job retrieved on the Worker.
-export async function markJobRetrieved(workerBase, creds, fetchFn) {
-  const { ok } = await postJson(workerBase, '/jobs/retrieved', {
-    pkg: creds.pkg,
-    retrieval_code: creds.retrieval_code,
-  }, fetchFn);
-  return ok;
-}

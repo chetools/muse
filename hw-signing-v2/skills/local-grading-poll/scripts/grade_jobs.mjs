@@ -4,7 +4,7 @@
 //
 //   node grade_jobs.mjs list
 //       Print the pending list from GET /grading/pending as JSON:
-//       [{job_id, pkg, kind, created_at, transcript_chars}] — queued
+//       [{job_id, pkg, created_at, transcript_chars}] — queued
 //       jobs and jobs whose claim has expired.
 //   node grade_jobs.mjs claim <job_id> --out <claim-file>
 //       Claim one job (POST /grading/claim; the claim holds 15

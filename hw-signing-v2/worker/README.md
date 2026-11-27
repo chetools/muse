@@ -10,14 +10,14 @@ What it stores, and what it never stores:
 - Packages: the frozen prompt-package text, its SHA-256 content hash,
   lifecycle status, trial grades and any trial-gate override reason.
 - Jobs: the student's scrubbed transcript, the audio and transcript
-  fingerprints, the signed result (grades, critique, receipt), a
-  salted hash of the student's retrieval code, and optionally the
-  student's Web Push subscription. An ungraded job expires 7 days
+  fingerprints, the signed result (grades, critique, receipt), and
+  a lookup hash of the student's retrieval code (SHA-256 of
+  `"<pkg>\n<code>"`; the only retrieval credential stored). An
+  ungraded job expires 7 days
   after creation; a graded job expires 180 days after grading; the
   transcript is nulled at grading and the result is deleted at expiry.
 - Never stored: a student's name, Canvas identity, YouTube link,
-  video title or channel name. A retrieval code is stored only as a
-  salted SHA-256.
+  video title or channel name.
 
 ## Endpoints
 
@@ -30,17 +30,14 @@ configuration fails closed (500), a wrong token gets 401.
 
 | Route | Auth | Purpose |
 |---|---|---|
-| `GET /` | — | `{service, version, storage:"d1"}`, plus `vapid_public_key` when configured |
-| `POST /youtube-check` | — | `{url}` → parse the video ID (watch / youtu.be / shorts / live / embed), ask YouTube oEmbed server-side, return `{video_id, status, checked_at, token, title}`; status is `ok` or `private_or_missing`; the token is an HMAC over `video_id\nstatus\nchecked_at`; the oEmbed title is returned to the caller so the student can recognise the video — nothing about the link is stored |
-| `POST /stats/duration` | — | `{pkg?, context?, audio_s, video_s}` → record one anonymous duration comparison in `duration_stats`; no video ID, link or student information is accepted or stored. The endpoint is retained; the student page no longer reports comparisons (the length check was removed in webapp 2.6.18) |
-| `GET /admin/duration-stats` | ADMIN_TOKEN | the stored comparisons summarised: count, absolute-difference percentiles (p50/p90/p95/p99/max), and the split against the duration bands the page used before 2.6.18 |
-| `POST /jobs` | retrieval data | create a grading job → `{job_id, created_at, expires_at, pkg}`; `pkg` is the version the job is graded under (see the replacement check below) |
+| `GET /` | — | `{service, version, storage:"d1"}` |
+| `POST /youtube-check` | — | `{url}` → parse the video ID (watch / youtu.be / shorts / live / embed), ask YouTube oEmbed server-side, return `{video_id, status, title, checked_at}`; status is `ok` or `private_or_missing`; no token is returned (2.8.0); the oEmbed title is returned to the caller so the student can recognise the video — nothing about the link is stored |
+| `POST /jobs` | retrieval data | create a grading job → `{job_id, created_at, expires_at, pkg}`; `pkg` is the version the job is graded under (the version its link hash resolves to). `kind`, `youtube_*` and `push_subscription` fields are not read; a body carrying them is accepted and they are ignored. A duplicate (same recording, same resolved package) returns `{duplicate:true, job_id, created_at, expires_at, pkg, status}` — status only, no result bundle |
 | `POST /jobs/status` | retrieval code only | `{status, expires_at}` (`expires_at` is the current governing expiry: creation + 7 days while ungraded, graded_at + 180 days once graded); while queued/claimed also `queue_ahead` (jobs ahead in the global grading queue); when `ready` the signed result bundle; every wrong code returns the identical 403 |
-| `POST /jobs/retrieved` | retrieval code only | mark the job retrieved |
-| `POST /jobs/finalize` | retrieval code only | turn the job into the final submission job: marks the job final and enforces the one-final-per-recording rule (409 when a different job is already final for the recording). No video is bound: a graded job's bundle is held in the no-video form (`youtube_video_sha256` `"none"`, the form a link-less job is signed in at grading), and a bundle bound under an earlier version is brought to that form and re-signed. `youtube_token`, `youtube_video_id` and `youtube_checked_at` fields sent by older pages are accepted and ignored (the token is not verified); requests without them work identically. Finalizing a job that is already final succeeds idempotently with its current receipt |
-| `GET /grading/pending` | GRADING_TOKEN | queued jobs (incl. expired claims): job id, package, kind, creation time, transcript length |
-| `POST /grading/claim` | GRADING_TOKEN | claim one job for 15 min; returns the transcript, fingerprints, versions and the full package text |
-| `POST /grading/result` | GRADING_TOKEN | post grades + critique for a claimed job; signs the result, stores it, sends the push if one is registered |
+| `POST /jobs/finalize` | retrieval code only | turn the job into the final submission job: marks the job final and enforces the one-final-per-recording rule (409 when a different job is already final for the recording). No video is bound: a graded job's bundle is held in the no-video form (`youtube_video_sha256` `"none"`, the form a link-less job is signed in at grading), and a bundle bound under an earlier version is brought to that form and re-signed. `youtube_*` fields sent by older pages are accepted and ignored; requests without them work identically. Finalizing a job that is already final succeeds idempotently with its current receipt |
+| `GET /grading/pending` | GRADING_TOKEN | queued jobs (incl. expired claims) in the current semester database: job id, package, creation time, transcript length (no `kind`, 2.8.0) |
+| `POST /grading/claim` | GRADING_TOKEN | claim one job for 15 min; returns the transcript, fingerprints, versions and the full package text (no `kind`, 2.8.0) |
+| `POST /grading/result` | GRADING_TOKEN | post grades + critique for a claimed job; the body must name the claim instance (`claimed_at`, issued at claim time) — a result naming no `claimed_at` is rejected (2.8.0); signs the result and stores it |
 | `POST /verify-grade` | — | recompute a grade receipt from the result bundle → `{valid}` |
 | `POST /admin/packages` | ADMIN_TOKEN | `{pkg_name, text}` → creates the next version as `draft` |
 | `GET /admin/packages` | ADMIN_TOKEN | all package versions with metadata (no text) |
@@ -54,27 +51,24 @@ plus `draft → retired`. Moving to `trialled` requires
 only against `open` packages, and the content hash in the job request
 must match the stored package text.
 
-Replacement check (2.5.0): at job creation the Worker verifies the
-request's hash against the requested version, then grades the job
-under the newest `open` version of the same package name when a
-newer one exists — whether or not the requested version is still
-open, so an issued link keeps working after its version is closed
-in favour of a replacement. The job row, the grading claim and the
-signed receipt all name the resolved version. Retrieval is
-unchanged from the student's side: the code lookup hash is computed
-from the requested pkg string and the job is found by that lookup
-alone. A consequence to keep in mind: opening a newer version
-repoints every earlier link for that package name, so two versions
-of one name cannot serve different courses at once.
+Version resolution (2.8.0): at job creation the Worker verifies
+the request's hash against the requested version in the current
+semester database, and the job is created under that version —
+there is no upgrade to a newer open version. If the resolved
+version is not `open`, creation fails with a 409 error naming the
+version as closed. All operations route to the current semester
+database only (the `db_meta` `current_binding` pointer in the
+primary database); other semester databases are not queried.
 
-Job creation rules: kind is `practice` or `final`; the transcript is
-non-empty and at most 200,000 characters; the retrieval code matches
-`^[A-Za-z0-9]{1,128}$` and is unique per package (by its lookup hash,
-SHA-256 of `"<pkg>\n<code>"`). A final job
-also requires a YouTube check token (the page returns `youtube_token`,
-`youtube_video_id` and `youtube_checked_at` from its `/youtube-check`
-call) verifying with status `ok` and less than 24 h old, and only one
-final job may exist per (package, audio fingerprint).
+Job creation rules: every job is created as `practice`
+(`/jobs/finalize` marks a job final); the transcript is non-empty
+and at most 200,000 characters; the retrieval code matches
+`^[A-Za-z0-9]{8,128}$` and is unique per package (by its lookup
+hash, SHA-256 of `"<pkg>\n<code>"`). Dedup is by exact audio
+SHA-256 only: a second job for the same recording under the same
+resolved package version is answered as a duplicate carrying
+status only. Only one final job may exist per (package, audio
+fingerprint), enforced at finalize.
 
 Grade signing (format v2): the receipt is the base64url
 HMAC-SHA-256, keyed by SIGNING_SECRET, over the canonical lines
@@ -83,12 +77,11 @@ pkg_content_sha256, completeness, accuracy, critique_sha256,
 youtube_video_sha256-or-"none", t`. `/verify-grade` recomputes it;
 any altered grade, critique, fingerprint or hash fails.
 
-Web Push: RFC 8291/8292 with WebCrypto (ES256 VAPID JWT, ECDH P-256,
-HKDF-SHA-256, AES-128-GCM). On a result, a job with a stored
-subscription gets one push — “Your grade and critique are ready.” —
-with TTL set to the seconds until the job expires and urgency
-`normal`. A push failure never fails the result call; a subscription
-the push service answers 404/410 is cleared from the job.
+Removed in 2.8.0: Web Push (no subscriptions are accepted or
+stored, no push is sent, no VAPID key is advertised), the duration
+statistics endpoints (`POST /stats/duration`,
+`GET /admin/duration-stats`), and `POST /jobs/retrieved` (its only
+effect was stamping the write-only `retrieved_at` column).
 
 ## Setup (per teacher, own Cloudflare account)
 
@@ -105,16 +98,12 @@ the push service answers 404/410 is cleared from the job.
    - `SIGNING_SECRET`
    - `ADMIN_TOKEN`
    - `GRADING_TOKEN`
-   - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`: generate one P-256
-     key pair for Web Push (for example with `npx web-push
-     generate-vapid-keys`, which prints both keys in the base64url
-     form this Worker expects) and store the private key only here.
 5. Deploy the code: `python3 deploy.py` (uploads via the /content
    endpoint, preserving all bindings and secret values), or
    `wrangler deploy` with the real `database_id` filled into
    `wrangler.toml`.
 6. Check `GET /` on the Worker's `workers.dev` address: it reports
-   the service, version, `storage: "d1"` and the VAPID public key.
+   the service, version and `storage: "d1"`.
 
 ## Limits
 
@@ -130,18 +119,11 @@ the push service answers 404/410 is cleared from the job.
   retrieve their jobs.
 - Transcript at most 200,000 characters; critique at most 20,000;
   package text at most 500,000.
-- YouTube check tokens are honoured for 24 h; after that the page
-  must run the check again.
-- The VAPID JWT carries the placeholder contact
-  `mailto:hw-grading@example.invalid` as its `sub` claim (RFC 8292
-  requires one; the SPEC names no contact setting). Replace it in
-  `worker.js` if a real contact address is preferred.
 - Two calls per student job reach this Worker before grading (check +
-  create) and two after (status + retrieved); grading adds three per
-  job. Well inside the Cloudflare free plan at class scale.
+  create) and one after (status); grading adds three per job. Well
+  inside the Cloudflare free plan at class scale.
 
 ## Tests
 
 `node test.mjs` — runs the Worker against an in-memory D1 shim with a
-stubbed fetch (oEmbed and the push service). No network, no live
-account.
+stubbed fetch (oEmbed). No network, no live account.

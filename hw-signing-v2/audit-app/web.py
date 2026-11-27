@@ -497,6 +497,24 @@ NaN acoustic threshold, dict tokens, or arbitrary URL
 strings), the Gradebook CSV formula test looks past leading
 whitespace and control characters, and a non-numeric
 declared ZIP size no longer stops the download pass.
+
+v62: the simplification pass (the audit changes are in
+audit.py; see README.md). youtube_id_ok and grades_match
+are gone everywhere — check report, suggested-final gates,
+flag displays and gradebook warnings — and the duplicated
+receipt fields collapse to grade_receipt_ok. suggested_final
+keeps internally_consistent as its only receipt-related
+gate. The check schema rises to 4. Check invalidation has
+one diff classification, _classify_check_diff, called by
+both _check_mode and the /api/youtube-check handler.
+Downloads are current-attempt only: download_packages has
+no include_history form, and the download-rate calibration
+is removed, so the redownload tool estimates counts and
+bytes only and every scope downloads current attempts.
+The acoustic_threshold setting remains (settings validation
+and the check-input fingerprint still consume it) but
+decides no verdict; the cross-check's displayed similarity
+is the per-block median from audit.py.
 """
 
 import argparse
@@ -1844,14 +1862,6 @@ def suggested_final(check):
         return None
     if not check.get("internally_consistent"):
         return None
-    if check.get("grade_receipt_ok") is False:
-        # The signed grade stands only when the grading Worker's
-        # grade receipt verifies (already implied by
-        # internally_consistent; stated on its own because the
-        # v2 SPEC names this hold-back).
-        return None
-    if check.get("youtube_id_ok") is False:
-        return None
     if check.get("injection_suspected"):
         return None
     if check.get("youtube", {}).get("youtube_flag"):
@@ -2004,7 +2014,12 @@ def _youtube_only_entry(cfg, pkg, base_entry):
 # (duration no longer passes or flags), and youtube_id_ok is
 # None when the bundle claims no video hash — stored checks
 # written under the old meanings are re-done.
-CHECK_SCHEMA = 3
+# Schema 4 (v62): youtube_id_ok and grades_match are gone, the
+# duplicated receipt field is collapsed to grade_receipt_ok,
+# the YouTube cross-check follows the per-block fingerprint
+# rule only (no duration diagnostics, no global-similarity
+# threshold rule) — stored checks are re-done.
+CHECK_SCHEMA = 4
 
 _SAMPLE_BYTES = 1024 * 1024
 
@@ -2088,6 +2103,33 @@ def _acoustic_degraded(existing):
         and yt.get("similarity") is None
 
 
+def _classify_check_diff(stored, current):
+    """The one classification of how a stored check's inputs
+    differ from the current inputs (v62): returns (diff,
+    media_only, acoustic_side). diff is the set of input keys
+    that moved, with a pre-v38 fingerprint's missing check-schema
+    entry set aside (not a moved input). media_only is True when
+    the moved keys are only media signatures (audio / zip /
+    video) while the stored ZIP watermark and HTML hash still
+    pin the same package content. acoustic_side is True when the
+    move can affect only the acoustic part: media_only, or a
+    move confined to the video, the threshold or the acoustic
+    tooling. Both _check_mode and the /api/youtube-check
+    fingerprint refresh judge differences through this one
+    implementation."""
+    diff = {k for k in current if stored.get(k) != current.get(k)}
+    if "check_schema" in diff and "check_schema" not in stored:
+        diff.discard("check_schema")
+    media_only = bool(
+        diff and diff <= {"audio", "zip", "video"}
+        and stored.get("zip_sha256")
+        and stored.get("zip_sha256") == current.get("zip_sha256")
+        and stored.get("html_sha256") == current.get("html_sha256"))
+    acoustic_side = bool(
+        media_only or diff <= {"video", "threshold", "acoustic_tool"})
+    return diff, media_only, acoustic_side
+
+
 def _check_mode(existing, inputs, force):
     """What one package is owed: "full" for the whole check,
     "youtube" when only the acoustic part can have changed,
@@ -2132,15 +2174,10 @@ def _check_mode(existing, inputs, force):
         return "full"
     if stored == inputs:
         return None
-    diff = {k for k in inputs if stored.get(k) != inputs.get(k)}
-    if "check_schema" in diff and "check_schema" not in stored:
-        diff.discard("check_schema")
-        if not diff:
-            return None
-    if diff and diff <= {"audio", "zip", "video"} \
-            and stored.get("zip_sha256") \
-            and stored.get("zip_sha256") == inputs.get("zip_sha256") \
-            and stored.get("html_sha256") == inputs.get("html_sha256"):
+    diff, media_only, _acoustic = _classify_check_diff(stored, inputs)
+    if not diff:
+        return None
+    if media_only:
         return "youtube" if "video" in diff else None
     if diff <= {"video", "threshold", "acoustic_tool"}:
         if diff == {"acoustic_tool"} \
@@ -2337,30 +2374,14 @@ def download_target(cfg, target, force=False):
     subs = fetch_submissions_for(cfg, cid, aid)
     with _SCAN_LOCK:
         _SCAN["subs"][(cid, aid)] = subs
-    t0 = time.monotonic()
     records = audit.download_packages(
         cfg,
         fetch_submissions_fn=lambda c: subs,
         fetch_bytes_fn=fetch_bytes_web, force=force,
         progress_fn=progress, subdir=f"{cid}/{aid}",
         key_prefix=f"{cid}:{aid}")
-    record_pass_stats(cfg, records, time.monotonic() - t0)
     return records
 
-
-def record_pass_stats(cfg, records, seconds):
-    """Leave one calibration record for a finished download pass
-    (v32): the bytes actually fetched and the wall time, which
-    the redownload tool's estimate divides by. A pass that
-    fetched nothing records nothing."""
-    nbytes = sum(r.get("fetched_bytes", 0) for r in records or [])
-    if nbytes > 0 and seconds > 0:
-        try:
-            audit.record_download_stat(
-                cfg, nbytes, seconds,
-                at=datetime.now(timezone.utc).isoformat())
-        except Exception:  # noqa: BLE001 - calibration is advisory
-            pass
 
 def _integrity_text(check):
     """The wall's one-line integrity state for a stored check
@@ -2370,8 +2391,7 @@ def _integrity_text(check):
         flags = check.get("injection_flags") or []
         return ("injection flag @ " + audit.mmss(flags[0]["at_s"])
                 if flags else "injection flag")
-    if check and (not check.get("internally_consistent", True)
-                  or check.get("youtube_id_ok") is False):
+    if check and not check.get("internally_consistent", True):
         return "integrity FAILED"
     if (check.get("youtube") or {}).get("youtube_flag"):
         return "YouTube mismatch"
@@ -2387,9 +2407,9 @@ def _integrity_text(check):
 # semantics (course and homework by name, student text, submitted
 # date range, examined, graded); its scope adds previous attempts;
 # its Force option re-fetches even present, unchanged packages.
-# Before a run it shows an estimate (audit.estimate_download over
-# the resolved selection, divided by this computer's measured
-# download rate once calibration records exist); the run itself is
+# Before a run it shows an estimate (counts and bytes over
+# the resolved selection; v62: no download-rate calibration
+# and no time estimate); the run itself is
 # a background thread whose progress the panel polls.
 
 REDL_STATE = {"running": False, "done": 0, "total": 0,
@@ -2486,12 +2506,10 @@ def redownload_plan(cfg, f):
     run downloads. Examined / graded follow the stores and the
     package grades, as the views define them.
 
-    v34: the history walk comes from the shared cache, and the
-    plan also returns the previous attempts that are not in
-    package format ("not_in_format": student, attempt, what the
-    attempt holds) and those already recorded as rejected
-    ("rejected"), so the estimate and the run's summary can show
-    them instead of dropping them silently."""
+    v62: the plan covers current attempts only and its
+    "not_in_format" and "rejected" lists are empty (the
+    previous-attempt history machinery is removed); the keys
+    are kept for the estimate and status shapes."""
     require_canvas(cfg)
     checks = results_store(cfg)
     finals = finals_store(cfg)
@@ -2504,42 +2522,17 @@ def redownload_plan(cfg, f):
     rejected = []
     fmt_entries = {}
     by_target = {}
-    want_prev = f["scope"] == "previous"
+    # v62: the redownload scope no longer downloads previous
+    # attempts (download_packages fetches the current attempt
+    # only); a "previous" scope is planned as the current
+    # attempts, as the run downloads.
+    want_prev = False
     for t in scan_targets(cfg):
         if f["course"] and (t.get("course_name") or "") != f["course"]:
             continue
         if f["hw"] and (t.get("assignment_name") or "") != f["hw"]:
             continue
         cid, aid = t["course_id"], t["assignment_id"]
-        hist_by_user = {}
-        if want_prev:
-            try:
-                for hs in fetch_history_cached(cfg, cid, aid):
-                    huid = str(hs.get("user_id")
-                               or (hs.get("user") or {}).get("id") or "")
-                    if not huid:
-                        continue
-                    hist = hs.get("submission_history") or []
-                    hist_by_user[huid] = hist
-                    # Format knowledge for the table: every
-                    # earlier attempt of every student in this
-                    # target, not just the filtered selection.
-                    cur_att = hs.get("attempt")
-                    for h in hist:
-                        if not isinstance(h, dict):
-                            continue
-                        ha = h.get("attempt")
-                        if ha is None or ha == cur_att:
-                            continue
-                        hatts = h.get("attachments") or []
-                        if any(a["filename"].lower().endswith(".zip")
-                               for a in hatts):
-                            continue
-                        fmt_entries.setdefault(
-                            unit_key(cid, aid, huid), {})[str(ha)] = \
-                            audit.describe_attempt_files(hatts)
-            except Exception:  # noqa: BLE001 - history is an add-on;
-                hist_by_user = {}  # the estimate then covers current
         for sub in scan_submissions(cfg, t):
             user = sub.get("user") or {}
             uid = str(sub.get("user_id") or user.get("id") or "")
@@ -2590,51 +2583,6 @@ def redownload_plan(cfg, f):
             entry = by_target.setdefault(
                 (cid, aid), {"target": t, "user_ids": set()})
             entry["user_ids"].add(uid)
-            if want_prev:
-                seen = {sub.get("attempt")}
-                for h in hist_by_user.get(uid) or []:
-                    if not isinstance(h, dict):
-                        continue
-                    ha = h.get("attempt")
-                    if ha is None or ha in seen:
-                        continue
-                    seen.add(ha)
-                    hatts = h.get("attachments") or []
-                    hzip = next((a for a in hatts if a["filename"]
-                                 .lower().endswith(".zip")), None)
-                    if not hzip:
-                        # Not a package attempt: counted and
-                        # listed, never downloaded (v34).
-                        not_in_format.append(
-                            {**base, "attempt": ha, "current": False,
-                             "submitted_at": h.get("submitted_at"),
-                             "holds": audit.describe_attempt_files(
-                                 hatts)})
-                        continue
-                    wkey = f"{cid}:{aid}:{uid}:attempt-{ha}"
-                    stored_h = state.get(wkey) or {}
-                    if not f["force"] and stored_h.get("rejected") \
-                            and stored_h.get("attempt") == ha \
-                            and stored_h.get("submitted_at") \
-                            == h.get("submitted_at") \
-                            and stored_h.get("submission_id") \
-                            == (h.get("id") or sub.get("id")):
-                        # Rejected on an earlier run and on
-                        # record: reported, never fetched (v34).
-                        rejected.append(
-                            {**base, "attempt": ha, "current": False,
-                             "submitted_at": h.get("submitted_at")})
-                        continue
-                    items.append({**base, "attempt": ha,
-                                  "current": False,
-                                  "submitted_at": h.get("submitted_at"),
-                                  "size": hzip.get("size") or 0,
-                                  "needs_fetch": _rd_needs(
-                                      state, folder / f"attempt-{ha}",
-                                      wkey,
-                                      ha, h.get("submitted_at"),
-                                      h.get("id") or sub.get("id"),
-                                      f["force"])})
     _record_attempt_formats(cfg, fmt_entries)
     targets = [{"target": v["target"],
                 "user_ids": sorted(v["user_ids"])}
@@ -2644,14 +2592,15 @@ def redownload_plan(cfg, f):
 
 
 def redownload_estimate(cfg, body):
+    """Counts and bytes for a redownload selection (v62: no
+    download-rate calibration and no time estimate — the
+    calibration helpers are removed from audit.py)."""
     f = _rd_norm_filters(body)
     plan = redownload_plan(cfg, f)
-    stats = audit.load_download_stats(cfg)
-    est = audit.estimate_download(
-        plan["items"], audit.effective_download_rate(stats))
-    est["calibrated"] = bool(stats)
-    if not stats:
-        est["assumed_rate_bps"] = audit.ASSUMED_DOWNLOAD_RATE_BPS
+    fetch = [i for i in plan["items"] if i.get("needs_fetch")]
+    est = {"packages": len(plan["items"]), "to_fetch": len(fetch),
+           "present": len(plan["items"]) - len(fetch),
+           "bytes": sum(int(i.get("size") or 0) for i in fetch)}
     est["scope"] = f["scope"]
     est["not_in_format"] = [
         {"user_name": n.get("user_name"), "attempt": n.get("attempt"),
@@ -2707,16 +2656,19 @@ def start_redownload(cfg, body):
                 REDL_STATE["rejected"] = len(plan["rejected"])
                 nif_seen = {(n["user_name"], n["attempt"])
                             for n in REDL_STATE["not_in_format"]}
-            stats = audit.load_download_stats(cfg)
-            est = audit.estimate_download(
-                plan["items"], audit.effective_download_rate(stats))
+            fetch_items = [i for i in plan["items"]
+                            if i.get("needs_fetch")]
+            est = {"packages": len(plan["items"]),
+                   "to_fetch": len(fetch_items),
+                   "present": len(plan["items"]) - len(fetch_items),
+                   "bytes": sum(int(i.get("size") or 0)
+                                for i in fetch_items)}
             with _REDL_LOCK:
                 REDL_STATE["total"] = est["to_fetch"]
                 REDL_STATE["bytes_total"] = est["bytes"]
                 REDL_STATE["estimate"] = {
                     k: est[k] for k in
-                    ("seconds_low", "seconds_high", "to_fetch",
-                     "bytes", "present", "packages")}
+                    ("to_fetch", "bytes", "present", "packages")}
                 REDL_STATE["targets_total"] = len(plan["targets"])
                 REDL_STATE["phase"] = "running"
             for entry in plan["targets"]:
@@ -2756,27 +2708,17 @@ def start_redownload(cfg, body):
                             rec.get("fetched_bytes", 0)
 
                 try:
-                    if f["scope"] == "previous":
-                        subs = fetch_history_cached(cfg, cid, aid)
-                        audit.download_packages(
-                            cfg,
-                            fetch_submissions_fn=lambda c, s=subs: s,
-                            fetch_bytes_fn=fetch_bytes_web,
-                            force=f["force"],
-                            progress_fn=progress, subdir=f"{cid}/{aid}",
-                            key_prefix=f"{cid}:{aid}",
-                            user_ids=entry["user_ids"],
-                            include_history=True)
-                    else:
-                        subs = scan_submissions(cfg, t)
-                        audit.download_packages(
-                            cfg,
-                            fetch_submissions_fn=lambda c, s=subs: s,
-                            fetch_bytes_fn=fetch_bytes_web,
-                            force=f["force"],
-                            progress_fn=progress, subdir=f"{cid}/{aid}",
-                            key_prefix=f"{cid}:{aid}",
-                            user_ids=entry["user_ids"])
+                    # v62: download_packages has no include_history
+                    # form; every scope downloads current attempts.
+                    subs = scan_submissions(cfg, t)
+                    audit.download_packages(
+                        cfg,
+                        fetch_submissions_fn=lambda c, s=subs: s,
+                        fetch_bytes_fn=fetch_bytes_web,
+                        force=f["force"],
+                        progress_fn=progress, subdir=f"{cid}/{aid}",
+                        key_prefix=f"{cid}:{aid}",
+                        user_ids=entry["user_ids"])
                 except Exception as e:  # noqa: BLE001 - one target
                     # must not stop the run (v34)
                     log_activity(
@@ -2807,12 +2749,6 @@ def start_redownload(cfg, body):
                                 "attempt(s) rejected (ZIP on record)")
                 REDL_STATE["summary"] = summary
                 nbytes = REDL_STATE["bytes_done"]
-            try:
-                audit.record_download_stat(
-                    cfg, nbytes, secs,
-                    at=datetime.now(timezone.utc).isoformat())
-            except Exception:  # noqa: BLE001 - calibration is advisory
-                pass
         except Exception as e:  # noqa: BLE001 - reported in the panel
             with _REDL_LOCK:
                 REDL_STATE["phase"] = "finished"
@@ -2841,9 +2777,7 @@ def redownload_status():
         elif bt <= bd:
             st["remaining_s"] = 0.0
         else:
-            est = st.get("estimate") or {}
-            st["remaining_s"] = (est.get("seconds_low", 0)
-                                 + est.get("seconds_high", 0)) / 2
+            st["remaining_s"] = 0.0
     elif st.get("seconds") is not None:
         st["elapsed_s"] = st["seconds"]
     return st
@@ -2981,7 +2915,7 @@ def fetch_unit_attempts(cfg, key):
     audit.download_packages(
         cfg, fetch_submissions_fn=lambda c: subs,
         fetch_bytes_fn=fetch_bytes_web, subdir=f"{cid}/{aid}",
-        key_prefix=f"{cid}:{aid}", user_ids={uid}, include_history=True)
+        key_prefix=f"{cid}:{aid}", user_ids={uid})
     existing = package_index(cfg).get(key) or {}
     update_package_index(cfg, [{
         "key": key,
@@ -3476,10 +3410,6 @@ def build_gradebook_rows(cfg, course_id=None, assignment_id=None):
             warnings.append(f"{student}: grade signature FAILED — "
                             "the grades and critique in the submission "
                             "do not verify against the grading Worker")
-        if _check.get("youtube_id_ok") is False:
-            warnings.append(f"{student}: YouTube video ID mismatch — "
-                            "the link in the submission is not the "
-                            "video checked before grading")
         # Preview-only fields (v35): the signed grade from the
         # check's estimated grades, and whether a teacher entry
         # differs from it, so the preview can highlight the
@@ -4699,7 +4629,7 @@ function integCell(c, downloaded){
      badge(c.internally_consistent,"fingerprints + critique OK","FAILED"));
   const gsig = !downloaded || c.grade_receipt_ok===undefined ? "" :
     "<br>"+badge(c.grade_receipt_ok===true,"grade signature OK","grade signature FAILED");
-  const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.youtube_id_ok===false?"youtube id":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
+  const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
   const ytSim = c.youtube && c.youtube.similarity!=null ? Number(c.youtube.similarity).toFixed(4) : null;
   const yt = !downloaded || !c.youtube ? "" :
     c.youtube.error ? '<br><span class="mut">YouTube: error</span>' :
@@ -4918,9 +4848,7 @@ async function rdEstimate(){
   try{
     const e=await api("/api/redownload-estimate", rdFilters());
     const mb=(e.bytes/1048576).toFixed(1);
-    const t= e.to_fetch===0? "nothing to fetch" : "≈ "+fmtDur(e.seconds_low)+"–"+fmtDur(e.seconds_high);
-    $("rdestimate").textContent="Selection: "+e.packages+" package(s) — "+e.to_fetch+" to fetch ("+mb+" MB), "+e.present+" already present. Estimated time: "+t+
-      (e.calibrated? " (rate measured on this computer)" : " (uncalibrated — assumed rate "+(e.assumed_rate_bps/1000000).toFixed(1)+" MB/s; the first run calibrates it)")+"."+
+    $("rdestimate").textContent="Selection: "+e.packages+" package(s) — "+e.to_fetch+" to fetch ("+mb+" MB), "+e.present+" already present."+
       ((e.not_in_format&&e.not_in_format.length)? " Not in package format (not downloaded): "+
         e.not_in_format.map(n=>esc(PRIV? "a student" : (n.user_name||""))+" attempt "+esc(n.attempt)+" ("+esc(n.holds||"")+")").join(", ")+"." : "")+
       (e.rejected? " "+e.rejected+" previous attempt(s) already rejected (ZIP on record) — not fetched." : "");
@@ -4957,8 +4885,7 @@ function rdPoll(){
         clearInterval(RDP);
         const e=st.estimate||{};
         $("rdprogress").textContent="";
-        if(st.summary) $("rdresult").textContent="Done: "+st.summary+" — actual "+fmtDur(st.seconds||0)+
-          " (estimate was "+fmtDur(e.seconds_low||0)+"–"+fmtDur(e.seconds_high||0)+").";
+        if(st.summary) $("rdresult").textContent="Done: "+st.summary+" — actual "+fmtDur(st.seconds||0)+".";
         $("rddo").disabled=false;
         await loadStatus(); await refreshSubs(); rdEstimate();
       }
@@ -7561,19 +7488,9 @@ class Handler(BaseHTTPRequestHandler):
                     _state_file(cfg, "download-state.json"), {})
                 current = _package_check_inputs(cfg, pkg, dl_state)
                 stored = entry["check_inputs"]
-                diff = {k for k in current
-                        if stored.get(k) != current.get(k)}
-                if "check_schema" in diff \
-                        and "check_schema" not in stored:
-                    diff.discard("check_schema")
-                media_only = diff <= {"audio", "zip", "video"} \
-                    and stored.get("zip_sha256") \
-                    and stored.get("zip_sha256") \
-                    == current.get("zip_sha256") \
-                    and stored.get("html_sha256") \
-                    == current.get("html_sha256")
-                if diff <= {"video", "threshold", "acoustic_tool"} \
-                        or media_only:
+                _diff, _media_only, acoustic_side = \
+                    _classify_check_diff(stored, current)
+                if acoustic_side:
                     entry["check_inputs"] = current
             store[pkg["key"]] = entry
             write_json_atomic(_state_file(cfg, "audit-results.json"),

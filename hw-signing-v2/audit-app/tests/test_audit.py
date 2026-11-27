@@ -357,9 +357,11 @@ def main():
     check(rep["critique_ok"], "good package: critique hash ok")
     check(rep["grade_receipt_ok"],
           "good package: grade receipt verifies via /verify-grade")
-    check(rep["grades_match"], "good package: signed grades equal shown")
-    check(rep["youtube_id_ok"] is True,
-          "good package: YouTube video ID hash matches the link")
+    check("grades_match" not in rep and "youtube_id_ok" not in rep
+          and "receipt_ok" not in rep,
+          "v62: no grades_match, youtube_id_ok or duplicated "
+          "receipt_ok in the check report (the single receipt "
+          "field is grade_receipt_ok)")
     check(rep["internally_consistent"], "good package: internally consistent")
     check(rep["estimated_grades"] == {"completeness": 4, "accuracy": 4}
           and rep["signed_grades"] == {"completeness": 4, "accuracy": 4},
@@ -391,22 +393,23 @@ def main():
           and not hasattr(audit, "classify_binding"),
           "v59: no binding machinery in audit.py")
 
-    # 2d. No video claim (v59): a bundle claiming "none" while
-    # the package carries a YouTube link — youtube_id_ok is None
-    # (no claim was made; the link is package data) and internal
-    # consistency is unaffected by it.
+    # 2d. v62: youtube_id_ok is removed entirely. A bundle
+    # claiming "none", and equally a legacy bundle claiming a
+    # real video hash, is treated as claiming none — the hash
+    # is ignored, never compared with the package's link — and
+    # internal consistency is unaffected either way.
     none_path = tmp / "submission-novideo.html"
     none_path.write_text(
         build_html_v2(CHUNKS, audio_sha, claimed_video_sha="none"),
         encoding="utf-8")
     rep = audit.check_package(audio_path, none_path, cfg,
                               post_fn=transport_for(TEST_SECRET))
-    check(rep["youtube_id_ok"] is None
+    check("youtube_id_ok" not in rep
           and rep["grade_receipt_ok"] is True
           and rep["internally_consistent"] is True,
-          "v59: a bundle claiming \"none\" beside a linked "
-          "package reports youtube_id_ok None and stays "
-          "internally consistent")
+          "v62: a bundle claiming \"none\" beside a linked "
+          "package stays internally consistent, with no "
+          "youtube_id_ok reported")
 
     # 2b. A package from webapp 2.4.2, whose signed transcript
     # checksum covers the canonical form with [mm:ss] markers,
@@ -446,7 +449,6 @@ def main():
     rep = audit.check_package(audio_path, p, cfg,
                               post_fn=transport_for(TEST_SECRET))
     check(rep["grade_receipt_ok"] is False
-          and rep["grades_match"] is False
           and rep["internally_consistent"] is False,
           "tamper: grade edited in the HTML fails the grade "
           "signature (verify runs over the shown grades)")
@@ -457,10 +459,13 @@ def main():
                  encoding="utf-8")
     rep = audit.check_package(audio_path, p, cfg,
                               post_fn=transport_for(TEST_SECRET))
-    check(rep["grade_receipt_ok"] is True and rep["grades_match"] is False
-          and rep["internally_consistent"] is False,
-          "tamper: verification grade line edited — receipt still "
-          "verifies over the shown grades, grades_match fails")
+    check(rep["grade_receipt_ok"] is True
+          and "grades_match" not in rep
+          and rep["internally_consistent"] is True,
+          "v62: verification grade line edited — grades_match is "
+          "removed, so the receipt verifying over the shown "
+          "grades is the only grade-agreement check and the "
+          "package stays internally consistent")
 
     # 3c. Tamper: the critique edited in the signed package's text.
     p = tmp / "tamper-critique.html"
@@ -509,9 +514,11 @@ def main():
         encoding="utf-8")
     rep = audit.check_package(audio_path, p, cfg,
                               post_fn=transport_for(TEST_SECRET))
-    check(rep["youtube_id_ok"] is False,
-          "tamper: YouTube link to a different video fails "
-          "youtube_id_ok")
+    check("youtube_id_ok" not in rep
+          and rep["internally_consistent"] is True,
+          "v62: a YouTube link to a different video is not "
+          "checked against the claimed hash — the legacy hash "
+          "is treated as claiming none (hash ignored)")
     check(audit.youtube_video_id(
         "https://youtu.be/TESTVIDEO12") == VIDEO_ID
         and audit.youtube_video_id(
@@ -536,142 +543,154 @@ def main():
           and not hasattr(audit, "in_regrade_sample"),
           "no listening-check or re-grade machinery in audit.py")
 
-    # 5. YouTube acoustic cross-check (unchanged from v21).
-    def make_seq_wav(path, freqs, seconds=20):
-        rate = 16000
-        with wave.open(str(path), "wb") as w:
-            w.setnchannels(1)
-            w.setsampwidth(2)
-            w.setframerate(rate)
-            frames = bytearray()
-            per = rate // 2
-            for s in range(seconds * 2):
-                f = freqs[s % len(freqs)]
-                for i in range(per):
-                    t = s * per + i
-                    frames += int(8000 * math.sin(
-                        2 * math.pi * f * t / rate)).to_bytes(
-                        2, "little", signed=True)
-            w.writeframes(bytes(frames))
-
+    # 5. YouTube acoustic cross-check (v62: fingerprint form
+    # only, per-block rule only, no duration diagnostics, no
+    # global-similarity threshold rule, no WAV repair).
     parsed_yt = {"verification": {"duration_s": 20, "youtube_link": YOUTUBE}}
-    yt_canvas = tmp / "yt-canvas.wav"
-    make_seq_wav(yt_canvas, [220, 330, 262, 392, 294, 349, 247, 415])
-    yt_same = tmp / "yt-same.wav"
-    shutil.copy(yt_canvas, yt_same)
-    yt_short = tmp / "yt-short.wav"
-    make_seq_wav(yt_short, [220, 330, 262, 392, 294, 349, 247, 415],
-                 seconds=12)
     rng7 = random.Random(7)
     fp_a = [rng7.getrandbits(32) for _ in range(200)]
     rng8 = random.Random(8)
     fp_b = [rng8.getrandbits(32) for _ in range(200)]
-    fp_same = lambda p: fp_a  # noqa: E731
-    yt = audit.youtube_cross_check(yt_canvas, yt_same, parsed_yt, cfg,
-                                   fingerprint_fn=fp_same)
+    fp_dir = tmp / "fp-media"
+    fp_dir.mkdir()
+    fp_file_a = fp_dir / audit.FINGERPRINT_ENTRY_NAME
+    fp_file_a.write_bytes(struct.pack("<200I", *fp_a))
+    yt_video = tmp / "yt-video.mp4"
+    yt_video.write_bytes(b"video-bytes")
+    yt = audit.youtube_cross_check(fp_file_a, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
     check(yt["available"] and yt["passed"] is True
-          and yt["similarity"] == 1.0 and yt["duration_ok"] is True
-          and not yt["youtube_flag"],
-          "youtube cross-check: same fingerprint and duration passes")
+          and yt["similarity"] == 1.0 and yt["block_median"] == 1.0
+          and not yt["youtube_flag"]
+          and "duration_diff_s" not in yt and "duration_ok" not in yt
+          and "duration_flag" not in yt
+          and "duration_tolerance_s" not in yt,
+          "youtube cross-check: same fingerprint passes; the "
+          "reported similarity is the blockwise median, and no "
+          "duration diagnostics are stored (v62)")
     yt = audit.youtube_cross_check(
-        yt_canvas, yt_same, parsed_yt, cfg,
-        fingerprint_fn=lambda p: fp_a if "canvas" in str(p) else fp_b)
-    check(yt["similarity"] < yt["threshold"] and yt["content_flag"]
-          and yt["youtube_flag"] and yt["passed"] is False
-          and len(yt["thirds"]) == 3,
-          "youtube cross-check: different fingerprint flags, per-third "
-          "scores reported")
-    yt = audit.youtube_cross_check(yt_canvas, tmp / "no-such.mp4",
-                                   parsed_yt, cfg, fingerprint_fn=fp_same)
+        fp_file_a, yt_video, parsed_yt, cfg,
+        fingerprint_fn=lambda p: fp_b)
+    check(yt["similarity"] == yt["block_median"]
+          and yt["similarity"] < 0.9 and yt["content_flag"]
+          and yt["youtube_flag"] and yt["passed"] is False,
+          "youtube cross-check: a different fingerprint flags "
+          "under the per-block rule, and the displayed similarity "
+          "is the blockwise median the verdict follows (v62)")
+    yt = audit.youtube_cross_check(fp_file_a, tmp / "no-such.mp4",
+                                   parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
     check(yt["available"] is False and yt["passed"] is None
           and not yt["youtube_flag"],
           "youtube cross-check: video not downloaded is neither pass "
           "nor flag")
-    yt = audit.youtube_cross_check(yt_canvas, yt_same, parsed_yt, cfg,
+    yt = audit.youtube_cross_check(fp_file_a, yt_video, parsed_yt, cfg,
                                    fingerprint_fn=lambda p: None)
     check(yt["acoustic_configured"] is False and yt["similarity"] is None
           and yt["passed"] is None and not yt["youtube_flag"],
           "youtube cross-check: no chromaprint — with no "
-          "fingerprint comparison, passed stays None (duration "
-          "is not a fallback test, v59)")
-    # (c, v59) No fingerprint comparison and a large duration
-    # difference (20 s canvas against the 12 s take): still
-    # passed None, no flag — duration never becomes the test.
-    yt = audit.youtube_cross_check(yt_canvas, yt_short, parsed_yt, cfg,
-                                   fingerprint_fn=lambda p: None)
+          "fingerprint comparison, passed stays None")
+    # An audio-form media entry is not in the current format:
+    # neither a pass nor a flag, and no verdict is computed.
+    yt = audit.youtube_cross_check(audio_path, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
     check(yt["passed"] is None and not yt["youtube_flag"]
-          and yt["duration_flag"] is False
-          and yt["duration_diff_s"] == 8.0,
-          "v59: no fingerprint comparison plus an 8 s duration "
-          "difference is neither a pass nor a flag; the "
-          "difference is recorded as a diagnostic only")
-    # (a, v59) High similarity with a large duration difference:
-    # a 17.3 s video against the 20 s canvas (2.7 s, beyond the
-    # old max(2 s, 2%) tolerance), fingerprints at similarity
-    # exactly 0.9851 (298 of 625*32 bits differ). The check
-    # passes and does not flag — duration is not used at all.
-    yt_173 = tmp / "yt-17s.wav"
-    with wave.open(str(yt_173), "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(16000)
-        w.writeframes(b"\x00\x00" * int(17.3 * 16000))
-    rng59 = random.Random(59)
-    fp_hi_a = [rng59.getrandbits(32) for _ in range(625)]
-    fp_hi_b = list(fp_hi_a)
-    for i in range(298):
-        fp_hi_b[i] ^= 1 << (i % 32)
-    yt = audit.youtube_cross_check(
-        yt_canvas, yt_173, parsed_yt, cfg,
-        fingerprint_fn=lambda p: fp_hi_a if "canvas" in str(p)
-        else fp_hi_b)
-    check(yt["similarity"] == 0.9851 and yt["passed"] is True
-          and yt["youtube_flag"] is False
-          and yt["duration_diff_s"] == 2.7
-          and yt["duration_flag"] is False,
-          "v59: similarity 0.9851 with a 2.7 s duration "
-          "difference passes, unflagged — the flag follows the "
-          "fingerprint comparison only")
+          and "current" in (yt.get("reason") or "")
+          and "duration_diff_s" not in yt,
+          "v62: an audio-form package is reported as not in the "
+          "current format by the cross-check")
+    check(not hasattr(audit, "_repaired_wav_temp"),
+          "v62: no WAV-repair retry in audit.py")
     shifted = audit.compare_fingerprints(fp_a, [fp_b[0]] * 3 + fp_a)
     check(shifted["offset_items"] == 3 and shifted["similarity"] == 1.0,
-          "fingerprint comparison finds a 3-item start offset "
-          "(encoder delay) and still matches")
-    if shutil.which("ffmpeg") and audit.chromaprint_fingerprint(yt_canvas):
-        yt_m4a = tmp / "yt-take.m4a"
-        subprocess.run(
-            ["ffmpeg", "-y", "-v", "error", "-i", str(yt_canvas),
-             "-ac", "2", "-ar", "48000", "-c:a", "aac", "-b:a", "128k",
-             str(yt_m4a)], check=True)
-        yt = audit.youtube_cross_check(yt_canvas, yt_m4a, parsed_yt, cfg)
-        check(yt["acoustic_configured"] and yt["passed"] is True
-              and yt["similarity"] > 0.95,
-              "youtube cross-check (real ffmpeg): AAC-transcoded copy "
-              "of the same take passes")
-        yt_other = tmp / "yt-other.wav"
-        make_seq_wav(yt_other, [415, 247, 349, 294, 392, 262, 330, 220])
-        yt = audit.youtube_cross_check(yt_canvas, yt_other, parsed_yt, cfg)
-        check(yt["youtube_flag"] and yt["similarity"] < yt["threshold"],
-              "youtube cross-check (real ffmpeg): a different take flags")
-    else:
-        print("skip: real-ffmpeg youtube checks (no chromaprint ffmpeg)")
+          "compare_fingerprints (kept as a helper) finds a 3-item "
+          "start offset (encoder delay) and still matches")
+    if shutil.which("ffmpeg"):
+        # Real ffmpeg: the submitted fingerprint is the Chromaprint
+        # of a take; the video side is an AAC transcode of it.
+        def make_seq_wav(path, freqs, seconds=20):
+            rate = 16000
+            with wave.open(str(path), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(rate)
+                frames = bytearray()
+                per = rate // 2
+                for sec in range(seconds * 2):
+                    f = freqs[sec % len(freqs)]
+                    for i in range(per):
+                        t = sec * per + i
+                        frames += int(8000 * math.sin(
+                            2 * math.pi * f * t / rate)).to_bytes(
+                            2, "little", signed=True)
+                w.writeframes(bytes(frames))
 
-    # 6. ZIP extraction, direct.
+        yt_canvas = tmp / "yt-canvas.wav"
+        make_seq_wav(yt_canvas, [220, 330, 262, 392, 294, 349, 247, 415])
+        real_fp = audit.chromaprint_fingerprint(yt_canvas)
+        if real_fp:
+            fp_real = tmp / "fp-real"
+            fp_real.mkdir()
+            fp_real_file = fp_real / audit.FINGERPRINT_ENTRY_NAME
+            fp_real_file.write_bytes(struct.pack(
+                f"<{len(real_fp)}I", *real_fp))
+            yt_m4a = tmp / "yt-take.m4a"
+            subprocess.run(
+                ["ffmpeg", "-y", "-v", "error", "-i", str(yt_canvas),
+                 "-ac", "2", "-ar", "48000", "-c:a", "aac", "-b:a", "128k",
+                 str(yt_m4a)], check=True)
+            yt = audit.youtube_cross_check(fp_real_file, yt_m4a,
+                                           parsed_yt, cfg)
+            check(yt["acoustic_configured"] and yt["passed"] is True
+                  and yt["similarity"] == yt["block_median"]
+                  and yt["similarity"] > 0.9,
+                  "youtube cross-check (real ffmpeg): AAC-transcoded "
+                  "copy of the same take passes, similarity is the "
+                  "blockwise median")
+            yt_other = tmp / "yt-other.wav"
+            make_seq_wav(yt_other,
+                         [415, 247, 349, 294, 392, 262, 330, 220])
+            yt = audit.youtube_cross_check(fp_real_file, yt_other,
+                                           parsed_yt, cfg)
+            check(yt["youtube_flag"] and yt["passed"] is False,
+                  "youtube cross-check (real ffmpeg): a different "
+                  "take flags")
+        else:
+            print("skip: real-ffmpeg youtube checks (no chromaprint)")
+    else:
+        print("skip: real-ffmpeg youtube checks (no ffmpeg)")
+
+    # 6. ZIP extraction, direct (v62: fingerprint form only).
+    fp_fixture_bytes = struct.pack("<4I", 11, 22, 33, 44)
     zip_bytes = make_zip({"submission.html": html_text.encode("utf-8"),
-                          "submission-audio.wav": audio_bytes})
+                          "submission-fingerprint.bin": fp_fixture_bytes})
     out_dir = tmp / "extract"
     paths = audit.extract_package_zip(zip_bytes, out_dir)
     check(Path(paths["html_path"]).read_bytes()
           == html_text.encode("utf-8")
-          and Path(paths["audio_path"]).read_bytes() == audio_bytes,
-          "extract_package_zip round-trips both entries")
+          and Path(paths["fingerprint_path"]).read_bytes()
+          == fp_fixture_bytes
+          and paths["package_form"] == "fingerprint",
+          "extract_package_zip round-trips both entries of the "
+          "fingerprint form")
+    audio_zip = make_zip({"submission.html": html_text.encode("utf-8"),
+                          "submission-audio.wav": audio_bytes})
+    try:
+        audit.extract_package_zip(audio_zip, tmp / "audio-form")
+        check(False, "v62: a WAV-form (audio) package ZIP is "
+                     "rejected as not in the current format")
+    except ValueError as e:
+        check("not in the current format" in str(e),
+              "v62: a WAV-form (audio) package ZIP is rejected as "
+              "not in the current format")
     for bad, label in [
             (make_zip({"submission.html": b"x",
-                       "submission-audio.wav": b"y",
+                       "submission-fingerprint.bin": b"y",
                        "extra.txt": b"z"}), "extra entry rejected"),
-            (make_zip({"../evil.wav": b"x",
+            (make_zip({"../evil.bin": b"x",
                        "submission.html": b"y"}), "traversal entry rejected"),
             (make_zip({"/abs/submission.html": b"x",
-                       "submission-audio.wav": b"y"}),
+                       "submission-fingerprint.bin": b"y"}),
              "absolute entry rejected"),
             (make_zip({"submission.html": b"x"}),
              "missing entry rejected"),
@@ -709,7 +728,7 @@ def main():
             return faked
 
     lying_bytes = make_zip({"submission.html": b"h" * 3000,
-                            "submission-audio.wav": b"w" * 3000})
+                            "submission-fingerprint.bin": b"w" * 3000})
     _cap_total = audit.MAX_ZIP_TOTAL_BYTES
     _real_zipfile = zipfile.ZipFile
     audit.MAX_ZIP_TOTAL_BYTES = 4000
@@ -725,7 +744,7 @@ def main():
         zipfile.ZipFile = _real_zipfile
         audit.MAX_ZIP_TOTAL_BYTES = _cap_total
     check(not (tmp / "lying" / "submission.html").exists()
-          and not (tmp / "lying" / "submission-audio.wav").exists(),
+          and not (tmp / "lying" / "submission-fingerprint.bin").exists(),
           "zip safety: streamed-total failure removes partial output")
 
     # 7. Download behind injected fixtures (no network): ZIP only.
@@ -749,7 +768,8 @@ def main():
     check(len(records) == 1 and "error" not in rec
           and (folder / "package.zip").read_bytes() == zip_bytes
           and (folder / "submission.html").exists()
-          and (folder / "submission-audio.wav").read_bytes() == audio_bytes
+          and (folder / "submission-fingerprint.bin").read_bytes()
+          == fp_fixture_bytes
           and rec.get("zip_sha256")
           == hashlib.sha256(zip_bytes).hexdigest()
           and "html_sha256" not in rec,
@@ -796,7 +816,7 @@ def main():
         }]
 
     bad_zip = make_zip({"submission.html": b"x",
-                        "submission-audio.wav": b"y",
+                        "submission-fingerprint.bin": b"y",
                         "notes.txt": b"z"})
     records4 = audit.download_packages(
         cfg, extra_zip_submissions, lambda c, u: bad_zip)
@@ -816,7 +836,7 @@ def main():
         for i in range(5)
     ]
     pkg_records[0]["html_path"] = rec["html_path"]
-    pkg_records[0]["audio_path"] = rec["audio_path"]
+    pkg_records[0]["audio_path"] = rec.get("fingerprint_path")
     out = audit.export_coded(pkg_records, cfg, rng=random.Random(99))
     exports = out["exports"]
     codes = [e["code"] for e in exports]
@@ -856,8 +876,12 @@ def main():
           "mmss formats flag times")
 
 
-    # 9b. v32: pre-fetch watermark skip, per-attempt storage,
-    # user filter, download-rate stats and the pure estimate.
+    # 9b. v62: download_packages has no include_history form.
+    # A submission carrying a submission_history downloads its
+    # current attempt only: no attempt folders, no not_in_format
+    # records, no rejected marks. The pre-fetch watermark skip
+    # and the user filter are unchanged, and the download-rate
+    # calibration helpers are removed.
     fetch_count = {"n": 0}
 
     def counting_bytes(_cfg, url):
@@ -866,8 +890,8 @@ def main():
 
     def hist_submissions(_cfg):
         # One student, attempt 3 current; history holds attempts
-        # 1 (ZIP package), 2 (no ZIP — skipped) and 3 (the current
-        # attempt again — not duplicated).
+        # 1 (ZIP package), 2 (no ZIP) and 3 (the current attempt
+        # again). v62: the history is not consulted at all.
         return [{
             "id": 9100, "user_id": 4242, "attempt": 3,
             "workflow_state": "submitted",
@@ -896,57 +920,41 @@ def main():
         }]
 
     hfolder = Path(cfg["data_dir"]) / "downloads" / "4242"
-    recs = audit.download_packages(cfg, hist_submissions, counting_bytes,
-                                   include_history=True)
-    cur = [r for r in recs if r.get("current_attempt")]
-    prev = [r for r in recs if not r.get("current_attempt")
-            and not r.get("not_in_format")]
-    nif = [r for r in recs if r.get("not_in_format")]
-    check(len(recs) == 3 and len(cur) == 1 and len(prev) == 1
-          and len(nif) == 1 and nif[0]["attempt"] == 2
-          and nif[0]["holds"] == "notes.pdf"
-          and prev[0]["attempt"] == 1
+    recs = audit.download_packages(cfg, hist_submissions, counting_bytes)
+    check(len(recs) == 1 and recs[0].get("current_attempt") is True
+          and not any(r.get("not_in_format") for r in recs)
           and (hfolder / "submission.html").exists()
-          and (hfolder / "attempt-1" / "submission.html").exists()
-          and (hfolder / "attempt-1" / "package.zip").exists()
+          and not (hfolder / "attempt-1").exists()
           and not (hfolder / "attempt-2").exists()
-          and fetch_count["n"] == 2,
-          "history download: current attempt canonical, attempt 1 "
-          "in attempt-1/, the non-ZIP attempt 2 reported "
-          "not-in-format (reporting v34), history's copy of the "
-          "current attempt not duplicated (v32)")
+          and fetch_count["n"] == 1,
+          "v62: a history-carrying submission downloads its "
+          "current attempt only — no attempt folders, no "
+          "not_in_format records")
     state = json.loads((Path(cfg["data_dir"]) / "download-state.json")
                        .read_text(encoding="utf-8"))
     check(state.get("4242", {}).get("attempt") == 3
-          and state.get("4242:attempt-1", {}).get("attempt") == 1,
-          "history download: watermark keys the current attempt as "
-          "before and a previous attempt under <key>:attempt-<n> "
-          "(v32)")
+          and "4242:attempt-1" not in state,
+          "v62: the watermark keys the current attempt only")
     fetch_count["n"] = 0
     recs2 = audit.download_packages(cfg, hist_submissions,
-                                    counting_bytes, include_history=True)
-    pkg2 = [r for r in recs2 if not r.get("not_in_format")]
-    check(fetch_count["n"] == 0
-          and len(pkg2) == 2
-          and all(r.get("skipped") for r in pkg2)
-          and len(recs2) == 3,
-          "pre-fetch watermark check: a second history run fetches "
-          "no bytes at all for unchanged, present packages (v32)")
+                                    counting_bytes)
+    check(fetch_count["n"] == 0 and len(recs2) == 1
+          and recs2[0].get("skipped") is True,
+          "pre-fetch watermark check: a second run fetches no "
+          "bytes for the unchanged, present package")
     recs3 = audit.download_packages(cfg, hist_submissions,
-                                    counting_bytes, include_history=True,
-                                    force=True)
-    check(fetch_count["n"] == 2
+                                    counting_bytes, force=True)
+    check(fetch_count["n"] == 1
           and not any(r.get("skipped") for r in recs3),
-          "force re-fetches present, unchanged packages (v32)")
+          "force re-fetches a present, unchanged package")
     recs4 = audit.download_packages(cfg, hist_submissions,
                                     counting_bytes, user_ids={"9999"})
-    check(recs4 == [] and fetch_count["n"] == 2,
+    check(recs4 == [] and fetch_count["n"] == 1,
           "user filter: students outside the selection are not "
-          "considered (v32)")
+          "considered")
 
-    # The pre-fetch rule also governs the plain latest-only path
-    # (student 555 was downloaded in section 7): a fetch counter
-    # proves no bytes move for the unchanged package.
+    # The pre-fetch rule also governs student 555 (downloaded in
+    # section 7): a fetch counter proves no bytes move.
     fetch_count["n"] = 0
     recs5 = audit.download_packages(cfg, fake_submissions,
                                     counting_bytes)
@@ -954,47 +962,18 @@ def main():
           and recs5[0].get("skipped") is True
           and recs5[0].get("fetched_bytes") == 0,
           "pre-fetch watermark check: the unchanged current "
-          "package is skipped without a fetch (v32)")
+          "package is skipped without a fetch")
 
-    # Download-rate stats: write, read back, aggregate; a pass
-    # that fetched nothing records nothing.
-    stats_path = Path(cfg["data_dir"]) / "download-stats.json"
-    if stats_path.exists():
-        stats_path.unlink()
-    check(audit.load_download_stats(cfg) == []
-          and audit.effective_download_rate([]) is None,
-          "download stats: none recorded yet reads as uncalibrated "
-          "(v32)")
-    audit.record_download_stat(cfg, 4_000_000, 2.0, at="t1")
-    audit.record_download_stat(cfg, 0, 5.0, at="ignored")
-    audit.record_download_stat(cfg, 2_000_000, 2.0, at="t2")
-    stats = audit.load_download_stats(cfg)
-    check(len(stats) == 2
-          and audit.effective_download_rate(stats) == 1_500_000.0,
-          "download stats: records persist and the effective rate "
-          "is total bytes / total seconds (v32)")
+    # The download-rate calibration block is removed (v62).
+    check(not hasattr(audit, "load_download_stats")
+          and not hasattr(audit, "record_download_stat")
+          and not hasattr(audit, "effective_download_rate")
+          and not hasattr(audit, "estimate_download"),
+          "v62: no download-rate calibration helpers in audit.py")
 
-    # Estimate math (pure): counts, bytes and the widened range.
-    items = [{"size": 3_000_000, "needs_fetch": True},
-             {"size": 1_000_000, "needs_fetch": True},
-             {"size": 9_000_000, "needs_fetch": False}]
-    est = audit.estimate_download(items, 2_000_000)
-    check(est["packages"] == 3 and est["to_fetch"] == 2
-          and est["present"] == 1 and est["bytes"] == 4_000_000
-          and est["seconds"] == 2.0 and est["seconds_low"] == 1.6
-          and abs(est["seconds_high"] - 2.6) < 1e-9,
-          "estimate math: fetch counts, byte total and the "
-          "[0.8, 1.3] range over the point estimate (v32)")
-    est_u = audit.estimate_download(items, None)
-    check(est_u["rate_bps"] == audit.ASSUMED_DOWNLOAD_RATE_BPS,
-          "estimate math: no calibration selects the assumed rate "
-          "(v32)")
-
-    # 9c. v34: non-ZIP previous attempts are reported, and a
-    # previous attempt whose ZIP fails extraction leaves a
-    # rejected mark that later runs report without re-fetching. A
-    # current attempt's rejected ZIP is never marked, so a later
-    # pass retries it.
+    # 9c. v62 (was v34): previous attempts are not reported
+    # and leave no rejected marks; a current attempt's rejected
+    # ZIP is never marked, so a later pass retries it.
     check(audit.describe_attempt_files([]) == "no files"
           and audit.describe_attempt_files(
               [{"filename": "rec.wav"}, {"filename": "page.html"}])
@@ -1043,38 +1022,22 @@ def main():
         return zip_bytes
 
     recs34 = audit.download_packages(cfg, subs34, bytes34,
-                                     subdir="c7_a7", key_prefix="7:77",
-                                     include_history=True)
-    nif34 = [r for r in recs34 if r.get("not_in_format")]
-    err34 = [r for r in recs34 if r.get("error")]
-    ok34 = [r for r in recs34 if r.get("audio_path")
+                                     subdir="c7_a7", key_prefix="7:77")
+    ok34 = [r for r in recs34 if r.get("fingerprint_path")
             and not r.get("skipped")]
-    check(len(nif34) == 1 and nif34[0]["attempt"] == 1
-          and nif34[0]["holds"] == "audio + html files, no ZIP"
-          and nif34[0]["fetched_bytes"] == 0
-          and len(err34) == 1 and err34[0].get("rejected") is True
-          and err34[0]["attempt"] == 2
-          and len(ok34) == 1 and ok34[0]["attempt"] == 3
-          and fetch34["n"] == 2,
-          "history run reports the two-file attempt as "
-          "not-in-format, the invalid-ZIP attempt as rejected, and "
-          "downloads the valid current attempt (v34)")
+    check(len(recs34) == 1 and len(ok34) == 1
+          and ok34[0]["attempt"] == 3 and fetch34["n"] == 1
+          and not any(r.get("not_in_format") or r.get("rejected")
+                      for r in recs34),
+          "v62: a history-carrying run downloads the valid "
+          "current attempt only — the two-file and bad-ZIP "
+          "previous attempts produce no records at all")
     st34 = json.loads((Path(cfg["data_dir"])
                        / "download-state.json").read_text())
-    check(st34.get("7:77:4343:attempt-2", {}).get("rejected") is True
+    check("7:77:4343:attempt-2" not in st34
           and "7:77:4343:attempt-1" not in st34,
-          "the rejected mark is watermarked for the failed previous "
-          "attempt only (v34)")
-    fetch34["n"] = 0
-    recs34b = audit.download_packages(cfg, subs34, bytes34,
-                                      subdir="c7_a7", key_prefix="7:77",
-                                      include_history=True)
-    rej34 = [r for r in recs34b if r.get("rejected")]
-    check(fetch34["n"] == 0 and len(rej34) == 1
-          and rej34[0].get("skipped") is True
-          and rej34[0]["attempt"] == 2,
-          "a second run fetches zero bytes for the rejected attempt "
-          "and reports it as rejected from the record (v34)")
+          "v62: no rejected or attempt marks are watermarked "
+          "for previous attempts")
 
     # A rejected ZIP on the CURRENT attempt is never watermarked.
     def subs34c(_cfg):
@@ -1175,11 +1138,11 @@ def main():
           and yt["block_count"] == 10 and yt["block_median"] == 1.0
           and yt["block_fraction_ge_085"] == 1.0
           and yt["block_worst"] == 1.0
-          and yt["duration_ok"] is True and yt["similarity"] == 1.0,
-          "v48: YouTube per-block check passes for the same "
-          "recording — 10 blocks of 30 s, the whole-file result "
-          "kept alongside, the span agreeing with the claimed "
-          "duration")
+          and yt["similarity"] == 1.0
+          and yt["similarity"] == yt["block_median"],
+          "v48/v62: YouTube per-block check passes for the same "
+          "recording — 10 blocks of 30 s, and the reported "
+          "similarity is the blockwise median")
 
     # v59, fingerprint form: the span-versus-claimed check no
     # longer counts as a measurement and no longer flags. A
@@ -1192,12 +1155,13 @@ def main():
         fp_paths["fingerprint_path"], audio_path, parsed_fp59, cfg,
         fingerprint_fn=lambda p: fp_items)
     check(yt["passed"] is True and not yt["youtube_flag"]
-          and yt["duration_flag"] is False
+          and "duration_flag" not in yt and "duration_ok" not in yt
+          and "duration_diff_s" not in yt
           and yt["claimed_diff_s"] is not None
           and yt["claimed_diff_s"] > 1.0,
-          "v59: fingerprint form — a span/claimed difference "
-          "over 1 s is a diagnostic only; the per-block "
-          "comparison passes the check")
+          "v59/v62: fingerprint form — a span/claimed difference "
+          "over 1 s does not affect the per-block verdict, and "
+          "no duration diagnostics are stored")
     # v59, fingerprint form, no comparison possible: the video's
     # fingerprint is unreadable, so passed stays None even
     # though the span and the claimed duration are both known —
@@ -1264,39 +1228,24 @@ def main():
           "per-block comparison — hash and content are separate "
           "outcomes")
 
-    # WAV repair: a zeroed "fmt " chunk identifier makes the WAV
-    # undecodable by the normal route; the repair yields the
-    # YouTube result, and the hash check still runs over the
-    # original submitted bytes.
-    if shutil.which("ffmpeg") and audit.chromaprint_fingerprint(yt_canvas):
-        broken_path = tmp / "broken-fmt.wav"
-        broken = bytearray(yt_canvas.read_bytes())
-        broken[12:16] = b"\x00\x00\x00\x00"
-        broken_path.write_bytes(bytes(broken))
-        check(audit.chromaprint_fingerprint(broken_path) is None
-              and audit.media_duration_s(broken_path) is None,
-              "v48: a WAV with a zeroed fmt tag cannot be decoded "
-              "by the normal route")
-        yt = audit.youtube_cross_check(broken_path, yt_same,
-                                       parsed_yt, cfg)
-        check(yt.get("wav_repaired") is True
-              and yt["acoustic_configured"] and yt["passed"] is True
-              and yt["similarity"] > 0.95
-              and yt["duration_ok"] is True,
-              "v48: the repair route yields the YouTube result "
-              "the broken WAV silently lost")
-        broken_html = tmp / "broken.html"
-        broken_html.write_text(
-            build_html_v2(CHUNKS, audit.sha256_file(broken_path)),
-            encoding="utf-8")
-        rep = audit.check_package(broken_path, broken_html, cfg,
-                                  post_fn=transport_for(TEST_SECRET))
-        check(rep["audio_fingerprint_ok"] is True
-              and rep["package_form"] == "audio",
-              "v48: the audio hash check runs over the original "
-              "submitted bytes, never the repair")
-    else:
-        print("skip: v48 WAV repair checks (no chromaprint ffmpeg)")
+    # v62: there is no WAV repair. The audio hash check in
+    # check_package still runs over the original submitted
+    # bytes of an audio-form file held on disk (a zeroed "fmt "
+    # chunk identifier does not change its bytes' hash).
+    broken_path = tmp / "broken-fmt.wav"
+    broken = bytearray(audio_bytes)
+    broken[12:16] = b"\x00\x00\x00\x00"
+    broken_path.write_bytes(bytes(broken))
+    broken_html = tmp / "broken.html"
+    broken_html.write_text(
+        build_html_v2(CHUNKS, audit.sha256_file(broken_path)),
+        encoding="utf-8")
+    rep = audit.check_package(broken_path, broken_html, cfg,
+                              post_fn=transport_for(TEST_SECRET))
+    check(rep["audio_fingerprint_ok"] is True
+          and rep["package_form"] == "audio",
+          "v62: the audio hash check runs over the original "
+          "submitted bytes (no repair is involved)")
 
     # 9b. v55 audit fixes: extraction removes the other form's
     # media; duplicated package elements fail the format check.
@@ -1335,10 +1284,12 @@ def main():
         '<span data-grade="completeness">5</span>', 1), encoding="utf-8")
     rep = audit.check_package(audio_path, p, cfg,
                               post_fn=transport_for(TEST_SECRET))
-    check(rep["grades_match"] is False
-          and rep["internally_consistent"] is False,
-          "v56: a grade edited in the summary section only fails "
-          "the package (summary grades are compared too)")
+    check(rep["grade_receipt_ok"] is True
+          and rep["internally_consistent"] is True,
+          "v62: a grade edited in the summary section only no "
+          "longer fails the package — grades_match is removed "
+          "and the receipt verifies over the grading section's "
+          "shown grades (the v56 summary comparison is gone)")
     p = tmp / "dup-grade-span.html"
     p.write_text(html_text.replace(
         '<span data-grade="completeness">4</span>',

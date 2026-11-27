@@ -19,7 +19,5 @@ database_id = "00000000-0000-0000-0000-000000000000"
 #                      grade receipts and YouTube check tokens.
 #   ADMIN_TOKEN      - long random string; teacher package admin.
 #   GRADING_TOKEN    - long random string; the grading poll/claim API.
-#   VAPID_PUBLIC_KEY - base64url uncompressed P-256 point (65 bytes)
-#   VAPID_PRIVATE_KEY - base64url P-256 private scalar (32 bytes)
 #                      for Web Push (RFC 8292). Generate a key pair
 #                      once and keep the private key only here.

@@ -3,7 +3,7 @@
 on one extracted package, with its default transport (real HTTP) pointed
 at the REAL worker's /verify-grade through the e2e bridge.
 
-Usage: audit_check.py <audit.py path> <audio path> <html path> <worker base url>
+Usage: audit_check.py <audit.py path> <media path (submission-fingerprint.bin)> <html path> <worker base url>
 Prints one JSON object of check outcomes on stdout.
 """
 import importlib.util
@@ -24,11 +24,9 @@ def main():
         "transcript_checksum_ok",
         "critique_ok",
         "grade_receipt_ok",
-        "grades_match",
-        "youtube_id_ok",
         "internally_consistent",
     ]
-    print(json.dumps({k: res.get(k) for k in keys}))
+    print(json.dumps({k: res.get(k) for k in keys if k in res}))
 
 
 if __name__ == "__main__":

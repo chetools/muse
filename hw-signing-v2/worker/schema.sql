@@ -23,39 +23,38 @@ CREATE TABLE IF NOT EXISTS packages (
 );
 
 -- One row per grading job. pkg is the package version the job is
--- graded under: the version in the student's link, or, since worker
--- 2.5.0, the newest open version of that package name at intake
--- when a newer one exists (code_lookup is still computed from the
--- link's pkg string, and retrieval finds the job by that lookup
--- alone). The transcript is the student's scrubbed
--- transcript; no name, Canvas identity or YouTube link is stored.
--- youtube_status is only the check outcome ("ok" / "none");
--- youtube_video_sha256 is the SHA-256 hex of the YouTube video ID
--- (final jobs only, NULL otherwise). Retrieval is by code only:
--- code_lookup is the SHA-256 hex of "<pkg>\n<code>" and is the lookup
--- and uniqueness key (one job per code per package, jobs_code_lookup
--- index). code_hash is the salted SHA-256 of the code (salt in
--- code_salt), kept so jobs created before the code-only change (their
--- code_lookup is NULL) can still be found by testing the salted hash.
--- retrieval_name is a legacy column, stored empty. status: queued /
--- claimed / ready / expired. An ungraded job expires 7 days after
--- created_at; a graded job expires 180 days after graded_at (2.6.0;
--- 48 h before 2.6.0), measured from graded_at (expires_at is also
--- set to that time at grading, and at creation to created_at + 7
--- days); on expiry transcript, critique, result_json and push_json
--- are nulled. chromaprint (2.6.0) is the base64 of the raw
--- fingerprint bytes (little-endian uint32 per item), or NULL when
--- the page did not send one. The transcript text is kept at
--- grading (2.7.0, reversing the 2.6.0 nulling at grading) for the
--- graded job's 180 days, alongside transcript_sha256, and is
--- removed only on expiry.
+-- graded under: the version its link hash resolves to (2.8.0 —
+-- there is no upgrade to a newer open version; a job whose link
+-- version is not open is refused at creation). The transcript is
+-- the student's scrubbed transcript; no name, Canvas identity or
+-- YouTube link is stored. kind is "practice" for every job at
+-- creation (2.8.0); /jobs/finalize marks a job "final".
+-- youtube_video_sha256 is a legacy column, kept so finalize can
+-- strip a legacy video hash from a graded bundle by re-signing it
+-- in the no-video form; new jobs store NULL there. Retrieval is
+-- by code only: code_lookup is the SHA-256 hex of "<pkg>\n<code>"
+-- and is the lookup and uniqueness key (one job per code per
+-- package, jobs_code_lookup index). Status: queued / claimed /
+-- ready / expired. An ungraded job expires 7 days after
+-- created_at; a graded job expires 180 days after graded_at
+-- (expires_at is also set to that time at grading, and at
+-- creation to created_at + 7 days); on expiry transcript,
+-- critique, result_json and push_json are nulled. chromaprint is
+-- the base64 of the raw fingerprint bytes (little-endian uint32
+-- per item), or NULL when the page did not send one; it is used
+-- only for the signed bundle's chromaprint_sha256 (dedup is by
+-- exact audio SHA-256 only). The transcript text is kept at
+-- grading for the graded job's 180 days, alongside
+-- transcript_sha256, and is removed only on expiry.
+-- Columns dropped for new databases in 2.8.0 (they remain as
+-- inert columns on live databases, and the Worker's INSERT still
+-- lists them with constant values so it runs against live
+-- databases): youtube_status, retrieval_name, retrieved_at,
+-- code_salt, code_hash.
 CREATE TABLE IF NOT EXISTS jobs (
   job_id TEXT PRIMARY KEY,
   pkg TEXT,
-  retrieval_name TEXT,
   code_lookup TEXT,
-  code_salt TEXT,
-  code_hash TEXT,
   kind TEXT,
   status TEXT,
   transcript TEXT,
@@ -63,7 +62,6 @@ CREATE TABLE IF NOT EXISTS jobs (
   transcript_sha256 TEXT,
   chromaprint TEXT,
   versions_json TEXT,
-  youtube_status TEXT,
   youtube_video_sha256 TEXT,
   completeness INTEGER,
   accuracy INTEGER,
@@ -75,7 +73,6 @@ CREATE TABLE IF NOT EXISTS jobs (
   claim_expires TEXT,
   created_at TEXT,
   graded_at TEXT,
-  retrieved_at TEXT,
   expires_at TEXT
 );
 
@@ -103,69 +100,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS jobs_one_per_recording
   ON jobs (pkg, audio_sha256)
   WHERE status <> 'expired';
 
--- Retrieval codes submitted with duplicate jobs (2.6.0): each maps
--- a code to the existing job it duplicated, keyed by the requested
--- pkg string (as for jobs). Aliases whose job has expired are
--- deleted by the sweep.
-CREATE TABLE IF NOT EXISTS job_code_aliases (
-  pkg TEXT,
-  code_lookup TEXT,
-  job_id TEXT,
-  created_at TEXT,
-  PRIMARY KEY (pkg, code_lookup)
-);
-
--- Video binding history (2.7.3): one row per binding event for a
--- job — the initial bind, each superseding rebind (a finalize of
--- an already-final job with a different video), and each teacher
--- release of the binding. The current binding lives on the jobs
--- row (youtube_video_sha256) and in the signed bundle; this log
--- is how the audit tells a superseded submission (its video hash
--- appears here as an earlier binding, displaced by a later
--- event) from the current one. seq orders the events per job.
--- action: bind / supersede / release. For a release,
--- video_sha256 is NULL and prev_video_sha256 names the cleared
--- binding. released_by is not a column: the only release route
--- is the admin route, so a release event is a teacher release
--- by construction.
-CREATE TABLE IF NOT EXISTS job_bindings (
-  job_id TEXT,
-  seq INTEGER,
-  action TEXT,
-  video_sha256 TEXT,
-  prev_video_sha256 TEXT,
-  created_at TEXT,
-  PRIMARY KEY (job_id, seq)
-);
-
--- Anonymous duration comparisons reported by the student page
--- (POST /stats/duration): the page's audio duration and the YouTube
--- player's duration for a checked link. No video ID, no link and no
--- student information is stored — the rows exist so the page's
--- duration bands (pass at 1 s; confirm up to max(2 s, 2%)) can be
--- recalibrated from measured same-recording differences, read back
--- through GET /admin/duration-stats. context is 'send' or 'convert'
--- (the flow the comparison came from), or 'other'.
-CREATE TABLE IF NOT EXISTS duration_stats (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  created_at TEXT,
-  pkg TEXT,
-  context TEXT,
-  audio_s REAL,
-  video_s REAL,
-  diff_s REAL,
-  abs_diff_s REAL
-);
-
--- Semester databases (2.7.0): one database per semester. This
--- schema is applied to every semester database. db_meta is read
--- only in the primary database (binding DB, the Fall 2026
--- semester database), where it holds just the current pointer:
--- current_binding (the binding new packages are created in —
--- "DB" for the primary, "DB_<TERM>", e.g. DB_2027SP, for later
--- semesters) and current_semester (its label, e.g. "2026fa").
--- There is no routing registry: the Worker finds a package or a
--- job by checking the semester databases.
+-- Semester databases: one database per semester. This schema is
+-- applied to every semester database. db_meta is read only in the
+-- primary database (binding DB, the Fall 2026 semester database),
+-- where it holds just the current pointer: current_binding (the
+-- binding of the current semester database — "DB" for the
+-- primary, "DB_<TERM>", e.g. DB_2027SP, for later semesters) and
+-- current_semester (its label, e.g. "2026fa"). Since 2.8.0 every
+-- operation routes to the current semester database only; other
+-- semester databases are not queried.
 CREATE TABLE IF NOT EXISTS db_meta (
   key TEXT PRIMARY KEY,
   value TEXT

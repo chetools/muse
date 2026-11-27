@@ -6,9 +6,9 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
-import { parseConfig, buildConfigLink, normaliseWorkerBase } from '../js/config.js';
+import { parseConfig, buildConfigLink, normaliseWorkerBase, VERSION } from '../js/config.js';
 import { sha256Hex } from '../js/hash.js';
 import {
   parseScrubWords, scrubText, scrubChunks, scrubMetadata,
@@ -29,16 +29,14 @@ import { cacheKey, cacheHit, resetStaleRecord, toCachedChunk, fromCachedChunk, r
 import { crc32, crc32Async, buildZipBytes, buildZipBytesAsync, ZIP_DOS_DATE, ZIP_DOS_TIME, submissionZipName } from '../js/zip.js';
 import {
   RETRIEVAL_CODE_RE, parseYouTubeVideoId, canonicalWatchUrl,
-  verifyBundleContents,
   validateJobPayload, buildJobPayload,
   loadJobEntries, addJobEntry, removeJobEntry, pruneExpiredEntries,
   submitJob, fetchJobStatus, finalizeJob,
   bundleChromaprintSha, verifyFingerprintContents,
-  kindFromResultBundle, duplicateJobEntry, collapseSameJobEntries,
+  duplicateJobEntry, collapseSameJobEntries,
   generateRetrievalToken, RECOVERY_TOKEN_LENGTH, entryPollable,
 } from '../js/jobs.js';
 import { encodeRawFingerprint, decodeRawFingerprint } from '../js/fingerprint.js';
-import { urlBase64ToUint8Array, uint8ArrayToUrlBase64 } from '../js/push.js';
 
 let passed = 0, failed = 0, skipped = 0;
 async function test(name, fn) {
@@ -286,8 +284,10 @@ await test('wiring: 2.6.15 scenario-campaign fixes are in place', () => {
     'a refused restore keeps a standing link check');
   assert.ok(main.includes("'Recording and transcript restored from this computer"),
     'the restore status line names what was restored');
-  assert.ok(main.includes('storedSha === bundle.transcript_sha256'),
+  assert.ok(main.includes('chunksFromCanonical(extras.transcript)'),
     'the fingerprint ZIP falls back to the graded transcript the Worker kept');
+  assert.ok(!main.includes('storedSha'),
+    'the Worker-supplied fallback transcript is not re-hashed (2.7.0)');
   assert.ok(main.includes('return { foreign: true };'),
     'an entry from another grading service is marked foreign, not failed');
   assert.ok(main.includes("'sent to a different grading service — not checked from this page'"),
@@ -508,7 +508,7 @@ await test('package v2: build/parse round-trip recovers every signed field', () 
   assert.equal(v['Job'], 'job-2026-0001');
   assert.equal(v['Prompt package'], 'hw3 v2');
   assert.equal(v['Prompt package content SHA-256'], SHA_C);
-  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.6.20');
+  assert.equal(v['Webapp version'], 'hw-signing-webapp 2.7.0');
   assert.equal(v['Model version'], VERSIONS.model);
   assert.equal(v['Glossary version'], VERSIONS.glossary);
   assert.equal(v['YouTube link'], 'https://www.youtube.com/watch?v=abc123XYZ_-');
@@ -684,7 +684,7 @@ await test('wiring: no check on paste; the click check carries the cell reasons 
     'a private or missing video has its own cell reason, from the click check');
   assert.ok(main.includes('Could not complete the check. Try again.'),
     'a failed click check has its own cell reason');
-  assert.ok(main.includes('await requestYouTubeCheck(cfg.worker, canonical);'),
+  assert.ok(main.includes('await requestYouTubeCheck(cfg.worker, canonicalWatchUrl(videoId))'),
     'the reachability check runs at the Generate ZIP click');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(!index.includes('id="ytLink"') && !index.includes('id="finLink"'),
@@ -696,42 +696,32 @@ await test('wiring: no check on paste; the click check carries the cell reasons 
 const jobState = {
   pkg: 'hw3 v2',
   pkgContentSha256: SHA_C,
-  kind: 'practice',
   transcript: 'the scrubbed transcript',
   audioSha256: SHA_A,
   transcriptSha256: SHA_B,
   versions: VERSIONS,
   retrievalCode: 'code1234',
-  youtubeToken: null,
-  youtubeVideoId: null,
 };
 
-await test('job payload: practice builds and validates; no youtube fields sent', () => {
+await test('job payload: builds and validates; no kind and no youtube fields sent (2.7.0)', () => {
   const body = buildJobPayload(jobState);
   assert.equal(validateJobPayload(body).ok, true);
+  assert.ok(!('kind' in body), 'the payload carries no kind');
   assert.ok(!('youtube_token' in body) && !('youtube_video_id' in body) &&
     !('youtube_checked_at' in body));
   assert.ok(!('push_subscription' in body));
   assert.ok(!('retrieval_name' in body));
   assert.deepEqual(body.versions, VERSIONS);
-});
-
-await test('job payload: final requires the check token and video id', () => {
-  const noToken = buildJobPayload({ ...jobState, kind: 'final' });
-  const res = validateJobPayload(noToken);
-  assert.equal(res.ok, false);
-  assert.match(res.reason, /YouTube link checked/);
-  const withToken = buildJobPayload({
-    ...jobState, kind: 'final', youtubeToken: 'tok', youtubeVideoId: 'abc123XYZ_-',
-    youtubeCheckedAt: '2026-11-09T10:00:00.000Z',
+  // Even state still carrying kind/youtube values sends none of them.
+  const laden = buildJobPayload({
+    ...jobState, kind: 'final', youtubeToken: 'tok',
+    youtubeVideoId: 'abc123XYZ_-', youtubeCheckedAt: '2026-11-09T10:00:00.000Z',
   });
-  assert.equal(validateJobPayload(withToken).ok, true);
-  assert.equal(withToken.youtube_token, 'tok');
-  assert.equal(withToken.youtube_checked_at, '2026-11-09T10:00:00.000Z');
-  const noCheckedAt = buildJobPayload({
-    ...jobState, kind: 'final', youtubeToken: 'tok', youtubeVideoId: 'abc123XYZ_-',
-  });
-  assert.equal(validateJobPayload(noCheckedAt).ok, false);
+  assert.ok(!('kind' in laden) && !('youtube_token' in laden) &&
+    !('youtube_video_id' in laden) && !('youtube_checked_at' in laden));
+  assert.equal(validateJobPayload(laden).ok, true);
+  // Validation no longer consults kind at all.
+  assert.equal(validateJobPayload({ ...body, kind: 'graded' }).ok, true);
 });
 
 await test('job payload: bad fields rejected', () => {
@@ -746,7 +736,6 @@ await test('job payload: bad fields rejected', () => {
   assert.equal(validateJobPayload({ ...base, retrieval_code: 'code1234' }).ok, true);
   assert.equal(validateJobPayload({ ...base, retrieval_code: 'a b' }).ok, false);
   assert.equal(validateJobPayload({ ...base, retrieval_code: 'code-1234' }).ok, false);
-  assert.equal(validateJobPayload({ ...base, kind: 'graded' }).ok, false);
   assert.equal(validateJobPayload({ ...base, versions: { webapp: 'x' } }).ok, false);
 });
 
@@ -868,54 +857,57 @@ await test('job calls: submit returns a duplicate response instead of throwing',
   assert.deepEqual(outReady.result, readyDupBundle);
 });
 
-await test('duplicate entry: alias stored under the submitted code; kind follows the existing job', () => {
+await test('duplicate entry: alias stored under the submitted code; finalised flag is the submitted one (2.7.0)', () => {
   const submitted = {
     pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3',
-    retrieval_code: 'newcode99', kind: 'practice',
+    retrieval_code: 'newcode99', finalised: false,
     youtube_link: '', youtube_title: '', youtube_checked_at: '',
   };
-  const finalSubmitted = {
-    ...submitted, kind: 'final',
+  const finalisedSubmitted = {
+    ...submitted, finalised: true,
     youtube_link: 'https://www.youtube.com/watch?v=abc123XYZ_-',
     youtube_title: 'T', youtube_checked_at: '2026-11-10T09:00:00.000Z',
   };
-  // Ready final job: the entry is final, under the submitted code.
+  // A submission from a browser that finalised: the entry carries
+  // finalised true, under the submitted code, with its kept link.
   const finalEntry = duplicateJobEntry({
     duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
     pkg: 'hw3 v2', status: 'ready', result: readyDupBundle, alias_created: true,
-  }, finalSubmitted);
+  }, finalisedSubmitted);
   assert.equal(finalEntry.retrieval_code, 'newcode99');
-  assert.equal(finalEntry.kind, 'final');
+  assert.equal(finalEntry.finalised, true);
+  assert.ok(!('kind' in finalEntry), 'the entry carries no kind');
   assert.equal(finalEntry.youtube_link, 'https://www.youtube.com/watch?v=abc123XYZ_-');
   assert.equal(finalEntry.youtube_title, 'T');
   assert.equal(finalEntry.created_at, 't0');
-  // Ready practice job submitted as final: the existing job is
-  // practice, so the entry is practice and keeps no link.
-  const practiceEntry = duplicateJobEntry({
+  // A plain submission (the only kind the page now sends): the
+  // entry is not finalised and keeps no link, whatever the
+  // existing job's bundle says — kindFromResultBundle is gone.
+  const plainEntry = duplicateJobEntry({
     duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
-    pkg: 'hw3 v2', status: 'ready', result: practiceDupBundle, alias_created: true,
-  }, finalSubmitted);
-  assert.equal(practiceEntry.kind, 'practice');
-  assert.equal(practiceEntry.youtube_link, '');
-  // Queued job: no result yet, so the submitted kind stands.
+    pkg: 'hw3 v2', status: 'ready', result: readyDupBundle, alias_created: true,
+  }, submitted);
+  assert.equal(plainEntry.finalised, false);
+  assert.equal(plainEntry.youtube_link, '');
+  // Queued job: the submitted flag stands.
   const queuedEntry = duplicateJobEntry({
     duplicate: true, job_id: 'job-old', created_at: 't0', expires_at: 't1',
     pkg: 'hw3 v2', status: 'queued', queue_ahead: 1, alias_created: true,
   }, submitted);
-  assert.equal(queuedEntry.kind, 'practice');
+  assert.equal(queuedEntry.finalised, false);
   // Stored under the submitted code in localStorage.
   const store = fakeStorage();
   addJobEntry(finalEntry, store);
   const entries = loadJobEntries(store);
   assert.equal(entries.length, 1);
   assert.equal(entries[0].retrieval_code, 'newcode99');
-  assert.equal(entries[0].kind, 'final');
+  assert.equal(entries[0].finalised, true);
 });
 
 await test('duplicate entry: alias_created false stores nothing', () => {
   const submitted = {
     pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3',
-    retrieval_code: 'takencode1', kind: 'practice',
+    retrieval_code: 'takencode1', finalised: false,
     youtube_link: '', youtube_title: '', youtube_checked_at: '',
   };
   assert.equal(duplicateJobEntry({
@@ -924,15 +916,12 @@ await test('duplicate entry: alias_created false stores nothing', () => {
   }, submitted), null);
   assert.equal(duplicateJobEntry(null, submitted), null);
   assert.equal(duplicateJobEntry({ duplicate: false }, submitted), null);
-  assert.equal(kindFromResultBundle(readyDupBundle), 'final');
-  assert.equal(kindFromResultBundle(practiceDupBundle), 'practice');
-  assert.equal(kindFromResultBundle(null), 'practice');
 });
 
 await test('duplicate entry: the alias entry carries the existing job_id (2.5.3)', () => {
   const submitted = {
     pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3',
-    retrieval_code: 'newcode99', kind: 'final',
+    retrieval_code: 'newcode99', finalised: true,
     youtube_link: 'https://www.youtube.com/watch?v=abc123XYZ_-',
     youtube_title: 'T', youtube_checked_at: '2026-11-10T09:00:00.000Z',
   };
@@ -947,7 +936,7 @@ await test('duplicate entry: the alias entry carries the existing job_id (2.5.3)
 
 const collapseEntry = (code, over = {}) => ({
   pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3', retrieval_code: code,
-  kind: 'final', youtube_link: '', youtube_title: '', youtube_checked_at: '',
+  finalised: true, youtube_link: '', youtube_title: '', youtube_checked_at: '',
   created_at: '2026-11-10T00:00:00.000Z', expires_at: 't1', ...over,
 });
 
@@ -968,12 +957,12 @@ await test('collapse: three codes for one job keep one entry — the one carryin
 });
 
 await test('collapse: link fields merge onto the survivor from a dropped entry', () => {
-  // The linked entry wins on score even though its stored kind is
-  // a stale 'practice'; the dropped entry is the final one, so the
-  // survivor must gain kind 'final' from it (and keeps its link).
+  // The linked entry wins on score even though it is not
+  // finalised; the dropped entry is the finalised one, so the
+  // survivor must gain finalised true from it (and keeps its link).
   const items = [
     { entry: collapseEntry('codeaaa1'), jobId: 'job-1' },
-    { entry: collapseEntry('codebbb2', { kind: 'practice',
+    { entry: collapseEntry('codebbb2', { finalised: false,
         youtube_link: 'https://www.youtube.com/watch?v=abc123XYZ_-',
         youtube_title: 'T', youtube_checked_at: '2026-11-10T09:00:00.000Z',
         created_at: '2026-11-10T01:00:00.000Z' }), jobId: 'job-1' },
@@ -982,7 +971,7 @@ await test('collapse: link fields merge onto the survivor from a dropped entry',
   assert.equal(kept.length, 1);
   assert.equal(kept[0].entry.youtube_link, 'https://www.youtube.com/watch?v=abc123XYZ_-');
   assert.equal(kept[0].entry.youtube_title, 'T');
-  assert.equal(kept[0].entry.kind, 'final');
+  assert.equal(kept[0].entry.finalised, true);
 });
 
 await test('collapse: distinct jobs and unknown-job entries are all kept', () => {
@@ -1005,10 +994,10 @@ await test('wiring: one ZIP button per job — collapse in render, review replac
     'renderJobsOnce collapses same-job entries before rendering');
   assert.ok(main.includes('job_id: res.job_id'),
     'a newly sent job entry carries its job_id');
-  assert.ok(main.includes('if (!reviewOpen && parseYouTubeVideoId(rowLinkDraft(entry)))'),
-    'the Generate ZIP button is rendered while the field holds a readable link, with no review open (2.6.18)');
-  assert.ok(main.includes("'Close review'"),
-    'the open review panel can be closed, restoring the Review button');
+  assert.ok(main.includes('if (parseYouTubeVideoId(rowLinkDraft(entry)))'),
+    'the Generate ZIP button is rendered while the field holds a readable link (2.6.18)');
+  assert.ok(!main.includes('zipReviews') && !main.includes('Close review'),
+    'no ZIP review panel remains (2.7.0)');
   assert.ok(!main.includes('manualBtn') && !main.includes('clearManualRowIfListed'),
     'no manual-retrieval row exists to duplicate a listed job (2.6.11)');
 });
@@ -1022,8 +1011,8 @@ await test('wiring: fingerprint computed after normalisation; duplicate handled 
   assert.ok(main.includes('if (res.duplicate)'), 'submit branches on a duplicate response');
   assert.ok(main.includes('duplicateJobEntry(res,'), 'alias entry built from the duplicate response');
   assert.ok(main.includes('duplicateStatusText(res)'), 'grade/queue shown when no alias was created');
-  assert.ok(main.includes('kindFromResultBundle(res.data.result)'),
-    'ready bundle corrects an alias entry kind');
+  assert.ok(!main.includes('kindFromResultBundle'),
+    'no bundle-derived kind correction remains (2.7.0)');
   // No 'dedup' text anywhere in the page wiring (the one former
   // occurrence was the duration-stats comment, removed in 2.6.18
   // with the duration reporting itself).
@@ -1063,11 +1052,11 @@ await test('wiring: conversion panel and step-6 link field removed; finalise run
     'no bind/supersede mode remains in the review flow (2.6.19)');
   assert.ok(!main.includes('youtube_token') && !main.includes('youtube_video_id'),
     'the page sends no youtube fields at finalize (2.6.19)');
-  assert.ok(main.includes('await downloadSubmissionZip(entry, bundle, btn,'),
-    'Generate ZIP runs the check and prepares the review, binding nothing');
+  assert.ok(main.includes('await packageSubmissionZip(entry, liveBundle, btn, fail, pending);'),
+    'Generate ZIP runs the check, finalises, re-fetches, packages and downloads in one click (2.7.0)');
   assert.ok(!main.includes('refreshFinPanel'), 'no conversion panel refresh remains');
   assert.ok(!main.includes('finCheck'), 'no conversion-panel check state remains');
-  assert.ok(main.includes("kind: 'practice',"), 'sending always sends without a link');
+  assert.ok(!main.includes('kind:'), 'sending sends no kind at all (2.7.0)');
 });
 /* ---------------- localStorage job entries ---------------- */
 
@@ -1084,14 +1073,14 @@ await test('job entries: add replaces same code, remove works, expiry prunes', (
   const store = fakeStorage();
   const e1 = {
     pkg: 'hw3 v2', course: 'CHE3025', asg: 'HW3',
-    retrieval_code: 'code1234', kind: 'practice', youtube_link: '',
+    retrieval_code: 'code1234', finalised: false, youtube_link: '',
     created_at: '2026-11-09T10:00:00.000Z', expires_at: '2026-11-11T10:00:00.000Z',
   };
   addJobEntry(e1, store);
-  addJobEntry({ ...e1, kind: 'final' }, store); // same (pkg, code) → replaced
+  addJobEntry({ ...e1, finalised: true }, store); // same (pkg, code) → replaced
   let entries = loadJobEntries(store);
   assert.equal(entries.length, 1);
-  assert.equal(entries[0].kind, 'final');
+  assert.equal(entries[0].finalised, true);
   addJobEntry({ ...e1, retrieval_code: 'other42' }, store);
   assert.equal(loadJobEntries(store).length, 2);
   removeJobEntry('hw3 v2', 'other42', store);
@@ -1105,17 +1094,34 @@ await test('job entries: add replaces same code, remove works, expiry prunes', (
   assert.deepEqual(loadJobEntries(store), []);
 });
 
-/* ---------------- push key conversion ---------------- */
+await test('job entries: an old entry with kind final loads as finalised (2.7.0 compat)', () => {
+  const store = fakeStorage();
+  store.setItem('hw-signing.jobs.v2', JSON.stringify([
+    { pkg: 'hw3 v2', retrieval_code: 'oldfinal1', kind: 'final' },
+    { pkg: 'hw3 v2', retrieval_code: 'oldprac12', kind: 'practice' },
+    { pkg: 'hw3 v2', retrieval_code: 'newentry1', finalised: true },
+  ]));
+  const entries = loadJobEntries(store);
+  assert.equal(entries[0].finalised, true, "kind 'final' reads as finalised");
+  assert.equal(entries[1].finalised, false);
+  assert.equal(entries[2].finalised, true);
+  assert.ok(!('kind' in entries[0]), 'the loaded entry carries no kind');
+});
 
-await test('push: VAPID base64url round-trips', () => {
-  const bytes = new Uint8Array([0, 1, 2, 250, 251, 252, 65, 66, 67]);
-  const encoded = uint8ArrayToUrlBase64(bytes);
-  assert.ok(!/[+/=]/.test(encoded));
-  assert.deepEqual(urlBase64ToUint8Array(encoded), bytes);
-  // A 65-byte uncompressed P-256 point encodes to 87 chars.
-  const key = new Uint8Array(65).map((_, i) => i % 256);
-  assert.equal(uint8ArrayToUrlBase64(key).length, 87);
-  assert.deepEqual(urlBase64ToUint8Array(uint8ArrayToUrlBase64(key)), key);
+/* ---------------- push removal + service-worker tombstone (2.7.0) ---------------- */
+
+await test('push: js/push.js is deleted and sw.js is a tombstone', () => {
+  assert.equal(existsSync(new URL('../js/push.js', import.meta.url)), false,
+    'push.js is gone');
+  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  assert.ok(sw.includes("addEventListener('install'"), 'tombstone handles install');
+  assert.ok(sw.includes('skipWaiting()'), 'tombstone skips waiting on install');
+  assert.ok(sw.includes("addEventListener('activate'"), 'tombstone handles activate');
+  assert.ok(sw.includes('caches.delete'), 'tombstone deletes all caches on activate');
+  assert.ok(sw.includes('self.registration.unregister()'),
+    'tombstone unregisters itself on activate');
+  assert.ok(!sw.includes("addEventListener('fetch'"), 'tombstone has no fetch handler');
+  assert.ok(!sw.includes("addEventListener('push'"), 'tombstone has no push handler');
 });
 
 /* ---------------- wiring guards ---------------- */
@@ -1211,13 +1217,18 @@ await test('wiring: no separate download button for the extracted audio', () => 
 });
 
 await test('wiring: page and worker carry the v2 version strings', () => {
-  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.6.20');
+  assert.equal(VERSION, '2.7.0');
+  assert.equal(VERSIONS.webapp, 'hw-signing-webapp 2.7.0');
+  const pkg = readFileSync(new URL('../js/package.js', import.meta.url), 'utf8');
+  assert.ok(pkg.includes("'hw-signing-webapp ' + VERSION"),
+    'package.js derives its webapp version from the one VERSION constant');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(index.includes('id="suPh"'), 'setup form has the ph field');
   assert.ok(index.includes('id="jobsBox"'), 'jobs list section present');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-  assert.ok(sw.includes("addEventListener('push'"), 'service worker handles push');
-  assert.ok(sw.includes("addEventListener('notificationclick'"), 'service worker handles clicks');
+  assert.ok(sw.includes('self.registration.unregister()'),
+    'service worker is the 2.7.0 tombstone');
+  assert.ok(!sw.includes("addEventListener('push'"), 'service worker handles no push');
 });
 
 await test('wiring: status expiry is stored back into the job entry (2.4.1)', () => {
@@ -1240,16 +1251,14 @@ await test('wiring: jobs refresh never rebuilds the list under the student (2.4.
     'statuses are fetched in parallel, before the list is touched');
   assert.ok(main.includes('renderJobsPromise'),
     'renders are serialised: callers share one in-flight render');
-  assert.ok(main.includes('zipReviews.size'),
-    'the 5-second poll pauses while a ZIP review panel is open');
+  assert.ok(!main.includes('zipReviews'),
+    'no ZIP review state remains to pause the poll (2.7.0)');
   assert.ok(main.includes('zipBusy'),
     'the 5-second poll pauses while a ZIP verification or download runs');
   assert.ok(!main.includes('holder.textContent'),
     'no row is rendered twice (stale state, then fresh state) any more');
-  assert.ok((main.match(/zipReviews\.delete/g) || []).length >= 4,
-    'a ZIP review entry is deleted on download, on removing its job, ' +
-    'on the job expiring, and in the same-job collapse — ' +
-    'an orphaned entry would pause the poll for good');
+  assert.ok(main.includes('renderedFp === lastJobsFingerprint'),
+    'a poll whose fetched states match the rendered states skips the rebuild (2.7.0)');
   assert.ok(!main.includes('renderJobRow(box, entry'),
     'no second (manual) row is rendered outside the jobs list (2.6.11)');
 });
@@ -1263,7 +1272,7 @@ await test('wiring: ZIP steps show live status and a completion line (2.4.6)', (
     'no call site still uses the synchronous ZIP builder');
   assert.ok(main.includes("document.createElement('progress')"),
     'a native progress element is created for the ZIP steps');
-  assert.ok(main.includes('Verifying the recording and the transcript'),
+  assert.ok(main.includes('Verifying the fingerprint against the signed grade record'),
     'the verification step announces itself beside the ZIP button');
   assert.ok(main.includes('Building the submission ZIP… '),
     'the build step reports its percentage beside the download button');
@@ -1286,16 +1295,13 @@ await test('duration: the length comparison is removed (2.6.18)', () => {
     'the page never compares or reports lengths');
 });
 
-await test('bundle verification: exact contents pass; each tamper fails by name', () => {
-  const bundle = {
-    audio_sha256: SHA_A, transcript_sha256: SHA_B, critique_sha256: SHA_C,
-  };
-  const good = { wavSha256: SHA_A, transcriptSha256: SHA_B, critiqueSha256: SHA_C };
-  assert.deepEqual(verifyBundleContents(bundle, good), []);
-  assert.deepEqual(verifyBundleContents(bundle, { ...good, wavSha256: SHA_B }), ['audio']);
-  assert.deepEqual(verifyBundleContents(bundle, { ...good, transcriptSha256: SHA_A }), ['transcript']);
-  assert.deepEqual(verifyBundleContents(bundle, { ...good, critiqueSha256: SHA_A }), ['critique']);
-  assert.equal(verifyBundleContents(null, good).length, 3);
+await test('bundle verification: the WAV-form verifier is gone with the WAV form (2.7.0)', () => {
+  const jobs = readFileSync(new URL('../js/jobs.js', import.meta.url), 'utf8');
+  assert.ok(!jobs.includes('verifyBundleContents'),
+    'jobs.js no longer verifies WAV-form bundle contents');
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(!main.includes('verifySubmissionParts'),
+    'the page has no WAV packaging path');
 });
 
 await test('first words: opening words of the corrected chunks, whitespace collapsed', () => {
@@ -1330,20 +1336,18 @@ await test('wiring: preview elements present; the check sits at the click, insid
     'editing the playing row’s link to nothing readable clears the player with it');
   assert.ok(main.includes('previewMaybeClear(key, null)'),
     'clearing the playing row’s link clears the player with it');
-  assert.ok(main.includes("dlBtn.textContent = 'Download submission ZIP';"),
-    'the review confirm label is always "Download submission ZIP" (2.6.19)');
+  assert.ok(!main.includes('Download submission ZIP'),
+    'no review confirm button remains (2.7.0)');
   assert.ok(!main.includes('Bind this video'),
     'no bind label remains (2.6.19)');
-  assert.ok(main.includes('This link is also on your '),
-    'the review warns when the link is also on another row');
-  assert.ok(!main.includes('currently a different '),
-    'the review carries no supersede notice (2.6.19)');
   assert.ok(!/supersede/i.test(main.replace('superseded by a newer recording', '')),
     'no supersede path or text remains in the page flow (2.6.19)');
-  assert.ok(main.includes('Transcript starts: '),
-    'the review shows the opening words of the graded transcript');
+  assert.ok(main.includes('rowCheckedInfo.set(key, {'),
+    'at check pass the row records the video title and opening words (2.7.0)');
+  assert.ok(main.includes("opening ? ' \\u00b7 starts \\u201c' + checked.opening"),
+    'the row cell shows the transcript opening words after a passed check');
   assert.ok(!main.includes(': chunks;'), 'no fallback to the on-page transcript at ZIP time');
-  assert.ok(main.includes('verifyBundleContents'), 'ZIP contents verified against the bundle');
+  assert.ok(main.includes('verifyFingerprintContents'), 'the fingerprint is verified against the signed hash');
 });
 await test('media tier 2: MP4-family detection by name and by MIME type', () => {
   assert.equal(isMp4FamilyFile({ name: 'WIN_20261119_Pro.mp4', type: '' }), true);
@@ -1757,13 +1761,15 @@ await test('fingerprint verification: exact contents pass; a tampered fingerprin
   assert.deepEqual(
     verifyFingerprintContents(fpBundle, { ...good, fingerprintSha256: tamperedSha }),
     ['fingerprint']);
+  // Since 2.7.0 the transcript and critique are not re-hashed:
+  // only the fingerprint hash is verified before packaging.
   assert.deepEqual(
     verifyFingerprintContents(fpBundle, { ...good, transcriptSha256: SHA_A }),
-    ['transcript']);
+    []);
   assert.deepEqual(
     verifyFingerprintContents(fpBundle, { ...good, critiqueSha256: SHA_A }),
-    ['critique']);
-  assert.equal(verifyFingerprintContents(null, good).length, 3);
+    []);
+  assert.deepEqual(verifyFingerprintContents(null, good), ['fingerprint']);
 });
 
 await test('fingerprint ZIP: entries are exactly the HTML and the fingerprint bin; the bin hashes to the signed sha', async () => {
@@ -1783,7 +1789,7 @@ await test('fingerprint ZIP: entries are exactly the HTML and the fingerprint bi
   assert.ok(!entries.some((e) => e.name.endsWith('.wav')), 'no WAV entry');
 });
 
-await test('fresh computer: a retrieved job builds the fingerprint ZIP once the correct YouTube link is supplied; a wrong link refuses', async () => {
+await test('fresh computer: a retrieved job builds the fingerprint ZIP from the Worker transcript and fingerprint', async () => {
   const videoId = 'abc123XYZ_-';
   const chunks = [
     { start: 0, text: 'Hello world this is the feed' },
@@ -1815,15 +1821,11 @@ await test('fresh computer: a retrieved job builds the fingerprint ZIP once the 
     transcriptSha256: await sha256Hex(canonicalTranscript(parsedChunks)),
     critiqueSha256: await sha256Hex(retrievedBundle.critique),
   }), []);
-  // The supplied link is accepted only when its video ID hashes to
-  // the signed youtube_video_sha256 — the check the page performs
-  // before anything is packaged.
+  // The link is package data, not a checked binding (2.6.19,
+  // 2.7.0): the page parses the supplied link for its video ID
+  // and packages that link; no video-hash comparison is made.
   const suppliedId = parseYouTubeVideoId('https://youtu.be/' + videoId);
   assert.equal(suppliedId, videoId);
-  assert.equal(await sha256Hex(suppliedId), retrievedBundle.youtube_video_sha256);
-  const wrongId = parseYouTubeVideoId('https://youtu.be/ZZZ123XYZ_-');
-  assert.ok(wrongId && (await sha256Hex(wrongId)) !== retrievedBundle.youtube_video_sha256,
-    'a different video fails the signed check, so no ZIP is built');
   // Duration with no local record: fingerprint items × 0.124 s.
   assert.ok(Math.abs(items.length * 0.124 - 0.744) < 1e-9);
   // The package built from the parsed chunks carries the signed
@@ -1884,8 +1886,8 @@ await test('wiring: writing corrections from the 2026-11-26 audit (2.6.2)', () =
     'the step-2 fingerprint sentence went with the 2.6.20 text diet');
   assert.ok(!html.includes('for a job sent with a checked link, with the recording'),
     'the opening paragraph does not tie the fingerprint form to a checked link (2.6.3)');
-  assert.ok(main.includes('Verifying the fingerprint and the transcript'),
-    'the ZIP progress line names the fingerprint form\u2019s verification (2.6.3)');
+  assert.ok(main.includes('Verifying the fingerprint against the signed grade record'),
+    'the ZIP progress line names the fingerprint verification (2.7.0)');
 });
 
 await test('wiring: jobs render as a table; no recovery-code control on the row (2.6.16)', () => {
@@ -1917,8 +1919,8 @@ await test('wiring: the 5-second poll is not blocked by focus in the jobs list (
     'the render restores focus to the matching control in the rebuilt row');
   assert.ok(main.includes('expandedJobs.has(key)'),
     'an open details panel stays open across a refresh rebuild');
-  const download = main.slice(main.indexOf('async function doDownloadZip'),
-    main.indexOf('function renderJobRow'));
+  const download = main.slice(main.indexOf('async function packageSubmissionZip'),
+    main.indexOf('function makeZipButton'));
   assert.ok(!download.includes('removeJobEntry'),
     'downloading a submission ZIP keeps the job row, so the ZIP can be downloaded again');
   assert.ok(download.includes('you can download '),
@@ -1942,7 +1944,7 @@ await test('wiring: no step-5 confirmation box; stuck rows say the service canno
 
 await test('wiring: the Generate ZIP button follows readability; nothing is checked on paste (2.6.18)', () => {
   const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes('if (!reviewOpen && parseYouTubeVideoId(rowLinkDraft(entry)))'),
+  assert.ok(main.includes('if (parseYouTubeVideoId(rowLinkDraft(entry)))'),
     'the button renders while the field holds a readable link');
   assert.ok(main.includes('function makeZipButton(entry, bundle)'),
     'one maker builds the button for renders and in-place toggles alike');
@@ -1965,12 +1967,10 @@ await test('wiring: section 7 redesign — table rows, details row, compact revi
     'one toggle opens and closes the job’s details row');
   assert.ok(rowFn.includes('actions.append(forgetBtn)'),
     'Remove lives in the Actions cell (2.6.16)');
-  assert.ok(main.includes("'Checks: recording \u2713 \u00b7 transcript \u2713 \u00b7 YouTube \u2713'"),
-    'the ZIP review opens with the three checks on one line');
-  assert.ok(!main.includes('Grades: Completeness'),
-    'the ZIP review no longer repeats the grades the row already shows');
-  assert.ok(main.includes('expandedJobs.add(jobKey(entry.pkg, entry.retrieval_code))'),
-    'a completed verification opens the panel so the review is visible');
+  assert.ok(!main.includes('Checks: recording'),
+    'no ZIP review panel remains to state the checks (2.7.0)');
+  assert.ok(main.includes('rowCheckedInfo'),
+    'the identity the review showed — video title and transcript opening — lives in the row (2.7.0)');
   assert.ok(html.includes('.jobstable .jobgrades'),
     'the grades sit in the table’s Grades column');
   assert.ok(rowFn.includes("'Necessary for ZIP generation'") ||
@@ -2018,8 +2018,8 @@ await test('wiring: a link added or replaced in a row plays at once (2.6.20)', (
     'one helper takes the viewing area over for a committed link');
   assert.ok(main.includes('previewOnLinkCommit(key, nowParsed);'),
     'the field commit path plays the new video without a hover');
-  assert.ok(main.includes('previewOnLinkCommit(key, videoId);'),
-    'the Generate ZIP check path also takes the player over');
+  assert.ok(main.includes('previewOnLinkCommit(key, checkedId);'),
+    'the Generate ZIP check path also takes the player over, with the returned video ID');
   assert.ok(main.includes('nowParsed !== prevParsed'),
     'the takeover fires on a change of video, not on every keystroke');
 });
@@ -2044,6 +2044,69 @@ await test('wiring: fingerprint-form ZIP path is wired into the review and downl
     'the ZIP fingerprint entry carries the fingerprint file name');
   assert.ok(main.includes('fingerprintSha256: liveBundle.chromaprint_sha256'),
     'the HTML assembly is told the signed fingerprint hash');
+});
+
+/* ---------------- 2.7.0 simplification ---------------- */
+
+await test('wiring: a fingerprint failure blocks the send, beside the Send control (2.7.0)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const submit = main.slice(main.indexOf("$('submitJobBtn').addEventListener"),
+    main.indexOf('// --- Retrieval: jobs list'));
+  assert.ok(submit.includes('if (!chromaprint)'),
+    'the send checks that a fingerprint was computed');
+  assert.ok(submit.includes('This recording could not be fingerprinted'),
+    'the blocking error states the fingerprint failure');
+  assert.ok(submit.indexOf('if (!chromaprint)') < submit.indexOf('buildJobPayload({'),
+    'the block runs before the payload is built');
+  assert.ok(submit.includes("showError('Sending for grading failed: ' + err.message, err, $('submitJobBtn'))"),
+    'the error is shown beside the Send control');
+});
+
+await test('wiring: suspects scan runs at send time, not per scrub keystroke; cache list renders from memory (2.7.0)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const scrub = main.slice(main.indexOf("$('scrubField').addEventListener"),
+    main.indexOf('// --- Transcription'));
+  assert.ok(scrub.includes('refreshDerived({ keepSuspects: true })'),
+    'typing in the scrub field does not re-run the suspects scan');
+  assert.ok(scrub.includes('renderCacheRows(cacheListMemory)'),
+    'typing re-renders the recordings list from the in-memory list');
+  assert.ok(!scrub.includes('renderCacheList()'),
+    'typing does not re-read IndexedDB');
+  const submit = main.slice(main.indexOf("$('submitJobBtn').addEventListener"),
+    main.indexOf('// --- Retrieval: jobs list'));
+  assert.ok(submit.includes('renderSuspects(scrubbed())'),
+    'the suspects scan runs at send time');
+});
+
+await test('wiring: Generate ZIP is one click — check, finalise, re-fetch, package (2.7.0)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  const flow = main.slice(main.indexOf('async function generateZipForRow'),
+    main.indexOf('// Record that this browser finalised'));
+  const iCheck = flow.indexOf('requestYouTubeCheck(');
+  const iFin = flow.indexOf('await finalizeJob(cfg.worker, {');
+  const iFetch = flow.indexOf('await fetchJobStatus(cfg.worker, {');
+  const iPkg = flow.indexOf('await packageSubmissionZip(');
+  assert.ok(iCheck >= 0 && iFin > iCheck && iFetch > iFin && iPkg > iFetch,
+    'the click runs check → finalize → re-fetch → package in order');
+  assert.ok(flow.includes('markEntryFinalised(entry);'),
+    'a successful finalize sets the entry finalised flag');
+  assert.ok(flow.includes('canonicalWatchUrl(checkedId)') &&
+    flow.includes('const checkedId = res.video_id || videoId;'),
+    'the canonical watch address is built from the video ID the Worker returned');
+  assert.ok(main.includes('checked ? checked.videoId : parsed'),
+    'the row open link uses the returned video ID once a check has run');
+  assert.ok(!main.includes('zipReviews') && !main.includes('review panel is open'),
+    'no review panel state or poll suspension remains');
+});
+
+await test('wiring: the poll compares rendered states before rebuilding (2.7.0)', () => {
+  const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
+  assert.ok(main.includes('function jobsRenderFingerprint(survivors)'),
+    'a per-entry status/grades fingerprint is computed for rendering');
+  assert.ok(main.includes("b.completeness, b.accuracy, b.critique || '', b.receipt || ''"),
+    'the fingerprint covers the rendered grades and critique');
+  assert.ok(main.includes('if (renderedFp === lastJobsFingerprint)'),
+    'matching states skip the table rebuild, so there is no focus churn');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed, ' + skipped + ' skipped');
