@@ -82,4 +82,9 @@ pub struct Cli {
     /// On Windows, wait for Enter before closing (for drag-and-drop use).
     #[arg(long)]
     pub pause_at_end: bool,
+
+    /// Open the Windows folder picker to choose the clips folder.
+    /// Running with no arguments at all (a double-click) does the same.
+    #[arg(long)]
+    pub pick: bool,
 }

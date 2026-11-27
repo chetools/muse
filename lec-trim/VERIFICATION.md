@@ -52,6 +52,17 @@ student recordings is not verified by any check below.
   recognition per short clip. That figure is a property of this
   throttled virtual machine, not an estimate for a student computer.
 
+## Interface addition, v0.1.1 (2026-11-27)
+
+Running with no arguments (a double-click) or with `--pick` opens the
+native Windows folder picker. The picker code compiles only on Windows
+(the `rfd` crate is a Windows-only dependency in `Cargo.toml`). The
+Linux build and all unit tests pass with the change. The cross-compiled
+`lec-trim.exe` was inspected: it imports `CoCreateInstance` from
+`ole32.dll` and links `shell32.dll` (the file-dialog COM path), and it
+contains the picker title string. The dialog itself has not been
+exercised on Windows.
+
 ## Windows build
 
 `lec-trim.exe` was cross-compiled for `x86_64-pc-windows-gnu` with

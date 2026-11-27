@@ -156,8 +156,44 @@ fn detect_clip(
     Ok((seg, rep))
 }
 
+/// Show the native Windows folder picker and return the chosen folder.
+/// This is the interface for a double-click launch: no command line is
+/// involved. Returns None when the user cancels.
+#[cfg(windows)]
+fn pick_folder() -> Option<PathBuf> {
+    rfd::FileDialog::new()
+        .set_title("lec-trim: choose the folder with your OBS clips")
+        .pick_folder()
+}
+
+#[cfg(not(windows))]
+fn pick_folder() -> Option<PathBuf> {
+    None
+}
+
+/// True when the program was launched with no arguments at all, which
+/// is what a double-click in Explorer produces.
+fn launched_without_args() -> bool {
+    std::env::args().len() == 1
+}
+
 fn run() -> Result<()> {
-    let args = Cli::parse();
+    let mut args = Cli::parse();
+    if args.pick || launched_without_args() {
+        match pick_folder() {
+            Some(dir) => {
+                println!("selected folder: {}", dir.display());
+                args.input = dir;
+            }
+            None => {
+                if cfg!(windows) {
+                    println!("no folder selected; nothing done");
+                    return Ok(());
+                }
+                // Not on Windows: keep the default of the current folder.
+            }
+        }
+    }
     let ffmpeg = tools::find_tool("ffmpeg", &args.ffmpeg)?;
     let ffprobe = tools::find_tool("ffprobe", &args.ffprobe)?;
     let whisper = tools::find_tool("whisper-cli", &args.whisper_cli)?;
@@ -263,7 +299,11 @@ fn run_pipeline(
 }
 
 fn main() {
-    let pause = std::env::args().any(|a| a == "--pause-at-end");
+    // Pause at the end when asked, and also after a double-click launch
+    // (no arguments) or a --pick launch, so the window does not close
+    // before the report can be read.
+    let pause = std::env::args().any(|a| a == "--pause-at-end" || a == "--pick")
+        || (cfg!(windows) && launched_without_args());
     match run() {
         Ok(()) => {}
         Err(e) => {

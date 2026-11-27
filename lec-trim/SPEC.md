@@ -76,6 +76,19 @@ stopping OBS. The base model (decision 5) is the smallest Whisper model
 that should be trusted across varied voices for two fixed phrases; the
 tiny model is not used.
 
+## Interface (added 2026-11-27, v0.1.1)
+
+The simple interface for students who do not use a command line is the
+program itself, double-clicked. Running `lec-trim.exe` with no
+arguments opens the native Windows folder picker (the standard folder
+window, titled "lec-trim: choose the folder with your OBS clips"); the
+chosen folder is processed, and the console window waits for Enter at
+the end so the report can be read. `--pick` opens the same picker from
+a command line. Dragging a folder onto `run-lec-trim.bat` remains as
+the no-dialog alternative. No separate GUI program is shipped: the
+picker is a standard Windows dialog (the `rfd` crate, compiled only on
+Windows), so there is no second interface to learn or maintain.
+
 ## Pipeline
 
 1. Discover and sort. Scan the input folder (default: current folder)

@@ -10,27 +10,32 @@ phrases, and stitches the kept parts into one video,
 writes `stitched_lecture_v02.mp4`, and so on. An existing file is never
 overwritten.
 
-## Quick start
+## Quick start — no command line
 
 1. Unzip the release folder anywhere, for example on your Desktop.
 2. Put your OBS clips in one folder.
-3. Open that folder, type `cmd` in the address bar, and run:
+3. **Double-click `lec-trim.exe`.** A folder window opens. Choose the
+   folder with your clips and click **Select Folder**.
+4. The tool works in a black window and prints a table when it is done.
+   For each clip the table shows the part kept, in seconds (s). A
+   warning names any clip where a phrase was not found; that clip is
+   kept whole, from the end where the phrase is missing. Press Enter to
+   close the window.
+5. The finished video, `stitched_lecture_v01.mp4`, is in the same
+   folder as your clips. Upload it as your homework video.
+
+Dragging the clips' folder onto `run-lec-trim.bat` does the same thing
+without the folder window.
+
+## Command line (optional)
 
 ```text
-path\to\lec-trim.exe .
+lec-trim.exe <clips-folder> [--dry-run]
 ```
 
-Or drag the clips' folder onto `lec-trim.exe`. The window stays open at
-the end when you use drag-and-drop if you add `--pause-at-end`; the
-release folder's `run-lec-trim.bat` already does this — drag the clips'
-folder onto that file instead.
-
-4. Read the table it prints. For each clip it shows the part kept, in
-   seconds (s). A warning names any clip where a phrase was not found;
-   that clip is kept whole, from the end where the phrase is missing.
-5. Upload `stitched_lecture_v01.mp4` as your homework video.
-
-To check the cut points without writing a video, run with `--dry-run`.
+`--dry-run` checks the cut points and prints the table without writing
+a video. Running with `--pick` opens the folder window described above
+and then continues in the same console.
 
 ## Does YouTube accept MKV?
 
