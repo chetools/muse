@@ -25,7 +25,9 @@
 // Credentials come from config.json in the skill folder (one level up
 // from this script): {worker, gradingToken}. The token is sent only as
 // the X-Grading-Token header to the configured worker; it is never
-// printed, logged, or placed in a URL.
+// printed, logged, or placed in a URL. GRADE_JOBS_CONFIG, when set,
+// names a different config file to read instead: the test suite sets
+// it to a temporary config so a test run never touches the live one.
 // Exit code 0 on success, 1 on any failure (message on stderr).
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -42,11 +44,12 @@ function fail(msg) {
 }
 if (!cmd) fail(USAGE);
 
+const configPath =
+  process.env.GRADE_JOBS_CONFIG ||
+  new URL("../config.json", import.meta.url);
 let config;
 try {
-  config = JSON.parse(
-    readFileSync(new URL("../config.json", import.meta.url), "utf8"),
-  );
+  config = JSON.parse(readFileSync(configPath, "utf8"));
 } catch {
   fail(
     "config.json is missing or unreadable in the skill folder. " +

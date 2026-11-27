@@ -2,9 +2,13 @@
 // Tests for scripts/grade_jobs.mjs against a local stub of the grading
 // worker's /grading endpoints. No dependencies (Node 18+).
 //   node scripts/grade_jobs.test.mjs
-// The test writes a temporary config.json into the skill folder
-// (restoring any real one afterwards) pointing at the stub, then runs
-// the helper as a child process, as the skill's procedures do.
+// The test writes a temporary config into a temporary directory and
+// points the helper at it with GRADE_JOBS_CONFIG, then runs the helper
+// as a child process, as the skill's procedures do. It never writes to
+// the live config.json in the skill folder: an interrupted run used to
+// leave the stub config in place of the live one (2026-11-26), and a
+// restore in a finally block cannot run after a kill or a machine
+// restart, so the live file is not touched at all now.
 // Exit code 0 when every check passes, 1 otherwise.
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
@@ -52,6 +56,7 @@ const PENDING = [
 ];
 
 let resultBody = null;
+let claimBody = null;
 const seenUrls = [];
 const stub = createServer((req, res) => {
   seenUrls.push(req.url);
@@ -70,6 +75,7 @@ const stub = createServer((req, res) => {
       return json(200, PENDING);
     }
     if (req.method === "POST" && req.url === "/grading/claim") {
+      claimBody = data;
       if (data.job_id === "job-1") return json(200, CLAIM);
       if (data.job_id === "job-2") {
         return json(409, { error: "job already claimed" });
@@ -97,11 +103,15 @@ function check(name, ok, detail) {
     console.log("FAIL  " + name + (detail ? " — " + detail : ""));
   }
 }
+const liveConfigBefore = existsSync(configUrl)
+  ? readFileSync(configUrl, "utf8")
+  : null;
 const allOutput = [];
-function run(args) {
+function run(args, extraEnv) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [scriptUrl.pathname, ...args], {
       stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, ...extraEnv },
     });
     let stdout = "",
       stderr = "";
@@ -117,19 +127,18 @@ function run(args) {
   });
 }
 
-const savedConfig = existsSync(configUrl)
-  ? readFileSync(configUrl, "utf8")
-  : null;
+const work = mkdtempSync(join(tmpdir(), "grade-jobs-test-"));
+const testConfig = join(work, "config.json");
 writeFileSync(
-  configUrl,
+  testConfig,
   JSON.stringify({ worker, gradingToken: TOKEN }) + "\n",
   "utf8",
 );
-const work = mkdtempSync(join(tmpdir(), "grade-jobs-test-"));
+const testEnv = { GRADE_JOBS_CONFIG: testConfig };
 
 try {
   // list.
-  let r = await run(["list"]);
+  let r = await run(["list"], testEnv);
   check("list exits 0", r.status === 0, r.stderr);
   const pending = JSON.parse(r.stdout);
   check(
@@ -143,8 +152,14 @@ try {
 
   // claim round trip: claim JSON lands in the --out file.
   const claimFile = join(work, "claim-job-1.json");
-  r = await run(["claim", "job-1", "--out", claimFile]);
+  r = await run(["claim", "job-1", "--out", claimFile], testEnv);
   check("claim exits 0", r.status === 0, r.stderr);
+  check(
+    "claim body carries no db field",
+    claimBody && !("db" in claimBody),
+    JSON.stringify(claimBody),
+  );
+
   const claimOnDisk = JSON.parse(readFileSync(claimFile, "utf8"));
   check(
     "claim file holds the package text and transcript",
@@ -161,7 +176,7 @@ try {
 
   // 409: another claim holds job-2.
   const claim2 = join(work, "claim-job-2.json");
-  r = await run(["claim", "job-2", "--out", claim2]);
+  r = await run(["claim", "job-2", "--out", claim2], testEnv);
   check("claim on a held job exits non-zero", r.status !== 0);
   check(
     "409 is reported as an existing claim",
@@ -182,8 +197,29 @@ try {
     }),
     "utf8",
   );
-  r = await run(["result", "job-1", resultFile, "--claim", claimFile]);
+  r = await run(["result", "job-1", resultFile, "--claim", claimFile], testEnv);
   check("result exits 0", r.status === 0, r.stderr);
+  check(
+    "result body carries no db field",
+    resultBody && !("db" in resultBody),
+    JSON.stringify(resultBody),
+  );
+  check(
+    "result carries the claim binding",
+    resultBody && resultBody.claimed_at === "2026-11-26T17:00:00.000Z",
+    JSON.stringify(resultBody),
+  );
+
+  // result without --claim is refused: the binding is required.
+  r = await run(["result", "job-1", resultFile], testEnv);
+  check("result without --claim exits non-zero", r.status !== 0);
+  check(
+    "result without --claim prints the usage",
+    /usage: grade_jobs\.mjs/.test(r.stderr),
+    r.stderr,
+  );
+  // worker answer is printed.
+  r = await run(["result", "job-1", resultFile, "--claim", claimFile], testEnv);
   check(
     "worker answer is printed",
     JSON.parse(r.stdout).receipt === "stub-receipt",
@@ -212,11 +248,15 @@ try {
     !seenUrls.some((u) => u.includes(TOKEN)),
   );
 } finally {
-  if (savedConfig === null) rmSync(configUrl, { force: true });
-  else writeFileSync(configUrl, savedConfig, "utf8");
   rmSync(work, { recursive: true, force: true });
   stub.close();
 }
+
+check(
+  "live config.json is untouched by the test run",
+  (existsSync(configUrl) ? readFileSync(configUrl, "utf8") : null) ===
+    liveConfigBefore,
+);
 
 console.log("\n" + passed + " passed, " + failed + " failed");
 process.exit(failed ? 1 : 0);
