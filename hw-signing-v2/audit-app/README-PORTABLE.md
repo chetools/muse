@@ -113,10 +113,18 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v64 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v65 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v64: the check columns are renamed Package
+  installs). v65: the Redownload tool honours “Include
+  previous attempts” again (estimate, run and reporting;
+  automatic passes stay current-attempt only), the
+  YouTube cross-check measures audio-form packages from
+  their WAV (check schema 6; a stored “old format” result
+  is re-done once), and a quick wall scrub no longer
+  strands tiles black at 0% (the badge shows the scrub
+  target while a seek is unlanded, and the stall watchdog
+  no longer abandons a tile with a known target). v64: the check columns are renamed Package
   integrity, Grade signature, YouTube match and Warnings,
   with fixed column widths and the Final grade sub-label
   moved to a tooltip; the YouTube cross-check records why

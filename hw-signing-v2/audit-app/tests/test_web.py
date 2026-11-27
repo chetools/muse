@@ -1539,8 +1539,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/64.0",
-          "user agent bumped to 64.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/65.0",
+          "user agent bumped to 65.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2143,10 +2143,15 @@ def main():
           "redownload estimate honours the student filter (v32)")
     status, estp = call("POST", "/api/redownload-estimate",
                         {"student": "Amy", "scope": "previous"})
-    check(status == 200 and estp["packages"] == 1
-          and estp["bytes"] == mb,
-          "v62: a previous-scope estimate counts the current "
-          "attempt only (previous attempts are not downloaded)")
+    check(status == 200 and estp["packages"] == 2
+          and estp["to_fetch"] == 2
+          and estp["bytes"] == mb + len(zip333a1)
+          and len(estp.get("not_in_format") or []) == 1
+          and estp["not_in_format"][0]["attempt"] == 2,
+          "v65: a previous-scope estimate counts the previous "
+          "attempt honestly — packages, to-fetch and bytes "
+          "cover attempt 1, and the no-ZIP attempt 2 is "
+          "listed not_in_format")
 
     # (c) Run the tool for Amy only, previous scope; poll to done.
     status, started = call("POST", "/api/redownload",
@@ -2161,31 +2166,26 @@ def main():
             break
         _t32.sleep(0.1)
     unit333 = data_dir / "downloads" / "101" / "202" / "333"
-    check(not st32.get("running") and st32.get("downloaded") == 1
+    check(not st32.get("running") and st32.get("downloaded") == 2
           and (unit333 / "submission.html").exists()
-          and not (unit333 / "attempt-1").exists()
+          and (unit333 / "attempt-1" / "submission.html").exists()
           and not (data_dir / "downloads" / "101" / "202" / "444")
           .exists()
           and st32.get("seconds") is not None
-          and st32.get("estimate", {}).get("to_fetch") == 1,
-          "v62: a previous-scope redownload run fetches only the "
-          "filtered student's current package (no attempt "
-          "folders), and its closing state carries the actual "
-          "time beside the estimate")
+          and st32.get("estimate", {}).get("to_fetch") == 2,
+          "v65: a previous-scope redownload run fetches the "
+          "filtered student's current package AND her previous "
+          "attempt (attempt-1 folder on disk), and its closing "
+          "state carries the actual time beside the estimate")
     check(not stats_file.exists(),
           "v62: the finished run leaves no download-rate "
           "calibration record")
-    # Seed Amy's previous attempt on disk by hand (as an older
-    # version left it) so the wall attempts rows below still
-    # exercise attempt folders that exist on disk.
-    audit.extract_package_zip(zip333a1, unit333 / "attempt-1")
-    (unit333 / "attempt-1" / "package.zip").write_bytes(zip333a1)
     status, est2 = call("POST", "/api/redownload-estimate",
                         {"student": "Amy", "scope": "previous"})
     check(status == 200 and est2["to_fetch"] == 0
-          and est2["present"] == 1,
+          and est2["present"] == 2,
           "after the run the same selection estimates zero to "
-          "fetch, the current package present (v62)")
+          "fetch, both packages present (v65)")
     status, estf = call("POST", "/api/redownload-estimate",
                         {"student": "Amy", "force": True})
     check(status == 200 and estf["to_fetch"] == 1,
@@ -2350,21 +2350,12 @@ def main():
 
     st = run_redownload33({"student": "Pat", "scope": "previous"})
     unit555 = data_dir / "downloads" / "101" / "202" / "555"
-    check(st.get("downloaded") == 1
+    check(st.get("downloaded") == 3
           and (unit555 / "submission.html").exists()
-          and not (unit555 / "attempt-1").exists(),
-          "v62 setup: a previous-scope redownload downloads "
-          "Pat's current attempt only")
-    # Seed Pat's previous attempts on disk by hand (as an older
-    # version left them) so the table attempt rows below still
-    # exercise attempt folders that exist on disk.
-    audit.extract_package_zip(zip_pat_a1, unit555 / "attempt-1")
-    (unit555 / "attempt-1" / "package.zip").write_bytes(zip_pat_a1)
-    audit.extract_package_zip(zip_pat_a2, unit555 / "attempt-2")
-    (unit555 / "attempt-2" / "package.zip").write_bytes(zip_pat_a2)
-    check((unit555 / "attempt-1" / "submission.html").exists()
+          and (unit555 / "attempt-1" / "submission.html").exists()
           and (unit555 / "attempt-2" / "submission.html").exists(),
-          "setup: Pat's previous attempts seeded on disk (v62)")
+          "v65 setup: a previous-scope redownload downloads "
+          "Pat's current attempt and both previous attempts")
     run_redownload33({"student": "Rita", "scope": "current"})
     unit777 = data_dir / "downloads" / "101" / "202" / "777"
     check((unit777 / "submission.html").exists()
@@ -2553,79 +2544,86 @@ def main():
     check("planning" in phases34,
           "the run's status passes through a planning phase (v34)")
     dl34 = Path(cfg34["data_dir"]) / "downloads"
-    check(st34.get("target_errors") == 0
+    check(st34.get("target_errors") == 1
+          and "1 assignment(s) could not be read"
+          in st34.get("summary", "")
           and (dl34 / "101" / "202" / "111"
                / "submission.html").exists()
           and (dl34 / "101" / "203" / "222"
-               / "submission.html").exists()
-          and (dl34 / "101" / "204" / "333"
                / "submission.html").exists(),
-          "v62: the run downloads every target's current "
-          "attempts; the broken target's history is never "
-          "walked, so no target error is counted")
-    check(HIST_CALLS34["n"] == 0,
-          "v62: plan and run make no history walk at all "
-          f"(got {HIST_CALLS34['n']})")
+          "v65: one target's history failure is counted in "
+          "the closing summary and the run completes the "
+          "other targets (v34 behaviour, restored)")
+    check(HIST_CALLS34["n"] == 4,
+          "v65: one history walk per target serves plan and "
+          "run (3 walks + 1 retry of the failed target, not "
+          f"three walks per target; got {HIST_CALLS34['n']})")
 
     # (b) The format student: estimate lists the non-package
     # attempt; the run reports it and the rejected ZIP.
     status, e34a = call("POST", "/api/redownload-estimate",
                         {"scope": "previous", "student": "format"})
     nif34a = e34a.get("not_in_format") or []
-    check(nif34a == [] and e34a.get("rejected") == 0
+    check(len(nif34a) == 1 and nif34a[0]["attempt"] == 1
+          and nif34a[0]["holds"] == "audio + html files, no ZIP"
+          and e34a.get("rejected") == 1
           and e34a.get("packages") == 1
           and e34a.get("to_fetch") == 0,
-          "v62: the estimate covers the current attempt only — "
-          "the two-file and bad-ZIP previous attempts are not "
-          "listed, counted or fetched")
+          "v65: the estimate lists the two-file previous "
+          "attempt as not in package format (with what it "
+          "holds) and the rejected attempt from the record, "
+          "neither in the fetch set (v34 behaviour, restored)")
     call("POST", "/api/redownload",
          {"scope": "previous", "student": "format"})
     st34b, _ = wait_redl34()
-    check("not in package format" not in st34b.get("summary", "")
-          and FETCH34.get("mem://f2bad") is None
+    check("not in package format" in st34b.get("summary", "")
+          and "rejected" in st34b.get("summary", "")
+          and FETCH34.get("mem://f2bad") == 1
           and (dl34 / "101" / "202" / "444"
                / "submission.html").exists(),
-          "v62: the run downloads the valid current attempt "
-          "and never fetches the bad previous attempt's ZIP")
+          "v65: the run reports the not-in-format attempt and "
+          "the rejected ZIP, and downloads the valid current "
+          "attempt (the bad ZIP was fetched once, in the "
+          "first run, and never again)")
     state34 = json.loads((Path(cfg34["data_dir"])
                           / "download-state.json").read_text())
-    check("101:202:444:attempt-2" not in state34,
-          "v62: no rejected mark is watermarked for a previous "
-          "attempt")
+    check(state34.get("101:202:444:attempt-2", {})
+          .get("rejected") is True,
+          "v65: the rejected mark is watermarked for the "
+          "failed previous attempt")
 
     # (c) Second estimate + run: the rejected attempt is
     # reported from the record and never re-fetched.
     status, e34b = call("POST", "/api/redownload-estimate",
                         {"scope": "previous", "student": "format"})
-    check(e34b.get("rejected") == 0 and e34b.get("packages") == 1
+    check(e34b.get("rejected") == 1 and e34b.get("packages") == 1
           and e34b.get("to_fetch") == 0,
-          "v62: a second estimate still covers the current "
-          "attempt only")
+          "v65: a second estimate reports the rejected attempt "
+          "from the record and excludes it from the fetch set")
     call("POST", "/api/redownload",
          {"scope": "previous", "student": "format"})
     wait_redl34()
-    check(FETCH34.get("mem://f2bad") is None,
-          "v62: a second run also never fetches the previous "
-          "attempt's bad ZIP")
+    check(FETCH34.get("mem://f2bad") == 1,
+          "v65: a second run fetches zero bytes for the "
+          "rejected attempt")
 
     # (d) The wall's attempts fetch shares the same cached walk.
     n_hist34 = HIST_CALLS34["n"]
     web.fetch_unit_attempts(cfg34, "101_202_444")
-    check(HIST_CALLS34["n"] == n_hist34 + 1,
-          "v62: the wall's attempts fetch makes its own single "
-          "history walk (plan and run no longer walk history, "
-          "so there is no cached walk to reuse)")
+    check(HIST_CALLS34["n"] == n_hist34,
+          "v65: the wall's attempts fetch reuses the cached "
+          "history walk (v34 behaviour, restored)")
 
     # (e) The table's accounting distinguishes the causes from
     # local records only.
     status, rows34 = call("GET", "/api/submissions?attempts=1")
     fred34 = next(r for r in rows34 if r["user_id"] == "444")
-    check(fred34.get("attempts_missing") == 2
-          and fred34.get("attempts_not_format") == 0
-          and fred34.get("attempts_rejected") == 0,
-          "v62: table attempts accounting — both previous "
-          "attempts simply not downloaded; no not-in-format or "
-          "rejected records exist for them")
+    check(fred34.get("attempts_missing") == 0
+          and fred34.get("attempts_not_format") == 1
+          and fred34.get("attempts_rejected") == 1,
+          "v65: table attempts accounting distinguishes the "
+          "causes — 0 not downloaded, 1 not in package "
+          "format, 1 rejected (v34 behaviour, restored)")
 
     # (f) Page wiring for the three v34 items.
     status, dash34 = call("GET", "/", raw=True)
@@ -4013,13 +4011,16 @@ def main():
     check("duration" not in _seg59.lower()
           and "FLAGGED" in _seg59
           and "unavailable" not in _seg59
-          and "old format" in _seg59
+          and "no usable media" in _seg59
+          and "old format" not in _seg59
           and "video fingerprint failed" in _seg59,
-          "v64: the YouTube cell construction carries the "
+          "v65: the YouTube cell construction carries the "
           "similarity number or FLAGGED plus the number, the "
-          "per-reason tokens (old format / no fingerprint / "
-          "video fingerprint failed / not measured), no "
-          "blanket unavailable token, and no duration text")
+          "per-reason tokens (no usable media / no "
+          "fingerprint / video fingerprint failed / not "
+          "measured), no blanket unavailable token, and no "
+          "duration text — the v64 'old format' token is gone "
+          "because an audio-form package is now measured")
     # Rendered: run the page's own integCells under node (where
     # available) for the pass, flag and pending fixtures; the
     # harness reads the YouTube cell (index 2) of each.
@@ -4109,15 +4110,18 @@ def main():
               "\"not measured\" for a degraded result stored "
               "before v64, which carries no reason); the long "
               "per-row sentence no longer appears")
-        check(_cells59["oldFmt"] == '<span class="mut">old format</span>'
+        check(_cells59["oldFmt"]
+              == '<span class="mut">no usable media</span>'
               and _cells59["noFp"]
               == '<span class="mut">no fingerprint</span>'
               and _cells59["vidFail"]
               == '<span class="mut">video fingerprint failed</span>'
               and _cells59["ytErr"]
               == '<span class="badge bad">error</span>',
-              "v64: each stored YouTube reason renders its own "
-              "token — old format, no fingerprint, video "
+              "v65: each stored YouTube reason renders its own "
+              "token — no usable media (the not-fingerprint-"
+              "format reason, now only for a package holding "
+              "neither media form), no fingerprint, video "
               "fingerprint failed — and the error case keeps "
               "its error token")
         check(all("unavailable" not in v for v in _cells59.values()
@@ -4141,15 +4145,17 @@ def main():
     # signature, YouTube match, Warnings), the Final grade
     # sub-label becomes a tooltip, the notice aggregates the
     # states shown, and the version is v64.
-    check(web.APP_VERSION == "v64", "v64: APP_VERSION is v64")
+    # v65: the version is v65 (the v64 column and notice
+    # behaviour above is unchanged).
+    check(web.APP_VERSION == "v65", "v65: APP_VERSION is v65")
     status, st63 = call("GET", "/api/status")
-    check(status == 200 and st63.get("app_version") == "v64",
-          "v64: /api/status reports app_version v64")
+    check(status == 200 and st63.get("app_version") == "v65",
+          "v65: /api/status reports app_version v65")
     for _path63 in ("/", "/wall", "/cleanup", "/packages"):
         status, _pg63 = call("GET", _path63, raw=True)
-        check(status == 200 and b"v64" in _pg63
+        check(status == 200 and b"v65" in _pg63
               and b"appver" in _pg63,
-              f"v64: {_path63} header shows the app version")
+              f"v65: {_path63} header shows the app version")
     status, dash63 = call("GET", "/", raw=True)
     check(all(b"<th>" + h + b"</th>" in dash63 for h in
               (b"Package integrity", b"Grade signature",
@@ -4206,8 +4212,8 @@ def main():
     # fixtures are the _check_mode inputs directly: identical
     # inputs, differing only in the stored fingerprint's
     # app-check-era entry.
-    check(web.CHECK_SCHEMA == 5,
-          "v64: the check schema rises to 5")
+    check(web.CHECK_SCHEMA == 6,
+          "v65: the check schema rises to 6")
     _inputs64 = {"zip_sha256": "z64", "audio": [1, "a"],
                  "html_sha256": "h64", "zip": [2, "b"],
                  "video": [3, "c"], "threshold": 0.85,
@@ -4220,6 +4226,14 @@ def main():
                                "passed": None}}
     _stored_pre64 = {k: v for k, v in _inputs64.items()
                      if k != "app_check_era"}
+    _stored_v64era = dict(_inputs64, check_schema=5,
+                          app_check_era="v64")
+    _ex_v64era = dict(_degraded64, check_inputs=_stored_v64era)
+    check(web._check_mode(_ex_v64era, _inputs64, False) == "full",
+          "v65: an entry stored under v64 (schema 5, era v64, "
+          "both present and differing) is owed one full "
+          "re-check under v65 — a stored 'old format' result "
+          "is re-done, not frozen")
     _ex_pre64 = dict(_degraded64, check_inputs=_stored_pre64)
     check(web._check_mode(_ex_pre64, _inputs64, False) == "youtube",
           "v64: a degraded pre-v64 entry (no app-check-era in "

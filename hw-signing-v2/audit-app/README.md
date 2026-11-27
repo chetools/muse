@@ -1,4 +1,36 @@
-# Teacher audit app — HW Signing v2 (audit app v64)
+# Teacher audit app — HW Signing v2 (audit app v65)
+
+**v65 (2026-11-27).** Two teacher-reported defects. (1)
+The Redownload tool honours “Include previous attempts”
+again: the v62 form planned and ran that scope as current
+attempts only while the panel still offered the scope and
+the table still directed the teacher to it. The plan and
+the run fetch previous attempts through the
+submission-history machinery, the estimate counts them
+(packages, to-fetch, bytes), and a previous attempt with
+no ZIP or a rejected ZIP is reported again
+(`not_in_format` / rejected) instead of silently skipped;
+automatic passes stay current-attempt only. The YouTube
+cross-check measures a package in the older audio form:
+the submitted fingerprint is computed from its WAV and
+the same per-block rule runs, so the “old format” cell
+state disappears for those packages (the reason remains
+only for a package holding neither the fingerprint file
+nor a readable WAV, and its cell token is now “no usable
+media”). The check schema rises to 6, so a stored “old
+format” result is re-done once under v65. (2) On the
+wall, a quick scrub no longer strands tiles black at 0%:
+a tile's intended fraction is recorded when a seek is
+issued and its badge shows that target while the seek is
+unlanded (badges are paired to tiles by media file name,
+not position), and the stall watchdog gives a tile with
+an unlanded target a longer, growing patience window and
+no retry cap — the v64 watchdog reloaded a tile whose
+far-seek fetch was still in flight after 3 s, discarding
+the fetch and the frame, and after three cycles left it
+black at 0% for the session (demonstrated against the
+v64 code by `tests/wall_regression_v65.py`, which fails
+there and passes on v65).
 
 **v64 (2026-11-27).** The four check columns are renamed
 for what they hold — Package integrity, Grade signature,

@@ -18,6 +18,34 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v65 (2026-11-27) — Redownload fetches previous attempts again, audio-form packages are measured, wall scrub no longer strands tiles
+
+The Redownload tool's “Include previous attempts” scope
+works again (it was planned and run as current attempts
+only since v62, while the panel offered it and the table
+directed you to it): previous attempts are fetched from
+the submission history, the estimate counts them, and a
+previous attempt with no ZIP or a rejected ZIP is
+reported rather than silently skipped. Automatic passes
+still fetch current attempts only. The YouTube
+cross-check measures a package in the older audio form
+from its WAV (the submitted fingerprint is computed and
+the same per-block rule runs), so the “old format” cell
+state is gone for those packages; the remaining
+no-comparison token for a package with neither media
+form reads “no usable media”. Check schema 6: a stored
+“old format” result is re-done once. On the wall, a
+quick scrub no longer leaves tiles black at 0%: a tile's
+badge shows its scrub target while the seek is unlanded,
+and the stall watchdog no longer abandons a tile whose
+target is known — its patience window starts at 10 s and
+grows, with no retry cap (the v64 watchdog reloaded a
+tile at 3 s, discarding the in-flight seek fetch and the
+frame, and stopped after three cycles).
+Regression: `tests/wall_regression_v65.py` (headless
+Chromium; fails on the v64 code, passes on v65), plus
+checks in `tests/test_web.py` and `tests/test_audit.py`.
+
 ## v64 (2026-11-27) — Clearer column names, fixed column widths, YouTube failure reasons, wall stuck-audio fix
 
 The four check columns are renamed for what they hold:

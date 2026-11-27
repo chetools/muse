@@ -35,7 +35,20 @@ that could not be computed; chromaprint_fingerprint_diag
 reports why a video fingerprint failed (ffmpeg missing, a
 non-zero ffmpeg exit, an exception, or too little output)
 while chromaprint_fingerprint keeps its list-or-None
-contract for its other callers.)
+contract for its other callers. v65 (2026-11-27):
+download_packages' include_history form is restored for
+the web app's manual Redownload tool — earlier attempts
+download into attempt-<n> folders with rejected-mark
+watermarks and not_in_format records, and an earlier
+attempt's audio-form ZIP extracts on that path
+(extract_package_zip allow_audio); automatic passes keep
+include_history off. youtube_cross_check measures an
+audio-form package: when the package's media entry is the
+WAV, the submitted fingerprint is computed from it through
+the fingerprint function and the same blockwise comparison
+and verdict run, so the not-fingerprint-format reason
+remains only for a package holding neither the fingerprint
+file nor a readable WAV.)
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -144,7 +157,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/64.0"
+USER_AGENT = "HWSigning-Teacher-Audit/65.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -331,7 +344,7 @@ def describe_attempt_files(attachments):
 
 def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
                       force=False, progress_fn=None, subdir=None,
-                      key_prefix="", user_ids=None):
+                      key_prefix="", user_ids=None, include_history=False):
     """Download the ZIP package of each student's most recent attempt.
 
     Qualifying rule (v23): an attempt qualifies only when it holds
@@ -374,6 +387,18 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
     its not_in_format and rejected-mark records are removed, as
     is the download-rate calibration (the load/record/effective-
     rate/estimate helpers that followed this function).
+
+    v65: the include_history machinery is restored for the web
+    app's manual Redownload tool, whose "Include previous
+    attempts" scope the v62 form silently planned as current
+    only. With include_history set, earlier attempts are
+    downloaded into attempt-<n> folders under the student's
+    folder and watermarked under "<key>:attempt-<n>"; an
+    earlier attempt with no ZIP attachment is reported on a
+    not_in_format record, and an earlier attempt whose ZIP is
+    rejected is watermarked with a rejected mark so later runs
+    report it from the record. Automatic passes keep
+    include_history off: current attempt only, as in v62.
     """
     fetch_submissions_fn = fetch_submissions_fn or fetch_submissions
     fetch_bytes_fn = fetch_bytes_fn or fetch_bytes
@@ -411,118 +436,199 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
             continue
         if wanted is not None and user_id not in wanted:
             continue
-        attachments = sub.get("attachments") or []
-        zip_att = next(
-            (a for a in attachments
-             if a["filename"].lower().endswith(".zip")), None)
-        if not zip_att:
-            # Not an HW Signing package: a submission that does
-            # not hold a ZIP file is simply not considered — no
-            # record, no log line (the teacher's direction,
-            # 2026-11-08, carried into v22).
-            continue
-        folder = dl_dir / subdir / user_id if subdir \
+        # Attempt items: earlier attempts (oldest first) when
+        # the history is included, then the current attempt,
+        # which keeps the canonical folder and key.
+        items = []
+        if include_history:
+            seen = {sub.get("attempt")}
+            for h in sub.get("submission_history") or []:
+                if not isinstance(h, dict):
+                    continue
+                ha = h.get("attempt")
+                if ha is None or ha in seen:
+                    continue
+                seen.add(ha)
+                items.append({
+                    "attempt": ha,
+                    "submitted_at": h.get("submitted_at"),
+                    "attachments": h.get("attachments") or [],
+                    "submission_id": h.get("id") or sub.get("id"),
+                    "current": False})
+            items.sort(key=lambda a: a["attempt"]
+                       if isinstance(a["attempt"], int) else 0)
+        items.append({
+            "attempt": sub.get("attempt"),
+            "submitted_at": sub.get("submitted_at"),
+            "attachments": sub.get("attachments") or [],
+            "submission_id": sub.get("id"), "current": True})
+        base_folder = dl_dir / subdir / user_id if subdir \
             else dl_dir / user_id
-        key = f"{key_prefix}:{user_id}" if key_prefix else user_id
-        zip_path = folder / "package.zip"
-        audio_path = folder / "submission-audio.wav"
-        fingerprint_path = folder / FINGERPRINT_ENTRY_NAME
-        html_path = folder / "submission.html"
-        listing = {"submission_id": sub.get("id"),
-                   "submitted_at": sub.get("submitted_at"),
-                   "attempt": sub.get("attempt")}
-        stored = state.get(key)
-        present = zip_path.exists() and html_path.exists() \
-            and (audio_path.exists() or fingerprint_path.exists())
+        base_key = f"{key_prefix}:{user_id}" if key_prefix else user_id
+        for item in items:
+            attachments = item["attachments"]
+            zip_att = next(
+                (a for a in attachments
+                 if a["filename"].lower().endswith(".zip")), None)
+            if not zip_att:
+                # Not an HW Signing package: a submission that
+                # does not hold a ZIP file is simply not
+                # considered — no record, no log line (the
+                # teacher's direction, 2026-11-08, carried into
+                # v22). Exception (v32, restored v65): on the
+                # on-demand history path, an EARLIER attempt is
+                # reported (not downloaded) so the redownload
+                # tool can show why its previous-attempt count
+                # differs from Canvas. The current attempt keeps
+                # the silent rule, as do all non-history runs.
+                if include_history and not item["current"]:
+                    emit({"user_id": user_id,
+                          "user_name": user.get("name"),
+                          "not_in_format": True,
+                          "holds": describe_attempt_files(attachments),
+                          "attempt": item["attempt"],
+                          "submitted_at": item["submitted_at"],
+                          "fetched_bytes": 0,
+                          "current_attempt": False})
+                continue
+            is_current = item["current"]
+            folder = base_folder if is_current else \
+                base_folder / f"attempt-{item['attempt']}"
+            key = base_key if is_current else \
+                f"{base_key}:attempt-{item['attempt']}"
+            zip_path = folder / "package.zip"
+            audio_path = folder / "submission-audio.wav"
+            fingerprint_path = folder / FINGERPRINT_ENTRY_NAME
+            html_path = folder / "submission.html"
+            listing = {"submission_id": item["submission_id"],
+                       "submitted_at": item["submitted_at"],
+                       "attempt": item["attempt"]}
+            stored = state.get(key)
+            present = zip_path.exists() and html_path.exists() \
+                and (audio_path.exists() or fingerprint_path.exists())
 
-        def media_fields():
-            # The package's media entry, whichever form was
-            # extracted: the WAV (audio form, on disk from an
-            # earlier version) or the fingerprint file (the
-            # current form).
-            fields = {}
-            if audio_path.exists():
-                fields["audio_path"] = str(audio_path)
-            if fingerprint_path.exists():
-                fields["fingerprint_path"] = str(fingerprint_path)
-            return fields
+            def media_fields():
+                # The package's media entry, whichever form was
+                # extracted: the WAV (audio form) or the
+                # fingerprint file (the current form).
+                fields = {}
+                if audio_path.exists():
+                    fields["audio_path"] = str(audio_path)
+                if fingerprint_path.exists():
+                    fields["fingerprint_path"] = str(fingerprint_path)
+                return fields
 
-        if not force and stored is not None and present and \
-                all(stored.get(k) == v for k, v in listing.items()):
-            emit({"user_id": user_id,
-                  "user_name": user.get("name"),
+            if not force and not is_current and stored is not None \
+                    and stored.get("rejected") \
+                    and all(stored.get(k) == v
+                            for k, v in listing.items()):
+                # v34 (restored v65): this earlier attempt's ZIP
+                # was rejected on an earlier run and the
+                # rejection is on record — report it from the
+                # record, fetch nothing. (A forced run falls
+                # through and retries it.)
+                emit({"user_id": user_id,
+                      "user_name": user.get("name"),
+                      "zip_path": str(zip_path),
+                      "skipped": True, "rejected": True,
+                      "fetched_bytes": 0,
+                      "current_attempt": is_current, **stored})
+                continue
+            if not force and stored is not None and present and \
+                    all(stored.get(k) == v
+                            for k, v in listing.items()):
+                emit({"user_id": user_id,
+                      "user_name": user.get("name"),
+                      **media_fields(),
+                      "html_path": str(html_path),
+                      "zip_path": str(zip_path),
+                      "skipped": True, "fetched_bytes": 0,
+                      "current_attempt": is_current, **stored})
+                continue
+            # v55: refuse an oversize ZIP on its declared size
+            # before its bytes are fetched into memory; the
+            # extraction limits below can only act after the
+            # fetch. v56: a declared size that is not a number
+            # is ignored (the fetch and extraction limits still
+            # act on the real bytes).
+            declared = zip_att.get("size")
+            try:
+                declared_n = int(declared) if declared is not None else None
+            except (TypeError, ValueError):
+                declared_n = None
+            if declared_n is not None and \
+                    declared_n > MAX_ZIP_TOTAL_BYTES + (1 << 20):
+                rec = {"user_id": user_id,
+                       "user_name": user.get("name"),
+                       "zip_path": str(zip_path),
+                       "error": (f"package ZIP rejected: declared size "
+                                 f"{declared_n} bytes, over the "
+                                 f"{MAX_ZIP_TOTAL_BYTES + (1 << 20)} byte "
+                                 f"limit (250 MB plus a 1 MB allowance)"),
+                       "fetched_bytes": 0,
+                       "current_attempt": is_current, **listing}
+                if not is_current:
+                    rec["rejected"] = True
+                    state[key] = {**listing, "rejected": True}
+                    save_state()
+                emit(rec)
+                continue
+            zip_bytes = fetch_bytes_fn(cfg, zip_att["url"])
+            zip_sha = hashlib.sha256(zip_bytes).hexdigest()
+            mark = {**listing, "zip_sha256": zip_sha}
+            if not force and stored == mark and present:
+                emit({"user_id": user_id,
+                      "user_name": user.get("name"),
+                      **media_fields(),
+                      "html_path": str(html_path),
+                      "zip_path": str(zip_path),
+                      "skipped": True,
+                      "fetched_bytes": len(zip_bytes),
+                      "current_attempt": is_current, **mark})
+                continue
+            folder.mkdir(parents=True, exist_ok=True)
+            zip_path.write_bytes(zip_bytes)
+            try:
+                # An earlier attempt's ZIP may hold the older
+                # audio form (it was the current form when the
+                # attempt was submitted): on the history path
+                # that form extracts, so the attempt can be
+                # checked and watched like any other (v65).
+                # The current attempt keeps the v62 rule.
+                extract_package_zip(zip_bytes, folder,
+                                    allow_audio=not is_current)
+            except ValueError as e:
+                # A malformed or hostile ZIP is kept as
+                # package.zip for the record, nothing is
+                # extracted from it, and the failure is
+                # reported on the record (the web app logs
+                # records carrying an "error"). v34 (restored
+                # v65): for an earlier attempt the rejection is
+                # also watermarked (rejected mark), so later
+                # runs report it from the record instead of
+                # re-fetching bytes that can never succeed; a
+                # current attempt is never marked, so a later
+                # pass retries it as before.
+                rec = {"user_id": user_id,
+                       "user_name": user.get("name"),
+                       "zip_path": str(zip_path),
+                       "error": f"package ZIP rejected: {e}",
+                       "fetched_bytes": len(zip_bytes),
+                       "current_attempt": is_current, **mark}
+                if not is_current:
+                    rec["rejected"] = True
+                    state[key] = {**mark, "rejected": True}
+                    save_state()
+                emit(rec)
+                continue
+            state[key] = mark
+            save_state()
+            emit({"user_id": user_id, "user_name": user.get("name"),
                   **media_fields(),
                   "html_path": str(html_path),
                   "zip_path": str(zip_path),
-                  "skipped": True, "fetched_bytes": 0,
-                  "current_attempt": True, **stored})
-            continue
-        # v55: refuse an oversize ZIP on its declared size
-        # before its bytes are fetched into memory; the
-        # extraction limits below can only act after the fetch.
-        # v56: a declared size that is not a number is ignored
-        # (the fetch and extraction limits still act on the
-        # real bytes) — before, int() raised and the whole
-        # download pass died on one student's bad listing,
-        # skipping every remaining student.
-        declared = zip_att.get("size")
-        try:
-            declared_n = int(declared) if declared is not None else None
-        except (TypeError, ValueError):
-            declared_n = None
-        if declared_n is not None and \
-                declared_n > MAX_ZIP_TOTAL_BYTES + (1 << 20):
-            emit({"user_id": user_id,
-                  "user_name": user.get("name"),
-                  "zip_path": str(zip_path),
-                  "error": (f"package ZIP rejected: declared size "
-                            f"{declared_n} bytes, over the "
-                            f"{MAX_ZIP_TOTAL_BYTES + (1 << 20)} byte "
-                            f"limit (250 MB plus a 1 MB allowance)"),
-                  "fetched_bytes": 0,
-                  "current_attempt": True, **listing})
-            continue
-        zip_bytes = fetch_bytes_fn(cfg, zip_att["url"])
-        zip_sha = hashlib.sha256(zip_bytes).hexdigest()
-        mark = {**listing, "zip_sha256": zip_sha}
-        if not force and stored == mark and present:
-            emit({"user_id": user_id,
-                  "user_name": user.get("name"),
-                  **media_fields(),
-                  "html_path": str(html_path),
-                  "zip_path": str(zip_path),
-                  "skipped": True,
                   "fetched_bytes": len(zip_bytes),
-                  "current_attempt": True, **mark})
-            continue
-        folder.mkdir(parents=True, exist_ok=True)
-        zip_path.write_bytes(zip_bytes)
-        try:
-            extract_package_zip(zip_bytes, folder)
-        except ValueError as e:
-            # A malformed or hostile ZIP is kept as package.zip
-            # for the record, nothing is extracted from it, and
-            # the failure is reported on the record (the web app
-            # logs records carrying an "error"). It is never
-            # watermarked, so a later pass retries it. A ZIP in
-            # the older audio form fails extraction here as not
-            # in the current format (v62) and is reported the
-            # same way.
-            emit({"user_id": user_id,
-                  "user_name": user.get("name"),
-                  "zip_path": str(zip_path),
-                  "error": f"package ZIP rejected: {e}",
-                  "fetched_bytes": len(zip_bytes),
-                  "current_attempt": True, **mark})
-            continue
-        state[key] = mark
-        save_state()
-        emit({"user_id": user_id, "user_name": user.get("name"),
-              **media_fields(),
-              "html_path": str(html_path),
-              "zip_path": str(zip_path),
-              "fetched_bytes": len(zip_bytes),
-              "current_attempt": True, **mark})
+                  "current_attempt": is_current, **mark})
     save_state()
     return records
 
@@ -535,22 +641,28 @@ def download_packages(cfg, fetch_submissions_fn=None, fetch_bytes_fn=None,
 # bytes. A ZIP holding the older audio form
 # (submission.html + submission-audio.wav) is not in the
 # current format and is rejected, as is any mixed or partial
-# set.
+# set. v65: on the earlier-attempt history path only
+# (allow_audio), the audio form extracts — it was the current
+# form when those attempts were submitted.
 FINGERPRINT_ENTRY_NAME = "submission-fingerprint.bin"
 PACKAGE_ZIP_NAMES_FP = ("submission.html", FINGERPRINT_ENTRY_NAME)
+PACKAGE_ZIP_NAMES_AUDIO = ("submission.html", "submission-audio.wav")
 PACKAGE_ZIP_NAMES = PACKAGE_ZIP_NAMES_FP
 MAX_ZIP_ENTRY_BYTES = 200 * 1024 * 1024   # 200 MB per entry
 MAX_ZIP_TOTAL_BYTES = 250 * 1024 * 1024   # 250 MB total, uncompressed
 
 
-def extract_package_zip(zip_bytes, folder):
+def extract_package_zip(zip_bytes, folder, allow_audio=False):
     """Safely extract a v2 submission ZIP into folder.
 
     The ZIP must hold exactly the current (fingerprint) form:
     submission.html + submission-fingerprint.bin. The older
     audio form (submission.html + submission-audio.wav) is not
-    in the current format and is rejected. Raises ValueError
-    (with the reason) for:
+    in the current format and is rejected — except on the
+    earlier-attempt history path (allow_audio, v65), where the
+    audio form was the current form when the attempt was
+    submitted and extracts as it did before v62. Raises
+    ValueError (with the reason) for:
     an unreadable ZIP, an absolute or parent-traversing entry path,
     any entry other than the two expected (including directory
     entries and duplicates), an entry over MAX_ZIP_ENTRY_BYTES, or
@@ -577,11 +689,17 @@ def extract_package_zip(zip_bytes, folder):
     names = [info.filename for info in infos]
     if sorted(names) == sorted(PACKAGE_ZIP_NAMES_FP):
         form, entry_names = "fingerprint", PACKAGE_ZIP_NAMES_FP
+    elif allow_audio and sorted(names) == sorted(PACKAGE_ZIP_NAMES_AUDIO):
+        form, entry_names = "audio", PACKAGE_ZIP_NAMES_AUDIO
     else:
+        expected = list(PACKAGE_ZIP_NAMES_FP)
+        if allow_audio:
+            expected = (f"{list(PACKAGE_ZIP_NAMES_FP)} (fingerprint "
+                        f"form) or {list(PACKAGE_ZIP_NAMES_AUDIO)} "
+                        f"(audio form)")
         raise ValueError(
             f"not in the current format: ZIP must hold exactly "
-            f"{list(PACKAGE_ZIP_NAMES_FP)} (fingerprint form), "
-            f"found {names}")
+            f"{expected}, found {names}")
     total = sum(info.file_size for info in infos)
     for info in infos:
         if info.file_size > MAX_ZIP_ENTRY_BYTES:
@@ -628,6 +746,11 @@ def extract_package_zip(zip_bytes, folder):
         if isinstance(e, ValueError):
             raise
         raise ValueError(f"cannot extract package ZIP ({e})") from e
+    if form == "audio":
+        (folder / FINGERPRINT_ENTRY_NAME).unlink(missing_ok=True)
+        return {"html_path": str(written["submission.html"]),
+                "package_form": form,
+                "audio_path": str(written["submission-audio.wav"])}
     # v55: remove a stale WAV left over from an earlier
     # audio-form submission in the same folder. A stale WAV
     # beside a new fingerprint package would otherwise be picked
@@ -1582,17 +1705,26 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
     comparison could be made (not configured, or a fingerprint
     unreadable or missing), passed likewise stays None.
 
-    A package whose media entry is not the fingerprint file is
-    not in the current format: the result reports that, with
-    passed None — the older audio form's global-similarity rule
-    and its WAV-repair retry are removed.
+    A package in the older audio form (its media entry is the
+    WAV, not the fingerprint file) is measured the same way
+    (v65): the submitted fingerprint is computed from the WAV
+    through the same fingerprint function — chromaprint
+    decodes any media ffmpeg reads, WAV included — and the
+    same blockwise comparison and verdict rule run on it.
+    Before v65 such a package reported not-fingerprint-format
+    and could never be measured at all, however often it was
+    redownloaded, because the ZIP on Canvas IS the audio-form
+    package. A package whose media entry is neither the
+    fingerprint file nor a readable WAV still reports
+    not-fingerprint-format, with passed None.
 
     Whenever no comparison could be made, the result's "reason"
     is a machine-readable token (v64), so the dashboard can say
     what actually happened instead of blaming the tooling:
     "not-downloaded" (no video file yet; available False),
-    "not-fingerprint-format" (the package's media entry is not
-    the fingerprint file), "submitted-fingerprint-missing"
+    "not-fingerprint-format" (the package's media entry is
+    neither the fingerprint file nor a WAV),
+    "submitted-fingerprint-missing"
     (the fingerprint file is absent, empty or unreadable) and
     "video-fingerprint-failed" (the video's fingerprint could
     not be computed; the diagnostic from
@@ -1608,17 +1740,52 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
         out["reason"] = "not-downloaded"
         return out
     out["available"] = True
-    if Path(canvas_audio_path).name != FINGERPRINT_ENTRY_NAME:
+    # The production fingerprint function is the diagnostic
+    # sibling, so a fingerprint that cannot be computed carries
+    # its reason (v64); an injected fingerprint_fn keeps the
+    # plain list-or-None contract and yields no diagnostic.
+    # Defined before the submitted side because the audio form
+    # computes its submitted fingerprint through it (v65).
+    fp_diag = None
+    if fingerprint_fn is None:
+        def fp_fn(p):
+            nonlocal fp_diag
+            fp, fp_diag = chromaprint_fingerprint_diag(p, ffmpeg=ffmpeg)
+            return fp
+    else:
+        fp_fn = fingerprint_fn
+    media_name = Path(canvas_audio_path).name
+    if media_name == FINGERPRINT_ENTRY_NAME:
+        try:
+            raw = Path(canvas_audio_path).read_bytes()
+            submitted_fp = list(struct.unpack(
+                f"<{len(raw) // 4}I", raw[:len(raw) // 4 * 4]))
+        except OSError:
+            submitted_fp = None
+        if not submitted_fp:
+            out["reason"] = "submitted-fingerprint-missing"
+            return out
+    elif Path(canvas_audio_path).suffix.lower() == ".wav":
+        # The audio form (v65): the package holds the WAV
+        # itself, so the submitted fingerprint is computed from
+        # it and the SAME blockwise comparison and verdict run
+        # below. The span of the computed fingerprint is the
+        # canvas duration, as in the fingerprint path.
+        try:
+            submitted_fp = fp_fn(canvas_audio_path)
+        except Exception as e:  # noqa: BLE001 - recorded below
+            out["error"] = f"{type(e).__name__}: {e}"
+            submitted_fp = None
+        if not submitted_fp:
+            out["reason"] = "submitted-fingerprint-missing"
+            if fp_diag:
+                out["submitted_fingerprint_error"] = fp_diag
+            return out
+        submitted_fp = list(submitted_fp)
+    else:
+        # Neither the fingerprint file nor a WAV: nothing
+        # measurable in the package.
         out["reason"] = "not-fingerprint-format"
-        return out
-    try:
-        raw = Path(canvas_audio_path).read_bytes()
-        submitted_fp = list(struct.unpack(
-            f"<{len(raw) // 4}I", raw[:len(raw) // 4 * 4]))
-    except OSError:
-        submitted_fp = None
-    if not submitted_fp:
-        out["reason"] = "submitted-fingerprint-missing"
         return out
     # The fingerprint span is the canvas duration: the items are
     # the submitted evidence, at FP_ITEM_S seconds each.
@@ -1633,18 +1800,6 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
     out["claimed_duration_s"] = claimed
     if claimed is not None and canvas_dur is not None:
         out["claimed_diff_s"] = round(abs(canvas_dur - claimed), 1)
-    # The production fingerprint function is the diagnostic
-    # sibling, so a video fingerprint that cannot be computed
-    # carries its reason (v64); an injected fingerprint_fn keeps
-    # the plain list-or-None contract and yields no diagnostic.
-    fp_diag = None
-    if fingerprint_fn is None:
-        def fp_fn(p):
-            nonlocal fp_diag
-            fp, fp_diag = chromaprint_fingerprint_diag(p, ffmpeg=ffmpeg)
-            return fp
-    else:
-        fp_fn = fingerprint_fn
     fp_canvas = submitted_fp
     try:
         fp_yt = fp_fn(youtube_media_path)

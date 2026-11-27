@@ -590,17 +590,45 @@ def main():
           and yt["passed"] is None and not yt["youtube_flag"],
           "youtube cross-check: no chromaprint — with no "
           "fingerprint comparison, passed stays None")
-    # An audio-form media entry is not in the current format:
-    # neither a pass nor a flag, and no verdict is computed.
+    # v65: an audio-form package IS measured — the submitted
+    # fingerprint is computed from the WAV through the
+    # fingerprint function and the same blockwise rule runs.
+    # (Before v65 it reported not-fingerprint-format and could
+    # never be measured, however often it was redownloaded.)
     yt = audit.youtube_cross_check(audio_path, yt_video, parsed_yt, cfg,
                                    fingerprint_fn=lambda p: fp_a)
-    check(yt["passed"] is None and not yt["youtube_flag"]
-          and yt.get("reason") == "not-fingerprint-format"
+    check(yt["available"] and yt["passed"] is True
+          and yt["similarity"] == 1.0 and yt["block_median"] == 1.0
+          and not yt["youtube_flag"] and "reason" not in yt
+          and yt["canvas_duration_s"]
+          == round(200 * audit.FP_ITEM_S, 1)
           and "duration_diff_s" not in yt,
-          "v64: an audio-form package is reported by the "
-          "cross-check's machine-readable reason "
-          "not-fingerprint-format (v62: not in the current "
-          "format, passed stays None)")
+          "v65: an audio-form package measures from its WAV "
+          "and passes when the fingerprints match; the canvas "
+          "duration comes from the computed fingerprint")
+    yt = audit.youtube_cross_check(
+        audio_path, yt_video, parsed_yt, cfg,
+        fingerprint_fn=lambda p: fp_a if p == audio_path else fp_b)
+    check(yt["passed"] is False and yt["youtube_flag"]
+          and yt["similarity"] < 0.9,
+          "v65: an audio-form package flags when the video's "
+          "fingerprint differs from the WAV's")
+    yt = audit.youtube_cross_check(audio_path, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: None)
+    check(yt["passed"] is None and not yt["youtube_flag"]
+          and yt.get("reason") == "submitted-fingerprint-missing",
+          "v65: an audio-form package whose WAV fingerprint "
+          "cannot be computed stores reason "
+          "submitted-fingerprint-missing")
+    other_media = tmp / "media.txt"
+    other_media.write_bytes(b"not media")
+    yt = audit.youtube_cross_check(other_media, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
+    check(yt["passed"] is None
+          and yt.get("reason") == "not-fingerprint-format",
+          "v65: a package media entry that is neither the "
+          "fingerprint file nor a WAV still stores reason "
+          "not-fingerprint-format")
 
     # 5b. v64: every no-comparison branch of the cross-check
     # stores its machine-readable reason, and the production
@@ -1049,6 +1077,89 @@ def main():
           and not hasattr(audit, "effective_download_rate")
           and not hasattr(audit, "estimate_download"),
           "v62: no download-rate calibration helpers in audit.py")
+
+    # 9c. v65: include_history restores the earlier-attempt
+    # downloads for the Redownload tool. Same fixture as 9b:
+    # attempt 1 holds a ZIP, attempt 2 holds no ZIP.
+    fetch_count["n"] = 0
+    recs = audit.download_packages(cfg, hist_submissions,
+                                   counting_bytes, include_history=True)
+    by_attempt = {r.get("attempt"): r for r in recs}
+    check(by_attempt.get(1, {}).get("current_attempt") is False
+          and not by_attempt[1].get("error")
+          and (hfolder / "attempt-1" / "submission.html").exists()
+          and fetch_count["n"] == 1,
+          "v65: include_history downloads a previous attempt "
+          "into its attempt-<n> folder")
+    check(by_attempt.get(2, {}).get("not_in_format") is True
+          and "notes.pdf" in (by_attempt[2].get("holds") or "")
+          and not (hfolder / "attempt-2").exists(),
+          "v65: a previous attempt with no ZIP is reported "
+          "not_in_format (what it holds is named), not "
+          "silently skipped")
+    state = json.loads((Path(cfg["data_dir"]) / "download-state.json")
+                       .read_text(encoding="utf-8"))
+    check(state.get("4242:attempt-1", {}).get("attempt") == 1,
+          "v65: the previous attempt is watermarked under its "
+          "attempt key")
+    fetch_count["n"] = 0
+    recs = audit.download_packages(cfg, hist_submissions,
+                                   counting_bytes, include_history=True)
+    check(fetch_count["n"] == 0
+          and any(r.get("attempt") == 1 and r.get("skipped")
+                  for r in recs)
+          and any(r.get("not_in_format") for r in recs),
+          "v65: a second history run fetches nothing for the "
+          "present previous attempt and still reports the "
+          "no-ZIP attempt")
+
+    # A previous attempt whose ZIP is rejected is watermarked
+    # with a rejected mark; a later run reports it from the
+    # record and fetches nothing for it.
+    def bad_hist_submissions(_cfg):
+        return [{
+            "id": 9200, "user_id": 4343, "attempt": 2,
+            "workflow_state": "submitted",
+            "submitted_at": "2026-11-10T05:00:00Z",
+            "user": {"id": 4343, "name": "Rejected Student"},
+            "attachments": [
+                {"filename": "C4343H1-G8-Y1000-261110.zip",
+                 "url": "fixture://cur2", "size": len(zip_bytes)}],
+            "submission_history": [
+                {"id": 9200, "attempt": 1,
+                 "submitted_at": "2026-11-08T05:00:00Z",
+                 "attachments": [
+                     {"filename": "C4343H1-G5-Y0900-261108.zip",
+                      "url": "fixture://bad1", "size": 12}]},
+            ],
+        }]
+
+    def mixed_bytes(_cfg, url):
+        fetch_count["n"] += 1
+        return b"not a zip!!" if url == "fixture://bad1" else zip_bytes
+
+    fetch_count["n"] = 0
+    recs = audit.download_packages(cfg, bad_hist_submissions,
+                                   mixed_bytes, include_history=True)
+    bad = [r for r in recs if r.get("attempt") == 1]
+    check(len(bad) == 1 and "error" in bad[0]
+          and bad[0].get("rejected") is True,
+          "v65: a previous attempt with a rejected ZIP is "
+          "reported with its error and a rejected mark")
+    state = json.loads((Path(cfg["data_dir"]) / "download-state.json")
+                       .read_text(encoding="utf-8"))
+    check(state.get("4343:attempt-1", {}).get("rejected") is True,
+          "v65: the rejection is watermarked for the attempt")
+    fetch_count["n"] = 0
+    recs = audit.download_packages(cfg, bad_hist_submissions,
+                                   mixed_bytes, include_history=True)
+    bad = [r for r in recs if r.get("attempt") == 1]
+    check(fetch_count["n"] == 0 and len(bad) == 1
+          and bad[0].get("skipped") is True
+          and bad[0].get("rejected") is True,
+          "v65: a recorded rejection is reported from the "
+          "record on a later run — the bad ZIP is not "
+          "re-fetched")
 
     # 9c. v62 (was v34): previous attempts are not reported
     # and leave no rejected marks; a current attempt's rejected

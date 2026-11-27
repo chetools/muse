@@ -557,6 +557,35 @@ element created lets claimAudio() and the stall watchdog
 reach elements a rebuild has detached — a tile playing
 when the grid was rebuilt (a Group by change, a sort, a
 filter) no longer keeps sounding off-screen.
+
+v65 (2026-11-27): two teacher-reported defects. (1) The
+Redownload tool honours "Include previous attempts" again:
+the v62 form planned and ran that scope as current attempts
+only while the panel still offered the scope and the table
+still directed the teacher to it, so a redownload could
+report "0 downloaded, 12 unchanged" beside a note saying a
+previous attempt was not downloaded. The plan and the run
+fetch previous attempts through the submission_history
+machinery (audit.download_packages include_history), the
+estimate counts them (packages, to-fetch and bytes), and
+previous attempts with no ZIP or a rejected ZIP are
+reported again (not_in_format / rejected); automatic
+passes stay current-attempt only. The YouTube cross-check
+measures an audio-form package from its WAV (audit.py), so
+the "old format" cell state disappears for those packages;
+the check schema rises to 6 so a stored "old format"
+result is re-done once under v65. (2) On the wall, a quick
+scrub no longer strands tiles black at 0%: a tile's
+intended fraction is recorded (seekFrac) and shown by its
+badge while unlanded (effFrac, with badges paired to tiles
+by media file name, not position), and the stall watchdog
+owes a tile carrying an unlanded target a longer, growing
+patience window and no retry cap — the v64 watchdog
+reloaded a tile whose far-seek fetch was still in flight
+at 3 s, discarding the fetch and the frame, and after
+three cycles left it at 0% for the session (reproduced in
+tests/wall_regression_v65.py against the v64 code, which
+fails it, and the v65 code, which passes).
 """
 
 import argparse
@@ -589,7 +618,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-APP_VERSION = "v64"
+APP_VERSION = "v65"
 CONFIG_PATH = Path(os.environ.get("TEACHER_AUDIT_CONFIG",
                                   HERE / "config.json"))
 
@@ -2069,7 +2098,13 @@ def _youtube_only_entry(cfg, pkg, base_entry):
 # one acoustic re-check under v64 — its stored "reason" may
 # predate the machine-readable reasons, and its video may
 # have been only partly downloaded at the first check.
-CHECK_SCHEMA = 5
+# Schema 6 (v65): the YouTube cross-check measures an
+# audio-form package (its media entry is the WAV) instead of
+# reporting it not-fingerprint-format — the submitted
+# fingerprint is computed from the WAV and the same blockwise
+# rule runs — so a stored "old format" result predates the
+# measurement and is re-done once.
+CHECK_SCHEMA = 6
 
 _SAMPLE_BYTES = 1024 * 1024
 
@@ -2599,7 +2634,18 @@ def redownload_plan(cfg, f):
     v62: the plan covers current attempts only and its
     "not_in_format" and "rejected" lists are empty (the
     previous-attempt history machinery is removed); the keys
-    are kept for the estimate and status shapes."""
+    are kept for the estimate and status shapes.
+
+    v65: scope "previous" is honoured again, as before v62 —
+    the history walk comes from the shared cache, and the
+    plan also returns the previous attempts that are not in
+    package format ("not_in_format": student, attempt, what
+    the attempt holds) and those already recorded as rejected
+    ("rejected"), so the estimate and the run's summary can
+    show them instead of dropping them silently. The v62
+    form planned a "previous" scope as the current attempts
+    while the panel still offered the scope and the table
+    still directed the teacher to it."""
     require_canvas(cfg)
     checks = results_store(cfg)
     finals = finals_store(cfg)
@@ -2612,17 +2658,42 @@ def redownload_plan(cfg, f):
     rejected = []
     fmt_entries = {}
     by_target = {}
-    # v62: the redownload scope no longer downloads previous
-    # attempts (download_packages fetches the current attempt
-    # only); a "previous" scope is planned as the current
-    # attempts, as the run downloads.
-    want_prev = False
+    want_prev = f["scope"] == "previous"
     for t in scan_targets(cfg):
         if f["course"] and (t.get("course_name") or "") != f["course"]:
             continue
         if f["hw"] and (t.get("assignment_name") or "") != f["hw"]:
             continue
         cid, aid = t["course_id"], t["assignment_id"]
+        hist_by_user = {}
+        if want_prev:
+            try:
+                for hs in fetch_history_cached(cfg, cid, aid):
+                    huid = str(hs.get("user_id")
+                               or (hs.get("user") or {}).get("id") or "")
+                    if not huid:
+                        continue
+                    hist = hs.get("submission_history") or []
+                    hist_by_user[huid] = hist
+                    # Format knowledge for the table: every
+                    # earlier attempt of every student in this
+                    # target, not just the filtered selection.
+                    cur_att = hs.get("attempt")
+                    for h in hist:
+                        if not isinstance(h, dict):
+                            continue
+                        ha = h.get("attempt")
+                        if ha is None or ha == cur_att:
+                            continue
+                        hatts = h.get("attachments") or []
+                        if any(a["filename"].lower().endswith(".zip")
+                               for a in hatts):
+                            continue
+                        fmt_entries.setdefault(
+                            unit_key(cid, aid, huid), {})[str(ha)] = \
+                            audit.describe_attempt_files(hatts)
+            except Exception:  # noqa: BLE001 - history is an add-on;
+                hist_by_user = {}  # the estimate then covers current
         for sub in scan_submissions(cfg, t):
             user = sub.get("user") or {}
             uid = str(sub.get("user_id") or user.get("id") or "")
@@ -2673,6 +2744,51 @@ def redownload_plan(cfg, f):
             entry = by_target.setdefault(
                 (cid, aid), {"target": t, "user_ids": set()})
             entry["user_ids"].add(uid)
+            if want_prev:
+                seen = {sub.get("attempt")}
+                for h in hist_by_user.get(uid) or []:
+                    if not isinstance(h, dict):
+                        continue
+                    ha = h.get("attempt")
+                    if ha is None or ha in seen:
+                        continue
+                    seen.add(ha)
+                    hatts = h.get("attachments") or []
+                    hzip = next((a for a in hatts if a["filename"]
+                                 .lower().endswith(".zip")), None)
+                    if not hzip:
+                        # Not a package attempt: counted and
+                        # listed, never downloaded (v34).
+                        not_in_format.append(
+                            {**base, "attempt": ha, "current": False,
+                             "submitted_at": h.get("submitted_at"),
+                             "holds": audit.describe_attempt_files(
+                                 hatts)})
+                        continue
+                    wkey = f"{cid}:{aid}:{uid}:attempt-{ha}"
+                    stored_h = state.get(wkey) or {}
+                    if not f["force"] and stored_h.get("rejected") \
+                            and stored_h.get("attempt") == ha \
+                            and stored_h.get("submitted_at") \
+                            == h.get("submitted_at") \
+                            and stored_h.get("submission_id") \
+                            == (h.get("id") or sub.get("id")):
+                        # Rejected on an earlier run and on
+                        # record: reported, never fetched (v34).
+                        rejected.append(
+                            {**base, "attempt": ha, "current": False,
+                             "submitted_at": h.get("submitted_at")})
+                        continue
+                    items.append({**base, "attempt": ha,
+                                  "current": False,
+                                  "submitted_at": h.get("submitted_at"),
+                                  "size": hzip.get("size") or 0,
+                                  "needs_fetch": _rd_needs(
+                                      state, folder / f"attempt-{ha}",
+                                      wkey,
+                                      ha, h.get("submitted_at"),
+                                      h.get("id") or sub.get("id"),
+                                      f["force"])})
     _record_attempt_formats(cfg, fmt_entries)
     targets = [{"target": v["target"],
                 "user_ids": sorted(v["user_ids"])}
@@ -2684,7 +2800,10 @@ def redownload_plan(cfg, f):
 def redownload_estimate(cfg, body):
     """Counts and bytes for a redownload selection (v62: no
     download-rate calibration and no time estimate — the
-    calibration helpers are removed from audit.py)."""
+    calibration helpers are removed from audit.py). v65: with
+    scope "previous" the counts and bytes cover the previous
+    attempts in scope as well, and the plan's not-in-format
+    list and rejected count are reported, as before v62."""
     f = _rd_norm_filters(body)
     plan = redownload_plan(cfg, f)
     fetch = [i for i in plan["items"] if i.get("needs_fetch")]
@@ -2798,17 +2917,35 @@ def start_redownload(cfg, body):
                             rec.get("fetched_bytes", 0)
 
                 try:
-                    # v62: download_packages has no include_history
-                    # form; every scope downloads current attempts.
-                    subs = scan_submissions(cfg, t)
-                    audit.download_packages(
-                        cfg,
-                        fetch_submissions_fn=lambda c, s=subs: s,
-                        fetch_bytes_fn=fetch_bytes_web,
-                        force=f["force"],
-                        progress_fn=progress, subdir=f"{cid}/{aid}",
-                        key_prefix=f"{cid}:{aid}",
-                        user_ids=entry["user_ids"])
+                    # v65: scope "previous" downloads the earlier
+                    # attempts too, from the cached history walk
+                    # the plan already made (include_history);
+                    # every other scope — and every automatic
+                    # pass — downloads current attempts only, as
+                    # since v62.
+                    if f["scope"] == "previous":
+                        subs = fetch_history_cached(cfg, cid, aid)
+                        audit.download_packages(
+                            cfg,
+                            fetch_submissions_fn=lambda c, s=subs: s,
+                            fetch_bytes_fn=fetch_bytes_web,
+                            force=f["force"],
+                            progress_fn=progress,
+                            subdir=f"{cid}/{aid}",
+                            key_prefix=f"{cid}:{aid}",
+                            user_ids=entry["user_ids"],
+                            include_history=True)
+                    else:
+                        subs = scan_submissions(cfg, t)
+                        audit.download_packages(
+                            cfg,
+                            fetch_submissions_fn=lambda c, s=subs: s,
+                            fetch_bytes_fn=fetch_bytes_web,
+                            force=f["force"],
+                            progress_fn=progress,
+                            subdir=f"{cid}/{aid}",
+                            key_prefix=f"{cid}:{aid}",
+                            user_ids=entry["user_ids"])
                 except Exception as e:  # noqa: BLE001 - one target
                     # must not stop the run (v34)
                     log_activity(
@@ -4302,7 +4439,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <th title="auto-saves · amber = differs from signed grade">Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
 <details class="howitworks"><summary>How this works</summary>
 <p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. Submissions are not re-graded: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's grade.</p>
-<p class="mut"><strong>YouTube match</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity only (which survives YouTube transcoding; duration is not used), and shows the similarity number, or "FLAGGED" plus the number, in the YouTube match column; a flagged submission's final grade stays blank until you enter one. When no comparison could be made, the cell names the reason instead — "old format" (the package is not in the fingerprint format), "no fingerprint" (the submitted fingerprint is missing or unreadable) or "video fingerprint failed" (the downloaded video's fingerprint could not be computed) — and a notice above the table summarises the states shown.</p>
+<p class="mut"><strong>YouTube match</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity only (which survives YouTube transcoding; duration is not used), and shows the similarity number, or "FLAGGED" plus the number, in the YouTube match column; a flagged submission's final grade stays blank until you enter one. A package in the older audio form is measured from its WAV in the same way. When no comparison could be made, the cell names the reason instead — "no usable media" (the package holds neither a fingerprint file nor a WAV), "no fingerprint" (the submitted fingerprint is missing or unreadable, or the WAV's fingerprint could not be computed) or "video fingerprint failed" (the downloaded video's fingerprint could not be computed) — and a notice above the table summarises the states shown.</p>
 <p class="mut"><strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full.</p>
 <p class="mut"><strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. With the default sort, students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p class="mut">Select, sort, filter and group the submissions below — the same view applies on the video wall, and the choice is kept in this browser. “Graded” means a grade is present: the signed grade from the package, or a final grade you entered. Sorting by Examined lists the not-yet-examined first (ascending). Attempts set to “Include previous” adds a subordinate row for each earlier attempt already downloaded, under its submission; nothing is downloaded from here — use the Redownload tool above with “Include previous attempts” for the rest.</p>
@@ -4733,14 +4870,18 @@ function bindViewS(){
 // given, stands in the Warnings cell.
 // The YouTube match cell names why no comparison was made
 // (v64), from the cross-check's stored machine-readable
-// reason: "old format" (the package is not in the
-// fingerprint format), "no fingerprint" (the submitted
-// fingerprint is missing, empty or unreadable) or "video
-// fingerprint failed" (the video's fingerprint could not
-// be computed). A degraded result stored before v64 has no
-// reason and shows "not measured". The blanket
-// "unavailable" token is gone: it blamed the tooling even
-// when the tooling worked and the package was at fault.
+// reason: "no usable media" (the package's media entry is
+// neither the fingerprint file nor a WAV — v65: an
+// audio-form package's WAV is fingerprinted and measured,
+// so the v64 "old format" token is gone), "no fingerprint"
+// (the submitted fingerprint is missing, empty or
+// unreadable, or the WAV's fingerprint could not be
+// computed) or "video fingerprint failed" (the video's
+// fingerprint could not be computed). A degraded result
+// stored before v64 has no reason and shows "not measured".
+// The blanket "unavailable" token is gone: it blamed the
+// tooling even when the tooling worked and the package was
+// at fault.
 function integCells(c, downloaded, mismatch){
   c=c||{};
   const pkg = !downloaded ? '<span class="badge">—</span>' :
@@ -4757,7 +4898,7 @@ function integCells(c, downloaded, mismatch){
     c.youtube.youtube_flag ? '<span class="badge bad">FLAGGED'+(ytSim!=null ? ' '+esc(ytSim) : "")+"</span>" :
     (c.youtube.passed && ytSim!=null) ? '<span class="badge ok">'+esc(ytSim)+"</span>" :
     !c.youtube.available ? '<span class="mut">—</span>' :
-    ytReason==="not-fingerprint-format" ? '<span class="mut">old format</span>' :
+    ytReason==="not-fingerprint-format" ? '<span class="mut">no usable media</span>' :
     ytReason==="submitted-fingerprint-missing" ? '<span class="mut">no fingerprint</span>' :
     ytReason==="video-fingerprint-failed" ? '<span class="mut">video fingerprint failed</span>' :
     '<span class="mut">not measured</span>';
@@ -4910,7 +5051,7 @@ function renderSubs(){
     const tally=r=>{ if(r) counts[r]=(counts[r]||0)+1; };
     VIEWLIST.forEach(s=>{ tally(ytNotMeasured(s.check,s.downloaded));
       if(ATTMODE==="previous") (s.attempts||[]).forEach(a=>tally(ytNotMeasured(a.check,true))); });
-    const labels={"not-fingerprint-format":"old format",
+    const labels={"not-fingerprint-format":"no usable media",
       "submitted-fingerprint-missing":"no fingerprint",
       "video-fingerprint-failed":"video fingerprint failed",
       "not-measured":"not measured"};
@@ -5593,7 +5734,13 @@ function bindTiles(){
     // current seek began, cleared when one completes; a
     // completed seek also restores the tile's retry budget.
     v.addEventListener("seeking",()=>{ v._seekSince=performance.now(); });
-    v.addEventListener("seeked",()=>{ v._seekSince=0; v._stallRetries=0; });
+    v.addEventListener("seeked",()=>{ v._seekSince=0; v._stallRetries=0;
+      // A landed scrub target is discharged (v65): the tile
+      // is at the position the wall asked for, so the badge
+      // and the watchdog go back to the real position.
+      if(v._targetFrac!==undefined && v.duration
+          && Math.abs(v.currentTime/v.duration-v._targetFrac)<=0.06){
+        delete v._targetFrac; v._stallWindow=undefined; } });
     v.addEventListener("mouseenter",()=>{ if(SCRUB) return;
       claimAudio(v); v.muted=false;
       markExamined(v.closest(".tile").dataset.id,"hover");
@@ -5932,6 +6079,16 @@ function playAfterSeek(v){
   setTimeout(()=>finish(true),1500);
 }
 function seekFrac(v,f){
+  // The intended fraction is recorded on the element (v65):
+  // while it is unlanded the badge shows it (never a reset
+  // 0%) and the stall watchdog owes the tile recovery
+  // toward it for as long as it takes — a far seek on a
+  // long take legitimately needs longer than the old 3 s
+  // patience, and a tile must not be abandoned at 0 with
+  // its target forgotten. A fresh target also earns a
+  // fresh watchdog window. The seeked handler in bindTiles
+  // discharges the target once the tile lands on it.
+  v._targetFrac=f; v._stallWindow=undefined;
   // A freshly rendered tile has no metadata yet (duration 0),
   // so a seek aimed at it is remembered on the element and
   // applied when loadedmetadata fires, instead of being
@@ -6000,13 +6157,34 @@ function setFracAll(f){
   vids().forEach(v=>seekFrac(v,f));
   $("scrub").value=Math.round(f*1000); $("pctlabel").textContent=Math.round(f*100)+"%";
 }
+function effFrac(v){
+  // The fraction a tile is accounted at (v65): its scrub
+  // target while that target is still unlanded (a deferred
+  // seek pending, or the position visibly short of it),
+  // else its real position. A tile whose element was
+  // reloaded mid-recovery reads currentTime 0 while its
+  // target sits in _wantFrac/_targetFrac; reporting the
+  // real 0 is what made scrubbed tiles look lost at "0%"
+  // in the teacher's report.
+  if(v._wantFrac!==undefined) return v._wantFrac;
+  if(v._targetFrac!==undefined && v.duration
+      && Math.abs(v.currentTime/v.duration-v._targetFrac)>0.06)
+    return v._targetFrac;
+  return frac(v);
+}
 function updateMaster(){
   const vs=vids(); if(!vs.length) return;
-  const f=vs.reduce((a,v)=>a+frac(v),0)/vs.length;
+  const f=vs.reduce((a,v)=>a+effFrac(v),0)/vs.length;
   $("scrub").value=Math.round(f*1000); $("pctlabel").textContent=Math.round(f*100)+"%";
+  // Badges are paired to tiles by media file name, not by
+  // position (v65): position in vids() does not match the
+  // tile order when a tile has no video (the warning on
+  // tileVideo), so the old index pairing could write one
+  // tile's position onto another tile's badge.
   vs.forEach(v=>{ const s=showing().find(x=>x.video_url&&v.src.endsWith(x.video_url.split("/").pop()));
-    const el=document.getElementById("pct_"+(s?s.id:"")); });
-  showing().forEach((s,i)=>{ const el=$("pct_"+s.id); if(el&&vs[i]) el.textContent=Math.round(frac(vs[i])*100)+"% · "+fmt(vs[i].currentTime)+" / "+fmt(vs[i].duration||s.duration_s); });
+    if(!s) return; const el=$("pct_"+s.id); if(!el) return;
+    const ef=effFrac(v), dur=v.duration||s.duration_s;
+    el.textContent=Math.round(ef*100)+"% · "+fmt(dur? ef*dur : v.currentTime)+" / "+fmt(dur); });
   $("syncinfo").textContent=vs.length+" videos · lengths "+vs.map(v=>fmt(v.duration||0)).join(", ");
 }
 let stallTick=0;
@@ -6037,9 +6215,79 @@ function reviveStalledTiles(list){
   // restores the budget); past the cap the watchdog leaves
   // the tile alone, and pressing play still works because
   // playAfterSeek no longer waits for seeked for ever.
+  //
+  // v65: a tile carrying an unlanded scrub target (see
+  // seekFrac) is handled by the branch at the top of the
+  // loop below, not by this capped path: its patience
+  // window is longer and grows, it is never abandoned
+  // while the target is unlanded, and its badge reports
+  // the target rather than a reset position (effFrac).
   const now=performance.now();
   if(!list) sweepDetachedVids(null);
   (list||vids()).forEach(v=>{
+    // A tile carrying an unlanded scrub target (v65) is
+    // owed recovery for as long as the target is unlanded:
+    // no retry cap, and a patience window that starts at
+    // 10 s — a far seek on a long take legitimately takes
+    // longer than the 3 s below — and doubles to a 30 s
+    // cap. The v64 form reloaded a stalled tile at 3 s:
+    // the reload discarded the in-flight seek fetch (and
+    // the metadata fetch behind the deferred re-seek),
+    // reset the tile to black at 0%, and after three such
+    // cycles the retry cap left it there for the session —
+    // the teacher's stranded tiles (wall regression v65
+    // traces: readyState 0, retries 3, the target still
+    // pending in _wantFrac, badge reading "0% · 0:00").
+    const tgt=(v._targetFrac!==undefined) ? v._targetFrac
+      : (v._wantFrac!==undefined ? v._wantFrac : null);
+    if(tgt!==null && v.src){
+      if(v.duration && !v.seeking
+          && Math.abs(v.currentTime/v.duration-tgt)<=0.06){
+        delete v._targetFrac; v._stallWindow=undefined;
+        v._metaSince=undefined;
+        return;
+      }
+      const win=v._stallWindow||10000;
+      if(v.seeking && now-(v._seekSince||now)<win)
+        return;  // its fetch is still young: leave it alone
+      if(!v.seeking && v.readyState<2 && v.networkState===2){
+        // A deferred seek's metadata fetch is in flight;
+        // land() assigns the seek when it arrives. Only a
+        // fetch older than the window counts as stuck.
+        if(!v._metaSince){ v._metaSince=now; return; }
+        if(now-v._metaSince<win) return;
+      }
+      if(v._stallNudge && now-v._stallNudge<win) return;
+      v._stallNudge=now;
+      v._metaSince=undefined;
+      if(v.readyState>=2 && !v.seeking && v.duration){
+        // Framed but short of the target: re-assign in
+        // place — no reload, so no frame is discarded. Only
+        // once per target: if the re-seek also lands short
+        // (the nearest keyframe is what it is), the target
+        // is discharged and the tile keeps that position
+        // instead of re-seeking for the rest of the session.
+        if(v._shortSeekFor===tgt){
+          delete v._targetFrac; v._shortSeekFor=undefined;
+          return;
+        }
+        seekFrac(v, tgt);
+        v._shortSeekFor=tgt;
+        return;
+      }
+      v._stallRetries=(v._stallRetries||0)+1;
+      v._stallWindow=Math.min(30000, win*2);
+      v._seekSince=now;
+      const wasPlaying=!v.paused || !!v._autoplay;
+      if(wasPlaying) v._autoplay=true;
+      // The deferred seek is registered BEFORE the reload,
+      // so the target survives it: land() applies _wantFrac
+      // when the new metadata arrives.
+      v._wantFrac=tgt;
+      v.load();
+      seekFrac(v, tgt);
+      return;
+    }
     if(!v.src || v.readyState>=2 || !v.duration) return;
     if(v.seeking){
       if(!v._seekSince){ v._seekSince=now; return; }
