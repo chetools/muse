@@ -705,6 +705,78 @@ The zoom view still plays at the plain wall speed
 (tests/wall_regression_v68.py covers the rate switch;
 tests/layout_regression_v68.py covers the Setup
 geometry).
+
+v69 (2026-11-27): the wall's durability rebuild, from
+the teacher's report that every video plays at first
+and develops problems over a session — under sustained
+many-tile load, in the teacher's default browser
+(Firefox; every wall harness to date runs Chromium).
+Three workstreams. (1) The app now opens in Chrome
+when Chrome is installed: the opener (web.py's, since
+v37 — the launchers deliberately no longer open the
+browser, which was the v37 cannot-connect defect)
+resolves Chrome from the App Paths registry or the
+standard install paths and starts it with a dedicated
+profile stored in the app folder (browser-profile),
+so the teacher's own profile and its extensions
+cannot interfere; with no Chrome installed the
+default browser opens, as before. The wall also
+reports the browser's user-agent to the Activity log
+once per load, so a future report names the browser
+without the teacher having to say it. (2) The wall's
+playback supervision is rebuilt around one desired
+state and one reconciler. The v64–v68 stall watchdog
+had accreted a branch per failure state — a target
+branch, an intent branch with an escalation counter,
+an error branch — and tiles still stranded in states
+no branch covered. Now WALLSTATE holds the wall's
+desired state in one place (the master fraction,
+wall-level playing, the tiles individually set
+playing or paused by the teacher, the speed; the
+grouping/filter selection stays in the persisted
+shared VIEW it has lived in since v29), persisted to
+localStorage, and a single periodic reconciler
+compares each showing tile with the desired state
+and applies the one matching correction from a single
+decision table: an errored element is reloaded at
+its accounted fraction (the v67 recovery, bounded
+retries with growing delays), an unlanded seek target
+is owed recovery with the v65 growing patience, a
+seek stuck with no frame is re-issued (v60), a tile
+that should be playing but is paused is played —
+escalating to a reload after three ineffective plays
+(v67) — or reloaded at its position when starved, a
+tile that should be paused but is playing is paused,
+a tile away from the master fraction is sought to
+it, and a tile that never got its frame is nudged
+(v52). The seek and play helpers express intent in
+WALLSTATE and give it a head start; correction is
+the reconciler's alone. A deferred play replaced
+by a pause no longer fires. The desired state is
+restored after the zoom round trip and across page
+loads: the wall returns at the persisted fraction —
+before v69 Back sought every tile to the zoom
+video's fraction, so a zoom whose video never loaded
+(fraction 0) reset the whole wall to 0%; the zoom's
+position now replaces the persisted fraction only
+when the zoom video actually has one. (3) Wall proxy
+files cut the sustained load: at video-download time,
+and for videos already downloaded in the background
+pass, the app's ffmpeg makes a low-resolution proxy
+of each wall video (at most 640 px wide, frame rate
+capped at 30, H.264/AAC in MP4, audio at 48 kbit/s)
+beside the original; the wall's tiles play the proxy
+when one exists and the original otherwise, and the
+zoom view always plays the original. Generation is
+background work — it never blocks a download or a
+check, a failure leaves the original in use, and the
+check fingerprint still covers the original file
+only, so a proxy appearing invalidates no stored
+check. Without ffmpeg everything degrades to the
+pre-v69 behaviour (tests/wall_regression_v69.py
+covers the reconciler's correction of a tile stranded
+with no legacy flags, the zoom round-trip fraction
+restore, and the proxy wiring and size effect).
 """
 
 import argparse
@@ -737,7 +809,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-APP_VERSION = "v68"
+APP_VERSION = "v69"
 CONFIG_PATH = Path(os.environ.get("TEACHER_AUDIT_CONFIG",
                                   HERE / "config.json"))
 
@@ -3263,6 +3335,8 @@ def wall_attempts(cfg, key):
                 "source": "canvas",
                 "video_url": f"/media/local/{local.name}"
                              if local.exists() else None,
+                "video_proxy_url": _proxy_url_for(
+                    local, "/media/local") if local.exists() else None,
                 "youtube": ver.get("youtube_link"),
                 "downloaded": local.exists(),
                 "duration_s": ver.get("duration_s"),
@@ -3574,6 +3648,16 @@ def auto_pipeline(cfg, download_fn=None, checks_fn=None, video_fn=None):
                 # v36: only the owed packages run, and each is owed
                 # just its acoustic part (see run_checks).
                 do_checks(only_keys=set(owed))
+        # v69: wall proxies for videos that lack one (downloads
+        # from before v69, or a generation that failed). Queued
+        # in the background; the pass does not wait for encodes.
+        try:
+            n_proxy = queue_missing_proxies(cfg)
+            if n_proxy:
+                log_activity("video", "wall proxy generation queued "
+                                      f"for {n_proxy} video(s)")
+        except Exception:  # noqa: BLE001 - advisory only
+            pass
         summary = (f"{new_pkgs} new/changed submission(s) downloaded, "
                    f"integrity checks run, {outcome['got']} video(s) "
                    f"downloaded"
@@ -3949,6 +4033,9 @@ def cleanup_inventory(cfg):
         has_video = vfile.exists()
         if has_video:
             claimed.add(vfile.name)
+            # v69: the video's wall proxy is claimed with it —
+            # it is not a loose video while its original is.
+            claimed.add(video_proxy_path(vfile).name)
         t = targets.get((pkg["course_id"], pkg["assignment_id"])) or {}
         gkey = (pkg["course_id"], pkg["assignment_id"])
         g = groups.setdefault(gkey, {
@@ -4041,6 +4128,12 @@ def selective_cleanup(cfg, keys, include_exports=False,
                 # a same-named file that appears later without
                 # the app's download cannot inherit its tag.
                 _forget_video_format(cfg, vf)
+                # v69: the wall proxy goes with its original.
+                _vp = video_proxy_path(vf)
+                if _vp.exists():
+                    freed += _vp.stat().st_size
+                    removed_files += 1
+                    _vp.unlink()
         sole = uid_counts.get(uid, 0) <= 1
         for store_name, store in stores:
             changed = False
@@ -4222,6 +4315,8 @@ def load_demo_students(cfg, finals=None, examined=None):
     for st in json.loads(f.read_text(encoding="utf-8")):
         if (d / st["video_file"]).exists():
             out.append({**st, "video_url": "/media/demo/" + st["video_file"],
+                        "video_proxy_url": _proxy_url_for(
+                            d / st["video_file"], "/media/demo"),
                         "youtube": None, "downloaded": True,
                         "score": grades_total(st),
                         # View fields (v29): test examples belong to
@@ -4331,6 +4426,8 @@ def wall_students(cfg, local_only=False):
             "source": "canvas",
             "video_url": f"/media/local/{local.name}" if local.exists()
             else None,
+            "video_proxy_url": _proxy_url_for(local, "/media/local")
+            if local.exists() else None,
             "youtube": ver.get("youtube_link"),
             "downloaded": local.exists(),
             "duration_s": ver.get("duration_s"),
@@ -4420,10 +4517,198 @@ def _refresh_stale_video(cfg, path):
         if path.exists() and not _video_format_current(cfg, path):
             path.unlink()
             _forget_video_format(cfg, path)
+            # v69: the wall proxy belongs to the deleted
+            # original; it goes with it, so a tile can never
+            # play a stale take's proxy after a re-download.
+            proxy = video_proxy_path(path)
+            if proxy.exists():
+                proxy.unlink()
             return True
     except OSError:
         pass
     return False
+
+
+# ------------------------------------------------- wall proxies (v69)
+#
+# A low-resolution copy of each wall video, made by the app's
+# ffmpeg (audit.find_ffmpeg): at most 640 px wide (never
+# upscaled), frame rate capped at 30, H.264/AAC in MP4 for
+# maximum browser compatibility, audio at 48 kbit/s (speech
+# stays listenable for the tile that owns the audio). The
+# wall's tiles play the proxy when one exists — a screenful
+# of tiles decoding and fetching the full 480p originals for
+# a whole session is the sustained load under which tiles
+# degraded — and the zoom view always plays the original.
+# Generation is background work: it never blocks a download
+# or a check, a failed generation leaves the original in
+# use, and nothing about a check changes — the check-input
+# fingerprint covers the original video file only, so a
+# proxy appearing invalidates no stored check. Without
+# ffmpeg there are no proxies and the wall plays the
+# originals, exactly as before v69.
+
+PROXY_SUFFIX = ".proxy.mp4"
+PROXY_MAX_WIDTH = 640
+PROXY_MAX_FPS = 30
+
+
+def video_proxy_path(video_path):
+    """The proxy file belonging to one video file: the same
+    folder, the same stem, a .proxy.mp4 name — so the media
+    routes serve it like any other video file, and the
+    cleanup attempt glob (*.mp4*) reaches it with its
+    original."""
+    p = Path(video_path)
+    return p.with_name(p.stem + PROXY_SUFFIX)
+
+
+def _video_fps(path):
+    """The frame rate of a video file's first video stream,
+    via ffprobe, or None when it cannot be read."""
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        return None
+    try:
+        proc = subprocess.run(
+            [ffprobe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=r_frame_rate",
+             "-of", "csv=p=0", str(path)],
+            capture_output=True, text=True, timeout=60)
+        text = (proc.stdout or "").strip().splitlines()
+        if not text:
+            return None
+        num, _, den = text[0].partition("/")
+        rate = float(num) / float(den or 1)
+        return rate if rate > 0 else None
+    except Exception:  # noqa: BLE001 - advisory only
+        return None
+
+
+def make_video_proxy(video_path, ffmpeg=None):
+    """Generate one video's wall proxy synchronously; returns
+    the proxy path, or None when generation is impossible or
+    fails (ffmpeg missing, an unreadable source, a non-zero
+    exit). An up-to-date proxy (at least as new as its
+    original) is left alone and returned. The encode goes to
+    a temporary name and is renamed over the destination, so
+    a tile never plays a half-written proxy."""
+    src = Path(video_path)
+    if not src.exists() or src.name.endswith(PROXY_SUFFIX):
+        return None
+    ffmpeg = ffmpeg or audit.find_ffmpeg()
+    if not ffmpeg:
+        return None
+    dst = video_proxy_path(src)
+    try:
+        if dst.exists() \
+                and dst.stat().st_mtime >= src.stat().st_mtime:
+            return dst
+    except OSError:
+        return None
+    filters = [f"scale='min({PROXY_MAX_WIDTH},iw)':-2"]
+    fps = _video_fps(src)
+    if fps and fps > PROXY_MAX_FPS:
+        filters.append(f"fps={PROXY_MAX_FPS}")
+    filters.append("format=yuv420p")
+    tmp = dst.with_name(dst.stem + ".tmp.mp4")
+    cmd = [ffmpeg, "-y", "-v", "error", "-i", str(src),
+           "-vf", ",".join(filters),
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "32",
+           "-c:a", "aac", "-b:a", "48k",
+           "-movflags", "+faststart", str(tmp)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True,
+                              text=True, timeout=3600)
+        if proc.returncode != 0 or not tmp.exists() \
+                or tmp.stat().st_size == 0:
+            raise ValueError(
+                f"ffmpeg exited {proc.returncode}: "
+                f"{(proc.stderr or '')[-200:]}")
+        os.replace(tmp, dst)
+    except Exception:  # noqa: BLE001 - the original stays in use
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        return None
+    return dst
+
+
+_PROXY_INFLIGHT = set()
+_PROXY_LOCK = threading.Lock()
+_PROXY_SEMA = threading.Semaphore(2)
+
+
+def _proxy_fresh(video_path):
+    """True when a usable proxy exists for the video: present
+    and at least as new as the original it was made from."""
+    src = Path(video_path)
+    dst = video_proxy_path(src)
+    try:
+        return dst.exists() \
+            and dst.stat().st_mtime >= src.stat().st_mtime
+    except OSError:
+        return False
+
+
+def ensure_video_proxy(cfg, video_path):
+    """Queue background generation of one video's wall proxy
+    (v69). Returns True when a generation was queued. Never
+    blocks: the encode runs on a daemon thread, at most two
+    at a time, and a video already queued is not queued
+    twice. A failure is silent — the original stays in use
+    and the next pass queues it again."""
+    src = Path(video_path)
+    if src.name.endswith(PROXY_SUFFIX) or not src.exists() \
+            or _proxy_fresh(src):
+        return False
+    key = str(src)
+    with _PROXY_LOCK:
+        if key in _PROXY_INFLIGHT:
+            return False
+        _PROXY_INFLIGHT.add(key)
+
+    def run():
+        try:
+            with _PROXY_SEMA:
+                make_video_proxy(src)
+        except Exception:  # noqa: BLE001 - background, advisory
+            pass
+        finally:
+            with _PROXY_LOCK:
+                _PROXY_INFLIGHT.discard(key)
+
+    threading.Thread(target=run, daemon=True).start()
+    return True
+
+
+def queue_missing_proxies(cfg):
+    """Queue proxies for every downloaded video that lacks a
+    fresh one (v69): the videos folder (unit and attempt
+    takes) and the demo folder. Returns how many were
+    queued. Called by the automatic pass, so videos
+    downloaded before v69 gain proxies without the teacher
+    doing anything."""
+    n = 0
+    for folder in (audit.data_dir(cfg) / "videos", demo_dir(cfg)):
+        try:
+            files = sorted(folder.glob("*.mp4")) \
+                if folder.exists() else []
+        except OSError:
+            files = []
+        for f in files:
+            if ensure_video_proxy(cfg, f):
+                n += 1
+    return n
+
+
+def _proxy_url_for(video_path, route_prefix):
+    """The media URL of a video file's wall proxy when a fresh
+    one exists, else None (v69)."""
+    if _proxy_fresh(video_path):
+        return f"{route_prefix}/{video_proxy_path(video_path).name}"
+    return None
 
 
 def download_youtube_medium(cfg, user_id, youtube_url):
@@ -4465,6 +4750,9 @@ def download_youtube_medium(cfg, user_id, youtube_url):
                               timeout=1200)
         if proc.returncode == 0 and target.exists():
             _record_video_format(cfg, target)
+            # v69: the wall proxy is queued in the background;
+            # the download itself never waits for the encode.
+            ensure_video_proxy(cfg, target)
             return {"file": str(target), "bytes": target.stat().st_size,
                     "client": client}
         errors.append(f"{client}: {(proc.stderr or proc.stdout)[-300:]}")
@@ -5745,6 +6033,99 @@ let WALLPLAY=new Set();
 // ordinary return the tiles are kept alive, frames and
 // buffered ranges intact.
 let WALLDIRTY=false;
+// ---- The wall's desired state (v69): the one place the
+// wall's playback intent lives. The master fraction every
+// showing tile should sit at (or advance from, while
+// playing), the wall-level play intent (Play all), the
+// tiles individually set playing (a hover, the zoom
+// return) or individually paused by the teacher, and the
+// speed. (The grouping/filter selection is desired state
+// too and stays where it has lived since v29: the
+// persisted shared VIEW below.) Before v69 intent was
+// scattered across per-element flags (_wantPlay,
+// _autoplay) that the v64–v68 stall watchdog's case
+// branches each read differently, and tiles stranded in
+// states no branch covered; now the helpers below express
+// intent here, and the periodic reconciler
+// (reconcileWall) is the only mechanism that corrects
+// tiles toward it. The state is persisted, so the zoom
+// round trip and a page reload restore the wall where
+// the teacher left it — the fraction always; the playing
+// intent too (the tiles are muted, which both Chrome
+// and Firefox allow to autoplay; a browser that refuses
+// leaves the tiles paused at the right fraction, and
+// the first click plays them).
+const WALLSTATEKEY="ta-wallstate-v1";
+const WALLSTATE={frac:0, playing:false, speed:1,
+                 playIds:new Set(), pausedIds:new Set()};
+function saveWallState(){
+  try{ localStorage.setItem(WALLSTATEKEY, JSON.stringify({
+    frac:WALLSTATE.frac, playing:WALLSTATE.playing,
+    speed:WALLSTATE.speed,
+    playIds:[...WALLSTATE.playIds],
+    pausedIds:[...WALLSTATE.pausedIds]})); }catch(e){}
+}
+try{ const ws=JSON.parse(localStorage.getItem(WALLSTATEKEY)||"null");
+  if(ws){
+    WALLSTATE.frac=Math.min(1,Math.max(0,+ws.frac||0));
+    WALLSTATE.playing=!!ws.playing;
+    if(+ws.speed>0) WALLSTATE.speed=+ws.speed;
+    if(Array.isArray(ws.playIds))
+      WALLSTATE.playIds=new Set(ws.playIds.map(String));
+    if(Array.isArray(ws.pausedIds))
+      WALLSTATE.pausedIds=new Set(ws.pausedIds.map(String));
+  } }catch(e){}
+let _wsSavedAt=0;
+function tileIdOf(v){
+  const t=v && v.closest ? v.closest(".tile") : null;
+  return t? t.dataset.id : null;
+}
+function desiredPlaying(v){
+  // A tile should be playing iff it has not ended, the
+  // teacher has not individually paused it, and the wall
+  // wants it playing — wall-level, or the tile was
+  // individually set playing. The zoom video is a single
+  // persistent element, never rebuilt, so its intent
+  // register lives on the element itself (_wantPlay,
+  // written by its play/pause paths and playAfterSeek).
+  if(v.ended) return false;
+  const id=tileIdOf(v);
+  if(id===null) return !!v._wantPlay;
+  if(WALLSTATE.pausedIds.has(id)) return false;
+  return WALLSTATE.playing || WALLSTATE.playIds.has(id);
+}
+function intentOn(v){
+  // The desire check the deferred-play path consults when
+  // it fires: a play a later pause has replaced does
+  // not run.
+  return v===$("zv")? !!v._wantPlay : desiredPlaying(v);
+}
+function projectIntent(v){
+  // Write the desired state onto the element's intent
+  // register, so anything that reads _wantPlay (the error
+  // recovery, the harness timelines) reads the wall's one
+  // desire, never a second opinion.
+  const id=tileIdOf(v); if(id===null) return;
+  const d=desiredPlaying(v);
+  v._wantPlay=d; v._projPlay=d;
+}
+function syncIntent(v){
+  // Fold an out-of-band write to a tile's intent register
+  // (a path that still writes _wantPlay directly) into
+  // WALLSTATE, then project. The wall's own writers go
+  // through the state helpers, so adoption only ever
+  // fires for a write that bypassed them — either way
+  // there is exactly one desired state afterwards.
+  const id=tileIdOf(v); if(id===null) return;
+  if(v._projPlay!==undefined && !!v._wantPlay!==v._projPlay){
+    if(v._wantPlay){ WALLSTATE.playIds.add(id);
+                     WALLSTATE.pausedIds.delete(id); }
+    else { WALLSTATE.pausedIds.add(id);
+           WALLSTATE.playIds.delete(id); }
+    saveWallState();
+  }
+  projectIntent(v);
+}
 // ---- Shared submission view (v29): select / sort / filter /
 // group by course, student, date, homework, examined and graded.
 // The same stored view drives the dashboard's submissions table;
@@ -5962,25 +6343,30 @@ function bindTiles(){
     if(e.target.dataset.dl) return; openZoom(t.dataset.id);});
   document.querySelectorAll(".tile video").forEach(v=>{
     registerVid(v);
-    // Seek timing for the stall watchdog (v60): when the
-    // current seek began, cleared when one completes; a
-    // completed seek also restores the tile's retry budget.
+    // Seek timing for the reconciler's stuck-seek rule
+    // (v60): when the current seek began, cleared when
+    // one completes; a completed seek also restores the
+    // tile's retry budget.
     v.addEventListener("seeking",()=>{ v._seekSince=performance.now(); });
-    // v66: an ended tile carries no play intent (the
-    // watchdog must not revive it), and a tile whose
-    // duration arrives re-takes its fraction-true rate —
-    // the reference duration is the longest showing tile,
-    // which is only known once metadata lands.
-    v.addEventListener("ended",()=>{ v._wantPlay=false; });
-    // Error recovery (v67): a fatal fetch or decode error
-    // is recovered by reloading the tile at its accounted
-    // fraction (recoverErroredTile); the fraction is
+    // v66/v69: an ended tile is out of the desired state
+    // (the reconciler must not revive it) — its register
+    // is projected from WALLSTATE, not written here. A
+    // tile whose duration arrives re-takes its
+    // fraction-true rate — the reference duration is the
+    // longest showing tile, which is only known once
+    // metadata lands.
+    v.addEventListener("ended",()=>{ projectIntent(v); });
+    // Error bookkeeping (v67, v69): the fraction is
     // captured as the error fires, before any reload can
-    // reset the position. A frame arriving restores the
-    // retry budget, the error having proved transient.
-    // Before v67 no 'error' handler existed and an errored
-    // tile stayed black for the session.
-    v.addEventListener("error",()=>{ if(v._errFrac===undefined) v._errFrac=effFrac(v); recoverErroredTile(v); });
+    // reset the position; the correction itself is the
+    // reconciler's error rule (recoverErroredTile),
+    // applied on its tick — the event records, it does
+    // not act, so no code path fights the reconciler.
+    // Before v67 no 'error' handler existed and an
+    // errored tile stayed black for the session. A frame
+    // arriving restores the retry budget, the error
+    // having proved transient.
+    v.addEventListener("error",()=>{ if(v._errFrac===undefined) v._errFrac=effFrac(v); });
     v.addEventListener("loadeddata",()=>{ v._errRetries=0; v._errFrac=undefined; });
     // A duration arrival can change the reference (the
     // longest showing tile), so every tile's rate is
@@ -5993,7 +6379,7 @@ function bindTiles(){
     v.addEventListener("seeked",()=>{ v._seekSince=0; v._stallRetries=0;
       // A landed scrub target is discharged (v65): the tile
       // is at the position the wall asked for, so the badge
-      // and the watchdog go back to the real position.
+      // and the reconciler go back to the real position.
       if(v._targetFrac!==undefined && v.duration
           && Math.abs(v.currentTime/v.duration-v._targetFrac)<=0.06){
         delete v._targetFrac; v._stallWindow=undefined; } });
@@ -6003,14 +6389,22 @@ function bindTiles(){
       // A tile already slated to play (a deferred play from
       // the Back restore) is not claimed as a hover play, so
       // the pointer leaving it again does not stop it.
-      if(v.paused && !v._autoplay){ v.dataset.hoverplay="1"; playTile(v); } });
+      if(v.paused && !desiredPlaying(v)){ v.dataset.hoverplay="1"; playTile(v); } });
     v.addEventListener("mouseleave",()=>{ if(SCRUB && SCRUB.v===v) return;
       v.muted=true;
       // Hover leave releases the audio (v68): with no
       // audible tile, the rate reference returns to the
       // longest showing tile, so the tiles re-rate here.
       if(AUDIOOWNER===v){ AUDIOOWNER=null; setSpeed(); }
-      if(v.dataset.hoverplay){ v._autoplay=false; v._wantPlay=false; v.pause(); delete v.dataset.hoverplay; } });
+      // v69: a hover play ends as an individual pause in
+      // WALLSTATE (the wall-level intent is untouched);
+      // the pause is immediate here and the reconciler
+      // holds it from then on.
+      if(v.dataset.hoverplay){ const id=tileIdOf(v);
+        if(id!==null){ WALLSTATE.playIds.delete(id);
+          WALLSTATE.pausedIds.add(id); saveWallState(); }
+        v._autoplay=false; v.pause(); projectIntent(v);
+        delete v.dataset.hoverplay; } });
     v.addEventListener("mousedown",e=>{
       // Right-button drag scrubs: horizontal motion moves every
       // showing video to the same fraction of its own length
@@ -6257,7 +6651,7 @@ function render(){
         lastGroup=gl;
         ghead='<div class="ghead">'+esc(gl)+' <span class="mut">· '+gcounts[gl]+" shown"+(cont?" · continued":"")+"</span></div>"; } }
     return ghead+'<div class="tile" data-id="'+esc(s.id)+'">'+
-    (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_url)+'"></video>'
+    (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_proxy_url||s.video_url)+'"></video>'
       : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
     '<div class="nm"><span class="priv">'+esc(s.name)+'</span></div>'+
     (s.context? '<div class="mut">'+esc(s.context)+'</div>':"")+
@@ -6272,6 +6666,15 @@ function render(){
     (s.youtube? ' <a class="mut" href="'+esc(s.youtube)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">YouTube ↗</a>':"")+
     '</div>';}).join("");
   bindTiles();
+  // v69: rebuilt tiles start at the wall's persisted
+  // fraction (the zoom round trip's Back path, a page
+  // change, a filter change) — before v69 a rebuild
+  // restarted every tile at 0 and only refit's manual
+  // capture/restore held positions. The deferred-seek
+  // plumbing (seekFrac) lands each tile as its metadata
+  // arrives; the reconciler holds the position after.
+  if(WALLSTATE.frac>0 && !ATT.on)
+    vids().forEach(v=>seekFrac(v,WALLSTATE.frac));
   $("pageinfo").textContent="Screen "+(page+1)+" of "+pages();
   $("wallcount").textContent=VIEWLIST.length+" of "+STUDENTS.length+" students shown ("+VIEWLIST.filter(s=>s.source==="demo").length+" demo shown)"+(SELMODE? " · selection from the table — the view filters are overridden":"");
   $("fcount").textContent=VIEWLIST.length? "" : (STUDENTS.length? "No takes match the current view — change the selections above, or Reset view." : "");
@@ -6287,7 +6690,7 @@ function renderAttemptTiles(){
   g.innerHTML=ATT.rows.map(s=>{
     const gr= s.score==null? "—" : s.score+" / 10";
     return '<div class="tile" data-id="'+esc(s.id)+'">'+
-    (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_url)+'"></video>'
+    (s.video_url? '<video muted preload="metadata" playsinline disablepictureinpicture src="'+esc(s.video_proxy_url||s.video_url)+'"></video>'
       : '<div id="novideo">YouTube take not downloaded yet<br><button data-dl="'+esc(s.id)+'">Download at medium resolution (480p)</button></div>')+
     '<div class="nm"><span class="priv">'+esc(s.name)+'</span></div>'+
     '<div><span class="badge '+(s.is_current?"ok":"warn")+'">'+esc(s.attempt_label)+'</span>'+
@@ -6317,15 +6720,21 @@ function playAfterSeek(v){
   // assigned, which is still inside that window: the seek
   // has then only just started. Deferring to the seeked
   // event closes it.
-  v._wantPlay=true;
+  // v69: the desire is the caller's to have set (playTile,
+  // the reconciler, the zoom paths); the zoom video keeps
+  // its register on the element, a tile's is projected
+  // from WALLSTATE. The deferred finish consults the
+  // desire when it fires (intentOn), so a play a pause
+  // has since replaced never runs.
+  if(v===$("zv")) v._wantPlay=true;
   if(!v.seeking){ const p=v.play(); if(p) p.catch(()=>{}); return; }
   // The wait is time-boxed (v60): a seek whose range fetch
   // has stalled never fires seeked at all, and an unboxed
   // wait left the tile refusing to play until a reload.
   // After 1.5 s the play goes ahead anyway — the browser
-  // starts playback when the frame arrives, and the stall
-  // watchdog (reviveStalledTiles) re-issues the seek
-  // behind it. One wait per element at a time.
+  // starts playback when the frame arrives, and the
+  // reconciler re-issues the seek behind it. One wait per
+  // element at a time.
   if(v._playWait) return;
   v._playWait=true;
   let done=false;
@@ -6334,6 +6743,7 @@ function playAfterSeek(v){
     v._playWait=false;
     v.removeEventListener("seeked",onSeeked);
     if(!timedOut && v.seeking){ playAfterSeek(v); return; }
+    if(!intentOn(v)) return;
     const p=v.play(); if(p) p.catch(()=>{}); };
   const onSeeked=()=>finish(false);
   v.addEventListener("seeked",onSeeked);
@@ -6342,14 +6752,15 @@ function playAfterSeek(v){
 function seekFrac(v,f){
   // The intended fraction is recorded on the element (v65):
   // while it is unlanded the badge shows it (never a reset
-  // 0%) and the stall watchdog owes the tile recovery
-  // toward it for as long as it takes — a far seek on a
-  // long take legitimately needs longer than the old 3 s
-  // patience, and a tile must not be abandoned at 0 with
-  // its target forgotten. A fresh target also earns a
-  // fresh watchdog window. The seeked handler in bindTiles
-  // discharges the target once the tile lands on it.
-  v._targetFrac=f; v._stallWindow=undefined;
+  // 0%) and the reconciler owes the tile recovery toward
+  // it for as long as it takes — a far seek on a long take
+  // legitimately needs longer than the old 3 s patience,
+  // and a tile must not be abandoned at 0 with its target
+  // forgotten. A fresh target also earns a fresh patience
+  // window, and voids any earlier settled-position record
+  // (v69). The seeked handler in bindTiles discharges the
+  // target once the tile lands on it.
+  v._targetFrac=f; v._stallWindow=undefined; v._posSettled=undefined;
   // A freshly rendered tile has no metadata yet (duration 0),
   // so a seek aimed at it is remembered on the element and
   // applied when loadedmetadata fires, instead of being
@@ -6390,14 +6801,18 @@ function playTile(v){
   // yet, record the intent and let its landing play; if a
   // seek is in flight, wait for it to complete; otherwise
   // play at once.
-  // v66: starting a tile records the wall's intent that it
-  // play (_wantPlay) — including the deferred case, where
-  // _autoplay alone used to be the only trace. The stall
-  // watchdog resumes a tile carrying the intent and never
-  // revives one without it; every user pause action
-  // clears it (pauseall, hover leave, teardown, zoom
-  // open, frame step, toggle-all).
-  v._wantPlay=true;
+  // v69: the intent is recorded in WALLSTATE — the tile is
+  // individually set playing and no longer individually
+  // paused — and projected onto the element's register.
+  // The reconciler resumes a tile the state says should
+  // play and never revives one it says should not; every
+  // user pause action expresses itself in the state the
+  // same way (pauseall, hover leave, frame step,
+  // toggle-all).
+  const id=tileIdOf(v);
+  if(id!==null){ WALLSTATE.playIds.add(id);
+    WALLSTATE.pausedIds.delete(id); saveWallState(); }
+  projectIntent(v);
   if(v._wantFrac!==undefined){ v._autoplay=true; return; }
   playAfterSeek(v);
 }
@@ -6423,6 +6838,11 @@ function refreshTileGrade(id){
   b.textContent="grade "+g+fin;
 }
 function setFracAll(f){
+  // v69: the master fraction is desired state — recorded
+  // and persisted (the attempts view is a per-student
+  // detour and does not move the wall's position) — then
+  // expressed on every tile through the seek plumbing.
+  if(!ATT.on){ WALLSTATE.frac=f; saveWallState(); }
   vids().forEach(v=>seekFrac(v,f));
   $("scrub").value=Math.round(f*1000); $("pctlabel").textContent=Math.round(f*100)+"%";
 }
@@ -6451,19 +6871,28 @@ function updateMaster(){
   const live=vs.filter(v=>!v.ended);
   if(live.length) vs=live;
   const f=vs.reduce((a,v)=>a+effFrac(v),0)/vs.length;
+  // v69: the observed average is the wall's master
+  // fraction — the desired state's position follows where
+  // the tiles actually are while they play (the attempts
+  // view is a detour and does not move it). The save is
+  // throttled; the value itself is current every frame.
+  if(!ATT.on){ WALLSTATE.frac=f;
+    const _now=Date.now();
+    if(_now-_wsSavedAt>2000){ _wsSavedAt=_now; saveWallState(); } }
   $("scrub").value=Math.round(f*1000); $("pctlabel").textContent=Math.round(f*100)+"%";
   // Badges are paired to tiles by media file name, not by
   // position (v65): position in vids() does not match the
   // tile order when a tile has no video (the warning on
   // tileVideo), so the old index pairing could write one
-  // tile's position onto another tile's badge.
-  vs.forEach(v=>{ const s=showing().find(x=>x.video_url&&v.src.endsWith(x.video_url.split("/").pop()));
+  // tile's position onto another tile's badge. A tile
+  // playing its wall proxy (v69) pairs by the proxy's
+  // file name as well.
+  vs.forEach(v=>{ const s=showing().find(x=>x.video_url&&(v.src.endsWith(x.video_url.split("/").pop())||(x.video_proxy_url&&v.src.endsWith(x.video_proxy_url.split("/").pop()))));
     if(!s) return; const el=$("pct_"+s.id); if(!el) return;
     const ef=effFrac(v), dur=v.duration||s.duration_s;
     el.textContent=Math.round(ef*100)+"% · "+fmt(dur? ef*dur : v.currentTime)+" / "+fmt(dur); });
   $("syncinfo").textContent=vs.length+" videos · lengths "+vs.map(v=>fmt(v.duration||0)).join(", ");
 }
-let stallTick=0;
 // Error recovery (v67). A tile whose video element errors
 // — a fatal fetch failure or a decode failure, a state
 // many tiles fetching and decoding at once can produce —
@@ -6484,9 +6913,10 @@ let stallTick=0;
 // growing delay (1.5 s doubling), restored when a frame
 // arrives (the 'loadeddata' binding in bindTiles) — so a
 // file that can never play is retried a handful of times
-// over about ninety seconds, not for ever. The stall
-// watchdog routes an errored tile here as a backstop, for
-// an error that fired before its binding was attached.
+// over about ninety seconds, not for ever. Since v69 the
+// reconciler's error rule routes an errored tile here —
+// the only correction path — which also covers an error
+// that fired before its binding was attached.
 const ERR_RETRY_MAX=6;
 function recoverErroredTile(v){
   if(!v || !v.isConnected || !v.src) return;
@@ -6508,73 +6938,73 @@ function recoverErroredTile(v){
     if(f>0) seekFrac(v,f);
   }, delay);
 }
-function reviveStalledTiles(list){
-  // A tile that never got its frame (v52): the browser has
-  // stopped fetching (network idle) with no frame to show —
-  // the state a cancelled seek/play sequence can leave
-  // behind on a long take, whose frame sits deep in a large
-  // file. Re-assigning the position restarts the fetch.
-  // Runs every few seconds from loop(), at most one nudge
-  // per element per five seconds.
-  //
-  // A tile stuck IN a seek is rescued too (v60): the v52
-  // form returned early for exactly that state, so a seek
-  // whose range fetch stalled or was aborted — seeking
-  // stays true, readyState stays 1, the frame stays black —
-  // had no recovery but a page reload. A seek that has run
-  // for over three seconds with no frame data counts as
-  // stalled and is re-issued. The re-issue reloads the
-  // element and re-seeks through the deferred-seek path:
-  // re-assigning the same currentTime starts no new fetch
-  // while a seek to that position is already in flight
-  // (measured in the v60 browser regression: the watchdog
-  // fired, and the request count never rose), while load()
-  // discards the stuck fetch outright. The tile has no
-  // frame to lose — readyState < 2 is the entry condition.
-  // Re-issues are capped per element (a completed seek
-  // restores the budget); past the cap the watchdog leaves
-  // the tile alone, and pressing play still works because
-  // playAfterSeek no longer waits for seeked for ever.
-  //
-  // v65: a tile carrying an unlanded scrub target (see
-  // seekFrac) is handled by the branch at the top of the
-  // loop below, not by this capped path: its patience
-  // window is longer and grows, it is never abandoned
-  // while the target is unlanded, and its badge reports
-  // the target rather than a reset position (effFrac).
+function reconcileWall(list){
+  // The wall's one supervisor (v69). Before v69 the stall
+  // watchdog (reviveStalledTiles, v52–v68) had accreted a
+  // branch per failure state — a target branch, an intent
+  // branch with an escalation counter, an error branch,
+  // a stuck-seek branch, a no-frame nudge — each reading
+  // the per-element intent flags (_wantPlay, _autoplay)
+  // in its own way, and tiles still stranded in states no
+  // branch covered: the teacher's report that every video
+  // plays at first and develops problems over a session.
+  // Now there is one desired state (WALLSTATE: the master
+  // fraction, the wall-level and per-tile play intent, the
+  // speed — persisted, so the zoom round trip and a page
+  // reload restore the wall where the teacher left it)
+  // and this reconciler: on a fixed interval it compares
+  // each showing tile with the desired state and applies
+  // the one matching correction from the decision table
+  // in reconcileTile. The seek and play helpers express
+  // intent in WALLSTATE and give it a head start; this is
+  // the only mechanism that corrects tiles, so no code
+  // path fights it. The per-tile rules keep the measured
+  // patience of the branches they replace — a far seek on
+  // a long take legitimately takes longer than a short
+  // one (v65), a stuck seek is re-issued rather than
+  // nudged (v60), an errored element is reloaded at its
+  // accounted fraction with a bounded, growing retry
+  // budget (v67) — but they are one table over one state
+  // now, not five branches over scattered flags.
   const now=performance.now();
   if(!list) sweepDetachedVids(null);
-  (list||vids()).forEach(v=>{
-    // Error backstop (v67): an errored element is owed the
-    // error recovery (recoverErroredTile) before any other
-    // branch judges it — no other branch can revive it
-    // (they need a target or a duration). The recovery's
-    // own timer and budget govern the retries; this only
-    // makes sure a recovery is scheduled, for an error
-    // that fired before its binding was attached.
-    if(v.error && v.src){ recoverErroredTile(v); return; }
-    // A tile carrying an unlanded scrub target (v65) is
-    // owed recovery for as long as the target is unlanded:
-    // no retry cap, and a patience window that starts at
-    // 10 s — a far seek on a long take legitimately takes
-    // longer than the 3 s below — and doubles to a 30 s
-    // cap. The v64 form reloaded a stalled tile at 3 s:
-    // the reload discarded the in-flight seek fetch (and
-    // the metadata fetch behind the deferred re-seek),
-    // reset the tile to black at 0%, and after three such
-    // cycles the retry cap left it there for the session —
-    // the teacher's stranded tiles (wall regression v65
-    // traces: readyState 0, retries 3, the target still
-    // pending in _wantFrac, badge reading "0% · 0:00").
-    const tgt=(v._targetFrac!==undefined) ? v._targetFrac
-      : (v._wantFrac!==undefined ? v._wantFrac : null);
-    if(tgt!==null && v.src){
-      if(v.duration && !v.seeking
-          && Math.abs(v.currentTime/v.duration-tgt)<=0.06){
-        delete v._targetFrac; v._stallWindow=undefined;
-        v._metaSince=undefined;
-        return;
-      }
+  (list||vids()).forEach(v=>reconcileTile(v, now));
+}
+function reconcileTile(v, now){
+  // Adopt any out-of-band intent write, then project the
+  // desired state onto the element's register, so every
+  // rule below — and anything else that reads the
+  // register — judges the wall's one desire.
+  syncIntent(v);
+  // Rule 1 — error (v67): an errored element is owed the
+  // error recovery before any other rule judges it; no
+  // other rule can revive it (they need a target or a
+  // duration, which an early error destroys). The
+  // recovery's own timer and budget govern the retries.
+  if(v.error && v.src){ recoverErroredTile(v); return; }
+  // Rule 2 — an unlanded seek target (v65): the tile is
+  // owed recovery toward its target for as long as the
+  // target is unlanded — no retry cap, and a patience
+  // window that starts at 10 s (a far seek on a long take
+  // legitimately takes longer than a short patience) and
+  // doubles to a 30 s cap. The v64 form reloaded a stalled
+  // tile at 3 s: the reload discarded the in-flight seek
+  // fetch (and the metadata fetch behind the deferred
+  // re-seek), reset the tile to black at 0%, and after
+  // three such cycles the retry cap left it there for the
+  // session — the teacher's stranded tiles (wall
+  // regression v65 traces: readyState 0, retries 3, the
+  // target still pending in _wantFrac, badge "0%").
+  const tgt=(v._targetFrac!==undefined) ? v._targetFrac
+    : (v._wantFrac!==undefined ? v._wantFrac : null);
+  if(tgt!==null && v.src){
+    if(v.duration && !v.seeking
+        && Math.abs(v.currentTime/v.duration-tgt)<=0.06){
+      delete v._targetFrac; v._stallWindow=undefined;
+      v._metaSince=undefined;
+      // fall through: the position is settled; the play
+      // rules below still owe this tile its desired state
+    } else {
       const win=v._stallWindow||10000;
       if(v.seeking && now-(v._seekSince||now)<win)
         return;  // its fetch is still young: leave it alone
@@ -6593,111 +7023,172 @@ function reviveStalledTiles(list){
         // place — no reload, so no frame is discarded. Only
         // once per target: if the re-seek also lands short
         // (the nearest keyframe is what it is), the target
-        // is discharged and the tile keeps that position
-        // instead of re-seeking for the rest of the session.
+        // is discharged, the position is recorded settled,
+        // and the tile keeps that position instead of
+        // re-seeking for the rest of the session.
         if(v._shortSeekFor===tgt){
           delete v._targetFrac; v._shortSeekFor=undefined;
+          v._posSettled=tgt;
+          // fall through to the play rules
+        } else {
+          seekFrac(v, tgt);
+          v._shortSeekFor=tgt;
           return;
         }
+      } else {
+        v._stallRetries=(v._stallRetries||0)+1;
+        v._stallWindow=Math.min(30000, win*2);
+        v._seekSince=now;
+        const wasPlaying=!v.paused || !!v._autoplay;
+        if(wasPlaying) v._autoplay=true;
+        // The deferred seek is registered BEFORE the
+        // reload, so the target survives it: land()
+        // applies _wantFrac when the new metadata arrives.
+        v._wantFrac=tgt;
+        v.load();
         seekFrac(v, tgt);
-        v._shortSeekFor=tgt;
         return;
       }
-      v._stallRetries=(v._stallRetries||0)+1;
-      v._stallWindow=Math.min(30000, win*2);
-      v._seekSince=now;
-      const wasPlaying=!v.paused || !!v._autoplay;
-      if(wasPlaying) v._autoplay=true;
-      // The deferred seek is registered BEFORE the reload,
-      // so the target survives it: land() applies _wantFrac
-      // when the new metadata arrives.
-      v._wantFrac=tgt;
-      v.load();
-      seekFrac(v, tgt);
-      return;
     }
-    // Stall resume (v66): a tile the wall wants playing
-    // (_wantPlay — set by playTile/playAfterSeek, cleared
-    // by every user pause action and by "ended") that has
-    // stopped mid-playback resumes when it can. Before
-    // v66 a stall that left a tile paused — a rejected
-    // play, a seek rescue that landed paused, a buffer
-    // underrun on a long take — simply ended that tile's
-    // playback: nothing tied recovery to the wall's
-    // playing intent, so tiles silently fell out of the
-    // group while the rest played on. With data ready,
-    // play again; starved of data past a 10 s patience,
-    // reload at the current fraction and let the deferred
-    // play start it. A tile the teacher paused carries no
-    // intent and is never revived. v67: the data-ready case
-    // escalates to that same reload after three visits —
-    // a plain play() repeated every visit was observed not
-    // to restart such a tile at all (see the branch).
-    if(v._wantPlay && v.src && !v.ended && v.duration && !v.seeking){
+  }
+  // Rule 3 — a seek stuck with no frame and no target
+  // (v60): the v52 form returned early for exactly this
+  // state, so a seek whose range fetch stalled or was
+  // aborted — seeking stays true, readyState stays 1, the
+  // frame stays black — had no recovery but a page
+  // reload. A seek that has run for over three seconds
+  // with no frame data counts as stalled and is
+  // re-issued: the reload discards the stuck fetch
+  // outright (re-assigning the same currentTime starts
+  // no new fetch while a seek to that position is in
+  // flight — measured in the v60 browser regression),
+  // and the deferred-seek path re-seeks. Re-issues are
+  // capped per element (a completed seek restores the
+  // budget); past the cap the tile is left alone, and
+  // pressing play still works because playAfterSeek no
+  // longer waits for seeked for ever.
+  if(v.src && v.readyState<2 && v.duration && v.seeking){
+    if(!v._seekSince){ v._seekSince=now; return; }
+    if(now-v._seekSince<3000) return;
+    if((v._stallRetries||0)>=3) return;
+    if(v._stallNudge && now-v._stallNudge<5000) return;
+    v._stallNudge=now;
+    v._stallRetries=(v._stallRetries||0)+1;
+    v._seekSince=now;
+    const f=(v._wantFrac!==undefined) ? v._wantFrac
+      : v.currentTime/v.duration;
+    // A video that was playing resumes once the re-issued
+    // seek lands (v61): the reload discards its playback
+    // along with the stuck fetch, and a paused black tile
+    // is only half a recovery — this is the state the one
+    // playing tile on the wall was left in when a scrub of
+    // the whole wall stalled its seek. The zoom video's
+    // open-time seek handler is dropped for the same
+    // reason: its captured fraction is stale by now.
+    const wasPlaying=!v.paused || !!v._autoplay;
+    if(wasPlaying) v._autoplay=true;
+    if(v===$("zv")) v.onloadedmetadata=null;
+    v.load();
+    seekFrac(v, f);
+    return;
+  }
+  // Rule 4 — play state against the desired state.
+  if(v.src && !v.ended && v.duration && !v.seeking){
+    if(desiredPlaying(v)){
+      // Should be playing (v66): before v66 nothing tied
+      // recovery to the wall's playing intent, so a stall
+      // that left a tile paused — a rejected play, a seek
+      // rescue that landed paused, a buffer underrun on a
+      // long take — simply ended that tile's playback
+      // while the rest played on. With data ready, play
+      // again; starved of data past a 10 s patience,
+      // reload at the current fraction and let the
+      // deferred play start it.
       if(v.readyState>=2){ v._playStallSince=0;
         if(v.paused){
-          // Escalation (v67): a plain play() does not always
-          // restart a tile in this state. The state was
-          // observed standing across many watchdog visits in
-          // the v67 browser probes (intent set, readyState 3,
-          // not seeking, fraction at its scrub target, still
-          // paused half a minute after a scrub while playing
-          // — intermittently, in two of six probe runs — and
-          // a manual watchdog pass did not move it): each
-          // visit's play() either is cancelled by a seek
-          // still settling or does not take, and the branch
-          // had no stronger remedy, so it could repeat the
-          // same ineffective call for the session. After
-          // three visits the recovery escalates to the
-          // reload the starved case below uses, which
-          // re-enters resource selection and plays on
-          // landing; the counter restarts whenever the tile
-          // is seen playing.
+          // Escalation (v67): a plain play() does not
+          // always restart a tile in this state — the
+          // state was observed standing across many
+          // watchdog visits in the v67 browser probes
+          // (intent set, readyState 3, not seeking,
+          // fraction at its scrub target, still paused
+          // half a minute after a scrub while playing,
+          // intermittently), each visit's play() either
+          // cancelled by a seek still settling or not
+          // taking, with no stronger remedy. After three
+          // visits the recovery escalates to the reload
+          // the starved case below uses, which re-enters
+          // resource selection and plays on landing; the
+          // counter restarts whenever the tile is seen
+          // playing.
           if((v._resumeTries=(v._resumeTries||0)+1)>=3){
             v._resumeTries=0; v._autoplay=true;
             const f=frac(v); v.load(); seekFrac(v,f);
           } else playAfterSeek(v);
         } else v._resumeTries=0;
-        return; }
-      if(!v._playStallSince){ v._playStallSince=now; return; }
-      if(now-v._playStallSince>10000){
-        v._playStallSince=0; v._autoplay=true;
-        const f=frac(v); v.load(); seekFrac(v,f); }
-      return;
+      } else {
+        if(!v._playStallSince){ v._playStallSince=now; return; }
+        if(now-v._playStallSince>10000){
+          v._playStallSince=0; v._autoplay=true;
+          const f=frac(v); v.load(); seekFrac(v,f); }
+      }
+    } else if(!v.paused){
+      // Should be paused but is playing: pause it. This
+      // direction had no branch before v69 — a tile set
+      // playing outside the wall's intent (a stray play,
+      // a browser resuming on its own) played on against
+      // the wall's state for the rest of the session.
+      v.pause();
     }
-    if(!v.src || v.readyState>=2 || !v.duration) return;
-    if(v.seeking){
-      if(!v._seekSince){ v._seekSince=now; return; }
-      if(now-v._seekSince<3000) return;
-      if((v._stallRetries||0)>=3) return;
-      if(v._stallNudge && now-v._stallNudge<5000) return;
-      v._stallNudge=now;
-      v._stallRetries=(v._stallRetries||0)+1;
-      v._seekSince=now;
-      const f=(v._wantFrac!==undefined) ? v._wantFrac
-        : v.currentTime/v.duration;
-      // A video that was playing resumes once the re-issued
-      // seek lands (v61): the reload discards its playback
-      // along with the stuck fetch, and a paused black tile
-      // is only half a recovery — this is the state the one
-      // playing tile on the wall was left in when a scrub of
-      // the whole wall stalled its seek. The zoom video's
-      // open-time seek handler is dropped for the same
-      // reason: its captured fraction is stale by now.
-      const wasPlaying=!v.paused || !!v._autoplay;
-      if(wasPlaying) v._autoplay=true;
-      if(v===$("zv")) v.onloadedmetadata=null;
-      v.load();
-      seekFrac(v, f);
-      return;
-    }
-    if(v.networkState!==1) return;
-    if(v._stallNudge && now-v._stallNudge<5000) return;
-    v._stallNudge=now;
-    v.currentTime=v.currentTime;
-  });
+  }
+  // Rule 5 — position (v69): a grid tile away from the
+  // master fraction, with no seek in flight and data
+  // ready, is sought to it. Before v69 nothing held a
+  // tile at the wall's position once its own seek had
+  // landed: a tile that drifted, or was left behind by a
+  // correction that moved the wall, stayed where it was.
+  // The tolerance is tighter for a paused tile (its
+  // position is exact) than for a playing one (fractions
+  // advance together but not in lockstep). A tile whose
+  // target was discharged short (rule 2) is settled at
+  // that target and is not fought while the master
+  // fraction is still that target.
+  if(!ATT.on && tileIdOf(v)!==null && v.duration && !v.seeking
+      && v.readyState>=2 && !v.error){
+    const drift=Math.abs(frac(v)-WALLSTATE.frac);
+    const tol=v.paused? 0.06 : 0.15;
+    if(drift>tol
+        && !(v._posSettled!==undefined
+             && Math.abs(v._posSettled-WALLSTATE.frac)<=0.06
+             && Math.abs(frac(v)-v._posSettled)<=0.06))
+      seekFrac(v, WALLSTATE.frac);
+  }
+  // Rule 6 — a tile that never got its frame (v52): the
+  // browser has stopped fetching (network idle) with no
+  // frame to show — the state a cancelled seek/play
+  // sequence can leave behind on a long take, whose frame
+  // sits deep in a large file. Re-assigning the position
+  // restarts the fetch. At most one nudge per element per
+  // five seconds.
+  if(!v.src || v.readyState>=2 || !v.duration || v.seeking)
+    return;
+  if(v.networkState!==1) return;
+  if(v._stallNudge && now-v._stallNudge<5000) return;
+  v._stallNudge=now;
+  v.currentTime=v.currentTime;
 }
-function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); if(++stallTick>=150){ stallTick=0; const zv=$("zv"); if(zv && zv.getAttribute("src")) reviveStalledTiles([zv]); } } else { syncHoverTranscript(); if(++stallTick>=150){ stallTick=0; reviveStalledTiles(); } } raf=requestAnimationFrame(loop); }
+// The reconciler runs on a fixed one-second interval
+// (v69), independent of the render loop: the corrections
+// it owes are measured in seconds of patience, and a
+// fixed cadence keeps them so under any frame rate. The
+// zoom video is reconciled while the zoom view is open,
+// the wall's tiles otherwise.
+setInterval(()=>{
+  if(zoomId){ const zv=$("zv");
+    if(zv && zv.getAttribute("src")) reconcileWall([zv]); }
+  else reconcileWall();
+}, 1000);
+function loop(){ updateMaster(); if(zoomId){ syncZoomTranscript(); syncZBar(); } else { syncHoverTranscript(); } raf=requestAnimationFrame(loop); }
 function syncZBar(){
   // The zoom position bar lives in the page layout under the video
   // (not as a video overlay), so it never fades or disappears.
@@ -6796,17 +7287,20 @@ function seekGate(apply){
 }
 const WALLSEEK=seekGate(f=>setFracAll(f));
 const ZSEEK=seekGate(f=>seekZoomFrac(f));
-// Seek timing for the zoom video's stall watchdog (v61):
-// the same fields the wall tiles carry, so the watchdog
-// below treats the zoom video exactly like a tile. Until
-// now nothing watched the zoom video at all: a seek whose
-// range fetch stalled left it black for the rest of the
-// session, where a wall tile in the same state recovered.
+// Seek timing for the zoom video's reconciler rules
+// (v61): the same fields the wall tiles carry, so the
+// reconciler treats the zoom video exactly like a tile.
+// Until v61 nothing watched the zoom video at all: a seek
+// whose range fetch stalled left it black for the rest of
+// the session, where a wall tile in the same state
+// recovered.
 $("zv").addEventListener("seeking",()=>{ const zv=$("zv"); zv._seekSince=performance.now(); });
 $("zv").addEventListener("seeked",()=>{ const zv=$("zv"); zv._seekSince=0; zv._stallRetries=0; });
-// The zoom video gets the wall tiles' error recovery (v67):
-// an errored zoom video was as stranded as an errored tile.
-$("zv").addEventListener("error",()=>{ const zv=$("zv"); if(zv._errFrac===undefined) zv._errFrac=effFrac(zv); recoverErroredTile(zv); });
+// The zoom video gets the wall tiles' error rule (v67,
+// v69): an errored zoom video was as stranded as an
+// errored tile; the event records the fraction and the
+// reconciler's error rule applies the recovery.
+$("zv").addEventListener("error",()=>{ const zv=$("zv"); if(zv._errFrac===undefined) zv._errFrac=effFrac(zv); });
 $("zv").addEventListener("loadeddata",()=>{ const zv=$("zv"); zv._errRetries=0; zv._errFrac=undefined; });
 $("zv").addEventListener("mousedown",e=>{
   if(e.button!==2) return;
@@ -6817,9 +7311,36 @@ $("zv").addEventListener("mousedown",e=>{
   document.body.style.cursor="ew-resize";
 });
 $("zvwrap").addEventListener("contextmenu",e=>e.preventDefault());
-$("playall").onclick=()=>{ vids().forEach(v=>playTile(v)); };
-$("pauseall").onclick=()=>{ vids().forEach(v=>{ v._autoplay=false; v._wantPlay=false; v.pause(); }); };
-$("speed").onchange=setSpeed;
+function playAll(){
+  // Play all (v69): the wall-level intent goes on and the
+  // per-tile pauses are cleared — Play all means every
+  // showing tile — then each tile is given its head start
+  // through playTile, which also re-expresses the intent
+  // per tile. The reconciler holds the state from here.
+  WALLSTATE.playing=true; WALLSTATE.pausedIds.clear();
+  saveWallState();
+  vids().forEach(v=>playTile(v));
+}
+function pauseAll(){
+  // Pause all (v69): the wall-level intent goes off and
+  // the per-tile plays are cleared, the elements pause at
+  // once, and the registers are projected — the
+  // reconciler holds the pause from here (its rule 4
+  // pauses any tile found playing against the state).
+  WALLSTATE.playing=false; WALLSTATE.playIds.clear();
+  saveWallState();
+  vids().forEach(v=>{ v._autoplay=false; v.pause(); projectIntent(v); });
+}
+$("playall").onclick=playAll;
+$("pauseall").onclick=pauseAll;
+// The speed is desired state (v69): the select starts at
+// the persisted speed when it names one of its options,
+// and a change is stored as well as applied.
+(function(){ const sel=$("speed");
+  const want=String(WALLSTATE.speed);
+  if([...sel.options].some(o=>o.value===want)) sel.value=want; })();
+$("speed").onchange=()=>{ WALLSTATE.speed=parseFloat($("speed").value)||1;
+  saveWallState(); setSpeed(); };
 function refit(){
   // Rebuilding the wall destroys every tile's video element,
   // so a rebuild happens only when the per-screen count
@@ -6899,10 +7420,10 @@ window.addEventListener("blur",()=>{
 // suppressed there (it still works everywhere else in the app).
 $("grid").addEventListener("contextmenu",e=>e.preventDefault());
 function toggleAll(){
+  // Space toggles the wall (v69: through the same named
+  // state changes as the Play/Pause all buttons).
   const vs=vids(); if(!vs.length) return;
-  const anyPlaying=vs.some(v=>!v.paused);
-  vs.forEach(v=>{ if(anyPlaying){ v._autoplay=false; v._wantPlay=false; v.pause(); }
-    else playTile(v); });
+  if(vs.some(v=>!v.paused)) pauseAll(); else playAll();
 }
 function stepFrac(d){
   const vs=vids(); if(!vs.length) return;
@@ -6914,9 +7435,19 @@ function stepFrame(d){
   // an arrow press pauses the showing videos and steps each one
   // frame - 1/30 s, the nominal frame interval of the student
   // recordings. (The wall's scrub keys used to jump 5%.)
+  // v69: the pause is desired state (wall-level off, per-tile
+  // plays cleared, every showing tile individually paused) so
+  // the reconciler holds it; the master fraction follows the
+  // stepped position.
   const vs=vids(); if(!vs.length) return;
-  vs.forEach(v=>{ v._autoplay=false; v._wantPlay=false; v.pause();
+  WALLSTATE.playing=false; WALLSTATE.playIds.clear();
+  vs.forEach(v=>{ const id=tileIdOf(v);
+    if(id!==null) WALLSTATE.pausedIds.add(id);
+    v._autoplay=false; v.pause(); projectIntent(v);
     if(v.duration) v.currentTime=Math.min(v.duration,Math.max(0,v.currentTime+d/30)); });
+  if(!ATT.on && vs.length)
+    WALLSTATE.frac=vs.reduce((a,v)=>a+frac(v),0)/vs.length;
+  saveWallState();
 }
 document.addEventListener("keydown",e=>{
   const t=e.target;
@@ -6972,7 +7503,14 @@ function openZoom(id, opts){
     playing=(tv?!tv.paused:false) || vids().some(v=>!v.paused);
     WALLPLAY=new Set(vids().filter(v=>!v.paused)
       .map(v=>v.closest(".tile").dataset.id));
-    vids().forEach(v=>{ v._autoplay=false; v._wantPlay=false; v.pause(); });
+    // v69: the tiles pause for the zoom view WITHOUT their
+    // intent being cleared — the desired state is the
+    // record of who was playing (WALLPLAY above is its
+    // session copy, kept for the Back restore), and
+    // clearing it here was one of the writes that left
+    // tiles stranded when the wall came back. Only the
+    // deferred-play mechanism is stood down.
+    vids().forEach(v=>{ v._autoplay=false; v.pause(); });
   }
   zoomId=id;
   // Browser history (v61): opening the zoom view pushes a
@@ -7264,7 +7802,19 @@ window.addEventListener("popstate",e=>{
   }
 });
 function closeZoom(){
-  const zv=$("zv"); const f=zv.duration? zv.currentTime/zv.duration:0;
+  const zv=$("zv");
+  // v69: the wall's fraction on return is the persisted
+  // desired fraction, replaced by the zoom video's
+  // position only when the zoom video actually has one.
+  // Before v69 the zoom video's fraction was the return
+  // position unconditionally, so a zoom whose video never
+  // loaded (duration unknown, fraction read as 0) reset
+  // the whole wall to 0% — the teacher's report. The
+  // attempts view is a detour: its zoom does not move the
+  // wall's position either.
+  const f=(!ATT.on && zv.duration && isFinite(zv.duration)
+           && zv.currentTime>0)
+    ? zv.currentTime/zv.duration : WALLSTATE.frac;
   const wasPlaying=!zv.paused, id=zoomId;
   zv.pause(); zv.removeAttribute("src"); zv.load();
   zoomId=null; $("zoom").style.display="none"; $("wall").style.display="block"; $("master").style.display="block";
@@ -7335,7 +7885,16 @@ async function maybeFocus(){
     openZoom(key);
   }
 }
+let _browserNoted=false;
 async function load(){
+  // The browser in use is recorded once per page load
+  // (v69): one Activity-log line naming it, so a wall
+  // report carries its browser with it.
+  if(!_browserNoted){ _browserNoted=true;
+    try{ fetch("/api/browser-note",{method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({ua:navigator.userAgent})}); }
+    catch(e){} }
   // Disk-only prefill first (v31): the downloaded takes paint
   // at once, with no Canvas call; the full load that follows
   // replaces the data (and leaves an open zoom view alone).
@@ -8184,7 +8743,17 @@ class Handler(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         body = self._body()
         cfg = self._cfg()
-        if u.path == "/api/settings":
+        if u.path == "/api/browser-note":
+            # v69: the wall page reports the browser it is
+            # running in, once per load, so the Activity log
+            # names the browser behind any wall report — the
+            # teacher should not have to say it.
+            ua = str(body.get("ua") or "")[:200]
+            if ua:
+                log_activity("system", "video wall opened in "
+                                       + ua)
+            self._send(200, {"noted": bool(ua)})
+        elif u.path == "/api/settings":
             old_token = cfg.get("canvas_token") or ""
             for k in ("canvas_base_url", "worker_base_url"):
                 if body.get(k):
@@ -8827,6 +9396,78 @@ def package_detail(cfg, user_id):
             "transcript": "\n".join(parsed["transcript_lines"])}
 
 
+def _chrome_executable():
+    """The Chrome executable on Windows, or None (v69).
+
+    The App Paths registry entries (per-user first, then
+    machine-wide) name the install the user actually has;
+    the standard install paths are the fallback. None on a
+    non-Windows platform or when Chrome is not installed."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import winreg
+        for hive in (winreg.HKEY_CURRENT_USER,
+                     winreg.HKEY_LOCAL_MACHINE):
+            try:
+                with winreg.OpenKey(
+                        hive,
+                        r"Software\Microsoft\Windows\CurrentVersion"
+                        r"\App Paths\chrome.exe") as key:
+                    path = winreg.QueryValue(key, None)
+                if path and Path(path).exists():
+                    return str(path)
+            except OSError:
+                continue
+    except ImportError:
+        pass
+    for base in (os.environ.get("ProgramFiles"),
+                 os.environ.get("ProgramFiles(x86)"),
+                 os.environ.get("LocalAppData")):
+        if base:
+            cand = Path(base) / "Google" / "Chrome" \
+                / "Application" / "chrome.exe"
+            if cand.exists():
+                return str(cand)
+    return None
+
+
+def _open_app_browser(url, chrome_fn=None, launch=None,
+                      fallback=None):
+    """Open the app's page for the teacher (v69).
+
+    Chrome, when it is installed, with a dedicated profile
+    stored in the app folder (browser-profile beside this
+    file): the teacher's default browser is Firefox, under
+    which the video wall degraded over a session of
+    sustained many-tile playback, and a dedicated profile
+    also keeps the teacher's own profile — its extensions
+    and settings — out of the app window. With no Chrome
+    installed, or if starting it fails, the default
+    browser opens the page, as before v69. Returns which
+    browser was used ("chrome" or "default"). The resolver,
+    launcher and fallback are injectable for tests."""
+    chrome_fn = chrome_fn or _chrome_executable
+    launch = launch or subprocess.Popen
+    fallback = fallback or webbrowser.open
+    chrome = None
+    try:
+        chrome = chrome_fn()
+    except Exception:  # noqa: BLE001 - fall back, never block
+        chrome = None
+    if chrome:
+        try:
+            profile = HERE / "browser-profile"
+            profile.mkdir(exist_ok=True)
+            launch([chrome, f"--user-data-dir={profile}",
+                    "--no-first-run", url])
+            return "chrome"
+        except Exception:  # noqa: BLE001 - fall back below
+            pass
+    fallback(url)
+    return "default"
+
+
 def _open_browser_when_ready(port, open_fn=None, timeout_s=30.0):
     """Open the browser only once the server answers (v37).
 
@@ -8838,8 +9479,9 @@ def _open_browser_when_ready(port, open_fn=None, timeout_s=30.0):
     the page; gives up after timeout_s and logs it — the app
     itself keeps running either way. Runs in a daemon thread
     started by main(); never called on import or by the tests.
-    open_fn is injectable for tests."""
-    open_fn = open_fn or webbrowser.open
+    open_fn is injectable for tests; the default opener prefers
+    Chrome with a dedicated profile (v69, _open_app_browser)."""
+    open_fn = open_fn or _open_app_browser
     url = f"http://127.0.0.1:{port}/"
     probe = f"http://127.0.0.1:{port}/api/status"
     deadline = time.monotonic() + timeout_s

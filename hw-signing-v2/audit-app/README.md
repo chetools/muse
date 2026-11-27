@@ -1,4 +1,76 @@
-# Teacher audit app — HW Signing v2 (audit app v68)
+# Teacher audit app — HW Signing v2 (audit app v69)
+
+**v69 (2026-11-27).** The wall's durability rebuild,
+from the teacher's report that every video plays at
+first and develops problems over a session — under
+sustained many-tile load, in the teacher's default
+browser (Firefox; every wall harness to date runs
+Chromium). (1) The app now opens in Chrome when
+Chrome is installed: the opener (the program's own,
+since v37 — the launchers deliberately no longer open
+the browser) resolves Chrome from the App Paths
+registry or the standard install paths and starts it
+with a dedicated profile stored in the app folder
+(`browser-profile`), so the teacher's own profile and
+its extensions cannot interfere; with no Chrome
+installed the default browser opens, as before. The
+wall also reports the browser's user-agent to the
+Activity log once per load, so a future report names
+the browser without the teacher having to say it.
+(2) The wall's playback supervision is rebuilt around
+one desired state and one reconciler. The v64–v68
+stall watchdog had accreted a branch per failure
+state, and tiles still stranded in states no branch
+covered. Now `WALLSTATE` holds the wall's desired
+state in one place (the master fraction, wall-level
+playing, the tiles individually set playing or paused
+by the teacher, the speed; the grouping/filter
+selection stays in the persisted shared view),
+persisted to localStorage, and a single periodic
+reconciler compares each showing tile with the
+desired state and applies the one matching correction
+from a single decision table — an errored element
+reloaded at its accounted fraction (the v67 recovery,
+bounded retries with growing delays), an unlanded
+seek target owed recovery with the v65 growing
+patience, a stuck seek re-issued (v60), a tile that
+should be playing but is paused played — escalating
+to a reload after three ineffective plays (v67) — or
+reloaded at its position when starved, a tile that
+should be paused but is playing paused, a tile away
+from the master fraction sought to it, a tile that
+never got its frame nudged (v52). The seek and play
+helpers express intent in the state and give it a
+head start; correction is the reconciler's alone, and
+a deferred play superseded by a pause no longer
+fires. The desired state is restored after the zoom
+round trip and across page loads: the wall returns at
+the persisted fraction — before v69 Back sought every
+tile to the zoom video's fraction, so a zoom whose
+video never loaded (fraction 0) reset the whole wall
+to 0%; the zoom's position now replaces the persisted
+fraction only when the zoom video actually has one.
+(3) Wall proxy files cut the sustained load: at
+video-download time, and for videos already
+downloaded in the background pass, the app's ffmpeg
+makes a low-resolution proxy of each wall video (at
+most 640 px wide, frame rate capped at 30, H.264/AAC
+in MP4, audio at 48 kbit/s) beside the original; the
+wall's tiles play the proxy when one exists and the
+original otherwise, and the zoom view always plays
+the original. Generation is background work — it
+never blocks a download or a check, a failure leaves
+the original in use, and the check fingerprint still
+covers the original file only, so a proxy appearing
+invalidates no stored check. Without ffmpeg
+everything degrades to the pre-v69 behaviour.
+Regression: `tests/wall_regression_v69.py` (headless
+Chromium: a tile stranded with no legacy flags is
+corrected by the reconciler, the zoom round trip
+restores the persisted fraction, and the proxy wiring
+and size effect are measured), the wall harnesses
+v61 and v64–v68 and `tests/layout_regression_v68.py`
+unchanged, plus checks in `tests/test_web.py`.
 
 **v68 (2026-11-27).** Two teacher-reported defects.
 (1) The Setup section's two columns were coupled and

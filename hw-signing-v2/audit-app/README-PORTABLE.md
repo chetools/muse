@@ -14,7 +14,16 @@ folder, and no setup download is needed.
 2. Double-click `run-web.bat`. A console window opens, and
    the browser opens by itself at http://127.0.0.1:8766 once
    the app is ready (a few seconds; if it has not opened
-   after half a minute, open that address by hand).
+   after half a minute, open that address by hand). Since
+   v69 the app opens Chrome when Chrome is installed, with
+   a dedicated profile stored in this folder
+   (`browser-profile`), and the default browser otherwise:
+   Chrome is preferred for the video wall, which is a
+   screenful of videos playing together for a whole
+   session — that sustained many-video playback is where
+   the wall was reported to degrade — and the dedicated
+   profile keeps your own browser profile, its extensions
+   and settings, out of the app window.
 3. Keep the console window open while you work. Close it to
    stop the app. On a USB drive, stop the app and use Windows
    "Eject" before unplugging.
@@ -113,10 +122,27 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v68 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v69 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v68: the Setup section's two columns are
+  installs). v69: the wall's durability rebuild — the app
+  opens in Chrome with a dedicated profile when Chrome is
+  installed (the default browser otherwise); the wall's
+  playback supervision is one persisted desired state
+  (master fraction, playing, per-tile intent, speed) and
+  one periodic reconciler that corrects each tile toward
+  it through a single decision table, replacing the
+  v64–v68 stall watchdog's case branches, and the wall
+  returns from the zoom view at the persisted fraction
+  instead of the zoom video's (a zoom whose video never
+  loaded used to reset the wall to 0%); the wall's tiles
+  play low-resolution proxy files (at most 640 px wide,
+  frame rate capped at 30, H.264/AAC) generated in the
+  background beside each original, the zoom view keeps
+  the original, and the check fingerprint still covers
+  the original only; and the wall records the browser's
+  user-agent in the Activity log once per load. v68: the
+  Setup section's two columns are
   decoupled (the settings column carries its own Save
   settings row, course details and status line and no
   longer stretches to the Activity column's height, so

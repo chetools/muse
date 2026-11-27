@@ -1539,8 +1539,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/68.0",
-          "user agent bumped to 68.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/69.0",
+          "user agent bumped to 69.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -3552,11 +3552,14 @@ def main():
           "tile whose metadata has not loaded yet, instead of "
           "dropping the seek")
     _back = wall40[wall40.find(b'$("backbtn").onclick'):
-                    wall40.find(b'$("backbtn").onclick') + 3000]
+                    wall40.find(b'$("backbtn").onclick') + 4500]
     check(b"setFracAll(f);" in _back
           and b"playTile(tv)" in _back,
           "v40: Back from the zoom view rebuilds the tiles "
-          "and seeks them all to the zoom player's fraction")
+          "and seeks them all to the zoom player's fraction "
+          "(v69: the slice is wider — closeZoom's fraction "
+          "is now the persisted one when the zoom video has "
+          "none, which lengthens the code between the two)")
 
     # ---------------------------------------------------------
     # 20. v41: the zoom view scrubs by right-button drag,
@@ -3654,11 +3657,13 @@ def main():
     check(b"function playAfterSeek" in wall40
           and b'"seeked"' in wall40
           and b"durationchange" in wall40
-          and b"function reviveStalledTiles" in wall40
+          and b"function reconcileWall" in wall40
+          and b"function reviveStalledTiles" not in wall40
           and b"max-width:none" in wall40,
-          "v52: a deferred play waits for the seek to "
-          "complete, a stalled tile is revived by the wall "
-          "loop, and the wall fills the screen")
+          "v52/v69: a deferred play waits for the seek to "
+          "complete, a stalled tile is corrected by the "
+          "wall's reconciler (the v52–v68 watchdog it "
+          "replaces is gone), and the wall fills the screen")
     # ---------------------------------------------------------
     # 23b. v60: the wall survives the zoom round trip. Back
     # keeps the tile elements alive unless the data was
@@ -3698,13 +3703,14 @@ def main():
           "v61: the dashboard's first activity answer only sets "
           "the baseline — the panel starts blank on page load "
           "and earlier lines are never replayed into it")
-    check(b"reviveStalledTiles([zv])" in wall40
+    check(b"reconcileWall([zv])" in wall40
           and b"playAfterSeek(zv)" in wall40
           and b"wasPlaying=!v.paused || !!v._autoplay" in wall40,
-          "v61: the stall watchdog also watches the zoom video "
-          "while the zoom view is open, its opening play waits "
-          "out the seek like a tile's, and a revived video that "
-          "was playing resumes playing")
+          "v61/v69: the reconciler also watches the zoom "
+          "video while the zoom view is open (the v61 "
+          "watchdog's beat, kept), its opening play waits "
+          "out the seek like a tile's, and a revived video "
+          "that was playing resumes playing")
     check(b"history.pushState({zoom:id}" in wall40
           and b"history.replaceState({zoom:id}" in wall40
           and b'addEventListener("popstate"' in wall40
@@ -4175,15 +4181,16 @@ def main():
     # v66: the version is v66.
     # v67: the version is v67.
     # v68: the version is v68.
-    check(web.APP_VERSION == "v68", "v68: APP_VERSION is v68")
+    # v69: the version is v69.
+    check(web.APP_VERSION == "v69", "v69: APP_VERSION is v69")
     status, st63 = call("GET", "/api/status")
-    check(status == 200 and st63.get("app_version") == "v68",
-          "v68: /api/status reports app_version v68")
+    check(status == 200 and st63.get("app_version") == "v69",
+          "v69: /api/status reports app_version v69")
     for _path63 in ("/", "/wall", "/cleanup", "/packages"):
         status, _pg63 = call("GET", _path63, raw=True)
-        check(status == 200 and b"v68" in _pg63
+        check(status == 200 and b"v69" in _pg63
               and b"appver" in _pg63,
-              f"v68: {_path63} header shows the app version")
+              f"v69: {_path63} header shows the app version")
     status, dash63 = call("GET", "/", raw=True)
     check(all(b"<th>" + h + b"</th>" in dash63 for h in
               (b"Package integrity", b"Grade signature",
@@ -4380,8 +4387,8 @@ def main():
           "tracks play intent for stall resume, and keeps "
           "ended tiles out of the master average")
     status, st66 = call("GET", "/api/status")
-    check(st66.get("app_version") == "v68",
-          "v68: /api/status reports the app version")
+    check(st66.get("app_version") == "v69",
+          "v69: /api/status reports the app version")
 
     # ---------------------------------------------------------
     # 31. v67: a package record names the package's own media
@@ -4504,6 +4511,184 @@ def main():
           "a tile owns the audio, hover leave releases the "
           "ownership and re-rates, and preservesPitch is "
           "set explicitly on the tiles")
+
+    # ---------------------------------------------------------
+    # 33. v69: the wall's durability rebuild. (a) The app
+    # opener prefers Chrome with a dedicated profile and
+    # falls back to the default browser. (b) The wall's
+    # supervision is one persisted desired state
+    # (WALLSTATE) and one periodic reconciler; the
+    # v52–v68 watchdog is gone (the browser scenario is
+    # tests/wall_regression_v69.py). (c) Wall proxy files:
+    # generated with the app's ffmpeg, tiles play the
+    # proxy, the zoom view the original, and the check
+    # fingerprint still covers the original only. (d) The
+    # wall reports its browser to the Activity log.
+    _launched69 = []
+    _here69 = web.HERE
+    web.HERE = Path(tempfile.mkdtemp(prefix="v69here-"))
+    _kind69 = web._open_app_browser(
+        "http://127.0.0.1:8766/",
+        chrome_fn=lambda: "C:\\fake\\chrome.exe",
+        launch=lambda cmd: _launched69.append(cmd),
+        fallback=lambda url: _launched69.append(["default", url]))
+    check(_kind69 == "chrome" and _launched69
+          and _launched69[0][0] == "C:\\fake\\chrome.exe"
+          and any(a.startswith("--user-data-dir=")
+                  and "browser-profile" in a
+                  for a in _launched69[0])
+          and _launched69[0][-1] == "http://127.0.0.1:8766/",
+          "v69: with Chrome present the opener launches it "
+          "with a dedicated profile in the app folder")
+    _launched69 = []
+    _kind69 = web._open_app_browser(
+        "http://127.0.0.1:8766/",
+        chrome_fn=lambda: None,
+        launch=lambda cmd: _launched69.append(cmd),
+        fallback=lambda url: _launched69.append(["default", url]))
+    check(_kind69 == "default"
+          and _launched69 == [["default",
+                               "http://127.0.0.1:8766/"]],
+          "v69: with no Chrome the opener falls back to "
+          "the default browser")
+    _launched69 = []
+
+    def _boom_launch69(cmd):
+        raise OSError("cannot start")
+
+    _kind69 = web._open_app_browser(
+        "http://127.0.0.1:8766/",
+        chrome_fn=lambda: "C:\\fake\\chrome.exe",
+        launch=_boom_launch69,
+        fallback=lambda url: _launched69.append(["default", url]))
+    check(_kind69 == "default" and _launched69,
+          "v69: a Chrome that fails to start falls back to "
+          "the default browser")
+    web.HERE = _here69
+    check(web._chrome_executable() is None
+          or isinstance(web._chrome_executable(), str),
+          "v69: the Chrome resolver answers None or a path "
+          "(None off Windows)")
+
+    status, _note69 = call("POST", "/api/browser-note",
+                           {"ua": "TestBrowser/1.0 (v69)"})
+    status2, act69 = call("GET", "/api/activity")
+    check(status == 200 and _note69.get("noted")
+          and any("video wall opened in TestBrowser/1.0"
+                  in (e.get("msg") or "")
+                  for e in act69.get("entries", [])),
+          "v69: the wall's browser note lands in the "
+          "Activity log as one line")
+
+    status, wall69 = call("GET", "/wall", raw=True)
+    _w69 = wall69.decode("utf-8", "replace")
+    check("const WALLSTATE=" in _w69
+          and "ta-wallstate-v1" in _w69
+          and "function desiredPlaying" in _w69
+          and "function reconcileTile" in _w69
+          and "function reconcileWall" in _w69
+          and "setInterval" in _w69
+          and "s.video_proxy_url||s.video_url" in _w69
+          and "/api/browser-note" in _w69
+          and "function reviveStalledTiles" not in _w69,
+          "v69: the wall carries the persisted desired "
+          "state, the reconciler on a fixed interval, "
+          "proxy tile sources and the browser note — and "
+          "no watchdog")
+
+    cfg69 = web.load_web_config()
+    _ff69 = web.audit.find_ffmpeg()
+    if _ff69:
+        import subprocess as _sp69
+        _vdir69 = Path(tempfile.mkdtemp(prefix="v69proxy-"))
+        _src69 = _vdir69 / "take.mp4"
+        _mk69 = _sp69.run(
+            [_ff69, "-y", "-v", "error", "-f", "lavfi",
+             "-i", "testsrc2=size=1280x720:rate=60:duration=2",
+             "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+             "-c:v", "libx264", "-pix_fmt", "yuv420p",
+             "-c:a", "aac", "-shortest", str(_src69)],
+            capture_output=True, text=True)
+        check(_mk69.returncode == 0 and _src69.exists(),
+              "v69: the proxy test source is generated")
+        _proxy69 = web.make_video_proxy(_src69)
+        check(_proxy69 is not None and _proxy69.exists()
+              and _proxy69.name == "take.proxy.mp4",
+              "v69: a wall proxy is generated beside its "
+              "original under the .proxy.mp4 name")
+        _probe69 = _sp69.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=width",
+             "-of", "csv=p=0", str(_proxy69)],
+            capture_output=True, text=True)
+        check(_probe69.returncode == 0
+              and int(_probe69.stdout.strip()) <= 640
+              and _proxy69.stat().st_size
+                  < _src69.stat().st_size,
+              "v69: the proxy is at most 640 px wide and "
+              "smaller than its original")
+        _mtime69 = _proxy69.stat().st_mtime_ns
+        check(web.make_video_proxy(_src69) == _proxy69
+              and _proxy69.stat().st_mtime_ns == _mtime69,
+              "v69: a fresh proxy is not regenerated")
+        check(web._proxy_fresh(_src69)
+              and web._proxy_url_for(_src69, "/media/local")
+                  == "/media/local/take.proxy.mp4",
+              "v69: a fresh proxy is offered to the wall")
+        check(web.make_video_proxy(_proxy69) is None
+              and web.make_video_proxy(_vdir69 / "gone.mp4")
+                  is None,
+              "v69: a proxy is never proxied, and a missing "
+              "source generates nothing")
+        # Demo rows carry the proxy URL once a proxy exists.
+        _gdir69 = web.generated_demo_dir(cfg69)
+        _gdir69.mkdir(parents=True, exist_ok=True)
+        shutil.copy(_src69, _gdir69 / "demo-alpha.mp4")
+        shutil.copy(_proxy69, _gdir69 / "demo-alpha.proxy.mp4")
+        (_gdir69 / "demo-data.json").write_text(json.dumps([{
+            "id": "demo-alpha", "name": "Demo Alpha",
+            "video_file": "demo-alpha.mp4", "duration_s": 2,
+            "integrity": "clean", "score": None,
+            "final_score": None, "transcript": [],
+            "critique": "", "context": "", "pkg": "",
+            "submitted_at": None, "examined": False}]))
+        _rows69 = web.load_demo_students(cfg69)
+        check(_rows69
+              and _rows69[0].get("video_proxy_url")
+                  == "/media/demo/demo-alpha.proxy.mp4",
+              "v69: wall rows carry the proxy URL when a "
+              "fresh proxy exists")
+        (_gdir69 / "demo-data.json").unlink()
+        (_gdir69 / "demo-alpha.mp4").unlink()
+        (_gdir69 / "demo-alpha.proxy.mp4").unlink()
+    else:
+        check(web.make_video_proxy(Path("/nonexistent.mp4"))
+              is None,
+              "v69: without ffmpeg no proxy is generated "
+              "and the original stays in use")
+
+    # Cleanup: a proxy is claimed with its original (never
+    # listed loose) and deleted with it.
+    KEY69 = "101_202_4242"
+    _unit69 = data_dir / "downloads" / "101" / "202" / "4242"
+    _unit69.mkdir(parents=True, exist_ok=True)
+    (_unit69 / "package.html").write_text("<html></html>")
+    (_unit69 / "audio.wav").write_bytes(b"RIFF")
+    _vid69 = web.youtube_video_file(cfg69, KEY69)
+    _vid69.parent.mkdir(parents=True, exist_ok=True)
+    _vid69.write_bytes(b"video")
+    web.video_proxy_path(_vid69).write_bytes(b"proxy")
+    _inv69 = web.cleanup_inventory(cfg69)
+    _loose69 = [v["name"] for v in _inv69["loose_videos"]]
+    check(_vid69.name not in _loose69
+          and web.video_proxy_path(_vid69).name not in _loose69,
+          "v69: the Cleanup inventory claims a wall proxy "
+          "with its original — it never lists as loose")
+    web.selective_cleanup(cfg69, [KEY69])
+    check(not _vid69.exists()
+          and not web.video_proxy_path(_vid69).exists(),
+          "v69: Cleanup deletes a wall proxy with its "
+          "original")
 
     server.shutdown()
     worker.shutdown()

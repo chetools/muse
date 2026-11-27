@@ -18,6 +18,100 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v69 (2026-11-27) — The wall's durability rebuild: Chrome with a dedicated profile, one desired state and one reconciler, wall proxy files
+
+From the teacher's report that every video plays at
+first and develops problems over a session — under
+sustained many-tile load, in the teacher's default
+browser (Firefox; every wall harness to date runs
+Chromium). (1) The app now opens in Chrome when
+Chrome is installed. The opener is the program's own
+(since v37 the launchers deliberately do not open the
+browser — opening it from the launcher raced the
+server start and landed on a cannot-connect page): it
+resolves Chrome from the App Paths registry or the
+standard install paths and starts it with a dedicated
+profile stored in the app folder (`browser-profile`),
+so the teacher's own profile and its extensions
+cannot interfere. With no Chrome installed the
+default browser opens, as before. Chrome is preferred
+for the wall because the wall is a screenful of
+videos playing together for a whole session, and
+that sustained many-video playback is where the
+degradation was reported. The wall also reports the
+browser's user-agent to the Activity log once per
+load, so a future report names the browser without
+the teacher having to say it. (2) The wall's playback
+supervision is rebuilt around one desired state and
+one reconciler. The v64–v68 stall watchdog had
+accreted a branch per failure state — a target
+branch, an intent branch with an escalation counter,
+an error branch — and tiles still stranded in states
+no branch covered. Now `WALLSTATE` holds the wall's
+desired state in one place: the master fraction,
+wall-level playing, the tiles individually set
+playing or paused by the teacher, and the speed (the
+grouping/filter selection stays in the persisted
+shared view it has lived in since v29). The state is
+persisted to localStorage. A single periodic
+reconciler compares each showing tile with the
+desired state and applies the one matching correction
+from a single decision table: an errored element is
+reloaded at its accounted fraction (the v67
+recovery, bounded retries with growing delays); an
+unlanded seek target is owed recovery with the v65
+growing patience (10 s doubling to a 30 s cap, no
+retry cap); a seek stuck with no frame is re-issued
+(v60); a tile that should be playing but is paused is
+played, escalating to a reload after three
+ineffective plays (v67), or reloaded at its position
+when starved of data; a tile that should be paused
+but is playing is paused; a tile away from the master
+fraction is sought to it; a tile that never got its
+frame is nudged (v52). The seek and play helpers
+express intent in the state and give it a head start;
+correction is the reconciler's alone — the video
+'error' events now only record the fraction, where
+before v69 they also acted — and a deferred play
+superseded by a pause no longer fires. The desired
+state is restored after the zoom round trip and
+across page loads: the wall returns at the persisted
+fraction. Before v69 Back sought every tile to the
+zoom video's fraction, so a zoom whose video never
+loaded (fraction 0) reset the whole wall to 0%; the
+zoom's position now replaces the persisted fraction
+only when the zoom video actually has one. The
+v66/v68 rate rules (fraction-true rates; the audio
+owner is the reference and plays at exactly the wall
+speed) and the v64 teardown behaviour are unchanged.
+(3) Wall proxy files cut the sustained load. At
+video-download time, and for videos already
+downloaded in the background pass, the app's ffmpeg
+makes a low-resolution proxy of each wall video — at
+most 640 px wide (never upscaled), frame rate capped
+at 30, H.264/AAC in MP4, audio at 48 kbit/s so the
+tile that owns the audio stays listenable — stored
+beside the original under a `.proxy.mp4` name. The
+wall's tiles play the proxy when one exists and the
+original otherwise; the zoom view always plays the
+original. Generation is background work: it never
+blocks a download or a check, a failed generation
+leaves the original in use, and the check fingerprint
+still covers the original video file only, so a proxy
+appearing invalidates no stored check. A stale-video
+refresh and Cleanup take a proxy with its original;
+the Cleanup inventory claims a proxy with its
+original, so it never lists as a loose video. Without
+ffmpeg everything degrades to the pre-v69 behaviour.
+Regression: `tests/wall_regression_v69.py` (headless
+Chromium: a tile stranded with no legacy flags set is
+corrected by the reconciler unaided, a set wall
+position survives the zoom round trip, and the proxy
+wiring and measured size effect are checked), the
+wall harnesses v61 and v64–v68 and
+`tests/layout_regression_v68.py` unchanged, plus
+checks in `tests/test_web.py`.
+
 ## v68 (2026-11-27) — Setup columns decoupled, Activity log taller, Final grade input wider, the audible wall tile plays at the wall speed
 
 The Setup section's two columns were coupled: the

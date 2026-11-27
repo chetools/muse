@@ -84,7 +84,19 @@ taller, at 360 px, and the Final grade input wider, at
 76 px) and whose wall rates its tiles against the
 audible tile's duration while one owns the audio, so
 the tile the teacher hears plays at exactly the wall
-speed, with pitch preserved.
+speed, with pitch preserved. v69 (2026-11-27): no
+audit semantics change — the version rises with
+web.py, whose wall supervision is rebuilt around one
+persisted desired state and one periodic reconciler
+(the v64–v68 watchdog's case branches are gone),
+which opens the app in Chrome with a dedicated
+profile when Chrome is installed (the teacher's
+default browser is Firefox, under which the wall
+degraded over a session), and which generates
+low-resolution proxy files for the wall's tiles with
+the ffmpeg this file already locates — the check
+fingerprint still covers the original video only, so
+no stored check is invalidated by a proxy appearing.
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -194,7 +206,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/68.0"
+USER_AGENT = "HWSigning-Teacher-Audit/69.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
