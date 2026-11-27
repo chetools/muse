@@ -53,7 +53,28 @@ semantics change — the version rises with web.py, whose
 Redownload run now checks what it fetches (previous
 attempts included) in the same run, whose Redownload
 lines and privacy coverage are completed, and whose wall
-playback is fraction-true with stall resume.
+playback is fraction-true with stall resume. v67
+(2026-11-27): the WAV repair removed in v62 is restored
+for the cross-check — an audio-form package whose WAV
+ffmpeg cannot open (the documented case is a zeroed
+"fmt " chunk identifier with the PCM intact, five of the
+twelve packages in the 2026-11-26 check) is fingerprinted
+from a one-off repaired copy and measures, with
+wav_repaired noted in the result; hash checks still run
+over the submitted bytes only, never the repair. The
+teacher's rows that showed "no fingerprint" beside OK
+integrity and signature were exactly those packages: the
+hash over the submitted bytes passes while the decode
+fails. In web.py the package records now name the
+fingerprint file as a folder's media whenever one is
+present (a stray audio file beside a fingerprint package
+no longer stands in for its media), the YouTube cell
+carries the stored fingerprint diagnostic as a tooltip,
+the check schema rises to 7, and the wall recovers a
+tile whose video element errors instead of leaving it
+black for the session, and escalates a scrub-paused
+tile that repeated play() calls do not restart to a
+reload after three watchdog visits.
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -109,6 +130,7 @@ import string
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import wave
 import zipfile
@@ -162,7 +184,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/66.0"
+USER_AGENT = "HWSigning-Teacher-Audit/67.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -1681,6 +1703,49 @@ def media_duration_s(path):
     return None
 
 
+def _repaired_wav_temp(path):
+    """A temporary WAV holding path's PCM payload under a
+    canonical 44-byte header, or None when path is not a
+    RIFF/WAVE file with a payload to repair.
+
+    Five of the twelve packages in the 2026-11-26 check
+    carry a WAV whose "fmt " chunk identifier (bytes 12-15)
+    is zeroed while the PCM data from byte 44 is intact;
+    ffmpeg cannot open such a file and the wave module
+    cannot read it, so those packages recorded no YouTube
+    result — under v65 they record submitted-fingerprint-
+    missing beside an OK integrity check, because the hash
+    check runs over the submitted bytes and passes while
+    the decode fails (the teacher's "no fingerprint" rows
+    of 2026-11-27). The repair is the webapp's normalised
+    format — PCM, 16-bit, 16 000 Hz, mono — written over
+    the submitted bytes from offset 44. It exists only for
+    decoding (fingerprint extraction); hash checks always
+    run over the original submitted bytes. The caller
+    deletes the returned file. (Restored in v67; the v48
+    original was removed in the v62 simplification.)"""
+    try:
+        data = Path(path).read_bytes()
+    except OSError:
+        return None
+    if len(data) <= 44 or data[0:4] != b"RIFF" \
+            or data[8:12] != b"WAVE":
+        return None
+    fd, tmp = tempfile.mkstemp(prefix="audit-repair-",
+                               suffix=".wav")
+    os.close(fd)
+    try:
+        with wave.open(tmp, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(16000)
+            w.writeframes(data[44:])
+    except Exception:  # noqa: BLE001 - not repairable in this form
+        Path(tmp).unlink(missing_ok=True)
+        return None
+    return Path(tmp)
+
+
 def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
                         cfg, ffmpeg=None, fingerprint_fn=None):
     """Acoustic cross-check: the submitted fingerprint against
@@ -1722,6 +1787,16 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
     package. A package whose media entry is neither the
     fingerprint file nor a readable WAV still reports
     not-fingerprint-format, with passed None.
+
+    A WAV the fingerprint function cannot decode at all is
+    retried once against a repaired copy before the missing
+    reason is stored (v67; _repaired_wav_temp): the WAVs
+    with a zeroed "fmt " chunk identifier documented there
+    pass every hash check — those run over the submitted
+    bytes — while ffmpeg cannot open the file, so without
+    the retry they sit at submitted-fingerprint-missing
+    beside an OK integrity result for ever. A measurement
+    made from the repair carries "wav_repaired" True.
 
     Whenever no comparison could be made, the result's "reason"
     is a machine-readable token (v64), so the dashboard can say
@@ -1781,6 +1856,31 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
         except Exception as e:  # noqa: BLE001 - recorded below
             out["error"] = f"{type(e).__name__}: {e}"
             submitted_fp = None
+        if not submitted_fp:
+            # WAV repair (v48, restored v67): a WAV the normal
+            # route cannot decode — the documented case is a
+            # zeroed "fmt " chunk identifier with the PCM
+            # intact — is retried once against a repaired copy
+            # (_repaired_wav_temp), and the result notes
+            # wav_repaired when the repair produced the
+            # fingerprint. The first attempt's diagnostic is
+            # kept: when the retry also fails it, not the
+            # retry's, is the one stored below.
+            first_diag = fp_diag
+            repaired = _repaired_wav_temp(canvas_audio_path)
+            if repaired is not None:
+                try:
+                    retry_fp = fp_fn(repaired)
+                except Exception:  # noqa: BLE001 - the first
+                    retry_fp = None  # attempt's outcome stands
+                finally:
+                    repaired.unlink(missing_ok=True)
+                if retry_fp:
+                    submitted_fp = retry_fp
+                    out["wav_repaired"] = True
+                    out.pop("error", None)
+                else:
+                    fp_diag = first_diag
         if not submitted_fp:
             out["reason"] = "submitted-fingerprint-missing"
             if fp_diag:
@@ -1917,7 +2017,11 @@ def main(argv=None):
         for html_path in htmls:
             audio_path = html_path.parent / "submission-audio.wav"
             fp_path = html_path.parent / FINGERPRINT_ENTRY_NAME
-            media_path = audio_path if audio_path.exists() else fp_path
+            # The package's own form decides its media (v67):
+            # the fingerprint file when the folder holds one,
+            # the WAV otherwise — the same rule the web front
+            # end's records follow.
+            media_path = fp_path if fp_path.exists() else audio_path
             if media_path.exists():
                 rep = check_package(media_path, html_path, cfg)
                 rep.pop("parsed")
@@ -1940,7 +2044,7 @@ def main(argv=None):
             folder = html_path.parent
             audio_path = folder / "submission-audio.wav"
             fp_path = folder / FINGERPRINT_ENTRY_NAME
-            media_path = audio_path if audio_path.exists() else fp_path
+            media_path = fp_path if fp_path.exists() else audio_path
             if media_path.exists():
                 packages.append({
                     "user_id": folder.name,

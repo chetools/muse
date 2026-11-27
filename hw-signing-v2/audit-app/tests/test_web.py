@@ -1539,8 +1539,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/66.0",
-          "user agent bumped to 66.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/67.0",
+          "user agent bumped to 67.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -4173,15 +4173,16 @@ def main():
     # v65: the version is v65 (the v64 column and notice
     # behaviour above is unchanged).
     # v66: the version is v66.
-    check(web.APP_VERSION == "v66", "v66: APP_VERSION is v66")
+    # v67: the version is v67.
+    check(web.APP_VERSION == "v67", "v67: APP_VERSION is v67")
     status, st63 = call("GET", "/api/status")
-    check(status == 200 and st63.get("app_version") == "v66",
-          "v66: /api/status reports app_version v66")
+    check(status == 200 and st63.get("app_version") == "v67",
+          "v67: /api/status reports app_version v67")
     for _path63 in ("/", "/wall", "/cleanup", "/packages"):
         status, _pg63 = call("GET", _path63, raw=True)
-        check(status == 200 and b"v66" in _pg63
+        check(status == 200 and b"v67" in _pg63
               and b"appver" in _pg63,
-              f"v66: {_path63} header shows the app version")
+              f"v67: {_path63} header shows the app version")
     status, dash63 = call("GET", "/", raw=True)
     check(all(b"<th>" + h + b"</th>" in dash63 for h in
               (b"Package integrity", b"Grade signature",
@@ -4238,8 +4239,10 @@ def main():
     # fixtures are the _check_mode inputs directly: identical
     # inputs, differing only in the stored fingerprint's
     # app-check-era entry.
-    check(web.CHECK_SCHEMA == 6,
-          "v65: the check schema rises to 6")
+    check(web.CHECK_SCHEMA == 7,
+          "v67: the check schema rises to 7 (the WAV-repair "
+          "retry and the form-true media selection re-do "
+          "stored results once)")
     _inputs64 = {"zip_sha256": "z64", "audio": [1, "a"],
                  "html_sha256": "h64", "zip": [2, "b"],
                  "video": [3, "c"], "threshold": 0.85,
@@ -4376,8 +4379,76 @@ def main():
           "tracks play intent for stall resume, and keeps "
           "ended tiles out of the master average")
     status, st66 = call("GET", "/api/status")
-    check(st66.get("app_version") == "v66",
-          "v66: /api/status reports the app version")
+    check(st66.get("app_version") == "v67",
+          "v67: /api/status reports the app version")
+
+    # ---------------------------------------------------------
+    # 31. v67: a package record names the package's own media
+    # (the fingerprint file whenever the folder holds one —
+    # a stray audio file beside a fingerprint package no
+    # longer stands in for it), the YouTube cell carries the
+    # stored fingerprint diagnostic as a tooltip, and the
+    # wall recovers an errored tile (the browser scenario is
+    # tests/wall_regression_v67.py).
+    cfg67 = web.load_web_config()
+    unit67 = data_dir / "downloads" / "101" / "202" / "777"
+    unit67.mkdir(parents=True, exist_ok=True)
+    (unit67 / "submission.html").write_text(
+        build_html(audit.sha256_file(wav_tmp)), encoding="utf-8")
+    (unit67 / "submission-fingerprint.bin").write_bytes(fp_bytes48)
+    (unit67 / "leftover.wav").write_bytes(b"stray audio")
+    (unit67 / "clip.webm").write_bytes(b"stray video")
+    att67 = unit67 / "attempt-1"
+    att67.mkdir()
+    (att67 / "submission.html").write_text(
+        build_html(audit.sha256_file(wav_tmp)), encoding="utf-8")
+    (att67 / "submission-fingerprint.bin").write_bytes(fp_bytes48)
+    (att67 / "leftover.mp3").write_bytes(b"stray audio")
+    pkgs67 = {p["key"]: p for p in web.downloaded_packages(cfg67)}
+    check(pkgs67["101_202_777"]["audio_path"].endswith(
+              "submission-fingerprint.bin"),
+          "v67: a fingerprint package's record names the "
+          "fingerprint file even when stray audio files sit "
+          "beside it in the folder")
+    atts67 = {p["attempt_key"]: p
+              for p in web.downloaded_attempt_packages(cfg67)}
+    check(atts67["101_202_777::a1"]["audio_path"].endswith(
+              "submission-fingerprint.bin"),
+          "v67: a fingerprint attempt's record names the "
+          "fingerprint file the same way")
+    unit67b = data_dir / "downloads" / "101" / "202" / "776"
+    unit67b.mkdir(parents=True, exist_ok=True)
+    (unit67b / "submission.html").write_text(
+        build_html(audit.sha256_file(wav_tmp)), encoding="utf-8")
+    (unit67b / "submission-audio.wav").write_bytes(b"wav bytes")
+    pkgs67b = {p["key"]: p for p in web.downloaded_packages(cfg67)}
+    check(pkgs67b["101_202_776"]["audio_path"].endswith(
+              "submission-audio.wav"),
+          "v67: an audio-form package's record still names "
+          "its WAV (the v65 measurement path is preserved)")
+    status, dash67 = call("GET", "/", raw=True)
+    _d67 = dash67.decode("utf-8", "replace")
+    check("submitted_fingerprint_error" in _d67
+          and "video_fingerprint_error" in _d67
+          and "ytDiag" in _d67 and "' title=\"'+esc(ytDiag)+'\"'" in _d67,
+          "v67: the YouTube cell carries the stored "
+          "fingerprint diagnostic as a tooltip on the "
+          "no-fingerprint tokens")
+    status, wall67 = call("GET", "/wall", raw=True)
+    _w67 = wall67.decode("utf-8", "replace")
+    check("function recoverErroredTile" in _w67
+          and 'addEventListener("error"' in _w67
+          and "ERR_RETRY_MAX" in _w67
+          and "if(v.error && v.src){ recoverErroredTile(v); return; }"
+              in _w67
+          and "_errFrac" in _w67
+          and "_resumeTries" in _w67,
+          "v67: the wall binds error recovery on its tiles, "
+          "captures the fraction as the error fires, bounds "
+          "the retries, the stall watchdog routes an errored "
+          "tile to the same recovery, and the intent branch "
+          "escalates a paused tile that plain play() calls "
+          "do not restart to a reload after three visits")
 
     server.shutdown()
     worker.shutdown()

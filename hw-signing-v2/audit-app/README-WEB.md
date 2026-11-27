@@ -18,6 +18,51 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v67 (2026-11-27) — “No fingerprint” rows explained and measured, wall tiles recover from video errors
+
+Some healthy packages showed YouTube match “no
+fingerprint” beside OK Package integrity and Grade
+signature. The cause: those packages are in the audio
+form and their WAV's “fmt ” chunk identifier is zeroed
+(intact PCM, a header ffmpeg cannot open — the
+corruption documented at v48), so the hash checks pass
+over the submitted bytes while the fingerprint decode
+fails. The WAV repair removed in v62 is restored for
+the cross-check: the submitted fingerprint is computed
+from a one-off repaired copy and the package measures
+(the result notes `wav_repaired`); hash checks still
+run over the submitted bytes only, never the repair.
+A package record now names the fingerprint file as the
+folder's media whenever one is present — before v67
+the first audio file found won, so a stray audio file
+beside a fingerprint package stood in for its media —
+and the YouTube cell's token carries the stored
+fingerprint diagnostic as a tooltip. Check schema 7:
+stored results are re-done once under the new
+semantics. On the wall, a tile whose video element
+errors (a fatal fetch or decode failure) now recovers:
+before v67 no ‘error’ handler existed and every
+stall-watchdog branch passed an errored tile by (the
+intent and generic branches both need a duration,
+which an early error destroys), so it stayed black
+for the session. The tile is reloaded at the fraction
+captured when the error fired, with its play intent
+preserved, a bounded number of times with growing
+delays; the watchdog routes an errored tile to the
+same recovery as a backstop. The watchdog's intent
+branch also escalates: a tile a scrub left paused,
+with data ready and its play intent set, was observed
+standing across many visits whose plain play() calls
+did not restart it (intermittently, in the v67
+browser probes), so after three such visits the
+branch reloads the tile at its position and plays it
+on landing, instead of repeating the ineffective
+call.
+Regression: `tests/wall_regression_v67.py` (headless
+Chromium, twelve tiles; fails on the v66 code, passes
+on v67), plus checks in `tests/test_web.py` and
+`tests/test_audit.py`.
+
 ## v66 (2026-11-27) — Redownload checks what it fetches, counts-only Redownload lines, complete privacy coverage, fraction-true wall playback with stall resume
 
 A Redownload run now ends with the incremental integrity

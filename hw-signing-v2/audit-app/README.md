@@ -1,4 +1,46 @@
-# Teacher audit app — HW Signing v2 (audit app v66)
+# Teacher audit app — HW Signing v2 (audit app v67)
+
+**v67 (2026-11-27).** Two teacher-reported defects.
+(1) Some healthy packages showed YouTube match “no
+fingerprint” beside OK Package integrity and Grade
+signature. Those packages are in the audio form and
+their WAV's “fmt ” chunk identifier is zeroed — intact
+PCM, a header ffmpeg cannot open (the corruption
+documented at v48) — so the hash checks, which run over
+the submitted bytes, pass while the fingerprint decode
+fails. The WAV repair removed in the v62 simplification
+is restored for the cross-check: such a package is
+fingerprinted from a one-off repaired copy and measures
+(`wav_repaired` in the result); hash checks still run
+over the submitted bytes only. With it: a package
+record no longer names the first audio file found in
+its folder as the media — the fingerprint file is the
+media whenever the folder holds one, as the package's
+form decides — and the YouTube cell's token now carries
+the stored fingerprint diagnostic as a tooltip, so the
+reason behind a “no fingerprint” row is visible in
+place. Check schema 7: stored results are re-done once.
+(2) On the wall, tiles still stopped and stayed black
+while others played. A tile whose video element errors
+(a fatal fetch or decode failure) had no recovery: no
+‘error’ handler existed, and every stall-watchdog
+branch passes an errored tile by — the intent branch
+and the generic branch both need a duration, which an
+early error destroys. A tile now recovers from its
+error event: reloaded at the fraction captured when
+the error fired, its play intent preserved, a bounded
+number of times with growing delays (the budget is
+restored when a frame arrives), and the stall watchdog
+routes an errored tile to the same recovery as a
+backstop. The watchdog's intent branch also escalates:
+a tile a scrub left paused with data ready and its
+play intent set was observed standing across many
+visits whose plain play() calls did not restart it, so
+after three visits the branch reloads the tile at its
+position instead of repeating the ineffective call
+(demonstrated against the v66 code by
+`tests/wall_regression_v67.py`, which fails there and
+passes on v67).
 
 **v66 (2026-11-27).** Four teacher-reported defects.
 (1) A previous attempt fetched by the Redownload tool

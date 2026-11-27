@@ -113,10 +113,27 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v66 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v67 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v66: a Redownload run checks what it fetches
+  installs). v67: an audio-form package whose WAV's
+  “fmt ” chunk identifier is zeroed (intact PCM, a header
+  ffmpeg cannot open) is measured by the YouTube
+  cross-check through a one-off repaired copy — those
+  packages showed “no fingerprint” beside OK integrity,
+  because the hash checks run over the submitted bytes
+  and pass while the decode fails (check schema 7); a
+  package record names the fingerprint file as the
+  media whenever the folder holds one (a stray audio
+  file no longer stands in for a fingerprint package's
+  media); the YouTube cell's token carries the stored
+  fingerprint diagnostic as a tooltip; and a wall tile
+  whose video element errors now recovers (reloaded at
+  its position, play intent preserved, bounded retries)
+  instead of staying black for the session — and a tile
+  a scrub left paused, which repeated play() calls were
+  observed not to restart, is reloaded by the stall
+  watchdog after three visits. v66: a Redownload run checks what it fetches
   in the same run (previous attempts included — before
   v66 they sat “not checked” until the next automatic
   pass); the Redownload tool's visible lines carry counts

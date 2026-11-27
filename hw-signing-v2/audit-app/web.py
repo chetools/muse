@@ -623,6 +623,50 @@ stall instead of leaving it stopped, and an ended tile
 no longer counts in the master position average while
 others still play (tests/wall_regression_v66.py fails on
 the v65 code and passes on this).
+
+v67 (2026-11-27): two teacher-reported defects. (1) Some
+healthy packages showed YouTube match "no fingerprint"
+beside OK Package integrity and Grade signature. The
+cause is in audit.py: those packages are in the audio
+form and their WAV's "fmt " chunk identifier is zeroed
+(the corruption documented at v48 — intact PCM, a header
+ffmpeg cannot open), so the hash checks, which run over
+the submitted bytes, pass while the fingerprint decode
+fails; the WAV repair the v62 simplification removed is
+restored for the cross-check, and such a package now
+measures (wav_repaired in the result). Two neighbouring
+defects are fixed with it: a downloaded package's record
+named the FIRST audio file found in its folder as the
+media, so a stray audio file beside a fingerprint
+package stood in for the package's own media (the record
+now names the fingerprint file whenever the folder holds
+one — the package's form decides, as at extraction), and
+the YouTube cell rendered only the short token, so the
+stored fingerprint diagnostic never reached the teacher;
+the token now carries it as a tooltip. The check schema
+rises to 7, so stored results are re-done once under the
+new semantics. (2) On the wall, tiles still stopped and
+stayed black while others played: a tile whose video
+element errors (a fatal fetch or decode failure — the
+state concurrent playback on many tiles can produce) had
+no recovery at all: no 'error' handler existed, and every
+watchdog branch passes an errored tile by (the target
+branch needs an unlanded target, the intent branch and
+the generic branch both need a duration, which an early
+error destroys). A tile now recovers from its error
+event — reloaded at its accounted fraction with its play
+intent preserved, a bounded number of times with growing
+delays, the budget restored when a frame arrives — and
+the stall watchdog routes an errored tile to the same
+recovery as a backstop. The intent branch also escalates
+now: a tile left paused by a scrub while playing, with
+data ready and its intent set, was observed standing
+across many watchdog visits whose plain play() calls did
+not restart it (intermittently, in the v67 browser
+probes); after three such visits the branch takes the
+reload path instead of repeating the ineffective call
+(tests/wall_regression_v67.py fails on the v66 code and
+passes on this).
 """
 
 import argparse
@@ -655,7 +699,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-APP_VERSION = "v66"
+APP_VERSION = "v67"
 CONFIG_PATH = Path(os.environ.get("TEACHER_AUDIT_CONFIG",
                                   HERE / "config.json"))
 
@@ -1875,12 +1919,26 @@ def downloaded_packages(cfg):
         htmls = list(folder.glob("*.html"))
         # The media entry is an audio file in the audio form and
         # the fingerprint file in the fingerprint form (v48); the
-        # record's audio_path names whichever the folder holds,
-        # and the audit checks decide the form from that file's
+        # record's audio_path names the package's own media, and
+        # the audit checks decide the form from that file's
         # name — the same convention as the records the download
         # code itself builds.
-        media = wavs[0] if wavs else \
-            folder / audit.FINGERPRINT_ENTRY_NAME
+        # The package's form decides which file that is (v67):
+        # the fingerprint file whenever the folder holds one.
+        # Before v67 the first audio file found won, so a stray
+        # audio file beside a fingerprint package — a leftover
+        # from an earlier download, a file placed in the folder
+        # by hand — stood in for the package's media: the
+        # acoustic check fingerprinted the wrong file, and the
+        # integrity check, reading the package as the audio
+        # form from that file's name, failed a healthy package
+        # (or passed it only when the stray file happened to
+        # be the original WAV). An audio file is the media
+        # only in a folder holding no fingerprint file: the
+        # audio form, or a legacy flat folder.
+        fp_file = folder / audit.FINGERPRINT_ENTRY_NAME
+        media = fp_file if fp_file.exists() else \
+            (wavs[0] if wavs else fp_file)
         if (wavs or media.exists()) and htmls:
             key = unit_key(course_id, assignment_id, user_id) \
                 if course_id and assignment_id else str(user_id)
@@ -1949,8 +2007,12 @@ def downloaded_attempt_packages(cfg):
             wavs = list(sub.glob("*.wav")) + list(sub.glob("*.mp3")) \
                 + list(sub.glob("*.m4a")) + list(sub.glob("*.webm"))
             htmls = list(sub.glob("*.html"))
-            media = wavs[0] if wavs else \
-                sub / audit.FINGERPRINT_ENTRY_NAME
+            # The package's form decides the attempt's media,
+            # as in downloaded_packages (v67): the fingerprint
+            # file whenever the folder holds one.
+            fp_file = sub / audit.FINGERPRINT_ENTRY_NAME
+            media = fp_file if fp_file.exists() else \
+                (wavs[0] if wavs else fp_file)
             if (not wavs and not media.exists()) or not htmls:
                 continue
             zip_file = sub / "package.zip"
@@ -2141,7 +2203,16 @@ def _youtube_only_entry(cfg, pkg, base_entry):
 # fingerprint is computed from the WAV and the same blockwise
 # rule runs — so a stored "old format" result predates the
 # measurement and is re-done once.
-CHECK_SCHEMA = 6
+# Schema 7 (v67): the cross-check retries a WAV ffmpeg
+# cannot decode against a repaired copy (the WAV repair
+# restored in audit.py), so a stored submitted-fingerprint-
+# missing result for such a package predates the
+# measurement; and a package record now names the
+# fingerprint file as the media whenever the folder holds
+# one, so a stored check computed over a stray audio file
+# beside a fingerprint package predates the correction.
+# Both are re-done once.
+CHECK_SCHEMA = 7
 
 _SAMPLE_BYTES = 1024 * 1024
 
@@ -4961,7 +5032,9 @@ function bindViewS(){
 // stored before v64 has no reason and shows "not measured".
 // The blanket "unavailable" token is gone: it blamed the
 // tooling even when the tooling worked and the package was
-// at fault.
+// at fault. The stored diagnostic behind the reason (when
+// the cross-check recorded one) rides on the token as a
+// tooltip (v67).
 function integCells(c, downloaded, mismatch){
   c=c||{};
   const pkg = !downloaded ? '<span class="badge">—</span>' :
@@ -4973,14 +5046,24 @@ function integCells(c, downloaded, mismatch){
   const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
   const ytSim = c.youtube && c.youtube.similarity!=null ? Number(c.youtube.similarity).toFixed(4) : null;
   const ytReason = c.youtube ? (c.youtube.reason||"") : "";
+  // The stored fingerprint diagnostic rides on the token as
+  // a tooltip (v67): the cross-check records WHY a fingerprint
+  // could not be computed (submitted_fingerprint_error /
+  // video_fingerprint_error — "ffmpeg-error:183" and its
+  // kin), and before v67 the cell showed only the short
+  // token, so a "no fingerprint" row beside OK integrity
+  // gave the teacher no way to see that the submitted WAV's
+  // header, not the package, was at fault.
+  const ytDiag = c.youtube ? (c.youtube.submitted_fingerprint_error||c.youtube.video_fingerprint_error||"") : "";
+  const ytTitle = ytDiag ? ' title="'+esc(ytDiag)+'"' : "";
   const yt = !downloaded || !c.youtube ? '<span class="mut">—</span>' :
     c.youtube.error ? '<span class="badge bad">error</span>' :
     c.youtube.youtube_flag ? '<span class="badge bad">FLAGGED'+(ytSim!=null ? ' '+esc(ytSim) : "")+"</span>" :
     (c.youtube.passed && ytSim!=null) ? '<span class="badge ok">'+esc(ytSim)+"</span>" :
     !c.youtube.available ? '<span class="mut">—</span>' :
     ytReason==="not-fingerprint-format" ? '<span class="mut">no usable media</span>' :
-    ytReason==="submitted-fingerprint-missing" ? '<span class="mut">no fingerprint</span>' :
-    ytReason==="video-fingerprint-failed" ? '<span class="mut">video fingerprint failed</span>' :
+    ytReason==="submitted-fingerprint-missing" ? '<span class="mut"'+ytTitle+'>no fingerprint</span>' :
+    ytReason==="video-fingerprint-failed" ? '<span class="mut"'+ytTitle+'>video fingerprint failed</span>' :
     '<span class="mut">not measured</span>';
   const flg = flags ? '<span class="badge warn">'+esc(flags)+"</span>" : "";
   const mis = mismatch ? '<span class="err">'+mismatch+"</span>" : "";
@@ -5842,6 +5925,16 @@ function bindTiles(){
     // the reference duration is the longest showing tile,
     // which is only known once metadata lands.
     v.addEventListener("ended",()=>{ v._wantPlay=false; });
+    // Error recovery (v67): a fatal fetch or decode error
+    // is recovered by reloading the tile at its accounted
+    // fraction (recoverErroredTile); the fraction is
+    // captured as the error fires, before any reload can
+    // reset the position. A frame arriving restores the
+    // retry budget, the error having proved transient.
+    // Before v67 no 'error' handler existed and an errored
+    // tile stayed black for the session.
+    v.addEventListener("error",()=>{ if(v._errFrac===undefined) v._errFrac=effFrac(v); recoverErroredTile(v); });
+    v.addEventListener("loadeddata",()=>{ v._errRetries=0; v._errFrac=undefined; });
     // A duration arrival can change the reference (the
     // longest showing tile), so every tile's rate is
     // recomputed, not just this tile's: a tile whose
@@ -6320,6 +6413,50 @@ function updateMaster(){
   $("syncinfo").textContent=vs.length+" videos · lengths "+vs.map(v=>fmt(v.duration||0)).join(", ");
 }
 let stallTick=0;
+// Error recovery (v67). A tile whose video element errors
+// — a fatal fetch failure or a decode failure, a state
+// many tiles fetching and decoding at once can produce —
+// had no recovery before v67: no 'error' handler existed
+// anywhere on the wall, and every branch of the stall
+// watchdog below passes an errored tile by (the target
+// branch needs an unlanded target, the v66 intent branch
+// and the generic branch both need a duration, which an
+// error early in the load destroys). Such a tile stayed
+// black for the rest of the session while its neighbours
+// played on — the teacher's stranded tiles. Recovery
+// reloads the element at the fraction captured when the
+// error fired (its scrub target while one is unlanded,
+// else its position), with its play intent preserved: a tile
+// that was playing, or carries the intent, is set to play
+// when the reloaded seek lands. It is bounded — a
+// per-element budget of ERR_RETRY_MAX retries with a
+// growing delay (1.5 s doubling), restored when a frame
+// arrives (the 'loadeddata' binding in bindTiles) — so a
+// file that can never play is retried a handful of times
+// over about ninety seconds, not for ever. The stall
+// watchdog routes an errored tile here as a backstop, for
+// an error that fired before its binding was attached.
+const ERR_RETRY_MAX=6;
+function recoverErroredTile(v){
+  if(!v || !v.isConnected || !v.src) return;
+  if((v._errRetries||0)>=ERR_RETRY_MAX) return;
+  if(v._errTimer) return;
+  const delay=1500*Math.pow(2, v._errRetries||0);
+  v._errTimer=setTimeout(()=>{
+    v._errTimer=null;
+    if(!v.isConnected || !v.error) return;
+    v._errRetries=(v._errRetries||0)+1;
+    // The fraction captured when the error fired (the
+    // 'error' binding stores it in _errFrac before any
+    // reload can reset the position), else the fraction
+    // the tile is accounted at now.
+    const f=(v._errFrac!==undefined) ? v._errFrac : effFrac(v);
+    const want=!v.paused || !!v._autoplay || !!v._wantPlay;
+    if(want){ v._wantPlay=true; v._autoplay=true; }
+    v.load();
+    if(f>0) seekFrac(v,f);
+  }, delay);
+}
 function reviveStalledTiles(list){
   // A tile that never got its frame (v52): the browser has
   // stopped fetching (network idle) with no frame to show —
@@ -6357,6 +6494,14 @@ function reviveStalledTiles(list){
   const now=performance.now();
   if(!list) sweepDetachedVids(null);
   (list||vids()).forEach(v=>{
+    // Error backstop (v67): an errored element is owed the
+    // error recovery (recoverErroredTile) before any other
+    // branch judges it — no other branch can revive it
+    // (they need a target or a duration). The recovery's
+    // own timer and budget govern the retries; this only
+    // makes sure a recovery is scheduled, for an error
+    // that fired before its binding was attached.
+    if(v.error && v.src){ recoverErroredTile(v); return; }
     // A tile carrying an unlanded scrub target (v65) is
     // owed recovery for as long as the target is unlanded:
     // no retry cap, and a patience window that starts at
@@ -6433,10 +6578,35 @@ function reviveStalledTiles(list){
     // play again; starved of data past a 10 s patience,
     // reload at the current fraction and let the deferred
     // play start it. A tile the teacher paused carries no
-    // intent and is never revived.
+    // intent and is never revived. v67: the data-ready case
+    // escalates to that same reload after three visits —
+    // a plain play() repeated every visit was observed not
+    // to restart such a tile at all (see the branch).
     if(v._wantPlay && v.src && !v.ended && v.duration && !v.seeking){
       if(v.readyState>=2){ v._playStallSince=0;
-        if(v.paused) playAfterSeek(v);
+        if(v.paused){
+          // Escalation (v67): a plain play() does not always
+          // restart a tile in this state. The state was
+          // observed standing across many watchdog visits in
+          // the v67 browser probes (intent set, readyState 3,
+          // not seeking, fraction at its scrub target, still
+          // paused half a minute after a scrub while playing
+          // — intermittently, in two of six probe runs — and
+          // a manual watchdog pass did not move it): each
+          // visit's play() either is cancelled by a seek
+          // still settling or does not take, and the branch
+          // had no stronger remedy, so it could repeat the
+          // same ineffective call for the session. After
+          // three visits the recovery escalates to the
+          // reload the starved case below uses, which
+          // re-enters resource selection and plays on
+          // landing; the counter restarts whenever the tile
+          // is seen playing.
+          if((v._resumeTries=(v._resumeTries||0)+1)>=3){
+            v._resumeTries=0; v._autoplay=true;
+            const f=frac(v); v.load(); seekFrac(v,f);
+          } else playAfterSeek(v);
+        } else v._resumeTries=0;
         return; }
       if(!v._playStallSince){ v._playStallSince=now; return; }
       if(now-v._playStallSince>10000){
@@ -6559,6 +6729,10 @@ const ZSEEK=seekGate(f=>seekZoomFrac(f));
 // session, where a wall tile in the same state recovered.
 $("zv").addEventListener("seeking",()=>{ const zv=$("zv"); zv._seekSince=performance.now(); });
 $("zv").addEventListener("seeked",()=>{ const zv=$("zv"); zv._seekSince=0; zv._stallRetries=0; });
+// The zoom video gets the wall tiles' error recovery (v67):
+// an errored zoom video was as stranded as an errored tile.
+$("zv").addEventListener("error",()=>{ const zv=$("zv"); if(zv._errFrac===undefined) zv._errFrac=effFrac(zv); recoverErroredTile(zv); });
+$("zv").addEventListener("loadeddata",()=>{ const zv=$("zv"); zv._errRetries=0; zv._errFrac=undefined; });
 $("zv").addEventListener("mousedown",e=>{
   if(e.button!==2) return;
   e.preventDefault();

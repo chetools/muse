@@ -629,6 +629,32 @@ def main():
           "v65: a package media entry that is neither the "
           "fingerprint file nor a WAV still stores reason "
           "not-fingerprint-format")
+    # v67: the WAV repair is restored. A WAV the fingerprint
+    # function cannot decode (here: the injected function
+    # refuses the submitted path) is retried once against a
+    # repaired copy — any other path — and measures; the
+    # result notes the repair. When the retry also yields
+    # nothing, the missing reason stands and no repair is
+    # claimed.
+    yt = audit.youtube_cross_check(
+        audio_path, yt_video, parsed_yt, cfg,
+        fingerprint_fn=lambda p: None if p == audio_path else fp_a)
+    check(yt["available"] and yt["passed"] is True
+          and yt["similarity"] == 1.0
+          and yt.get("wav_repaired") is True
+          and "reason" not in yt,
+          "v67: a WAV the fingerprint route cannot decode is "
+          "retried against a repaired copy and measures, "
+          "with wav_repaired noted")
+    yt = audit.youtube_cross_check(
+        audio_path, yt_video, parsed_yt, cfg,
+        fingerprint_fn=lambda p: None)
+    check(yt["passed"] is None
+          and yt.get("reason") == "submitted-fingerprint-missing"
+          and "wav_repaired" not in yt,
+          "v67: when the repaired copy also yields no "
+          "fingerprint, the missing reason stands and no "
+          "repair is claimed")
 
     # 5b. v64: every no-comparison branch of the cross-check
     # stores its machine-readable reason, and the production
@@ -706,8 +732,9 @@ def main():
         yt_video, ffmpeg="/nonexistent/ffmpeg-v64-test") is None,
         "v64: chromaprint_fingerprint keeps its list-or-None "
         "contract for its other callers")
-    check(not hasattr(audit, "_repaired_wav_temp"),
-          "v62: no WAV-repair retry in audit.py")
+    check(hasattr(audit, "_repaired_wav_temp"),
+          "v67: the WAV-repair retry removed in v62 is "
+          "restored in audit.py")
     shifted = audit.compare_fingerprints(fp_a, [fp_b[0]] * 3 + fp_a)
     check(shifted["offset_items"] == 3 and shifted["similarity"] == 1.0,
           "compare_fingerprints (kept as a helper) finds a 3-item "
@@ -762,6 +789,31 @@ def main():
             check(yt["youtube_flag"] and yt["passed"] is False,
                   "youtube cross-check (real ffmpeg): a different "
                   "take flags")
+            # v67 (real ffmpeg): the teacher's "no fingerprint"
+            # rows — an audio-form package whose WAV's "fmt "
+            # chunk identifier is zeroed. Its hash check still
+            # passes (the §9b fixture below proves that over
+            # the same corruption), ffmpeg cannot open the
+            # file at all, and the cross-check measures it
+            # through the repaired copy.
+            broken67 = tmp / "yt-broken67.wav"
+            _b67 = bytearray(yt_canvas.read_bytes())
+            _b67[12:16] = b"\x00\x00\x00\x00"
+            broken67.write_bytes(bytes(_b67))
+            if audit.chromaprint_fingerprint(broken67) is None:
+                yt = audit.youtube_cross_check(broken67, yt_m4a,
+                                               parsed_yt, cfg)
+                check(yt.get("wav_repaired") is True
+                      and yt["acoustic_configured"]
+                      and yt["passed"] is True
+                      and "reason" not in yt,
+                      "v67: a zeroed-fmt WAV measures through "
+                      "the repaired copy (real ffmpeg) instead "
+                      "of recording submitted-fingerprint-"
+                      "missing beside an OK integrity check")
+            else:
+                print("skip: real-ffmpeg repair check (this "
+                      "ffmpeg decodes the zeroed-fmt WAV)")
         else:
             print("skip: real-ffmpeg youtube checks (no chromaprint)")
     else:
