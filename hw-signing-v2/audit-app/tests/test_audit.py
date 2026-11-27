@@ -595,10 +595,89 @@ def main():
     yt = audit.youtube_cross_check(audio_path, yt_video, parsed_yt, cfg,
                                    fingerprint_fn=lambda p: fp_a)
     check(yt["passed"] is None and not yt["youtube_flag"]
-          and "current" in (yt.get("reason") or "")
+          and yt.get("reason") == "not-fingerprint-format"
           and "duration_diff_s" not in yt,
-          "v62: an audio-form package is reported as not in the "
-          "current format by the cross-check")
+          "v64: an audio-form package is reported by the "
+          "cross-check's machine-readable reason "
+          "not-fingerprint-format (v62: not in the current "
+          "format, passed stays None)")
+
+    # 5b. v64: every no-comparison branch of the cross-check
+    # stores its machine-readable reason, and the production
+    # fingerprint path reports why a video fingerprint failed.
+    yt = audit.youtube_cross_check(fp_file_a, tmp / "no-such.mp4",
+                                   parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
+    check(yt.get("reason") == "not-downloaded",
+          "v64: video not downloaded stores reason not-downloaded")
+    yt = audit.youtube_cross_check(fp_file_a, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: None)
+    check(yt.get("reason") == "video-fingerprint-failed"
+          and "video_fingerprint_error" not in yt
+          and yt["passed"] is None,
+          "v64: a video fingerprint that cannot be computed "
+          "(injected fingerprint_fn) stores reason "
+          "video-fingerprint-failed and no diagnostic")
+    def _boom(p):
+        raise RuntimeError("fp boom")
+    yt = audit.youtube_cross_check(fp_file_a, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=_boom)
+    check("error" in yt and yt["passed"] is None
+          and "reason" not in yt,
+          "v64: a fingerprint_fn exception stays the error "
+          "case, with no reason stored")
+    missing_fp = tmp / "fp-missing" / audit.FINGERPRINT_ENTRY_NAME
+    yt = audit.youtube_cross_check(missing_fp, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
+    check(yt.get("reason") == "submitted-fingerprint-missing"
+          and yt["available"] and yt["passed"] is None,
+          "v64: an absent submitted fingerprint file stores "
+          "reason submitted-fingerprint-missing")
+    empty_dir = tmp / "fp-empty"
+    empty_dir.mkdir()
+    empty_fp = empty_dir / audit.FINGERPRINT_ENTRY_NAME
+    empty_fp.write_bytes(b"")
+    yt = audit.youtube_cross_check(empty_fp, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
+    check(yt.get("reason") == "submitted-fingerprint-missing",
+          "v64: an empty submitted fingerprint file stores "
+          "reason submitted-fingerprint-missing")
+    short_dir = tmp / "fp-short"
+    short_dir.mkdir()
+    short_fp = short_dir / audit.FINGERPRINT_ENTRY_NAME
+    short_fp.write_bytes(b"\x01\x02")
+    yt = audit.youtube_cross_check(short_fp, yt_video, parsed_yt, cfg,
+                                   fingerprint_fn=lambda p: fp_a)
+    check(yt.get("reason") == "submitted-fingerprint-missing",
+          "v64: a submitted fingerprint file shorter than one "
+          "item stores reason submitted-fingerprint-missing")
+    yt = audit.youtube_cross_check(
+        fp_file_a, yt_video, parsed_yt, cfg,
+        ffmpeg="/nonexistent/ffmpeg-v64-test")
+    check(yt.get("reason") == "video-fingerprint-failed"
+          and (yt.get("video_fingerprint_error") or "")
+              .startswith("ffmpeg-exception"),
+          "v64: the production path stores the fingerprint "
+          "diagnostic (an unusable ffmpeg) beside the reason")
+    _keep_find_ffmpeg = audit.find_ffmpeg
+    audit.find_ffmpeg = lambda: None
+    try:
+        _fp_none, _why_none = audit.chromaprint_fingerprint_diag(
+            yt_video)
+        yt = audit.youtube_cross_check(fp_file_a, yt_video,
+                                       parsed_yt, cfg)
+    finally:
+        audit.find_ffmpeg = _keep_find_ffmpeg
+    check(_fp_none is None and _why_none == "ffmpeg-missing",
+          "v64: chromaprint_fingerprint_diag reports "
+          "ffmpeg-missing when no ffmpeg is found")
+    check(yt.get("video_fingerprint_error") == "ffmpeg-missing",
+          "v64: the cross-check records ffmpeg-missing as the "
+          "video fingerprint diagnostic")
+    check(audit.chromaprint_fingerprint(
+        yt_video, ffmpeg="/nonexistent/ffmpeg-v64-test") is None,
+        "v64: chromaprint_fingerprint keeps its list-or-None "
+        "contract for its other callers")
     check(not hasattr(audit, "_repaired_wav_temp"),
           "v62: no WAV-repair retry in audit.py")
     shifted = audit.compare_fingerprints(fp_a, [fp_b[0]] * 3 + fp_a)

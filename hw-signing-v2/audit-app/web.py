@@ -533,6 +533,30 @@ available" sentence is gone: the YouTube cell shows
 "unavailable" and one notice above the table states the
 system-level fact once. A package mismatch now stands in
 the Flags column (it stood in the Integrity cell).
+
+v64: the four check columns are renamed for what they
+hold — Package integrity, Grade signature, YouTube match
+and Warnings (the package mismatch stands in Warnings) —
+and the submissions table gains fixed column widths, so
+the empty Warnings column no longer takes the slack; the
+Final grade header loses its sub-label to a tooltip. The
+YouTube cross-check stores a machine-readable reason
+whenever no comparison could be made (audit.py), and the
+dashboard cell names that state — "old format", "no
+fingerprint" or "video fingerprint failed" — instead of
+the blanket "unavailable"; the notice above the table
+aggregates the states actually shown. The check schema
+rises to 5: the check-input fingerprint gains an
+app-check-era entry, so a degraded result stored before
+v64 is owed exactly one acoustic re-check under v64 and
+then stands until its inputs or tooling change, as
+before. On the wall, render() and renderAttemptTiles()
+now tear down the grid's videos (pause, mute, unload)
+before replacing the grid, and a registry of every video
+element created lets claimAudio() and the stall watchdog
+reach elements a rebuild has detached — a tile playing
+when the grid was rebuilt (a Group by change, a sort, a
+filter) no longer keeps sounding off-screen.
 """
 
 import argparse
@@ -565,7 +589,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-APP_VERSION = "v63"
+APP_VERSION = "v64"
 CONFIG_PATH = Path(os.environ.get("TEACHER_AUDIT_CONFIG",
                                   HERE / "config.json"))
 
@@ -2039,7 +2063,13 @@ def _youtube_only_entry(cfg, pkg, base_entry):
 # the YouTube cross-check follows the per-block fingerprint
 # rule only (no duration diagnostics, no global-similarity
 # threshold rule) — stored checks are re-done.
-CHECK_SCHEMA = 4
+# Schema 5 (v64): the check-input fingerprint gains an
+# app-check-era entry (see _package_check_inputs), so a
+# degraded acoustic result stored before v64 is owed exactly
+# one acoustic re-check under v64 — its stored "reason" may
+# predate the machine-readable reasons, and its video may
+# have been only partly downloaded at the first check.
+CHECK_SCHEMA = 5
 
 _SAMPLE_BYTES = 1024 * 1024
 
@@ -2092,6 +2122,17 @@ def _package_check_inputs(cfg, pkg, dl_state):
         "threshold": float(cfg.get("acoustic_threshold", 0.85)),
         "worker": cfg.get("worker_base_url"),
         "check_schema": CHECK_SCHEMA,
+        # v64: the app-check era. A stored fingerprint written
+        # before v64 has no such entry; _classify_check_diff
+        # treats the missing entry as an acoustic-side move,
+        # so a degraded pre-v64 result earns exactly one
+        # acoustic re-check under v64 (its reason may predate
+        # the machine-readable reasons, and its video may
+        # have been only partly downloaded at the first
+        # check) and then stands, like any other result,
+        # until its inputs or tooling change. A result that
+        # did measure is not re-run for the era alone.
+        "app_check_era": APP_VERSION,
         # v37: the acoustic tooling itself — the ffmpeg program
         # the fingerprinting runs through, by path, or None when
         # none is found. A degraded result (video present, no
@@ -2134,19 +2175,31 @@ def _classify_check_diff(stored, current):
     pin the same package content. acoustic_side is True when the
     move can affect only the acoustic part: media_only, or a
     move confined to the video, the threshold or the acoustic
-    tooling. Both _check_mode and the /api/youtube-check
-    fingerprint refresh judge differences through this one
-    implementation."""
+    tooling. A missing app-check-era entry in a pre-v64
+    fingerprint is likewise acoustic-side only (v64): it is
+    set aside from diff and reported through acoustic_side,
+    so _check_mode can owe a degraded pre-v64 result its one
+    re-check without a full check. Both _check_mode and the
+    /api/youtube-check fingerprint refresh judge differences
+    through this one implementation."""
     diff = {k for k in current if stored.get(k) != current.get(k)}
     if "check_schema" in diff and "check_schema" not in stored:
         diff.discard("check_schema")
+    # A pre-v64 fingerprint has no app-check-era entry (v64):
+    # the era move is folded into the acoustic side below, so
+    # it can earn at most the one acoustic re-check a degraded
+    # result is owed, never a full check.
+    era_only = "app_check_era" in diff and "app_check_era" not in stored
+    if era_only:
+        diff.discard("app_check_era")
     media_only = bool(
         diff and diff <= {"audio", "zip", "video"}
         and stored.get("zip_sha256")
         and stored.get("zip_sha256") == current.get("zip_sha256")
         and stored.get("html_sha256") == current.get("html_sha256"))
     acoustic_side = bool(
-        media_only or diff <= {"video", "threshold", "acoustic_tool"})
+        media_only or diff <= {"video", "threshold", "acoustic_tool"}
+        or (era_only and not diff))
     return diff, media_only, acoustic_side
 
 
@@ -2184,7 +2237,18 @@ def _check_mode(existing, inputs, force):
     entry earns at most the acoustic re-check for a moved
     video signature, never a full check. Without a stored ZIP
     watermark to pin the content, that shortcut is not taken
-    and the entry gets its one full check."""
+    and the entry gets its one full check.
+
+    v64: the check-input fingerprint carries an app-check-era
+    entry. A stored fingerprint with no era entry predates
+    v64; the era difference alone earns a degraded result
+    exactly one acoustic re-check under v64 — the first check
+    may have run against a still-downloading video and the
+    stored reason may predate the machine-readable reasons —
+    and a result that measured is not re-run for the era
+    alone. The re-check stores the era, so it is not owed
+    again: this is the v37 rule (no per-pass retrying) with
+    one more trigger, not an exception to it."""
     if force:
         return "full"
     if existing is None or existing.get("error"):
@@ -2194,8 +2258,14 @@ def _check_mode(existing, inputs, force):
         return "full"
     if stored == inputs:
         return None
-    diff, media_only, _acoustic = _classify_check_diff(stored, inputs)
+    diff, media_only, acoustic_side = _classify_check_diff(stored, inputs)
     if not diff:
+        # Nothing but the v64 app-check era moved (a stored
+        # fingerprint written before v64): a degraded result
+        # is owed its one acoustic re-check under v64; a
+        # result that measured stands.
+        if acoustic_side and _acoustic_degraded(existing):
+            return "youtube"
         return None
     if media_only:
         return "youtube" if "video" in diff else None
@@ -4102,7 +4172,6 @@ section{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 18p
 section p.mut,section details p,section>details{max-width:80ch}
 details.howitworks{margin:10px 0}
 details.howitworks summary{cursor:pointer;font-size:13px;color:#243b53;font-weight:600}
-.thsub{display:block;font-weight:400;font-size:11px;color:#666;white-space:normal}
 h2{font-size:16px;margin:0 0 10px} h3{font-size:14px;margin:14px 0 6px}
 label{display:block;font-size:13px;margin:8px 0 3px}
 input[type=text],input[type=password],input[type=number],input[type=date],select{width:100%;max-width:520px;padding:7px 9px;border:1px solid #bbb;border-radius:5px;font-size:14px;box-sizing:border-box}
@@ -4125,6 +4194,9 @@ button.secondary{background:#e8e8e4;color:#1c1c1a;border:1px solid #bbb}
 button.danger{background:#8f2d2d}
 button:disabled{opacity:.45;cursor:default}
 table{border-collapse:collapse;width:100%;font-size:13px}
+#substbl{table-layout:fixed}
+#substbl td{overflow-wrap:anywhere}
+#substbl .warncell{white-space:normal}
 th,td{border-bottom:1px solid #e3e3de;padding:6px 7px;text-align:left;vertical-align:top}
 th{background:#f0f0ec}
 .badge{display:inline-block;padding:1px 7px;border-radius:9px;font-size:12px;background:#e8e8e4}
@@ -4225,16 +4297,16 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <p id="selbar2"><span class="mut" id="selcount">No students ticked</span> <button class="secondary" id="selview" disabled>View selected on wall</button> <button class="secondary" id="selclear" disabled>Clear ticks</button> <span class="mut">Tick students to open exactly those on the video wall; click a student's name to open the wall zoomed on that student.</span></p>
 <p class="mut" id="subshint"></p>
 <p class="mut" id="ytnotice" style="display:none"></p>
-<table><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
-<th>Package</th><th>Signature</th><th>YouTube</th><th>Flags</th><th>Grade</th>
-<th>Final grade<span class="thsub">auto-saves · amber = differs from signed grade</span></th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
+<table id="substbl"><colgroup><col style="width:34px"><col><col style="width:130px"><col style="width:110px"><col style="width:92px"><col style="width:110px"><col style="width:104px"><col style="width:150px"><col style="width:160px"><col style="width:76px"><col style="width:190px"><col style="width:84px"></colgroup><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
+<th>Package integrity</th><th>Grade signature</th><th>YouTube match</th><th>Warnings</th><th>Grade</th>
+<th title="auto-saves · amber = differs from signed grade">Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
 <details class="howitworks"><summary>How this works</summary>
 <p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. Submissions are not re-graded: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's grade.</p>
-<p class="mut"><strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity only (which survives YouTube transcoding; duration is not used), and shows "YouTube similarity …" or "YouTube FLAGGED · similarity …" in the YouTube column; a flagged submission's final grade stays blank until you enter one.</p>
+<p class="mut"><strong>YouTube match</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity only (which survives YouTube transcoding; duration is not used), and shows the similarity number, or "FLAGGED" plus the number, in the YouTube match column; a flagged submission's final grade stays blank until you enter one. When no comparison could be made, the cell names the reason instead — "old format" (the package is not in the fingerprint format), "no fingerprint" (the submitted fingerprint is missing or unreadable) or "video fingerprint failed" (the downloaded video's fingerprint could not be computed) — and a notice above the table summarises the states shown.</p>
 <p class="mut"><strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full.</p>
 <p class="mut"><strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. With the default sort, students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
 <p class="mut">Select, sort, filter and group the submissions below — the same view applies on the video wall, and the choice is kept in this browser. “Graded” means a grade is present: the signed grade from the package, or a final grade you entered. Sorting by Examined lists the not-yet-examined first (ascending). Attempts set to “Include previous” adds a subordinate row for each earlier attempt already downloaded, under its submission; nothing is downloaded from here — use the Redownload tool above with “Include previous attempts” for the rest.</p>
-<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade. Where an assignment's expected package is set (section 3) and a submission was graded under a different package, the cell shows no grade field: the mismatch stands in the Flags column instead.</p>
+<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade. Where an assignment's expected package is set (section 3) and a submission was graded under a different package, the cell shows no grade field: the mismatch stands in the Warnings column instead.</p>
 </details>
 </section>
 
@@ -4655,10 +4727,20 @@ function bindViewS(){
 // The four check cells of a submissions-table row (v63; the
 // construction is shared by the canonical row and the
 // previous-attempt rows, as the single combined cell was
-// from v35): Package, Signature, YouTube and Flags, one
-// short token each. Returns an array of four cell HTML
-// strings. The mismatch text, when given, stands in the
-// Flags cell.
+// from v35): Package integrity, Grade signature, YouTube
+// match and Warnings, one short token each. Returns an
+// array of four cell HTML strings. The mismatch text, when
+// given, stands in the Warnings cell.
+// The YouTube match cell names why no comparison was made
+// (v64), from the cross-check's stored machine-readable
+// reason: "old format" (the package is not in the
+// fingerprint format), "no fingerprint" (the submitted
+// fingerprint is missing, empty or unreadable) or "video
+// fingerprint failed" (the video's fingerprint could not
+// be computed). A degraded result stored before v64 has no
+// reason and shows "not measured". The blanket
+// "unavailable" token is gone: it blamed the tooling even
+// when the tooling worked and the package was at fault.
 function integCells(c, downloaded, mismatch){
   c=c||{};
   const pkg = !downloaded ? '<span class="badge">—</span>' :
@@ -4669,25 +4751,35 @@ function integCells(c, downloaded, mismatch){
     badge(c.grade_receipt_ok===true,"OK","FAILED");
   const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
   const ytSim = c.youtube && c.youtube.similarity!=null ? Number(c.youtube.similarity).toFixed(4) : null;
+  const ytReason = c.youtube ? (c.youtube.reason||"") : "";
   const yt = !downloaded || !c.youtube ? '<span class="mut">—</span>' :
     c.youtube.error ? '<span class="badge bad">error</span>' :
     c.youtube.youtube_flag ? '<span class="badge bad">FLAGGED'+(ytSim!=null ? ' '+esc(ytSim) : "")+"</span>" :
     (c.youtube.passed && ytSim!=null) ? '<span class="badge ok">'+esc(ytSim)+"</span>" :
-    c.youtube.available ? '<span class="mut">unavailable</span>' :
-    '<span class="mut">—</span>';
+    !c.youtube.available ? '<span class="mut">—</span>' :
+    ytReason==="not-fingerprint-format" ? '<span class="mut">old format</span>' :
+    ytReason==="submitted-fingerprint-missing" ? '<span class="mut">no fingerprint</span>' :
+    ytReason==="video-fingerprint-failed" ? '<span class="mut">video fingerprint failed</span>' :
+    '<span class="mut">not measured</span>';
   const flg = flags ? '<span class="badge warn">'+esc(flags)+"</span>" : "";
   const mis = mismatch ? '<span class="err">'+mismatch+"</span>" : "";
   return [pkg, sig, yt, (flg&&mis ? flg+"<br>"+mis : flg+mis)];
 }
-// True when a stored check's YouTube state is the
-// tooling-unavailable one (v63): the fact is stated once
-// above the table, not repeated in every row.
-function ytUnavailable(c, downloaded){
+// The YouTube-match state of a stored check when no
+// comparison was made (v64): the stored reason token, or
+// "not-measured" for a degraded result stored before v64
+// (which carries no reason). Null when the row is not in
+// that state — not downloaded, no YouTube entry, an error,
+// a flag, a measured pass, or no video yet. The notice
+// above the table aggregates these states over the shown
+// rows and states them once, not once per row.
+function ytNotMeasured(c, downloaded){
   c=c||{};
-  return !!(downloaded && c.youtube && !c.youtube.error
+  if(!(downloaded && c.youtube && !c.youtube.error
     && !c.youtube.youtube_flag
     && !(c.youtube.passed && c.youtube.similarity!=null)
-    && c.youtube.available);
+    && c.youtube.available)) return null;
+  return c.youtube.reason || "not-measured";
 }
 // Final-grade auto-save and difference shading (v35). The
 // field's rendered value is kept in dataset.init: leaving a
@@ -4766,7 +4858,7 @@ function renderSubs(){
     "<td>"+fmtDateS(s.submitted_at)+"</td>"+
     "<td>"+esc(s.workflow_state||"")+"<br><span class='mut'>attempt "+esc(s.attempt??"")+"</span></td>"+
     "<td>"+(s.downloaded?badge(true,"yes",""):'<span class="badge">no</span>')+"</td>"+
-    "<td>"+ic[0]+"</td><td>"+ic[1]+"</td><td>"+ic[2]+"</td><td>"+ic[3]+"</td>"+
+    "<td>"+ic[0]+"</td><td>"+ic[1]+"</td><td>"+ic[2]+"</td><td class=\"warncell\">"+ic[3]+"</td>"+
     "<td>"+(s.student_score==null?"—":'<span class="priv">'+s.student_score+" / 10</span>")+"</td>"+
     fincell+
     '<td><input type="checkbox" style="width:auto" '+(s.examined?"checked":"")+
@@ -4785,7 +4877,7 @@ function renderSubs(){
         "<td>"+fmtDateS(a.submitted_at)+"</td>"+
         '<td><span class="mut">attempt '+esc(a.attempt_no)+"</span></td>"+
         "<td>"+badge(true,"yes","")+"</td>"+
-        (()=>{ const aic=integCells(a.check,true, a.pkg_mismatch? 'Package mismatch — submitted under '+esc(a.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"") : ""); return "<td>"+aic[0]+"</td><td>"+aic[1]+"</td><td>"+aic[2]+"</td><td>"+aic[3]+"</td>"; })()+
+        (()=>{ const aic=integCells(a.check,true, a.pkg_mismatch? 'Package mismatch — submitted under '+esc(a.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"") : ""); return "<td>"+aic[0]+"</td><td>"+aic[1]+"</td><td>"+aic[2]+"</td><td class=\"warncell\">"+aic[3]+"</td>"; })()+
         "<td>"+(a.score==null?"—":'<span class="priv">'+a.score+" / 10</span>")+"</td>"+
         '<td><span class="mut">—</span></td>'+
         '<td><a href="/wall?focus='+encodeURIComponent(s.id)+'&attempt='+esc(a.attempt_no)+'">View →</a></td></tr>').join("");
@@ -4810,10 +4902,22 @@ function renderSubs(){
   }).join("");
   const ytn=$("ytnotice");
   if(ytn){
-    const unav=VIEWLIST.some(s=>ytUnavailable(s.check,s.downloaded)
-      || (ATTMODE==="previous" && (s.attempts||[]).some(a=>ytUnavailable(a.check,true))));
-    ytn.style.display=unav?"":"none";
-    ytn.textContent=unav? "YouTube acoustic check unavailable on this computer (ffmpeg/Chromaprint) — the YouTube column shows “unavailable” for those rows." : "";
+    // The one-time notice (v64) aggregates the YouTube-match
+    // states actually shown — canonical rows and, in
+    // previous-attempts mode, attempt rows — instead of
+    // asserting the tooling is unavailable.
+    const counts={};
+    const tally=r=>{ if(r) counts[r]=(counts[r]||0)+1; };
+    VIEWLIST.forEach(s=>{ tally(ytNotMeasured(s.check,s.downloaded));
+      if(ATTMODE==="previous") (s.attempts||[]).forEach(a=>tally(ytNotMeasured(a.check,true))); });
+    const labels={"not-fingerprint-format":"old format",
+      "submitted-fingerprint-missing":"no fingerprint",
+      "video-fingerprint-failed":"video fingerprint failed",
+      "not-measured":"not measured"};
+    const parts=Object.keys(counts).map(r=>counts[r]+" × "+(labels[r]||r));
+    const total=Object.values(counts).reduce((a,b)=>a+b,0);
+    ytn.style.display=total?"":"none";
+    ytn.textContent=total? "YouTube match could not be measured for "+total+" shown row(s): "+parts.join(", ")+"." : "";
   }
   document.querySelectorAll(".selbox").forEach(b=>
     b.onchange=()=>toggleSel(b.dataset.key, b.checked));
@@ -5431,7 +5535,37 @@ function pages(){return Math.max(1,Math.ceil(VIEWLIST.length/pageSize()));}
 function showing(){return VIEWLIST.slice(page*pageSize(), page*pageSize()+pageSize());}
 function vids(){return [...document.querySelectorAll("#grid video")];}
 function frac(v){return v.duration? v.currentTime/v.duration : 0;}
-function claimAudio(v){ document.querySelectorAll("video").forEach(o=>{ if(o!==v) o.muted=true; }); }
+// Every tile and zoom video element ever created (v64).
+// Rebuilding the grid discards its elements from the
+// document, and a discarded element that was playing keeps
+// playing — audibly — while no document query can reach it
+// (the stuck-audio defect: a Group by change, a sort, a
+// filter or a page turn rebuilt the grid under a playing
+// tile, and the orphan sounded on under the next hovered
+// tile). The registry is the backstop: claimAudio() and
+// the stall watchdog also sweep registered elements that
+// are no longer in the document, muting and pausing them;
+// an element found paused and detached is pruned.
+const WALLVIDS=new Set();
+function registerVid(v){ if(v) WALLVIDS.add(v); return v; }
+function sweepDetachedVids(except){
+  WALLVIDS.forEach(v=>{
+    if(v!==except && !v.isConnected){
+      v.muted=true;
+      if(!v.paused) v.pause();
+      if(v.paused) WALLVIDS.delete(v);
+    } });
+}
+function teardownGridVids(){
+  // Stop every video the grid is about to discard (v64):
+  // pause, mute and unload each one, mirroring the zoom
+  // view's teardown in closeZoom. Called at the start of
+  // render() and renderAttemptTiles(), before the grid's
+  // innerHTML is replaced.
+  vids().forEach(v=>{ v.pause(); v.muted=true;
+    v.removeAttribute("src"); v.load(); });
+}
+function claimAudio(v){ document.querySelectorAll("video").forEach(o=>{ if(o!==v) o.muted=true; }); sweepDetachedVids(v); }
 async function markExamined(id, via){
   // Hovering a tile (its audio plays) or opening the zoom view
   // marks the student examined. The badge flips in place; the
@@ -5454,6 +5588,7 @@ function bindTiles(){
   document.querySelectorAll(".tile").forEach(t=>t.onclick=e=>{
     if(e.target.dataset.dl) return; openZoom(t.dataset.id);});
   document.querySelectorAll(".tile video").forEach(v=>{
+    registerVid(v);
     // Seek timing for the stall watchdog (v60): when the
     // current seek began, cleared when one completes; a
     // completed seek also restores the tile's retry budget.
@@ -5699,6 +5834,7 @@ function render(){
   if(page>pages()-1) page=pages()-1;
   if(page<0) page=0;
   const sh=showing();
+  teardownGridVids();
   const gcounts={};
   if(VIEW.group!=="none") VIEWLIST.forEach(s=>{ const g=groupLabelW(s); gcounts[g]=(gcounts[g]||0)+1; });
   const prevLast=(page>0 && VIEWLIST.length)? VIEWLIST[Math.min(page*pageSize()-1, VIEWLIST.length-1)] : null;
@@ -5739,6 +5875,7 @@ function render(){
 }
 function renderAttemptTiles(){
   const g=$("grid");
+  teardownGridVids();
   g.style.gridTemplateColumns="repeat(auto-fill,minmax("+parseInt($("tilesize").value||"340")+"px,1fr))";
   g.innerHTML=ATT.rows.map(s=>{
     const gr= s.score==null? "—" : s.score+" / 10";
@@ -5901,6 +6038,7 @@ function reviveStalledTiles(list){
   // the tile alone, and pressing play still works because
   // playAfterSeek no longer waits for seeked for ever.
   const now=performance.now();
+  if(!list) sweepDetachedVids(null);
   (list||vids()).forEach(v=>{
     if(!v.src || v.readyState>=2 || !v.duration) return;
     if(v.seeking){
@@ -6138,6 +6276,7 @@ $("prevp").onclick=()=>{ if(page>0){ page--; render(); } };
 $("nextp").onclick=()=>{ if(page<pages()-1){ page++; render(); } };
 let zoomHist=false;
 function openZoom(id, opts){
+  registerVid($("zv"));
   const s=STUDENTS.find(x=>x.id===id) || ATT.rows.find(x=>x.id===id);
   if(!s) return;
   const wasOpen=!!zoomId;

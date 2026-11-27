@@ -1,4 +1,35 @@
-# Teacher audit app — HW Signing v2 (audit app v63)
+# Teacher audit app — HW Signing v2 (audit app v64)
+
+**v64 (2026-11-27).** The four check columns are renamed
+for what they hold — Package integrity, Grade signature,
+YouTube match and Warnings (the package mismatch stands
+in Warnings) — the submissions table gains fixed column
+widths so the empty Warnings column no longer takes the
+slack, and the Final grade header's sub-label becomes a
+tooltip. The YouTube cross-check now stores a
+machine-readable `reason` whenever no comparison could be
+made (`not-downloaded`, `not-fingerprint-format`,
+`submitted-fingerprint-missing`,
+`video-fingerprint-failed`, with the fingerprint
+diagnostic — ffmpeg missing, a non-zero exit, an
+exception, or no output — in `video_fingerprint_error`
+where the production fingerprint function produced one),
+and the dashboard cell names the state — “old format”,
+“no fingerprint” or “video fingerprint failed” — instead
+of the blanket “unavailable”; the notice above the table
+aggregates the states actually shown, and a degraded row
+stored before v64 (no reason) shows “not measured”. The
+check schema rises to 5: the check-input fingerprint
+gains an app-check-era entry, so a degraded result stored
+before v64 is owed exactly one acoustic re-check under
+v64 and then stands until its inputs or tooling change.
+On the wall, `render()` and `renderAttemptTiles()` tear
+down the grid's videos (pause, mute, unload) before
+rebuilding the grid, and a registry of every video
+element created lets the audio claim and the stall
+watchdog reach elements a rebuild detached — a tile
+playing through a Group by change no longer keeps
+sounding off-screen.
 
 **v63 (2026-11-27).** A display pass; no check changes
 and the check schema stays 4. The app version is the

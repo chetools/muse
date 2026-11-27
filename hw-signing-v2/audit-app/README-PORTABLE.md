@@ -113,10 +113,20 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v63 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v64 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v63: a display pass — the version shows
+  installs). v64: the check columns are renamed Package
+  integrity, Grade signature, YouTube match and Warnings,
+  with fixed column widths and the Final grade sub-label
+  moved to a tooltip; the YouTube cross-check records why
+  no comparison could be made and the cell names it (“old
+  format”, “no fingerprint”, “video fingerprint failed”)
+  instead of “unavailable”, with one acoustic re-check
+  owed to degraded results stored before v64 (check
+  schema 5); and the wall tears down its grid videos
+  before a rebuild, so a playing tile no longer keeps
+  sounding after a Group by change. v63: a display pass — the version shows
   small in every page header (from the one `APP_VERSION`
   constant in `web.py`), the dashboard, Cleanup and
   Packages pages widen to 96% of the window capped at

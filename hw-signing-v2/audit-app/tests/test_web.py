@@ -492,11 +492,11 @@ def main():
           "check result records the v2 grade receipt and signed "
           "grades (v62: no youtube_id_ok, no grades_match)")
     status, main_page2 = call("GET", "/", raw=True)
-    check(b"<th>Signature</th>" in main_page2
+    check(b"<th>Grade signature</th>" in main_page2
           and b"function integCells" in main_page2,
           "dashboard carries the grade signature in its own "
-          "Signature column (v63; the v22 badge in the single "
-          "Integrity cell before it)")
+          "Grade signature column (v64; Signature in v63, the "
+          "v22 badge in the single Integrity cell before it)")
     check("listen" not in chk and "youtube" in chk
           and chk["youtube"]["available"] is False
           and chk["youtube"]["passed"] is None,
@@ -1513,30 +1513,34 @@ def main():
     check(w111["integrity"] == "YouTube mismatch",
           "the wall shows the YouTube mismatch state")
     status, main_page = call("GET", "/", raw=True)
-    check(b"YouTube FLAGGED" in main_page
-          and b"YouTube similarity" in main_page
-          and b"acoustic cross-check" in main_page,
-          "dashboard renders the YouTube cross-check result in the row")
+    check(b"FLAGGED" in main_page
+          and b"acoustic cross-check" in main_page
+          and b"<th>YouTube match</th>" in main_page,
+          "dashboard renders the YouTube cross-check result in "
+          "the row (v64: the YouTube match column; the FLAGGED "
+          "token is built by integCells)")
     (data_dir / "videos" / "111.mp4").unlink()
 
-    # 8l. v13: no Flags column (flag badges lived in the
-    # Integrity cell; v63 gives Flags its own column, checked
-    # in section 28 below), and the table refreshes itself when an automatic pass
+    # 8l. v13: no Warnings column (flag badges lived in the
+    # Integrity cell; v63 gave Flags its own column, renamed
+    # Warnings in v64 and checked in section 28 below), and
+    # the table refreshes itself when an automatic pass
     # finishes (the v12 screenshot: the Activity log showed the
     # package downloaded and checked clean while the table still
     # showed "no" / "-").
     status, main_page = call("GET", "/", raw=True)
-    check(b"<th>Flags</th>" in main_page
+    check(b"<th>Warnings</th>" in main_page
           and b"function integCells" in main_page,
-          "dashboard has a Flags column, one of the four check "
-          "columns the shared integCells construction fills (v63)")
+          "dashboard has a Warnings column, one of the four "
+          "check columns the shared integCells construction "
+          "fills (v64; Flags in v63)")
     check(b"refreshCounts" in main_page
           and b'"pass finished"' in main_page
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/62.0",
-          "user agent bumped to 62.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/64.0",
+          "user agent bumped to 64.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -4008,10 +4012,14 @@ def main():
                           web.PAGE, _re59.S).group(0)
     check("duration" not in _seg59.lower()
           and "FLAGGED" in _seg59
-          and "unavailable" in _seg59,
-          "v63: the YouTube cell construction carries the "
+          and "unavailable" not in _seg59
+          and "old format" in _seg59
+          and "video fingerprint failed" in _seg59,
+          "v64: the YouTube cell construction carries the "
           "similarity number or FLAGGED plus the number, the "
-          "short unavailable token, and no duration text")
+          "per-reason tokens (old format / no fingerprint / "
+          "video fingerprint failed / not measured), no "
+          "blanket unavailable token, and no duration text")
     # Rendered: run the page's own integCells under node (where
     # available) for the pass, flag and pending fixtures; the
     # harness reads the YouTube cell (index 2) of each.
@@ -4026,6 +4034,7 @@ def main():
             r"function fmtT\(s\)\{[^\n]*", web.PAGE).group(0)
         _harness59 = "\n".join([
             _badge59, _esc59, _fmt59, _seg59,
+            "const PAGESRC=" + json.dumps(web.PAGE) + ";",
             "const base={internally_consistent:true,"
             "grade_receipt_ok:true};",
             "const pass=integCells({...base,youtube:{available:true,"
@@ -4039,8 +4048,37 @@ def main():
             "const pendCfg=integCells({...base,youtube:{available:true,"
             "youtube_flag:false,passed:null,similarity:null,"
             "acoustic_configured:false}},true,\"\");",
+            "const oldFmt=integCells({...base,youtube:{available:true,"
+            "youtube_flag:false,passed:null,similarity:null,"
+            "acoustic_configured:false,"
+            "reason:\"not-fingerprint-format\"}},true,\"\");",
+            "const noFp=integCells({...base,youtube:{available:true,"
+            "youtube_flag:false,passed:null,similarity:null,"
+            "acoustic_configured:false,"
+            "reason:\"submitted-fingerprint-missing\"}},true,\"\");",
+            "const vidFail=integCells({...base,youtube:{available:true,"
+            "youtube_flag:false,passed:null,similarity:null,"
+            "acoustic_configured:false,"
+            "reason:\"video-fingerprint-failed\"}},true,\"\");",
+            "const ytErr=integCells({...base,youtube:{available:true,"
+            "error:\"RuntimeError: x\"}},true,\"\");",
+            "const nmSeg=(()=>{ const m=/function ytNotMeasured"
+            ".*?\\n\\}\\n/s.exec(PAGESRC); return m? m[0] : \"\"; })();",
+            "const nmFn=eval(nmSeg+\";ytNotMeasured\");",
+            "const nmOld=nmFn({youtube:{available:true,"
+            "youtube_flag:false,passed:null,similarity:null,"
+            "acoustic_configured:false}},true);",
+            "const nmVid=nmFn({youtube:{available:true,"
+            "youtube_flag:false,passed:null,similarity:null,"
+            "acoustic_configured:false,"
+            "reason:\"video-fingerprint-failed\"}},true);",
+            "const nmPass=nmFn({youtube:{available:true,"
+            "youtube_flag:false,passed:true,similarity:0.99,"
+            "acoustic_configured:true}},true);",
             "console.log(JSON.stringify({pass:pass[2],flag:flag[2],"
-            "pendDl:pendDl[2],pendCfg:pendCfg[2]}));",
+            "pendDl:pendDl[2],pendCfg:pendCfg[2],oldFmt:oldFmt[2],"
+            "noFp:noFp[2],vidFail:vidFail[2],ytErr:ytErr[2],"
+            "nmOld:nmOld,nmVid:nmVid,nmPass:nmPass}));",
         ])
         with tempfile.NamedTemporaryFile(
                 "w", suffix=".js", delete=False,
@@ -4048,77 +4086,194 @@ def main():
             _f59.write(_harness59)
         _out59 = _sp59.run([_node59, _f59.name],
                            capture_output=True, text=True)
-        check(_out59.returncode == 0, "v63: integCells harness runs")
+        check(_out59.returncode == 0, "v64: integCells harness runs")
         _cells59 = json.loads(_out59.stdout)
         check('<span class="badge ok">0.9851</span>'
               in _cells59["pass"],
-              "v63: the passed YouTube cell is the similarity "
+              "v64: the passed YouTube cell is the similarity "
               "number alone in the badge-ok chip style")
         check("duration" not in _cells59["pass"].lower()
               and "FLAGGED" not in _cells59["pass"],
-              "v63: similarity 0.9851 with a 2.7 s duration "
+              "v64: similarity 0.9851 with a 2.7 s duration "
               "difference displays as a pass, with no duration "
               "text in the cell")
         check('<span class="badge bad">FLAGGED 0.5123</span>'
               in _cells59["flag"],
-              "v63: the flagged YouTube cell reads \"FLAGGED "
+              "v64: the flagged YouTube cell reads \"FLAGGED "
               "0.5123\" in the badge-bad chip style")
         check(_cells59["pendDl"] == '<span class="mut">—</span>'
               and _cells59["pendCfg"]
-              == '<span class="mut">unavailable</span>',
-              "v63: the pending YouTube states are short tokens "
+              == '<span class="mut">not measured</span>',
+              "v64: the pending YouTube states are short tokens "
               "(— when the video is not downloaded yet, "
-              "unavailable when the tooling cannot measure it); "
-              "the long per-row sentence no longer appears")
+              "\"not measured\" for a degraded result stored "
+              "before v64, which carries no reason); the long "
+              "per-row sentence no longer appears")
+        check(_cells59["oldFmt"] == '<span class="mut">old format</span>'
+              and _cells59["noFp"]
+              == '<span class="mut">no fingerprint</span>'
+              and _cells59["vidFail"]
+              == '<span class="mut">video fingerprint failed</span>'
+              and _cells59["ytErr"]
+              == '<span class="badge bad">error</span>',
+              "v64: each stored YouTube reason renders its own "
+              "token — old format, no fingerprint, video "
+              "fingerprint failed — and the error case keeps "
+              "its error token")
+        check(all("unavailable" not in v for v in _cells59.values()
+                  if isinstance(v, str)),
+              "v64: \"unavailable\" appears in no rendered "
+              "YouTube cell token")
+        check(_cells59["nmOld"] == "not-measured"
+              and _cells59["nmVid"] == "video-fingerprint-failed"
+              and _cells59["nmPass"] is None,
+              "v64: ytNotMeasured reports the stored reason "
+              "(or not-measured for a pre-v64 degraded row) "
+              "for the notice aggregation, and nothing for a "
+              "measured row")
 
     # ---------------------------------------------------------
     # 28. v63: version label on every page and in /api/status,
     # the wider layout, the explanations collapsed into "How
     # this works" details blocks, and the four check columns
     # with the one-time YouTube-unavailable notice.
-    check(web.APP_VERSION == "v63", "v63: APP_VERSION is v63")
+    # v64: the columns are renamed (Package integrity, Grade
+    # signature, YouTube match, Warnings), the Final grade
+    # sub-label becomes a tooltip, the notice aggregates the
+    # states shown, and the version is v64.
+    check(web.APP_VERSION == "v64", "v64: APP_VERSION is v64")
     status, st63 = call("GET", "/api/status")
-    check(status == 200 and st63.get("app_version") == "v63",
-          "v63: /api/status reports app_version v63")
+    check(status == 200 and st63.get("app_version") == "v64",
+          "v64: /api/status reports app_version v64")
     for _path63 in ("/", "/wall", "/cleanup", "/packages"):
         status, _pg63 = call("GET", _path63, raw=True)
-        check(status == 200 and b"v63" in _pg63
+        check(status == 200 and b"v64" in _pg63
               and b"appver" in _pg63,
-              f"v63: {_path63} header shows the app version")
+              f"v64: {_path63} header shows the app version")
     status, dash63 = call("GET", "/", raw=True)
     check(all(b"<th>" + h + b"</th>" in dash63 for h in
-              (b"Package", b"Signature", b"YouTube", b"Flags"))
+              (b"Package integrity", b"Grade signature",
+               b"YouTube match", b"Warnings"))
           and b"<th>Integrity</th>" not in dash63
-          and b"<th>Final grade<span" in dash63
-          and b"auto-saves" in dash63,
-          "v63: the submissions table has Package, Signature, "
-          "YouTube and Flags columns, no Integrity column, and "
-          "the Final grade header carries its sub-label")
+          and b"<th>Package</th>" not in dash63
+          and b"<th>Signature</th>" not in dash63
+          and b"<th>YouTube</th>" not in dash63
+          and b"<th>Flags</th>" not in dash63
+          and b'<th title="auto-saves \xc2\xb7 amber = differs '
+              b'from signed grade">Final grade</th>' in dash63
+          and b"thsub" not in dash63.split(b"</style>")[0],
+          "v64: the submissions table has Package integrity, "
+          "Grade signature, YouTube match and Warnings "
+          "columns (no old short headers, no Integrity "
+          "column), and the Final grade header carries the "
+          "explanation as a title tooltip, not a sub-label")
     check(b"fingerprints + critique OK" not in dash63
           and b"YouTube: acoustic check not available" not in dash63
-          and dash63.count(b"YouTube acoustic check unavailable "
-                           b"on this computer") == 1,
-          "v63: the long per-row YouTube sentence no longer "
-          "appears in row rendering; the unavailable notice "
-          "text appears once")
+          and b"YouTube acoustic check unavailable" not in dash63
+          and b"YouTube match could not be measured for" in dash63,
+          "v64: the long per-row YouTube sentence and the "
+          "blanket tooling-unavailable notice are gone; the "
+          "notice aggregates the states actually shown")
     check(b"max-width:1760px" in dash63
           and b"max-width:1760px" in web.CLEANUP_PAGE.encode()
           and b"max-width:1760px" in web.PACKAGES_PAGE.encode(),
           "v63: dashboard, Cleanup and Packages widen to "
           "96% / 1760px")
     check(b'colspan="12"' in dash63 and b'colspan="11"' in dash63,
-          "v63: group rows span all 12 columns and the "
+          "v64: group rows span all 12 columns and the "
           "attempt-note rows span 11 beside their empty cell")
+    check(b"<colgroup>" in dash63
+          and b"#substbl{table-layout:fixed}" in dash63
+          and dash63.count(b"<col ") + dash63.count(b"<col>") == 12,
+          "v64: the submissions table carries a 12-column "
+          "colgroup with fixed layout, so the check columns "
+          "stay compact and the Student column takes the slack")
     _gi = dash63.find(b"one composite score out of 10")
     check(_gi != -1
           and dash63.rfind(b"<details", 0, _gi) != -1
           and dash63.find(b"</details>", _gi) != -1
-          and b"the mismatch stands in the Flags column" in dash63
+          and b"the mismatch stands in the Warnings column" in dash63
           and b"mismatch stands in the Integrity cell" not in dash63,
-          "v63: the Section 2 explanations are present inside "
+          "v64: the Section 2 explanations are present inside "
           "the collapsed How-this-works details (moved, not "
           "deleted), and the package mismatch is named as "
-          "standing in the Flags column")
+          "standing in the Warnings column")
+
+    # ---------------------------------------------------------
+    # 29. v64: a degraded result stored before v64 is owed
+    # exactly one acoustic ("youtube") re-check under v64;
+    # the same result stored under v64 is not re-owed. The
+    # fixtures are the _check_mode inputs directly: identical
+    # inputs, differing only in the stored fingerprint's
+    # app-check-era entry.
+    check(web.CHECK_SCHEMA == 5,
+          "v64: the check schema rises to 5")
+    _inputs64 = {"zip_sha256": "z64", "audio": [1, "a"],
+                 "html_sha256": "h64", "zip": [2, "b"],
+                 "video": [3, "c"], "threshold": 0.85,
+                 "worker": "w", "check_schema": web.CHECK_SCHEMA,
+                 "app_check_era": web.APP_VERSION,
+                 "acoustic_tool": "/usr/bin/ffmpeg"}
+    _degraded64 = {"youtube": {"available": True,
+                               "acoustic_configured": False,
+                               "similarity": None,
+                               "passed": None}}
+    _stored_pre64 = {k: v for k, v in _inputs64.items()
+                     if k != "app_check_era"}
+    _ex_pre64 = dict(_degraded64, check_inputs=_stored_pre64)
+    check(web._check_mode(_ex_pre64, _inputs64, False) == "youtube",
+          "v64: a degraded pre-v64 entry (no app-check-era in "
+          "its stored fingerprint) is owed one youtube re-check")
+    _ex_post64 = dict(_degraded64,
+                      check_inputs=dict(_inputs64))
+    check(web._check_mode(_ex_post64, _inputs64, False) is None,
+          "v64: the same degraded entry stored under v64 is "
+          "not re-owed — it stands until its inputs change")
+    _measured64 = {"youtube": {"available": True,
+                               "acoustic_configured": True,
+                               "similarity": 0.99, "passed": True}}
+    _ex_meas_pre64 = dict(_measured64, check_inputs=_stored_pre64)
+    check(web._check_mode(_ex_meas_pre64, _inputs64, False) is None,
+          "v64: a measured pre-v64 entry is not re-run for "
+          "the era alone")
+    _diff64, _mo64, _as64 = web._classify_check_diff(
+        _stored_pre64, _inputs64)
+    check(_diff64 == set() and _as64 and not _mo64,
+          "v64: the era-only difference classifies as no moved "
+          "input with the acoustic side set")
+
+    # 29b. v64: the wall tears its grid videos down before a
+    # rebuild, and the registry backstop reaches detached
+    # elements (node-level source assertions; the browser
+    # scenario is tests/wall_regression_v64.py).
+    _wall64 = web.WALL_PAGE
+    _r64 = _re59.search(r"function render\(\).*?\n\}\n",
+                        _wall64, _re59.S).group(0)
+    _ra64 = _re59.search(r"function renderAttemptTiles\(\).*?\n\}\n",
+                         _wall64, _re59.S).group(0)
+    check("teardownGridVids();" in _r64
+          and _r64.index("teardownGridVids();")
+              < _r64.index('$("grid").innerHTML'),
+          "v64: render() tears the grid videos down before "
+          "replacing the grid")
+    check("teardownGridVids();" in _ra64
+          and _ra64.index("teardownGridVids();")
+              < _ra64.index("g.innerHTML="),
+          "v64: renderAttemptTiles() tears the grid videos "
+          "down before replacing the grid")
+    _td64 = _re59.search(r"function teardownGridVids\(\).*?\n\}\n",
+                         _wall64, _re59.S).group(0)
+    check("pause()" in _td64 and "muted=true" in _td64
+          and 'removeAttribute("src")' in _td64
+          and "load()" in _td64,
+          "v64: the grid teardown pauses, mutes and unloads "
+          "each video, mirroring the zoom teardown")
+    check("const WALLVIDS=new Set()" in _wall64
+          and "sweepDetachedVids(v)" in _wall64
+          and "sweepDetachedVids(null)" in _wall64
+          and "registerVid(v)" in _wall64,
+          "v64: the video registry backstop is wired into "
+          "claimAudio, the stall watchdog and tile binding")
 
     server.shutdown()
     worker.shutdown()

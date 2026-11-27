@@ -26,7 +26,16 @@ tooling changes, not on every pass; v38 adds a process-wide
 Chromaprint fingerprint cache in this file, so a YouTube
 video shared by every package of an assignment is decoded
 once per run of the app rather than once per package — the
-remaining v38 changes are in web.py.)
+remaining v38 changes are in web.py. v64: youtube_cross_check
+stores a machine-readable "reason" whenever no fingerprint
+comparison could be made, distinguishing a package that is
+not in the fingerprint format, a submitted fingerprint that
+is missing, empty or unreadable, and a video fingerprint
+that could not be computed; chromaprint_fingerprint_diag
+reports why a video fingerprint failed (ffmpeg missing, a
+non-zero ffmpeg exit, an exception, or too little output)
+while chromaprint_fingerprint keeps its list-or-None
+contract for its other callers.)
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -135,7 +144,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/62.0"
+USER_AGENT = "HWSigning-Teacher-Audit/64.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default
@@ -1317,9 +1326,26 @@ def chromaprint_fingerprint(media_path, ffmpeg=None):
     chromaprint muxer is unavailable or the file cannot be read.
     Successful results are cached (see _FP_CACHE above); the
     returned list is shared and must not be mutated."""
+    return chromaprint_fingerprint_diag(media_path, ffmpeg=ffmpeg)[0]
+
+
+def chromaprint_fingerprint_diag(media_path, ffmpeg=None):
+    """(fingerprint, failure) pair (v64): the fingerprint
+    chromaprint_fingerprint returns, and — when it is None —
+    a short machine-readable string saying why the fingerprint
+    could not be computed: "ffmpeg-missing" (no ffmpeg found),
+    "ffmpeg-error:<returncode>" (ffmpeg ran and exited
+    non-zero), "ffmpeg-exception:<TypeName>" (the run itself
+    raised, e.g. a timeout) or "no-fingerprint-output" (ffmpeg
+    exited 0 but produced too little output). The failure is
+    None when a fingerprint was computed. This sibling exists
+    so a caller can record why a comparison could not be made
+    (youtube_cross_check) without changing
+    chromaprint_fingerprint's list-or-None contract, which its
+    other callers rely on."""
     ffmpeg = ffmpeg or find_ffmpeg()
     if not ffmpeg:
-        return None
+        return None, "ffmpeg-missing"
     key = None
     try:
         st = os.stat(media_path)
@@ -1330,16 +1356,18 @@ def chromaprint_fingerprint(media_path, ffmpeg=None):
         with _FP_CACHE_LOCK:
             hit = _FP_CACHE.get(key)
         if hit is not None:
-            return hit
+            return hit, None
     try:
         proc = subprocess.run(
             [ffmpeg, "-v", "error", "-i", str(media_path), "-vn",
              "-f", "chromaprint", "-fp_format", "raw", "-"],
             capture_output=True, timeout=1200)
-    except Exception:  # noqa: BLE001 - unavailable, not fatal
-        return None
-    if proc.returncode != 0 or len(proc.stdout) < 8:
-        return None
+    except Exception as e:  # noqa: BLE001 - unavailable, not fatal
+        return None, f"ffmpeg-exception:{type(e).__name__}"
+    if proc.returncode != 0:
+        return None, f"ffmpeg-error:{proc.returncode}"
+    if len(proc.stdout) < 8:
+        return None, "no-fingerprint-output"
     data = proc.stdout[:len(proc.stdout) // 4 * 4]
     fp = list(struct.unpack(f"<{len(data) // 4}I", data))
     if key is not None:
@@ -1347,7 +1375,7 @@ def chromaprint_fingerprint(media_path, ffmpeg=None):
             if len(_FP_CACHE) >= _FP_CACHE_MAX:
                 _FP_CACHE.clear()
             _FP_CACHE[key] = fp
-    return fp
+    return fp, None
 
 
 def _fp_ber(a, b, offset=0):
@@ -1557,18 +1585,31 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
     A package whose media entry is not the fingerprint file is
     not in the current format: the result reports that, with
     passed None — the older audio form's global-similarity rule
-    and its WAV-repair retry are removed."""
+    and its WAV-repair retry are removed.
+
+    Whenever no comparison could be made, the result's "reason"
+    is a machine-readable token (v64), so the dashboard can say
+    what actually happened instead of blaming the tooling:
+    "not-downloaded" (no video file yet; available False),
+    "not-fingerprint-format" (the package's media entry is not
+    the fingerprint file), "submitted-fingerprint-missing"
+    (the fingerprint file is absent, empty or unreadable) and
+    "video-fingerprint-failed" (the video's fingerprint could
+    not be computed; the diagnostic from
+    chromaprint_fingerprint_diag is then in
+    "video_fingerprint_error" when the production fingerprint
+    function produced it). A comparison that was made carries
+    no reason."""
     out = {"available": False, "youtube_flag": False, "passed": None,
            "threshold": float(cfg.get("acoustic_threshold", 0.85)),
            "similarity": None, "ber": None,
            "acoustic_configured": False}
     if not youtube_media_path or not Path(youtube_media_path).exists():
-        out["reason"] = "YouTube video not downloaded yet"
+        out["reason"] = "not-downloaded"
         return out
     out["available"] = True
     if Path(canvas_audio_path).name != FINGERPRINT_ENTRY_NAME:
-        out["reason"] = ("package is not in the current "
-                         "(fingerprint) format")
+        out["reason"] = "not-fingerprint-format"
         return out
     try:
         raw = Path(canvas_audio_path).read_bytes()
@@ -1576,6 +1617,9 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
             f"<{len(raw) // 4}I", raw[:len(raw) // 4 * 4]))
     except OSError:
         submitted_fp = None
+    if not submitted_fp:
+        out["reason"] = "submitted-fingerprint-missing"
+        return out
     # The fingerprint span is the canvas duration: the items are
     # the submitted evidence, at FP_ITEM_S seconds each.
     canvas_dur = (len(submitted_fp) * FP_ITEM_S
@@ -1589,14 +1633,28 @@ def youtube_cross_check(canvas_audio_path, youtube_media_path, parsed,
     out["claimed_duration_s"] = claimed
     if claimed is not None and canvas_dur is not None:
         out["claimed_diff_s"] = round(abs(canvas_dur - claimed), 1)
-    fp_fn = fingerprint_fn or (
-        lambda p: chromaprint_fingerprint(p, ffmpeg=ffmpeg))
+    # The production fingerprint function is the diagnostic
+    # sibling, so a video fingerprint that cannot be computed
+    # carries its reason (v64); an injected fingerprint_fn keeps
+    # the plain list-or-None contract and yields no diagnostic.
+    fp_diag = None
+    if fingerprint_fn is None:
+        def fp_fn(p):
+            nonlocal fp_diag
+            fp, fp_diag = chromaprint_fingerprint_diag(p, ffmpeg=ffmpeg)
+            return fp
+    else:
+        fp_fn = fingerprint_fn
     fp_canvas = submitted_fp
     try:
         fp_yt = fp_fn(youtube_media_path)
     except Exception as e:  # noqa: BLE001 - recorded, not fatal
         out["error"] = f"{type(e).__name__}: {e}"
         fp_yt = None
+    if not fp_yt and "error" not in out:
+        out["reason"] = "video-fingerprint-failed"
+        if fp_diag:
+            out["video_fingerprint_error"] = fp_diag
     configured = bool(fp_canvas and fp_yt)
     out["acoustic_configured"] = configured
     content_flag = False

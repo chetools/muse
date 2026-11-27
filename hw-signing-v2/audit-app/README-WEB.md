@@ -18,6 +18,43 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v64 (2026-11-27) — Clearer column names, fixed column widths, YouTube failure reasons, wall stuck-audio fix
+
+The four check columns are renamed for what they hold:
+**Package integrity**, **Grade signature**, **YouTube
+match** and **Warnings** (the package mismatch stands in
+Warnings). The submissions table gains a colgroup with
+fixed layout: the check and result columns stay compact
+(Warnings is capped and wraps), and the Student column
+takes the remaining slack. The Final grade header loses
+its “auto-saves · amber = differs from signed grade”
+sub-label to a title tooltip; the full explanation stays
+in the collapsed “How this works” block. The YouTube
+cross-check stores a machine-readable reason whenever no
+comparison could be made (see `README.md`), and the
+YouTube match cell names it — “old format”, “no
+fingerprint” or “video fingerprint failed” — retaining
+“error” for the error case and the similarity number for
+a measured row; a degraded row stored before v64 shows
+“not measured”. The notice above the table aggregates
+the states actually shown (“YouTube match could not be
+measured for N shown row(s): …”) instead of asserting
+the tooling is unavailable. The check schema rises to
+5: a degraded result stored before v64 is owed exactly
+one acoustic re-check under v64 (the check-input
+fingerprint gains an app-check-era entry) and then
+stands until its inputs or tooling change. On the wall,
+`render()` and `renderAttemptTiles()` pause, mute and
+unload every grid video before replacing the grid, and a
+registry of every video element created lets
+`claimAudio()` and the stall watchdog mute and pause
+elements a rebuild detached — a tile playing through a
+Group by change (or a sort, filter or page turn) no
+longer keeps sounding off-screen under the next hovered
+tile. Regression: `tests/wall_regression_v64.py`
+(headless Chromium), plus node-level assertions in
+`tests/test_web.py`.
+
 ## v63 (2026-11-27) — Version label, wider pages, collapsed explanations, four check columns
 
 Display only; no check changes and the check schema
@@ -705,9 +742,9 @@ is as in v61, below.
   unfinished (the panel's pass line counts it as work to do).
 - **Refresh list from Canvas** — one row per student: Canvas state,
   whether the submission ZIP is downloaded, the integrity
-  result (the YouTube
-  cross-check result, and any flag badges — there is no separate
-  Flags column), the
+  result in the four check columns (Package integrity,
+  Grade signature, YouTube match and Warnings — the flag
+  badges stand in Warnings), the
   student's grade, the final-grade field, and the Examined box.
   The table refreshes itself whenever an automatic pass finishes
   (the Activity poll notices the pass-finished entry and reloads
