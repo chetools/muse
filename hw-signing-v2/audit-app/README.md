@@ -1,4 +1,42 @@
-# Teacher audit app — HW Signing v2 (audit app v67)
+# Teacher audit app — HW Signing v2 (audit app v68)
+
+**v68 (2026-11-27).** Two teacher-reported defects.
+(1) The Setup section's two columns were coupled and
+wasteful: the Save settings row, the course details and
+the status line sat below the two-column row as
+full-width siblings, so expanding the “How this
+works” details in the Activity column pushed all of
+them down by the details' height (measured on v67:
+82 px), and the flex row's default stretch sized the
+settings column's box by the Activity column's
+content, leaving a void under the settings fields.
+The buttons, course details and status line now live
+inside the settings column, the row aligns its
+columns to the start (each column is as tall as its
+own content), and the Activity log's height rises
+from 190 px to 360 px. The Final grade number input
+widens from 52 px to 76 px: two digits and the
+spinner crowded at 52 px. (2) On the wall, the
+audible tile now plays at exactly the wall speed.
+Fraction-true playback (v66) rates every tile
+differently, so the tile the teacher was listening
+to — the hover-audio owner — sounded sped up or
+slowed down. The differing rates are the app's own
+scaling (a recording's frame rate does not drive
+HTML5 playback timing), and the fix is in the sync
+reference: while a tile owns the audio, the
+reference duration is that tile's, so its rate is
+the wall speed itself and the muted tiles are rated
+relative to it; with no audible tile the reference
+stays the longest showing tile. Ownership changes
+(hover enter and leave, zoom open and close) re-rate
+every tile through the one rate computation, and
+preservesPitch is set explicitly (Chrome's default,
+made deliberate): pitch is preserved, tempo follows
+the rate. Regression: `tests/layout_regression_v68.py`
+and `tests/wall_regression_v68.py` (both fail on the
+v67 code, pass on v68), plus checks in
+`tests/test_web.py`.
 
 **v67 (2026-11-27).** Two teacher-reported defects.
 (1) Some healthy packages showed YouTube match “no

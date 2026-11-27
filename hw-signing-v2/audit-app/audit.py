@@ -74,7 +74,17 @@ the check schema rises to 7, and the wall recovers a
 tile whose video element errors instead of leaving it
 black for the session, and escalates a scrub-paused
 tile that repeated play() calls do not restart to a
-reload after three watchdog visits.
+reload after three watchdog visits. v68 (2026-11-27):
+no audit semantics change — the version rises with
+web.py, whose Setup section's two columns are decoupled
+(the settings column carries its own Save settings row,
+course details and status line and no longer stretches
+to the Activity column's height; the Activity log is
+taller, at 360 px, and the Final grade input wider, at
+76 px) and whose wall rates its tiles against the
+audible tile's duration while one owns the audio, so
+the tile the teacher hears plays at exactly the wall
+speed, with pitch preserved.
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -184,7 +194,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/67.0"
+USER_AGENT = "HWSigning-Teacher-Audit/68.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default

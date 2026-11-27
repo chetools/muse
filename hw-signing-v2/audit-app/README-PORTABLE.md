@@ -113,10 +113,22 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v67 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v68 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v67: an audio-form package whose WAV's
+  installs). v68: the Setup section's two columns are
+  decoupled (the settings column carries its own Save
+  settings row, course details and status line and no
+  longer stretches to the Activity column's height, so
+  expanding “How this works” moves nothing on the
+  settings side; the Activity log stands 360 px tall,
+  and the Final grade input is 76 px wide); and the
+  wall rates its tiles against the audible tile's
+  duration while one owns the audio, so the tile the
+  teacher hears plays at exactly the wall speed, with
+  pitch preserved (the differing tile rates are the
+  app's own fraction-true scaling, not a frame-rate
+  effect). v67: an audio-form package whose WAV's
   “fmt ” chunk identifier is zeroed (intact PCM, a header
   ffmpeg cannot open) is measured by the YouTube
   cross-check through a one-off repaired copy — those

@@ -1539,8 +1539,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/67.0",
-          "user agent bumped to 67.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/68.0",
+          "user agent bumped to 68.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -4174,15 +4174,16 @@ def main():
     # behaviour above is unchanged).
     # v66: the version is v66.
     # v67: the version is v67.
-    check(web.APP_VERSION == "v67", "v67: APP_VERSION is v67")
+    # v68: the version is v68.
+    check(web.APP_VERSION == "v68", "v68: APP_VERSION is v68")
     status, st63 = call("GET", "/api/status")
-    check(status == 200 and st63.get("app_version") == "v67",
-          "v67: /api/status reports app_version v67")
+    check(status == 200 and st63.get("app_version") == "v68",
+          "v68: /api/status reports app_version v68")
     for _path63 in ("/", "/wall", "/cleanup", "/packages"):
         status, _pg63 = call("GET", _path63, raw=True)
-        check(status == 200 and b"v67" in _pg63
+        check(status == 200 and b"v68" in _pg63
               and b"appver" in _pg63,
-              f"v67: {_path63} header shows the app version")
+              f"v68: {_path63} header shows the app version")
     status, dash63 = call("GET", "/", raw=True)
     check(all(b"<th>" + h + b"</th>" in dash63 for h in
               (b"Package integrity", b"Grade signature",
@@ -4379,8 +4380,8 @@ def main():
           "tracks play intent for stall resume, and keeps "
           "ended tiles out of the master average")
     status, st66 = call("GET", "/api/status")
-    check(st66.get("app_version") == "v67",
-          "v67: /api/status reports the app version")
+    check(st66.get("app_version") == "v68",
+          "v68: /api/status reports the app version")
 
     # ---------------------------------------------------------
     # 31. v67: a package record names the package's own media
@@ -4449,6 +4450,60 @@ def main():
           "tile to the same recovery, and the intent branch "
           "escalates a paused tile that plain play() calls "
           "do not restart to a reload after three visits")
+
+    # ---------------------------------------------------------
+    # 32. v68: the Setup section's two columns are
+    # independent — the Save settings row, the course
+    # details and the status line live inside the settings
+    # column (they sat below the two-column row, so the
+    # Activity column's "How this works" details pushed
+    # them down when expanded), the row aligns its columns
+    # to the start instead of stretching them to one
+    # height, the Activity log is taller (360 px, was
+    # 190), and the Final grade input is wider (76 px, was
+    # 52). On the wall, the audible tile is the rate
+    # reference: claimAudio records the audio owner and
+    # re-rates through setSpeed, refDuration returns the
+    # owner's duration while a tile owns the audio, hover
+    # leave releases the ownership and re-rates, and
+    # preservesPitch is set explicitly. The rendered
+    # geometry is tests/layout_regression_v68.py and the
+    # rate switch is tests/wall_regression_v68.py.
+    status, dash68 = call("GET", "/", raw=True)
+    _d68 = dash68.decode("utf-8", "replace")
+    check("align-items:flex-start" in _d68
+          and "height:360px" in _d68
+          and "input.fin{width:76px}" in _d68,
+          "v68: the Setup row aligns its columns to the "
+          "start, the Activity log stands 360 px tall and "
+          "the Final grade input is 76 px wide")
+    _i_worker = _d68.find('id="worker_base_url"')
+    _i_save = _d68.find('id="savecfg"')
+    _i_courses = _d68.find('id="coursedetails"')
+    _i_meta = _d68.find('id="cfgmeta"')
+    _i_thresh = _d68.find('id="acoustic_threshold"')
+    check(0 <= _i_worker < _i_save < _i_thresh
+          and _i_worker < _i_courses < _i_thresh
+          and _i_worker < _i_meta < _i_thresh,
+          "v68: the Save settings row, the course details "
+          "and the status line sit inside the settings "
+          "column, before the Activity column begins")
+    status, wall68 = call("GET", "/wall", raw=True)
+    _w68 = wall68.decode("utf-8", "replace")
+    check("let AUDIOOWNER=null" in _w68
+          and "function claimAudio(v){ AUDIOOWNER=v;" in _w68
+          and "sweepDetachedVids(v); setSpeed(); }" in _w68
+          and "vs.indexOf(AUDIOOWNER)>=0" in _w68
+          and "return AUDIOOWNER.duration;" in _w68
+          and "if(AUDIOOWNER===v){ AUDIOOWNER=null; setSpeed(); }"
+              in _w68
+          and "v.preservesPitch=true" in _w68,
+          "v68: the wall records the audio owner in "
+          "claimAudio and re-rates through setSpeed, "
+          "refDuration returns the owner's duration while "
+          "a tile owns the audio, hover leave releases the "
+          "ownership and re-rates, and preservesPitch is "
+          "set explicitly on the tiles")
 
     server.shutdown()
     worker.shutdown()

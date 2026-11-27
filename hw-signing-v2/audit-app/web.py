@@ -667,6 +667,44 @@ probes); after three such visits the branch takes the
 reload path instead of repeating the ineffective call
 (tests/wall_regression_v67.py fails on the v66 code and
 passes on this).
+
+v68 (2026-11-27): two teacher-reported defects, both in
+this file. (1) The Setup section's two columns were
+coupled and wasteful. The Save settings row, the course
+details and the status line sat below the two-column row
+as full-width siblings, so expanding the "How this works"
+details in the Activity column pushed all of them down
+by the details' height (measured on v67: 82 px), and the
+flex row's default stretch sized the settings column's
+box by the Activity column's content, leaving a void
+under the settings fields. The buttons, the course
+details and the status line now live inside the settings
+column, the row aligns its columns to the start (each
+column is as tall as its own content), and the Activity
+log's height rises from 190 px to 360 px, so more of the
+log is visible at once. The Final grade number input
+widens from 52 px to 76 px: two digits and the spinner
+crowded at 52 px. (2) On the wall, the audible tile now
+plays at exactly the wall speed. Fraction-true playback
+(v66) rates every tile differently, so the tile the
+teacher was listening to — the hover-audio owner —
+sounded sped up or slowed down. The differing rates are
+the app's own scaling (a recording's frame rate does not
+drive HTML5 playback timing), and the fix is in the sync
+reference: while a tile owns the audio, refDuration
+returns that tile's duration, so its rate is the wall
+speed itself and the muted tiles are rated relative to
+it; with no audible tile the reference stays the longest
+showing tile. claimAudio — the one choke point every
+unmute passes through — records the owner (AUDIOOWNER)
+and re-rates through setSpeed; hover leave releases the
+ownership and re-rates the same way; and preservesPitch
+is set explicitly on the tiles (Chrome's default, made
+deliberate): pitch is preserved, tempo follows the rate.
+The zoom view still plays at the plain wall speed
+(tests/wall_regression_v68.py covers the rate switch;
+tests/layout_regression_v68.py covers the Setup
+geometry).
 """
 
 import argparse
@@ -699,7 +737,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-APP_VERSION = "v67"
+APP_VERSION = "v68"
 CONFIG_PATH = Path(os.environ.get("TEACHER_AUDIT_CONFIG",
                                   HERE / "config.json"))
 
@@ -4481,15 +4519,15 @@ th{background:#f0f0ec}
 .ok{background:#dcefe0}.bad{background:#f6dcdc}.warn{background:#f7ecd2}
 .mut{color:#666;font-size:12px}.err{color:#8f2d2d;white-space:pre-wrap}
 pre.transcript{white-space:pre-wrap;background:#fafaf7;border:1px solid #e3e3de;padding:10px;max-height:380px;overflow:auto;font-size:12.5px}
-.row{display:flex;gap:16px;flex-wrap:wrap}.col{flex:1;min-width:min(260px,100%)}
-input.fin{width:52px}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}.col{flex:1;min-width:min(260px,100%)}
+input.fin{width:76px}
 td.fincell.diff{background:#f7ecd2}
 input.fin.diff{background:#f7ecd2}
 #zgrade.diff{background:#f7ecd2}
 td,pre,.mut{overflow-wrap:anywhere}
 th{white-space:nowrap;font-size:12px}
 #spinner{display:none;color:#243b53;font-weight:600}
-#activitylog{background:#14181d;color:#d7e0d7;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55;height:190px;overflow-y:auto;padding:8px 10px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+#activitylog{background:#14181d;color:#d7e0d7;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55;height:360px;overflow-y:auto;padding:8px 10px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
 #activitylog .k-download{color:#9ecbff}#activitylog .k-check{color:#ffd98a}#activitylog .k-video{color:#c3a6ff}#activitylog .k-auto{color:#8fd0a0}
 #privbtn{background:#e8e8e4;color:#1c1c1a;border:1px solid #bbb;margin:8px 0 0}
 #privbtn[aria-pressed="true"]{background:#f7ecd2;border-color:#8f2d2d;color:#8f2d2d;font-weight:600}
@@ -4510,15 +4548,6 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <label>Canvas token <span class="mut" id="tokenstate"></span> (stored only in the local config file; leave blank to keep the saved token)</label>
 <input type="password" id="canvas_token" autocomplete="off">
 <label>Grading Worker address</label><input type="text" id="worker_base_url">
-</div><div class="col">
-<label>YouTube acoustic similarity threshold (0–1)</label><input type="number" id="acoustic_threshold" step="0.01" min="0" max="1">
-<h3>Activity</h3>
-<div id="activitylog" aria-live="off"></div>
-<p class="mut">Background work is logged here; automatic passes start once a Canvas token is saved, then repeat every 10 minutes.</p>
-<details class="howitworks"><summary>How this works</summary>
-<p class="mut">Package downloads, integrity checks and YouTube video downloads run in the background, in parallel, and are logged here as they happen. The automatic work starts as soon as a Canvas token is saved, then repeats every 10 minutes. Closing this page does not stop the work; if the app itself is closed, anything left incomplete is picked up again by the next pass after it restarts.</p>
-</details>
-</div></div>
 <p><button id="savecfg">Save settings</button>
 <button class="secondary" id="testconn">Test Canvas connection</button>
 <span id="connresult"></span></p>
@@ -4528,6 +4557,15 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <p><button class="secondary" id="coursesauto" style="display:none">Reset course ticks to automatic</button></p>
 </details>
 <p class="mut" id="cfgmeta"></p>
+</div><div class="col">
+<label>YouTube acoustic similarity threshold (0–1)</label><input type="number" id="acoustic_threshold" step="0.01" min="0" max="1">
+<h3>Activity</h3>
+<div id="activitylog" aria-live="off"></div>
+<p class="mut">Background work is logged here; automatic passes start once a Canvas token is saved, then repeat every 10 minutes.</p>
+<details class="howitworks"><summary>How this works</summary>
+<p class="mut">Package downloads, integrity checks and YouTube video downloads run in the background, in parallel, and are logged here as they happen. The automatic work starts as soon as a Canvas token is saved, then repeats every 10 minutes. Closing this page does not stop the work; if the app itself is closed, anything left incomplete is picked up again by the next pass after it restarts.</p>
+</details>
+</div></div>
 </section>
 
 <section><h2>2. Submissions and audit</h2>
@@ -5873,6 +5911,14 @@ function frac(v){return v.duration? v.currentTime/v.duration : 0;}
 // are no longer in the document, muting and pausing them;
 // an element found paused and detached is pruned.
 const WALLVIDS=new Set();
+// The video element that currently owns the audio (v68):
+// claimAudio() is the wall's one audio choke point — every
+// unmute is preceded by a claim — so it records the owner
+// here, and refDuration() rates the tiles against the
+// owner's duration, so the audible tile plays at exactly
+// the wall speed. Null when no element owns the audio (or
+// the owner is the zoom video, which is not a tile).
+let AUDIOOWNER=null;
 function registerVid(v){ if(v) WALLVIDS.add(v); return v; }
 function sweepDetachedVids(except){
   WALLVIDS.forEach(v=>{
@@ -5888,10 +5934,11 @@ function teardownGridVids(){
   // view's teardown in closeZoom. Called at the start of
   // render() and renderAttemptTiles(), before the grid's
   // innerHTML is replaced.
+  if(AUDIOOWNER && vids().indexOf(AUDIOOWNER)>=0) AUDIOOWNER=null;
   vids().forEach(v=>{ v.pause(); v.muted=true; v._wantPlay=false;
     v.removeAttribute("src"); v.load(); });
 }
-function claimAudio(v){ document.querySelectorAll("video").forEach(o=>{ if(o!==v) o.muted=true; }); sweepDetachedVids(v); }
+function claimAudio(v){ AUDIOOWNER=v; document.querySelectorAll("video").forEach(o=>{ if(o!==v) o.muted=true; }); sweepDetachedVids(v); setSpeed(); }
 async function markExamined(id, via){
   // Hovering a tile (its audio plays) or opening the zoom view
   // marks the student examined. The badge flips in place; the
@@ -5959,6 +6006,10 @@ function bindTiles(){
       if(v.paused && !v._autoplay){ v.dataset.hoverplay="1"; playTile(v); } });
     v.addEventListener("mouseleave",()=>{ if(SCRUB && SCRUB.v===v) return;
       v.muted=true;
+      // Hover leave releases the audio (v68): with no
+      // audible tile, the rate reference returns to the
+      // longest showing tile, so the tiles re-rate here.
+      if(AUDIOOWNER===v){ AUDIOOWNER=null; setSpeed(); }
       if(v.dataset.hoverplay){ v._autoplay=false; v._wantPlay=false; v.pause(); delete v.dataset.hoverplay; } });
     v.addEventListener("mousedown",e=>{
       // Right-button drag scrubs: horizontal motion moves every
@@ -6670,8 +6721,32 @@ function syncZBar(){
 // outside the clamp cannot hold exact sync and drifts at
 // the clamp rate. The zoom view keeps its single-video
 // rate (the plain wall speed).
+//
+// v68: while one tile owns the audio, that tile is the
+// reference. Fraction-true rating gives every tile a
+// different playbackRate, so the tile the teacher is
+// listening to (the hover-audio owner) itself sounded
+// sped up or slowed down. The differing rates are the
+// app's own scaling: a recording's frame rate does not
+// drive HTML5 playback timing — the player follows the
+// media timeline, and playbackRate scales it — so the
+// fix is in the reference, not in any frame-rate
+// accommodation. Rating against the owner's duration
+// gives the owner exactly the wall speed, and the muted
+// tiles are rated relative to it; with no audible tile
+// the reference is the longest showing tile, as in v66.
+// claimAudio() records the owner and re-rates through
+// setSpeed(), and hover leave releases the ownership and
+// re-rates the same way, so every rate always comes from
+// tileRate. Pitch is preserved (preservesPitch is set
+// explicitly in setSpeed; it is Chrome's default made
+// deliberate) — tempo follows the rate, pitch does not.
 function refDuration(){
-  let d=0; vids().forEach(v=>{ if(v.duration&&isFinite(v.duration)&&v.duration>d) d=v.duration; });
+  const vs=vids();
+  if(AUDIOOWNER && vs.indexOf(AUDIOOWNER)>=0
+      && AUDIOOWNER.duration && isFinite(AUDIOOWNER.duration))
+    return AUDIOOWNER.duration;
+  let d=0; vs.forEach(v=>{ if(v.duration&&isFinite(v.duration)&&v.duration>d) d=v.duration; });
   return d;
 }
 function tileRate(v){
@@ -6681,7 +6756,7 @@ function tileRate(v){
   const r=wall*(v.duration/ref);
   return Math.min(3*wall, Math.max(0.25*wall, r));
 }
-function setSpeed(){ vids().forEach(v=>{ v.playbackRate=tileRate(v); }); $("zv").playbackRate=parseFloat($("speed").value); }
+function setSpeed(){ vids().forEach(v=>{ v.preservesPitch=true; v.playbackRate=tileRate(v); }); const zv=$("zv"); zv.preservesPitch=true; zv.playbackRate=parseFloat($("speed").value); }
 $("scrub").oninput=e=>WALLSEEK.push(e.target.value/1000);
 // After a drag, focus leaves the seek bars, so the keyboard
 // belongs to playback again without a further click.
