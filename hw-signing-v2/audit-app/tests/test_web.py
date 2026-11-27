@@ -1539,8 +1539,8 @@ def main():
           and b"refreshSubs(); refreshCounts();" in main_page,
           "the activity poll refreshes the table and the Setup "
           "counts when a pass finishes")
-    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/65.0",
-          "user agent bumped to 65.0")
+    check(audit.USER_AGENT == "HWSigning-Teacher-Audit/66.0",
+          "user agent bumped to 66.0")
     check(b"automatic \xc2\xb7 unticked by you" in main_page
           and b"Grading Worker address" in main_page
           and b"https://hw-grading.carloscomail.workers.dev"
@@ -2177,6 +2177,29 @@ def main():
           "filtered student's current package AND her previous "
           "attempt (attempt-1 folder on disk), and its closing "
           "state carries the actual time beside the estimate")
+    # v66: the run itself checks what it fetched. No
+    # check-all has run since this attempt folder was
+    # created (the run above created it), so a stored
+    # attempt check here can only have come from the
+    # redownload run's own closing check pass — on v65
+    # this row read "not checked" until a separate pass.
+    status, subs66 = call("GET", "/api/submissions?attempts=1")
+    row66 = [s for s in subs66 if s["key"] == "101_202_333"]
+    att66 = (row66[0].get("attempts") or []) if row66 else []
+    check(status == 200 and len(att66) == 1
+          and att66[0].get("attempt_no") == 1
+          and att66[0].get("check") is not None
+          and att66[0]["check"].get("checked_at")
+          and att66[0].get("integrity") not in (None,
+                                                "not checked"),
+          "v66: a previous attempt fetched by a redownload "
+          "run is checked by that same run — its row carries "
+          "a check result with no separate check pass")
+    check("integrity checks:" in (st32.get("summary") or "")
+          and "previous attempt(s) checked"
+          in (st32.get("summary") or ""),
+          "v66: the redownload Done summary reports the "
+          "closing check pass in counts")
     check(not stats_file.exists(),
           "v62: the finished run leaves no download-rate "
           "calibration record")
@@ -2212,11 +2235,13 @@ def main():
     check("attempt one critique" in arows[0]["critique"]
           and arows[0]["score"] == 8
           and arows[0]["final_score"] is None
-          and arows[0]["integrity"] == "not checked"
+          and arows[0]["integrity"] != "not checked"
           and len(arows[0]["transcript"]) > 0,
           "attempts zoom data: a previous attempt shows its own "
-          "grades, critique and transcript, no final, not "
-          "checked (v32)")
+          "grades, critique and transcript, no final, and — "
+          "since v66, when the redownload run that fetched it "
+          "also checks it — a real integrity state, not "
+          "'not checked' (v32, updated v66)")
 
     # (e) On-demand attempts fetch for Sam (nothing extra), and
     # cleanup of Amy's unit removes her attempt folder, attempt
@@ -4147,15 +4172,16 @@ def main():
     # states shown, and the version is v64.
     # v65: the version is v65 (the v64 column and notice
     # behaviour above is unchanged).
-    check(web.APP_VERSION == "v65", "v65: APP_VERSION is v65")
+    # v66: the version is v66.
+    check(web.APP_VERSION == "v66", "v66: APP_VERSION is v66")
     status, st63 = call("GET", "/api/status")
-    check(status == 200 and st63.get("app_version") == "v65",
-          "v65: /api/status reports app_version v65")
+    check(status == 200 and st63.get("app_version") == "v66",
+          "v66: /api/status reports app_version v66")
     for _path63 in ("/", "/wall", "/cleanup", "/packages"):
         status, _pg63 = call("GET", _path63, raw=True)
-        check(status == 200 and b"v65" in _pg63
+        check(status == 200 and b"v66" in _pg63
               and b"appver" in _pg63,
-              f"v65: {_path63} header shows the app version")
+              f"v66: {_path63} header shows the app version")
     status, dash63 = call("GET", "/", raw=True)
     check(all(b"<th>" + h + b"</th>" in dash63 for h in
               (b"Package integrity", b"Grade signature",
@@ -4288,6 +4314,70 @@ def main():
           and "registerVid(v)" in _wall64,
           "v64: the video registry backstop is wired into "
           "claimAudio, the stall watchdog and tile binding")
+
+    # ---------------------------------------------------------
+    # 30. v66: the redownload run checks what it fetches
+    # (the §12 integration assertion above is the behaviour
+    # proof; here the wiring), the Redownload lines carry
+    # counts only with the enumeration behind a collapsed
+    # block, privacy coverage is completed, and the wall's
+    # playback is fraction-true with stall resume.
+    import re as _re66
+    import inspect as _insp66
+    _src66 = _insp66.getsource(web.start_redownload)
+    check("run_checks(cfg, stats=chk_stats)" in _src66
+          and "integrity checks:" in _src66,
+          "v66: a redownload run ends with the incremental "
+          "check pass and reports its counts in the summary")
+    status, dash66 = call("GET", "/", raw=True)
+    status, wall66 = call("GET", "/wall", raw=True)
+    status, clean66 = call("GET", "/cleanup", raw=True)
+    _d66 = dash66.decode("utf-8", "replace")
+    _w66 = wall66.decode("utf-8", "replace")
+    _est66 = _re66.search(r"async function rdEstimate\(\).*?\n\}",
+                          _d66, _re66.S).group(0)
+    check("user_name" not in _est66
+          and "previous attempt(s) not in package format"
+          in _est66,
+          "v66: the visible Redownload estimate line carries "
+          "counts only — no student name is built into it")
+    _det66 = _re66.search(r"function rdShowDetails\(nif\).*?\n\}",
+                          _d66, _re66.S).group(0)
+    check('id="rddetails"' in _d66 and "user_name" in _det66
+          and 'class="priv"' in _det66,
+          "v66: the not-in-format enumeration lives in the "
+          "collapsed details block, names priv-wrapped")
+    check('id="hptrans" class="priv"' in _w66
+          and 'id="ztrans" class="priv"' in _w66,
+          "v66: the wall hover panel's and the zoom view's "
+          "transcript blocks carry the priv class")
+    check(b"ta-privacy-v1" in clean66
+          and b'id="privbtn"' in clean66
+          and b"class='priv'" in clean66,
+          "v66: the Cleanup page carries the privacy toggle "
+          "and priv-wrapped student labels")
+    _pe66 = _re66.search(r"function placeErr\(msg\).*?\n\}",
+                         _d66, _re66.S).group(0)
+    check("activityMsgNode(msg)" in _pe66,
+          "v66: dashboard error text renders through the "
+          "roster name wrapper")
+    _rs66 = _re66.search(r"async function refreshSubs\(local\).*?\n\}",
+                         _d66, _re66.S).group(0)
+    check("renderActivity()" in _rs66,
+          "v66: the Activity log re-renders when the roster "
+          "arrives, covering lines written before it loaded")
+    check("function tileRate" in _w66
+          and "v.duration/ref" in _w66
+          and "function refDuration" in _w66
+          and "_wantPlay" in _w66
+          and "_playStallSince" in _w66
+          and "!v.ended" in _w66,
+          "v66: the wall computes fraction-true rates, "
+          "tracks play intent for stall resume, and keeps "
+          "ended tiles out of the master average")
+    status, st66 = call("GET", "/api/status")
+    check(st66.get("app_version") == "v66",
+          "v66: /api/status reports the app version")
 
     server.shutdown()
     worker.shutdown()

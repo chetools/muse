@@ -48,7 +48,12 @@ WAV, the submitted fingerprint is computed from it through
 the fingerprint function and the same blockwise comparison
 and verdict run, so the not-fingerprint-format reason
 remains only for a package holding neither the fingerprint
-file nor a readable WAV.)
+file nor a readable WAV. v66 (2026-11-27): no audit
+semantics change — the version rises with web.py, whose
+Redownload run now checks what it fetches (previous
+attempts included) in the same run, whose Redownload
+lines and privacy coverage are completed, and whose wall
+playback is fraction-true with stall resume.
 
 Runs on the teacher's own machine. Downloads Canvas submission
 packages — a submission is ONE ZIP file (submission.zip) holding
@@ -157,7 +162,7 @@ def data_dir(cfg):
 
 # ---------------------------------------------------------------- http
 
-USER_AGENT = "HWSigning-Teacher-Audit/65.0"
+USER_AGENT = "HWSigning-Teacher-Audit/66.0"
 # Every request from this app carries the User-Agent above, on both
 # the requests path and the urllib fallback. It is not decoration:
 # the signing Worker sits behind Cloudflare, which bans the default

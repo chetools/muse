@@ -1,4 +1,42 @@
-# Teacher audit app — HW Signing v2 (audit app v65)
+# Teacher audit app — HW Signing v2 (audit app v66)
+
+**v66 (2026-11-27).** Four teacher-reported defects.
+(1) A previous attempt fetched by the Redownload tool
+was never checked: the check machinery itself was whole
+— enumeration, the stored key and the table's lookup all
+agree, and the automatic pass does check attempts — but
+the Redownload run triggered no check pass at all, so a
+fetched attempt sat “not checked” until the next
+automatic pass, up to ten minutes later. A Redownload
+run now ends with the incremental check pass, so what it
+fetched, current and previous attempts alike, is checked
+by the same run, and the Done line reports the counts.
+(2) The Redownload tool's always-visible lines
+enumerated every not-in-format attempt by student name;
+they now carry counts only, and the enumeration lives in
+a collapsed details block under the tool (no information
+lost, only moved). (3) Privacy coverage completed: the
+enumeration in that details block wraps names in priv
+spans, the Activity log re-renders when the roster
+arrives (a line written before it loaded is covered
+too), dashboard error text is rendered through the same
+name-wrapping, the wall hover panel's and the zoom
+view's transcript blocks carry the priv class (free text
+is barred whole), and the Cleanup page — which had no
+privacy machinery at all — gains the toggle and
+priv-wrapped student names in its item labels and
+loose-video file names. (4) Wall playback is
+fraction-true and stall-resuming: tiles playing together
+advance at the same fraction rate (each tile's rate is
+the wall speed scaled by its duration against the
+longest showing tile, clamped to 0.25x–3x the wall
+speed), a tile the wall wants playing records that
+intent and the stall watchdog resumes it after a stall
+instead of leaving it stopped, and an ended tile no
+longer counts in the master position average while
+others still play (demonstrated against the v65 code by
+`tests/wall_regression_v66.py`, which fails there and
+passes on v66).
 
 **v65 (2026-11-27).** Two teacher-reported defects. (1)
 The Redownload tool honours “Include previous attempts”

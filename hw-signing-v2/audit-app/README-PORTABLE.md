@@ -113,10 +113,21 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v65 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v66 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v65: the Redownload tool honours “Include
+  installs). v66: a Redownload run checks what it fetches
+  in the same run (previous attempts included — before
+  v66 they sat “not checked” until the next automatic
+  pass); the Redownload tool's visible lines carry counts
+  only, with the not-in-format enumeration in a collapsed
+  details block; privacy coverage is completed (details
+  block, Activity log, dashboard errors, wall and zoom
+  transcripts, and the Cleanup page, which gains the
+  toggle); and wall playback is fraction-true (tiles
+  playing together advance at the same fraction rate)
+  with stall resume for tiles the wall wants playing.
+  v65: the Redownload tool honours “Include
   previous attempts” again (estimate, run and reporting;
   automatic passes stay current-attempt only), the
   YouTube cross-check measures audio-form packages from

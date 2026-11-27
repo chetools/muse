@@ -586,6 +586,43 @@ at 3 s, discarding the fetch and the frame, and after
 three cycles left it at 0% for the session (reproduced in
 tests/wall_regression_v65.py against the v64 code, which
 fails it, and the v65 code, which passes).
+
+v66 (2026-11-27): four teacher-reported defects. (1) A
+previous attempt fetched by the Redownload tool was never
+checked: the check machinery itself was whole (enumeration,
+the "<unit>::a<n>" store key and the table's lookup all
+agree, and the automatic pass does check attempts), but
+the Redownload run triggered no check pass at all, so a
+fetched attempt sat "not checked" until the next automatic
+pass, up to ten minutes later, with nothing saying so. A
+Redownload run now ends with the incremental check pass,
+so what it fetched — current and previous attempts alike —
+is checked by the same run. (2) The Redownload tool's
+always-visible lines enumerated every not-in-format
+attempt by student name; they now carry counts only, and
+the enumeration lives in a collapsed details block under
+the tool. (3) Privacy coverage completed: the enumeration
+in that details block wraps names in priv spans, the
+Activity log re-renders when the roster arrives (a line
+written before it loaded is covered too), dashboard error
+text is rendered through the same name-wrapping, the wall
+hover panel's and the zoom view's transcript blocks carry
+the priv class (free text is barred whole, as the
+critique was before v47), and the Cleanup page — which
+had no privacy machinery at all — gains the toggle, the
+root class and priv-wrapped student names in its item
+labels and loose-video file names. (4) Wall playback is
+fraction-true and stall-resuming: tiles playing together
+advance at the same fraction rate (each tile's
+playbackRate is the wall speed scaled by its duration
+against the longest showing tile, clamped to
+0.25x–3x the wall speed), a tile the wall wants playing
+records that intent (_wantPlay, cleared by every user
+pause action) and the stall watchdog resumes it after a
+stall instead of leaving it stopped, and an ended tile
+no longer counts in the master position average while
+others still play (tests/wall_regression_v66.py fails on
+the v65 code and passes on this).
 """
 
 import argparse
@@ -618,7 +655,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-APP_VERSION = "v65"
+APP_VERSION = "v66"
 CONFIG_PATH = Path(os.environ.get("TEACHER_AUDIT_CONFIG",
                                   HERE / "config.json"))
 
@@ -2847,7 +2884,8 @@ def start_redownload(cfg, body):
             "t0": time.monotonic(), "seconds": None, "summary": "",
             "estimate": None,
             "downloaded": 0, "skipped": 0, "errors": 0,
-            "target_errors": 0, "rejected": 0, "not_in_format": []})
+            "target_errors": 0, "rejected": 0, "not_in_format": [],
+            "checks": {}})
 
     def run():
         t0 = time.monotonic()
@@ -2956,6 +2994,27 @@ def start_redownload(cfg, body):
                         REDL_STATE["target_errors"] += 1
                 with _REDL_LOCK:
                     REDL_STATE["targets_done"] += 1
+            # v66: the run ends by checking what it fetched —
+            # current attempts and previous attempts alike.
+            # Before v66 the run only downloaded, and no check
+            # pass was tied to it: a fetched package (above all
+            # a previous attempt, which no other path fetches)
+            # sat "not checked" until the next automatic pass,
+            # up to ten minutes later, with nothing in the
+            # panel saying so. The incremental pass is the
+            # automatic pass's own: unchanged packages are
+            # skipped on their stored fingerprints, so the
+            # cost is the newly fetched work.
+            chk_stats = {}
+            try:
+                run_checks(cfg, stats=chk_stats)
+            except Exception as e:  # noqa: BLE001 - reported, not fatal
+                log_activity(
+                    "check", "redownload follow-up checks stopped "
+                             f"early: {type(e).__name__}: {e}")
+                chk_stats = {}
+            with _REDL_LOCK:
+                REDL_STATE["checks"] = chk_stats
             secs = time.monotonic() - t0
             with _REDL_LOCK:
                 REDL_STATE["seconds"] = secs
@@ -2974,6 +3033,17 @@ def start_redownload(cfg, body):
                 if REDL_STATE["rejected"]:
                     summary += (f"; {REDL_STATE['rejected']} previous "
                                 "attempt(s) rejected (ZIP on record)")
+                if chk_stats:
+                    summary += (
+                        f"; integrity checks: "
+                        f"{chk_stats.get('checked', 0)} submission(s)"
+                        f" and {chk_stats.get('attempt_checked', 0)} "
+                        f"previous attempt(s) checked"
+                        + (f", {chk_stats.get('errors', 0) + chk_stats.get('attempt_errors', 0)} "
+                           "failed" if (chk_stats.get("errors")
+                                        or chk_stats.get(
+                                            "attempt_errors"))
+                           else ""))
                 REDL_STATE["summary"] = summary
                 nbytes = REDL_STATE["bytes_done"]
         except Exception as e:  # noqa: BLE001 - reported in the panel
@@ -4412,6 +4482,10 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <label style="display:inline"><input type="checkbox" id="rdforce" style="width:auto"> Force — re-fetch even when present and unchanged</label></p>
 <p><button id="rddo">Redownload selected</button> <span id="rdresult"></span></p>
 <p class="mut" id="rdestimate"></p>
+<details id="rddetails" style="display:none;margin:4px 0">
+<summary style="cursor:pointer" class="mut">Previous attempts not in package format — detail</summary>
+<p class="mut" id="rddetailsbody" style="margin:4px 0"></p>
+</details>
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
 <p class="mut">Grade = completeness (0–5) + accuracy (0–5). Examined is ticked from the video wall, or here. Detail: “How this works”, below the table.</p>
@@ -4520,7 +4594,13 @@ document.addEventListener("click",e=>noteAct(e.target),true);
 document.addEventListener("change",e=>noteAct(e.target),true);
 function placeErr(msg){
   const el=$("globalerr"); if(!errHome) errHome=el.parentNode;
-  el.textContent=msg;
+  // v66: error strings can embed a student label (a check
+  // error, a per-student download failure); render through
+  // the Activity log's name wrapper so the privacy toggle
+  // covers names here too.
+  el.textContent="";
+  if(typeof activityMsgNode==="function") el.appendChild(activityMsgNode(msg));
+  else el.textContent=msg;
   const host=(lastAct&&document.contains(lastAct)
     && Date.now()-lastActAt<30000)?lastAct:null;
   if(host){ const anchor=host.closest(".row, tr, li, p")||host;
@@ -5088,6 +5168,12 @@ async function refreshSubs(local){
   SUBS=await api(surl);
   snapSave("subs",SUBS);
   renderSubs();
+  // v66: the roster is what the Activity log's name
+  // wrapping matches against; a line written before the
+  // roster loaded was rendered plain. Re-render the log
+  // now that the names are known, so the privacy toggle
+  // covers those lines too.
+  if(typeof renderActivity==="function") renderActivity();
   rdSyncOptions();
   if(!RDINIT && !local){ RDINIT=true; rdEstimate(); }
   if(local && VIEWLIST.length)
@@ -5144,15 +5230,30 @@ function rdSyncOptions(){
   const hws=[...new Set(SUBS.filter(s=>!RD.course || s.course_name===RD.course).map(s=>s.assignment_name).filter(Boolean))].sort();
   $("rdhw").innerHTML='<option value="">All homework</option>'+hws.map(c=>'<option value="'+esc(c)+'"'+(c===RD.hw?" selected":"")+">"+esc(c)+"</option>").join("");
 }
+function rdShowDetails(nif){
+  // The per-attempt enumeration (v66): the always-visible
+  // Redownload lines carry counts only; the names live
+  // here, in a collapsed block, each wrapped in a priv
+  // span so the privacy toggle covers them like any other
+  // rendering of a name.
+  const d=$("rddetails"), b=$("rddetailsbody");
+  if(!d||!b) return;
+  if(nif&&nif.length){
+    b.innerHTML=nif.map(n=>'<span class="priv">'+esc(n.user_name||"")+"</span> attempt "+esc(n.attempt)+" ("+esc(n.holds||"")+")").join(", ");
+    d.style.display="";
+  } else {
+    b.innerHTML=""; d.style.display="none";
+  }
+}
 async function rdEstimate(){
   if(!(STATUS&&STATUS.token_set)){ $("rdestimate").textContent="Save a Canvas token in Setup to estimate a redownload."; return; }
   try{
     const e=await api("/api/redownload-estimate", rdFilters());
     const mb=(e.bytes/1048576).toFixed(1);
     $("rdestimate").textContent="Selection: "+e.packages+" package(s) — "+e.to_fetch+" to fetch ("+mb+" MB), "+e.present+" already present."+
-      ((e.not_in_format&&e.not_in_format.length)? " Not in package format (not downloaded): "+
-        e.not_in_format.map(n=>esc(PRIV? "a student" : (n.user_name||""))+" attempt "+esc(n.attempt)+" ("+esc(n.holds||"")+")").join(", ")+"." : "")+
+      ((e.not_in_format&&e.not_in_format.length)? " "+e.not_in_format.length+" previous attempt(s) not in package format (not downloaded)." : "")+
       (e.rejected? " "+e.rejected+" previous attempt(s) already rejected (ZIP on record) — not fetched." : "");
+    rdShowDetails(e.not_in_format);
   }catch(err){ $("rdestimate").textContent="Estimate unavailable: "+String(err.message||err); }
 }
 function rdSchedule(){ clearTimeout(RDT); RDT=setTimeout(rdEstimate, 250); }
@@ -5187,6 +5288,7 @@ function rdPoll(){
         const e=st.estimate||{};
         $("rdprogress").textContent="";
         if(st.summary) $("rdresult").textContent="Done: "+st.summary+" — actual "+fmtDur(st.seconds||0)+".";
+        if(st.not_in_format&&st.not_in_format.length) rdShowDetails(st.not_in_format);
         $("rddo").disabled=false;
         await loadStatus(); await refreshSubs(); rdEstimate();
       }
@@ -5443,7 +5545,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
       </section>
       <section class="panel" data-panel="transcript" data-state="normal">
         <div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-expand title="expand / restore this panel">⤢</button><button class="pbtn" data-collapse title="collapse / expand this panel">▾</button></span></div>
-        <div class="panel-body" id="transcriptbody"><div id="ztrans"></div></div>
+        <div class="panel-body" id="transcriptbody"><div id="ztrans" class="priv"></div></div>
       </section>
     </div>
   </div>
@@ -5476,7 +5578,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
     <div id="hpcard"></div>
     <section class="hpanel" data-hpanel="marks"><div class="panel-head"><h3>Time marks</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hpmarks"></div></div></section>
     <section class="hpanel" data-hpanel="critique"><div class="panel-head"><h3>Critique</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><p id="hpcritique" style="font-size:13.5px;line-height:1.5;margin-top:0;white-space:pre-line"></p></div></section>
-    <section class="hpanel" data-hpanel="transcript"><div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hptrans"></div></div></section>
+    <section class="hpanel" data-hpanel="transcript"><div class="panel-head"><h3>Transcript</h3><span><button class="pbtn" data-hcollapse title="collapse / expand this section">▾</button></span></div><div class="panel-body"><div id="hptrans" class="priv"></div></div></section>
   </aside>
   </div>
 </div>
@@ -5703,7 +5805,7 @@ function teardownGridVids(){
   // view's teardown in closeZoom. Called at the start of
   // render() and renderAttemptTiles(), before the grid's
   // innerHTML is replaced.
-  vids().forEach(v=>{ v.pause(); v.muted=true;
+  vids().forEach(v=>{ v.pause(); v.muted=true; v._wantPlay=false;
     v.removeAttribute("src"); v.load(); });
 }
 function claimAudio(v){ document.querySelectorAll("video").forEach(o=>{ if(o!==v) o.muted=true; }); sweepDetachedVids(v); }
@@ -5734,6 +5836,20 @@ function bindTiles(){
     // current seek began, cleared when one completes; a
     // completed seek also restores the tile's retry budget.
     v.addEventListener("seeking",()=>{ v._seekSince=performance.now(); });
+    // v66: an ended tile carries no play intent (the
+    // watchdog must not revive it), and a tile whose
+    // duration arrives re-takes its fraction-true rate —
+    // the reference duration is the longest showing tile,
+    // which is only known once metadata lands.
+    v.addEventListener("ended",()=>{ v._wantPlay=false; });
+    // A duration arrival can change the reference (the
+    // longest showing tile), so every tile's rate is
+    // recomputed, not just this tile's: a tile whose
+    // metadata landed while a longer tile was still
+    // loading would otherwise keep the rate computed
+    // against the shorter reference for the session.
+    v.addEventListener("loadedmetadata",()=>{ setSpeed(); });
+    v.addEventListener("durationchange",()=>{ setSpeed(); });
     v.addEventListener("seeked",()=>{ v._seekSince=0; v._stallRetries=0;
       // A landed scrub target is discharged (v65): the tile
       // is at the position the wall asked for, so the badge
@@ -5750,7 +5866,7 @@ function bindTiles(){
       if(v.paused && !v._autoplay){ v.dataset.hoverplay="1"; playTile(v); } });
     v.addEventListener("mouseleave",()=>{ if(SCRUB && SCRUB.v===v) return;
       v.muted=true;
-      if(v.dataset.hoverplay){ v._autoplay=false; v.pause(); delete v.dataset.hoverplay; } });
+      if(v.dataset.hoverplay){ v._autoplay=false; v._wantPlay=false; v.pause(); delete v.dataset.hoverplay; } });
     v.addEventListener("mousedown",e=>{
       // Right-button drag scrubs: horizontal motion moves every
       // showing video to the same fraction of its own length
@@ -6057,6 +6173,7 @@ function playAfterSeek(v){
   // assigned, which is still inside that window: the seek
   // has then only just started. Deferring to the seeked
   // event closes it.
+  v._wantPlay=true;
   if(!v.seeking){ const p=v.play(); if(p) p.catch(()=>{}); return; }
   // The wait is time-boxed (v60): a seek whose range fetch
   // has stalled never fires seeked at all, and an unboxed
@@ -6129,6 +6246,14 @@ function playTile(v){
   // yet, record the intent and let its landing play; if a
   // seek is in flight, wait for it to complete; otherwise
   // play at once.
+  // v66: starting a tile records the wall's intent that it
+  // play (_wantPlay) — including the deferred case, where
+  // _autoplay alone used to be the only trace. The stall
+  // watchdog resumes a tile carrying the intent and never
+  // revives one without it; every user pause action
+  // clears it (pauseall, hover leave, teardown, zoom
+  // open, frame step, toggle-all).
+  v._wantPlay=true;
   if(v._wantFrac!==undefined){ v._autoplay=true; return; }
   playAfterSeek(v);
 }
@@ -6173,7 +6298,14 @@ function effFrac(v){
   return frac(v);
 }
 function updateMaster(){
-  const vs=vids(); if(!vs.length) return;
+  let vs=vids(); if(!vs.length) return;
+  // An ended tile sits at fraction 1; while others still
+  // play it must not pin the master average (v66) — the
+  // master position continues from the still-playing
+  // tiles. When every tile has ended, the average of all
+  // is 1 and the wall reads complete.
+  const live=vs.filter(v=>!v.ended);
+  if(live.length) vs=live;
   const f=vs.reduce((a,v)=>a+effFrac(v),0)/vs.length;
   $("scrub").value=Math.round(f*1000); $("pctlabel").textContent=Math.round(f*100)+"%";
   // Badges are paired to tiles by media file name, not by
@@ -6288,6 +6420,30 @@ function reviveStalledTiles(list){
       seekFrac(v, tgt);
       return;
     }
+    // Stall resume (v66): a tile the wall wants playing
+    // (_wantPlay — set by playTile/playAfterSeek, cleared
+    // by every user pause action and by "ended") that has
+    // stopped mid-playback resumes when it can. Before
+    // v66 a stall that left a tile paused — a rejected
+    // play, a seek rescue that landed paused, a buffer
+    // underrun on a long take — simply ended that tile's
+    // playback: nothing tied recovery to the wall's
+    // playing intent, so tiles silently fell out of the
+    // group while the rest played on. With data ready,
+    // play again; starved of data past a 10 s patience,
+    // reload at the current fraction and let the deferred
+    // play start it. A tile the teacher paused carries no
+    // intent and is never revived.
+    if(v._wantPlay && v.src && !v.ended && v.duration && !v.seeking){
+      if(v.readyState>=2){ v._playStallSince=0;
+        if(v.paused) playAfterSeek(v);
+        return; }
+      if(!v._playStallSince){ v._playStallSince=now; return; }
+      if(now-v._playStallSince>10000){
+        v._playStallSince=0; v._autoplay=true;
+        const f=frac(v); v.load(); seekFrac(v,f); }
+      return;
+    }
     if(!v.src || v.readyState>=2 || !v.duration) return;
     if(v.seeking){
       if(!v._seekSince){ v._seekSince=now; return; }
@@ -6330,7 +6486,32 @@ function syncZBar(){
   $("zplay").textContent=zv.paused? "▶":"⏸";
   $("zmute").textContent=zv.muted? "🔇":"🔊";
 }
-function setSpeed(){ const r=parseFloat($("speed").value); vids().forEach(v=>v.playbackRate=r); $("zv").playbackRate=r; }
+// Fraction-true playback (v66). The wall's model is
+// fraction-based — the master scrub seeks every tile to
+// the same fraction and the badges show fractions — but
+// before v66 every tile played at the same playbackRate,
+// so fractions necessarily diverged (a 19:44 tile advanced
+// in fraction about 2.5x faster than a 50:35 tile) and the
+// shortest tile ended and stopped while the rest played
+// on. Now a tile's rate is the wall speed scaled by its
+// duration against the reference duration — the longest
+// showing tile, so no tile needs a rate above the wall
+// speed — clamped to 0.25x–3x the wall speed; a tile
+// outside the clamp cannot hold exact sync and drifts at
+// the clamp rate. The zoom view keeps its single-video
+// rate (the plain wall speed).
+function refDuration(){
+  let d=0; vids().forEach(v=>{ if(v.duration&&isFinite(v.duration)&&v.duration>d) d=v.duration; });
+  return d;
+}
+function tileRate(v){
+  const wall=parseFloat($("speed").value)||1;
+  const ref=refDuration();
+  if(!v.duration||!isFinite(v.duration)||!ref) return wall;
+  const r=wall*(v.duration/ref);
+  return Math.min(3*wall, Math.max(0.25*wall, r));
+}
+function setSpeed(){ vids().forEach(v=>{ v.playbackRate=tileRate(v); }); $("zv").playbackRate=parseFloat($("speed").value); }
 $("scrub").oninput=e=>WALLSEEK.push(e.target.value/1000);
 // After a drag, focus leaves the seek bars, so the keyboard
 // belongs to playback again without a further click.
@@ -6388,7 +6569,7 @@ $("zv").addEventListener("mousedown",e=>{
 });
 $("zvwrap").addEventListener("contextmenu",e=>e.preventDefault());
 $("playall").onclick=()=>{ vids().forEach(v=>playTile(v)); };
-$("pauseall").onclick=()=>{ vids().forEach(v=>{ v._autoplay=false; v.pause(); }); };
+$("pauseall").onclick=()=>{ vids().forEach(v=>{ v._autoplay=false; v._wantPlay=false; v.pause(); }); };
 $("speed").onchange=setSpeed;
 function refit(){
   // Rebuilding the wall destroys every tile's video element,
@@ -6471,7 +6652,7 @@ $("grid").addEventListener("contextmenu",e=>e.preventDefault());
 function toggleAll(){
   const vs=vids(); if(!vs.length) return;
   const anyPlaying=vs.some(v=>!v.paused);
-  vs.forEach(v=>{ if(anyPlaying){ v._autoplay=false; v.pause(); }
+  vs.forEach(v=>{ if(anyPlaying){ v._autoplay=false; v._wantPlay=false; v.pause(); }
     else playTile(v); });
 }
 function stepFrac(d){
@@ -6485,7 +6666,7 @@ function stepFrame(d){
   // frame - 1/30 s, the nominal frame interval of the student
   // recordings. (The wall's scrub keys used to jump 5%.)
   const vs=vids(); if(!vs.length) return;
-  vs.forEach(v=>{ v._autoplay=false; v.pause();
+  vs.forEach(v=>{ v._autoplay=false; v._wantPlay=false; v.pause();
     if(v.duration) v.currentTime=Math.min(v.duration,Math.max(0,v.currentTime+d/30)); });
 }
 document.addEventListener("keydown",e=>{
@@ -6542,7 +6723,7 @@ function openZoom(id, opts){
     playing=(tv?!tv.paused:false) || vids().some(v=>!v.paused);
     WALLPLAY=new Set(vids().filter(v=>!v.paused)
       .map(v=>v.closest(".tile").dataset.id));
-    vids().forEach(v=>{ v._autoplay=false; v.pause(); });
+    vids().forEach(v=>{ v._autoplay=false; v._wantPlay=false; v.pause(); });
   }
   zoomId=id;
   // Browser history (v61): opening the zoom view pushes a
@@ -6959,9 +7140,22 @@ th,td{border-bottom:1px solid #e3e3de;padding:5px 7px;text-align:left}
 th{background:#f0f0ec}
 td{overflow-wrap:anywhere}
 th{white-space:nowrap;font-size:12px}
-</style></head><body>
+/* Privacy (v66): the same toggle as the dashboard and the
+   wall — kept in this browser (ta-privacy-v1) and shared
+   across the pages. A .priv span's text is barred: the
+   letters are transparent and unselectable, so nothing
+   shows through the bar. */
+html.privacy-on .priv{color:transparent!important;text-shadow:none!important;
+  background:#9a9a94;border-radius:2px;user-select:none}
+html.privacy-on .priv *{color:transparent!important;background:transparent!important}
+html.privacy-on input.priv{color:transparent!important}
+header button.privbtn{background:#fff;color:#243b53;border:1px solid #cfe0f0;
+  border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;margin-left:10px}
+</style>
+<script>try{if(localStorage.getItem("ta-privacy-v1")==="1")document.documentElement.classList.add("privacy-on")}catch(e){}</script>
+</head><body>
 <header><h1>Cleanup — Teacher Audit <span class="appver">· @@APP_VERSION@@</span></h1>
-<p><a href="/">← Back to the dashboard</a> · Deleting here removes local working material only; nothing on Canvas is touched.</p></header>
+<p><a href="/">← Back to the dashboard</a> · Deleting here removes local working material only; nothing on Canvas is touched.<button type="button" class="privbtn" id="privbtn" title="Bar student names and grades wherever they appear">Hide names &amp; grades: off</button></p></header>
 <main>
 <p id="globalerr" class="err"></p>
 <section><h2>Downloaded submissions</h2>
@@ -7023,6 +7217,24 @@ function placeErr(msg){
   } else if(el.parentNode!==errHome){ errHome.append(el); }
 }
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+// Privacy (v66): the dashboard's toggle, on this page too —
+// the choice is shared through localStorage, and the
+// storage event keeps an already-open page in step.
+const PRIVKEY="ta-privacy-v1";
+let PRIV=false;
+function applyPrivacy(){
+  document.documentElement.classList.toggle("privacy-on",PRIV);
+  const b=$("privbtn"); if(b) b.textContent="Hide names & grades: "+(PRIV?"on":"off");
+}
+try{ PRIV=localStorage.getItem(PRIVKEY)==="1"; }catch(e){}
+window.addEventListener("storage",e=>{ if(e.key===PRIVKEY){
+  PRIV=e.newValue==="1"; applyPrivacy(); }});
+document.addEventListener("DOMContentLoaded",()=>{
+  const b=$("privbtn"); if(b) b.onclick=()=>{ PRIV=!PRIV;
+    try{ localStorage.setItem(PRIVKEY,PRIV?"1":"0"); }catch(e){}
+    applyPrivacy(); };
+  applyPrivacy();
+});
 function mb(b){ return b>=1048576? (b/1048576).toFixed(1)+" MB" : b>=1024? (b/1024).toFixed(1)+" kB" : b+" B"; }
 function gkey(g){ return g.course_id+"|"+g.assignment_id; }
 function shownGroups(){
@@ -7037,13 +7249,13 @@ function render(){
     const bytes=g.items.reduce((a,it)=>a+it.bytes+it.video_bytes,0);
     return "<h3><label><input type='checkbox' style='width:auto' data-group='"+gi+"' onchange='tickGroup(this)'> "+esc(g.course_name)+(g.assignment_name?" — "+esc(g.assignment_name):"")+"</label> <span class='mut'>"+g.items.length+" submission(s) · "+mb(bytes)+"</span></h3>"+
     "<table><thead><tr><th></th><th>Student</th><th>Package</th><th>Video</th><th>Contains</th></tr></thead><tbody>"+
-    g.items.map(it=>"<tr><td><input type='checkbox' style='width:auto' class='unit' value='"+esc(it.key)+"'></td><td>"+esc(it.name)+"</td><td>"+mb(it.bytes)+"</td><td>"+(it.video_bytes?mb(it.video_bytes):"—")+"</td><td class='mut'>"+[it.has_result?"check result":"",it.has_final?"final grade":"",it.examined?"examined":""].filter(Boolean).join(", ")+"</td></tr>").join("")+
+    g.items.map(it=>"<tr><td><input type='checkbox' style='width:auto' class='unit' value='"+esc(it.key)+"'></td><td><span class='priv'>"+esc(it.name)+"</span></td><td>"+mb(it.bytes)+"</td><td>"+(it.video_bytes?mb(it.video_bytes):"—")+"</td><td class='mut'>"+[it.has_result?"check result":"",it.has_final?"final grade":"",it.examined?"examined":""].filter(Boolean).join(", ")+"</td></tr>").join("")+
     "</tbody></table>";
   }).join("") : '<p class="mut">Nothing downloaded matches the filters.</p>';
   $("expinfo").textContent=INV.exports.files+" file(s), "+mb(INV.exports.bytes)+(INV.exports.mapping?", mapping present":"");
   $("wminfo").textContent=INV.watermark_entries+" submission(s) marked downloaded";
   $("loose").innerHTML = INV.loose_videos.length?
-    "<h3>Video files no submission claims</h3>"+INV.loose_videos.map(v=>"<p><label><input type='checkbox' style='width:auto' class='loosevideo' value='"+esc(v.name)+"'> "+esc(v.name)+"</label> <span class='mut'>"+mb(v.bytes)+"</span></p>").join("") : "";
+    "<h3>Video files no submission claims</h3>"+INV.loose_videos.map(v=>"<p><label><input type='checkbox' style='width:auto' class='loosevideo' value='"+esc(v.name)+"'> <span class='priv'>"+esc(v.name)+"</span></label> <span class='mut'>"+mb(v.bytes)+"</span></p>").join("") : "";
 }
 window.tickGroup=cb=>{
   const g=shownGroups()[parseInt(cb.dataset.group)];

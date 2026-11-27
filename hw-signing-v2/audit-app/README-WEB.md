@@ -18,6 +18,37 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v66 (2026-11-27) — Redownload checks what it fetches, counts-only Redownload lines, complete privacy coverage, fraction-true wall playback with stall resume
+
+A Redownload run now ends with the incremental integrity
+check pass, so a package it fetched — a previous attempt
+above all, which no other path fetches — is checked by
+the same run instead of sitting “not checked” until the
+next automatic pass (the check machinery itself was
+whole: enumeration, the stored key and the table's
+lookup all agree). The Redownload tool's always-visible
+lines carry counts only; the per-attempt enumeration of
+not-in-format previous attempts lives in a collapsed
+details block under the tool. Privacy coverage is
+completed: names in that details block are priv-wrapped,
+the Activity log re-renders when the roster arrives,
+dashboard errors render through the name wrapper, the
+wall hover panel's and zoom view's transcript blocks are
+barred whole under the toggle, and the Cleanup page
+gains the toggle with priv-wrapped item labels. On the
+wall, tiles playing together now advance at the same
+fraction rate — each tile's playback rate is the wall
+speed scaled by its duration against the longest
+showing tile, clamped to 0.25x–3x the wall speed — a
+tile the wall wants playing records that intent
+(`_wantPlay`, cleared by every user pause action) and
+the stall watchdog resumes it after a stall, and an
+ended tile no longer counts in the master position
+average while others still play.
+Regression: `tests/wall_regression_v66.py` (headless
+Chromium; fails on the v65 code, passes on v66), plus
+checks in `tests/test_web.py` and `tests/test_audit.py`.
+
 ## v65 (2026-11-27) — Redownload fetches previous attempts again, audio-form packages are measured, wall scrub no longer strands tiles
 
 The Redownload tool's “Include previous attempts” scope
