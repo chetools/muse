@@ -20,7 +20,7 @@ import { parseConfig, buildConfigLink } from './config.js';
 import { sha256Hex } from './hash.js';
 import {
   parseScrubWords, scrubChunks, scrubMetadata, canonicalTranscript,
-  legacyCanonicalTranscript, findSuspects, formatDuration,
+  findSuspects, formatDuration,
 } from './transcript.js';
 import {
   VERSIONS, AUDIO_FILE_NAME, FINGERPRINT_FILE_NAME, assemblePackage,
@@ -33,19 +33,19 @@ import {
   cacheGet, cacheInit, cachePutChunk, cacheWindowDone, cacheComplete,
   cacheList, cacheDelete,
 } from './cache.js';
-import { fromCachedChunk, recordingFirstWords } from './cachekey.js';
+import { fromCachedChunk } from './cachekey.js';
 import {
   parseYouTubeVideoId, canonicalWatchUrl,
-  verifyBundleContents, bundleChromaprintSha, verifyFingerprintContents,
+  bundleChromaprintSha, verifyFingerprintContents,
   validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry, entryPollable,
-  removeJobEntry, saveJobEntries, kindFromResultBundle,
+  removeJobEntry, saveJobEntries,
   duplicateJobEntry, collapseSameJobEntries,
-  requestYouTubeCheck, submitJob, fetchJobStatus, markJobRetrieved,
+  requestYouTubeCheck, submitJob, fetchJobStatus,
   finalizeJob,
 } from './jobs.js';
 import { computeFingerprint } from './fingerprint.js';
 import { decodeRawFingerprint } from './fingerprint.js';
-import { buildZipAsync, submissionZipName, ZIP_ENTRY_HTML, ZIP_ENTRY_AUDIO } from './zip.js';
+import { buildZipAsync, submissionZipName, ZIP_ENTRY_HTML } from './zip.js';
 
 const $ = (id) => document.getElementById(id);
 const cfg = parseConfig(window.location.search);
@@ -73,6 +73,12 @@ let ytApiPromise = null;
 // the click, inside the review step (see generateZipForRow).
 const rowDrafts = new Map();  // jobKey -> field text
 const rowZipErrors = new Map(); // jobKey -> ZIP failure text for the cell
+const rowCheckedInfo = new Map(); // jobKey -> {videoId, title, opening} from
+// the row's passed reachability check (2.7.0): the link cell then
+// shows the video title and the transcript's opening words — the
+// identity the removed ZIP review panel used to show, now in the
+// row — and the canonical watch address is built from the video
+// ID the Worker returned, not from the page's own parse.
 const readyBundles = new Map(); // "pkg|code" -> result bundle from /jobs/status
 const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
 // the same status response (Worker 2.7.0): the stored transcript text and the
@@ -125,15 +131,14 @@ function clearError() {
 function scrubWords() { return parseScrubWords($('scrubField').value); }
 function scrubbed() { return scrubChunks(chunks, scrubWords()); }
 function canonical() { return canonicalTranscript(scrubbed()); }
-// There is no Practice/Final choice anywhere in the page (2.6.16):
-// a job is sent with no YouTube link, and the submission is made
-// afterwards from the job's own row in section 6. No video is
-// bound to a job (2.6.19): confirming the ZIP review finalises
-// the job — marking it final, with no video attached — and the
-// ZIP carries the row's link as package data. The Worker's
-// job kind stays as it is: a sent job is 'practice' until it is
-// finalised, and entries for jobs sent as final by earlier
-// versions keep working from their signed bundle.
+// There is no Practice/Final choice anywhere in the page, and
+// no job kind is sent (2.7.0): a job is sent with no YouTube
+// link, and the submission is made afterwards from the job's own
+// row in section 6. No video is bound to a job: the row's
+// Generate ZIP click finalises the job — marking it final, with
+// no video attached — and the ZIP carries the row's link as
+// package data. The entry's local finalised flag records that
+// this browser's finalize call succeeded.
 
 function downloadBlob(blob, name) {
   const a = document.createElement('a');
@@ -233,13 +238,14 @@ function setAudioMeta() {
     ' · recording hash (SHA-256) ' + audioSha;
 }
 
-// Compute the Chromaprint (2.6.0) once from the normalised WAV's own
+// Compute the Chromaprint once from the normalised WAV's own
 // int16 samples — the same samples the audio SHA-256 is computed
 // over — and keep it in state for the job payload. Runs in the
-// background after normalisation; a failure leaves chromaprint null
-// and the job is sent without it. Never awaited by the media stage:
-// the submit handler awaits the in-flight promise, if any, before
-// building the payload.
+// background after normalisation; a failure leaves chromaprint
+// null, and since 2.7.0 the submit handler then blocks the send:
+// a job is never sent without its fingerprint. Never awaited by
+// the media stage: the submit handler awaits the in-flight
+// promise, if any, before building the payload.
 async function refreshFingerprint() {
   if (!wavBytes || wavBytes.length <= 44 || !audioSha) return;
   if (audioSha === chromaprintSha) return;
@@ -344,13 +350,25 @@ $('mediaFile').addEventListener('change', async (ev) => {
 });
 
 // --- Saved recordings list ---
+// The last list fetched from IndexedDB is kept in memory
+// (cacheListMemory): re-rendering for a scrub-field change uses
+// the memory copy, so typing in the scrub field never re-reads
+// IndexedDB per keystroke (2.7.0).
+let cacheListMemory = [];
+
 async function renderCacheList() {
-  const box = $('cacheBox');
   let list = [];
   try { list = await cacheList(); } catch { list = []; }
+  cacheListMemory = list;
+  renderCacheRows(list);
+}
+
+function renderCacheRows(list) {
+  const box = $('cacheBox');
   if (!list.length) { box.textContent = 'No recordings saved yet.'; return; }
   box.textContent = '';
   for (const entry of list) {
+
     const row = document.createElement('div');
     row.className = 'recrow';
     const when = entry.created_at ? new Date(entry.created_at).toLocaleString() : '';
@@ -426,11 +444,16 @@ async function renderCacheList() {
   }
 }
 
-// --- Scrub field: re-derive everything when it changes ---
+// --- Scrub field: re-derive the scrubbed views when it changes ---
+// Per keystroke (2.7.0) only the scrubbed views re-derive: the
+// suspected-identifier scan does NOT run here — it runs at send
+// time and on demand through refreshDerived's other callers —
+// and the recordings list re-renders from the in-memory list,
+// with no IndexedDB re-read.
 $('scrubField').addEventListener('input', () => {
   setAudioMeta();
-  refreshDerived();
-  renderCacheList();
+  refreshDerived({ keepSuspects: true });
+  renderCacheRows(cacheListMemory);
 });
 
 // --- Transcription (with chunk-level caching and resume) ---
@@ -498,7 +521,7 @@ $('runBtn').addEventListener('click', async () => {
 });
 
 // --- Derived views: transcript, review list, job gating ---
-function refreshDerived() {
+function refreshDerived(opts) {
   const sc = scrubbed();
   if (sc.length) {
     $('transcriptBox').textContent = sc
@@ -511,7 +534,7 @@ function refreshDerived() {
   } else {
     $('transcriptBox').textContent = 'Your transcript will appear here.';
   }
-  renderSuspects(sc);
+  if (!opts || !opts.keepSuspects) renderSuspects(sc);
   updateJobEnabled();
 }
 
@@ -654,9 +677,10 @@ $('ytPreviewOverlay').addEventListener('click', () => {
  * exactly while the field holds a readable link. The one check —
  * the Worker reporting the video reachable (Public or Unlisted)
  * through /youtube-check — runs at the Generate ZIP click, as
- * part of preparing the review. No video is bound to the job:
- * confirming the review finalises the job (marking it final) and
- * downloads the ZIP carrying the row's link (see doDownloadZip).
+ * part of the one-click Generate ZIP flow. No video is bound
+ * to the job: the click finalises the job (marking it final)
+ * and downloads the ZIP carrying the row's link (see
+ * generateZipForRow).
  */
 
 function rowInputEl(key) {
@@ -678,14 +702,26 @@ function rowLinkDraft(entry) {
 }
 
 // What the row's cell says, from its standing state: a ZIP
-// failure in small red text, else the starting line while the
-// field holds no readable link, else nothing.
+// failure in small red text, else — once the row's check has
+// passed — the video title and the transcript's opening words
+// (the identity the ZIP review panel used to show, in the row
+// since 2.7.0), else the starting line while the field holds no
+// readable link, else nothing. The open link's address is built
+// from the video ID the Worker returned at the check once a
+// check has run, and from the page's parse only before that.
 function rowCellBits(key) {
   const zipErr = rowZipErrors.get(key);
   const draft = rowDrafts.get(key) || '';
   const parsed = parseYouTubeVideoId(draft);
-  const bits = { text: '', cls: 'ytneed', openId: parsed };
+  const checked = rowCheckedInfo.get(key);
+  const bits = { text: '', cls: 'ytneed', openId: checked ? checked.videoId : parsed };
   if (zipErr) { bits.text = zipErr; bits.cls = 'ytreason'; return bits; }
+  if (checked) {
+    bits.cls = 'ytok';
+    bits.text = (checked.title ? '\u201c' + checked.title + '\u201d' : 'Video checked') +
+      (checked.opening ? ' \u00b7 starts \u201c' + checked.opening + '\u2026\u201d' : '');
+    return bits;
+  }
   if (!parsed) {
     bits.text = 'Necessary for ZIP generation';
     return bits;
@@ -732,32 +768,22 @@ function persistRowLink(entry, link, title, checkedAt) {
   saveJobEntries(entries);
 }
 
-// Another row in this browser whose field or kept link names the
-// same video, or null. The review warns about it: the same link
-// on two rows is the shape of a mix-up between homeworks.
-function duplicateLinkEntry(key, videoId) {
-  for (const e of loadJobEntries()) {
-    const k2 = jobKey(e.pkg, e.retrieval_code);
-    if (k2 === key) continue;
-    const other = parseYouTubeVideoId(rowLinkDraft(e));
-    if (other && other === videoId) return e;
-  }
-  return null;
-}
-
-// Generate ZIP, from a row holding a readable link (2.6.18): the
-// reachability check runs now, as part of preparing the review.
-// A private or missing video, or a failed check, is reported in
-// the row's own cell and nothing is packaged. On a pass the
-// verified parts and the review are prepared by
-// downloadSubmissionZip, carrying the checked video — no video
-// is bound to the job at any point (2.6.19); confirming the
-// review finalises the job and packages (see doDownloadZip).
+// Generate ZIP, from a row holding a readable link (2.7.0): one
+// click does the whole flow — the Worker's reachability check
+// runs now; on a pass the row's cell shows the video title and
+// the transcript's opening words, the job is finalised, its
+// status is re-fetched, and the fingerprint-form ZIP is packaged
+// and downloaded (see packageSubmissionZip). There is no review
+// panel. A private or missing video, a failed check, or any
+// later failure is reported in the row's own cell in small red
+// text and nothing is packaged. No video is bound to the job:
+// the ZIP carries the row's checked link as package data, and
+// the canonical watch address is built from the video ID the
+// Worker returned, not from the page's parse.
 async function generateZipForRow(entry, bundle, btn) {
   const key = jobKey(entry.pkg, entry.retrieval_code);
   const videoId = parseYouTubeVideoId(rowLinkDraft(entry));
   if (!videoId) return;
-  const canonical = canonicalWatchUrl(videoId);
   rowZipErrors.delete(key);
   paintRowCell(key);
   if (!cfg.worker) {
@@ -766,36 +792,97 @@ async function generateZipForRow(entry, bundle, btn) {
     paintRowCell(key);
     return;
   }
-  btn.disabled = true;
-  let res = null;
-  try {
-    res = await requestYouTubeCheck(cfg.worker, canonical);
-  } catch (err) {
-    console.error(err);
-    rowZipErrors.set(key, 'Could not complete the check. Try again.');
-    paintRowCell(key);
-    btn.disabled = false;
-    return;
-  }
-  if (!res || res.status !== 'ok' || res.video_id !== videoId || !res.token) {
-    rowZipErrors.set(key, 'YouTube reports this video as private ' +
-      'or missing. Set it to Unlisted or Public and check again.');
-    paintRowCell(key);
-    btn.disabled = false;
-    return;
-  }
-  btn.disabled = false;
-  // The link is kept with the entry, as before — browser keeping
-  // only. It is package data: the ZIP is built with this link,
-  // and no video is bound to the job (2.6.19).
-  persistRowLink(entry, canonical, res.title || '', res.checked_at);
-  previewOnLinkCommit(key, videoId);
-  if (rowDrafts.get(key) !== canonical) rowDrafts.set(key, canonical);
-  const pending = { videoId, title: res.title || '' };
-  await downloadSubmissionZip(entry, bundle, btn, (msg) => {
+  const fail = (msg) => {
     rowZipErrors.set(key, msg);
     paintRowCell(key);
-  }, pending);
+  };
+  btn.disabled = true;
+  zipBusy = true;
+  try {
+    let res = null;
+    try {
+      res = await requestYouTubeCheck(cfg.worker, canonicalWatchUrl(videoId));
+    } catch (err) {
+      console.error(err);
+      fail('Could not complete the check. Try again.');
+      return;
+    }
+    if (!res || res.status !== 'ok') {
+      fail('YouTube reports this video as private ' +
+        'or missing. Set it to Unlisted or Public and check again.');
+      return;
+    }
+    const checkedId = res.video_id || videoId;
+    const canonical = canonicalWatchUrl(checkedId);
+    // The link is kept with the entry, as before — browser keeping
+    // only. It is package data: the ZIP is built with this link.
+    persistRowLink(entry, canonical, res.title || '', res.checked_at);
+    previewOnLinkCommit(key, checkedId);
+    if (rowDrafts.get(key) !== canonical) rowDrafts.set(key, canonical);
+    paintRowCell(key);
+    // Finalise the job in this browser: finalizeJob treats an
+    // "already final" response for this job as success. On
+    // success the entry's finalised flag is set and kept.
+    let liveBundle = bundle;
+    try {
+      await finalizeJob(cfg.worker, {
+        pkg: entry.pkg,
+        retrieval_code: entry.retrieval_code,
+      });
+      markEntryFinalised(entry);
+      const st = await fetchJobStatus(cfg.worker, {
+        pkg: entry.pkg, retrieval_code: entry.retrieval_code,
+      });
+      if (st.status === 'ready' && st.data && st.data.result) {
+        liveBundle = st.data.result;
+        readyBundles.set(key, liveBundle);
+        if (typeof st.data.transcript === 'string' || st.data.chromaprint) {
+          readyExtras.set(key, {
+            transcript: typeof st.data.transcript === 'string'
+              ? st.data.transcript : null,
+            chromaprint: st.data.chromaprint || null,
+          });
+        }
+      }
+    } catch (err) {
+      fail('The submission could not be made: ' + err.message);
+      return;
+    }
+    // The check has passed: the row now shows the video title and
+    // the graded transcript's opening words.
+    const extras = readyExtras.get(key);
+    let opening = '';
+    if (extras && typeof extras.transcript === 'string') {
+      opening = extras.transcript
+        .replace(/\[\d+:\d+\]\s*/g, ' ')
+        .split(/\s+/).filter(Boolean).slice(0, 30).join(' ');
+    }
+    rowCheckedInfo.set(key, {
+      videoId: checkedId,
+      title: res.title || '',
+      opening: opening ? scrubMetadata(opening, scrubWords()) : '',
+    });
+    paintRowCell(key);
+    const pending = { videoId: checkedId, title: res.title || '' };
+    await packageSubmissionZip(entry, liveBundle, btn, fail, pending);
+  } finally {
+    zipBusy = false;
+    btn.disabled = false;
+  }
+}
+
+// Record that this browser finalised the job: the entry's
+// finalised flag is set on the entry object and on its stored
+// copy (2.7.0).
+function markEntryFinalised(entry) {
+  entry.finalised = true;
+  const entries = loadJobEntries();
+  const e = entries.find((x) => x.pkg === entry.pkg &&
+    x.retrieval_code === entry.retrieval_code);
+  if (e) {
+    e.finalised = true;
+    saveJobEntries(entries);
+  }
 }
 
 // The queue state or grades of a duplicate response, for the
@@ -822,26 +909,33 @@ $('submitJobBtn').addEventListener('click', async () => {
   $('submitJobBtn').disabled = true;
   $('jobStatus').textContent = 'Preparing…';
   try {
+    // The suspected-identifier scan runs at send time (2.7.0),
+    // not per scrub-field keystroke.
+    renderSuspects(scrubbed());
     const transcript = canonical();
     const transcriptSha = await sha256Hex(transcript);
     // The fingerprint is computed in the background after
-    // normalisation; wait for it here so the job carries it when it
-    // is ready. A failure leaves chromaprint null and the job is
-    // sent without it.
+    // normalisation; wait for it here. Since 2.7.0 a fingerprint
+    // failure BLOCKS the send: without a fingerprint no
+    // fingerprint-form submission ZIP could ever be built from
+    // the job. The error lands beside
+    // the Send control through the catch below (showError with
+    // the button as anchor, and the status line beside it).
     if (chromaprintPending) await chromaprintPending;
+    if (!chromaprint) {
+      throw new Error('This recording could not be fingerprinted, ' +
+        'so it cannot be sent. Choose the recording file again, ' +
+        'then send once it has been read.');
+    }
     const payload = buildJobPayload({
       pkg: cfg.pkg,
       pkgContentSha256: cfg.ph,
-      kind: 'practice',
       transcript,
       audioSha256: audioSha,
       transcriptSha256: transcriptSha,
       chromaprint,
       versions: VERSIONS,
       retrievalCode: generateRetrievalToken(),
-      youtubeToken: null,
-      youtubeVideoId: null,
-      youtubeCheckedAt: null,
     });
     const check = validateJobPayload(payload);
     if (!check.ok) throw new Error(check.reason);
@@ -867,7 +961,7 @@ $('submitJobBtn').addEventListener('click', async () => {
         course: cfg.course,
         asg: cfg.asg,
         retrieval_code: payload.retrieval_code,
-        kind: payload.kind,
+        finalised: false,
         youtube_link: '',
         youtube_title: '',
         youtube_checked_at: '',
@@ -891,7 +985,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       asg: cfg.asg,
       retrieval_code: payload.retrieval_code,
       job_id: res.job_id || '',
-      kind: payload.kind,
+      finalised: false,
       youtube_link: '',
       youtube_title: '',
       youtube_checked_at: '',
@@ -914,28 +1008,13 @@ $('submitJobBtn').addEventListener('click', async () => {
 // --- Retrieval: jobs list, grades reveal, ZIP download ---
 function jobKey(pkg, code) { return pkg + '|' + code; }
 
-async function wavBytesForBundle(bundle) {
-  if (wavBytes && audioSha === bundle.audio_sha256) return wavBytes;
-  const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
-    .catch(() => null);
-  if (record && record.wavBlob) {
-    return new Uint8Array(await record.wavBlob.arrayBuffer());
-  }
-  return null;
-}
-
-// Verified submission parts, per job, held between the review step
-// and the download step: jobKey -> { receipt, parts, lines }.
-const zipReviews = new Map();
-
-// Live status for the two slow ZIP steps (2.4.6): a labelled native
+// Live status for the ZIP build (2.4.6): a labelled native
 // progress element placed directly after the button that started
-// the step. The jobs refresh is paused while either step runs
-// (zipBusy) and while a review is open (zipReviews), so the element
-// is never rebuilt out from under the student. When a step finishes
-// the element is removed: the verification step's outcome is the
-// review panel, and the download step's outcome is the downloaded
-// file plus the brief completion line above the jobs list.
+// the step. The jobs refresh is paused while the step runs
+// (zipBusy), so the element is never rebuilt out from under the
+// student. When the step finishes the element is removed: the
+// outcome is the downloaded file plus the brief completion line
+// above the jobs list.
 function showZipStatus(anchor, text) {
   clearZipStatus(anchor);
   const box = document.createElement('div');
@@ -958,8 +1037,7 @@ function clearZipStatus(anchor) {
 // the next click does not need it again. Only a stored entry is
 // updated in place. The title and check time are the ones already
 // kept on the entry (put there by the Generate ZIP click's
-// check, through persistRowLink). Shared by the WAV and
-// fingerprint ZIP paths.
+// check, through persistRowLink).
 function keepReenteredLink(entry, bundle, link) {
   if (entry.youtube_link) return;
   const entries = loadJobEntries();
@@ -974,118 +1052,26 @@ function keepReenteredLink(entry, bundle, link) {
   }
 }
 
-// Verify everything that will go into the ZIP against the signed
-// result bundle, before anything is packaged:
-// - the WAV is the recording the job was graded on: it is fetched by
-//   the bundle's audio fingerprint and its SHA-256 is recomputed
-//   over the exact bytes to be packaged;
-// - the transcript is built from THAT recording's own cached chunks
-//   (never from whatever transcript happens to be on the page) and
-//   its canonical checksum must equal the signed transcript_sha256 —
-//   a different removal list in step 2 is the usual cause of a
-//   mismatch, and the error says so;
-// - the critique's SHA-256 must equal the signed critique_sha256.
-// The YouTube link is not verified against the bundle: no video
-// is bound to the job (2.6.19), so the row's checked link is
-// packaged as it stands.
-// Returns the verified parts, or null with the error shown beside
-// the button that was used.
-async function verifySubmissionParts(entry, bundle, anchor, onError, pending) {
-  // A failure is reported through onError — in the row's own cell,
-  // beside the field and button that were used (2.6.16) — or, with
-  // no sink given, through the page's error box as before.
-  const fail = onError || ((m) => showError(m, null, anchor));
-  const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
-    .catch(() => null);
-  const wav = await wavBytesForBundle(bundle);
-  if (!wav || !record) {
-    fail('This job’s audio is not on this computer. Its recording ' +
-      'hash is ' + bundle.audio_sha256.slice(0, 12) + '… — ' +
-      'choose that recording’s file in step 2, or restore it from the saved ' +
-      'recordings list there, then try again.', null, anchor);
-    return null;
-  }
-  if (!record.chunks || !record.chunks.length) {
-    fail('This computer does not hold the transcript pieces for ' +
-      'this job’s recording, so the packaged transcript cannot be verified ' +
-      'against the graded one. Restore the recording in step 2 (recording ' +
-      'hash ' + bundle.audio_sha256.slice(0, 12) + '…) and try again.', null, anchor);
-    return null;
-  }
-  const scrubbedChunks = scrubChunks(
-    record.chunks.map(fromCachedChunk), scrubWords());
-  const [wavSha, markedSha, legacySha, critiqueSha] = await Promise.all([
-    sha256Hex(wav),
-    sha256Hex(canonicalTranscript(scrubbedChunks)),
-    sha256Hex(legacyCanonicalTranscript(scrubbedChunks)),
-    sha256Hex(bundle.critique || ''),
-  ]);
-  // A bundle graded before 2.4.2 was signed over the markerless
-  // canonical form; accept that form for such a bundle, and the
-  // current marked form otherwise. Either way the hash must equal
-  // the signed checksum exactly.
-  const transcriptSha = legacySha === bundle.transcript_sha256
-    ? legacySha : markedSha;
-  const failures = verifyBundleContents(bundle, {
-    wavSha256: wavSha, transcriptSha256: transcriptSha,
-    critiqueSha256: critiqueSha,
-  });
-  if (failures.includes('audio')) {
-    fail('Audio on this computer does not match the audio this ' +
-      'job was graded on (recording hash mismatch). Restore the recording ' +
-      'with recording hash ' + bundle.audio_sha256.slice(0, 12) + '… in step 2 ' +
-      'and try again.', null, anchor);
-    return null;
-  }
-  if (failures.includes('transcript')) {
-    fail('Packaging would use a transcript that does not match the ' +
-      'transcript that was graded (checksum mismatch). The usual cause is ' +
-      'the removal list in step 2: re-enter the same names and words you ' +
-      'used when you sent this job, then try again.', null, anchor);
-    return null;
-  }
-  if (failures.includes('critique')) {
-    fail('Critique check failed: the critique in the grade record ' +
-      'does not match its signed checksum, so nothing was packaged. ' +
-      'Reload the page and retry.',
-    null, anchor);
-    return null;
-  }
-  // The HTML's YouTube link: with a checked video pending
-  // (2.6.19) it is the video the Generate ZIP click just checked;
-  // without one it is the link kept with this job's entry. No
-  // comparison with the signed bundle is made: no video is bound
-  // to the job, and a bundle carrying a video hash from an
-  // earlier version does not restrict the link packaged.
-  const link = entry.youtube_link || '';
-  const videoId = pending ? pending.videoId : parseYouTubeVideoId(link);
-  if (!videoId) {
-    fail('No YouTube link is kept on this browser for this job. Enter it in the job’s row, then try again.', null, anchor);
-    return null;
-  }
-  keepReenteredLink(entry, bundle, link);
-  return { form: 'wav', wav, scrubbedChunks, record, videoId };
-}
-
-// The fingerprint form's verification (2.6.0): the same discipline
-// as verifySubmissionParts, over the contents this form packages —
-// no audio is read on this computer at all, which is what lets a
-// job retrieved on a fresh computer (no local entry, no recording)
-// build its ZIP here.
-// - the fingerprint bytes are the ones the status response returned
-//   with the grade, and their SHA-256 must equal the signed
-//   chromaprint_sha256 in the bundle;
-// - the transcript comes from this recording's own cached chunks
-//   when they reproduce the graded text, and otherwise from the
-//   transcript text the status response returned; either way its
-//   canonical SHA-256 must equal the signed transcript_sha256;
-// - the critique's SHA-256 must equal the signed critique_sha256.
-// The YouTube link is not verified against the bundle: no video
-// is bound to the job (2.6.19).
-// Returns the verified parts, or null with the error shown beside
-// the button that was used.
+// Verify the one thing that is still re-hashed before packaging
+// (2.7.0): the fingerprint bytes held locally (decoded from the
+// status response) against the signed chromaprint_sha256. The
+// critique is not re-hashed, and Worker-supplied parts are not
+// re-hashed: the packaged transcript is the graded text the
+// status response returned, parsed back into chunks, or — when
+// the Worker sent none — this recording's own cached chunks
+// scrubbed with the current removal list. There is no audio ZIP
+// form: a job whose bundle carries no signed fingerprint hash
+// cannot be packaged. The YouTube link is not verified against
+// the bundle: no video is bound to the job.
+// Returns the verified parts, or null with the error shown in
+// the row's cell through onError.
 async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
   const fail = onError || ((m) => showError(m, null, anchor));
+  if (!bundleChromaprintSha(bundle)) {
+    fail('This job has no recording fingerprint in its grade ' +
+      'record, so a submission ZIP cannot be built for it.', null, anchor);
+    return null;
+  }
   const key = jobKey(entry.pkg, entry.retrieval_code);
   const extras = readyExtras.get(key);
   const items = extras && extras.chromaprint
@@ -1098,63 +1084,9 @@ async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
   }
   const fingerprintBytes = new Uint8Array(
     items.buffer, items.byteOffset, items.byteLength);
-  const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
-    .catch(() => null);
-  let scrubbedChunks = null;
-  let transcriptSha = null;
-  let cacheCandidate = null;
-  let cacheMarkedSha = null;
-  if (record && record.chunks && record.chunks.length) {
-    cacheCandidate = scrubChunks(
-      record.chunks.map(fromCachedChunk), scrubWords());
-    const [markedSha, legacySha] = await Promise.all([
-      sha256Hex(canonicalTranscript(cacheCandidate)),
-      sha256Hex(legacyCanonicalTranscript(cacheCandidate)),
-    ]);
-    cacheMarkedSha = markedSha;
-    if (markedSha === bundle.transcript_sha256) {
-      scrubbedChunks = cacheCandidate;
-      transcriptSha = markedSha;
-    } else if (legacySha === bundle.transcript_sha256) {
-      scrubbedChunks = cacheCandidate;
-      transcriptSha = legacySha;
-    }
-  }
-  if (!scrubbedChunks && extras && typeof extras.transcript === 'string') {
-    // Fall back to the graded transcript the Worker kept (2.6.15):
-    // the cache reconstruction above is scrubbed with the removal
-    // list as it stands now, so a list changed since send time
-    // cannot reproduce the graded text — the stored copy is the
-    // graded text itself and does not depend on the list. Before
-    // this, the fallback ran only when no cache record existed,
-    // and the same ZIP built correctly once the record was
-    // deleted.
-    const storedSha = await sha256Hex(extras.transcript);
-    if (storedSha === bundle.transcript_sha256) {
-      transcriptSha = storedSha;
-      scrubbedChunks = chunksFromCanonical(extras.transcript);
-    }
-  }
-  if (!scrubbedChunks && cacheCandidate) {
-    // Neither source reproduced the graded transcript: package
-    // nothing, and let the check below report the mismatch with
-    // its removal-list guidance.
-    scrubbedChunks = cacheCandidate;
-    transcriptSha = cacheMarkedSha;
-  }
-  if (!scrubbedChunks) {
-    fail('The grading record for this job did not include its ' +
-      'transcript, so the submission cannot be built. Reload the ' +
-      'page and try again.', null, anchor);
-    return null;
-  }
-  const [fingerprintSha, critiqueSha] = await Promise.all([
-    sha256Hex(fingerprintBytes),
-    sha256Hex(bundle.critique || ''),
-  ]);
+  const fingerprintSha = await sha256Hex(fingerprintBytes);
   const failures = verifyFingerprintContents(bundle, {
-    fingerprintSha256: fingerprintSha, transcriptSha256: transcriptSha,
-    critiqueSha256: critiqueSha,
+    fingerprintSha256: fingerprintSha,
   });
   if (failures.includes('fingerprint')) {
     fail('The recording fingerprint that came back with this ' +
@@ -1163,35 +1095,31 @@ async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
       'and retry.', null, anchor);
     return null;
   }
-  if (failures.includes('transcript')) {
-    fail('Packaging would use a transcript that does not match ' +
-      'the transcript that was graded (checksum mismatch). The usual ' +
-      'cause is the removal list in step 2: re-enter the same names ' +
-      'and words you used when you sent this job, then try again.',
-    null, anchor);
+  const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
+    .catch(() => null);
+  let scrubbedChunks = null;
+  if (extras && typeof extras.transcript === 'string') {
+    scrubbedChunks = chunksFromCanonical(extras.transcript);
+  } else if (record && record.chunks && record.chunks.length) {
+    scrubbedChunks = scrubChunks(
+      record.chunks.map(fromCachedChunk), scrubWords());
+  }
+  if (!scrubbedChunks) {
+    fail('The grading record for this job did not include its ' +
+      'transcript, so the submission cannot be built. Reload the ' +
+      'page and try again.', null, anchor);
     return null;
   }
-  if (failures.includes('critique')) {
-    fail('Critique check failed: the critique in the grade ' +
-      'record does not match its signed checksum, so nothing was ' +
-      'packaged. Reload the page and retry.', null, anchor);
+  // The HTML's YouTube link: with a checked video pending it is
+  // the video the Generate ZIP click just checked; without one it
+  // is the link kept with this job's entry.
+  const link = entry.youtube_link || '';
+  const videoId = pending ? pending.videoId : parseYouTubeVideoId(link);
+  if (!videoId) {
+    fail('No YouTube link is kept on this browser for this job. Enter it in the job\u2019s row, then try again.', null, anchor);
     return null;
   }
-  // The packaged link is the checked video pending from the
-  // Generate ZIP click (2.6.19); without one it is the link kept
-  // with the entry, and a job with neither packages with no link.
-  // No comparison with the signed bundle is made: no video is
-  // bound to the job, and a bundle carrying a video hash from an
-  // earlier version does not restrict the link packaged.
-  let videoId = '';
-  if (pending) {
-    videoId = pending.videoId;
-    keepReenteredLink(entry, bundle, entry.youtube_link || '');
-  } else {
-    const link = entry.youtube_link || '';
-    videoId = parseYouTubeVideoId(link) || '';
-    if (videoId) keepReenteredLink(entry, bundle, link);
-  }
+  keepReenteredLink(entry, bundle, link);
   // The packaged duration: the locally held recording's duration
   // when this computer has it, otherwise the fingerprint's own
   // length — one item per 0.124 s of audio.
@@ -1203,172 +1131,41 @@ async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
   };
 }
 
-// Generate ZIP, verification step: verify, then show
-// the review panel in the job's row (renderJobRow renders it from
-// zipReviews; the 5-second refresh pauses while a review is open, so
-// the panel and its button are never rebuilt under the student). The
-// panel's own button performs the download from the verified parts.
-async function downloadSubmissionZip(entry, bundle, anchor, onError, pending) {
-  clearError();
-  zipBusy = true;
-  anchor.disabled = true;
+// Package and download, the last step of the Generate ZIP click
+// (2.7.0): verify the fingerprint, build the fingerprint-form
+// ZIP from the grade record as it now stands (liveBundle, fetched
+// back after the finalize), download it, and mark the job
+// retrieved. A failure packages nothing and is reported in the
+// row's cell through onError.
+async function packageSubmissionZip(entry, liveBundle, anchor, onError, pending) {
   const status = showZipStatus(anchor,
-    bundleChromaprintSha(bundle)
-      ? 'Verifying the fingerprint and the transcript against the ' +
-        'signed grade record…'
-      : 'Verifying the recording and the transcript against the ' +
-        'signed grade record… This can take a minute on a long ' +
-        'recording.');
+    'Verifying the fingerprint against the signed grade record…');
   let parts = null;
   try {
-    // Let the status paint before the verification hashes begin.
+    // Let the status paint before the verification hash begins.
     await new Promise((resolve) => setTimeout(resolve, 0));
-    // The signed bundle decides the ZIP form (2.6.0): a real signed
-    // chromaprint_sha256 means the fingerprint form, verified
-    // without reading any audio; anything else is the WAV form.
-    parts = bundleChromaprintSha(bundle)
-      ? await verifyFingerprintParts(entry, bundle, anchor, onError, pending)
-      : await verifySubmissionParts(entry, bundle, anchor, onError, pending);
+    parts = await verifyFingerprintParts(entry, liveBundle, anchor, onError, pending);
   } finally {
-    zipBusy = false;
-    anchor.disabled = false;
     status.box.remove();
   }
   if (!parts) return;
-  const words = scrubWords();
-  const recName = parts.record && parts.record.source_name
-    ? scrubMetadata(parts.record.source_name, words) + ' · ' : '';
-  const firstWords = parts.record
-    ? recordingFirstWords(parts.record.chunks) : '';
-  const durationS = parts.form === 'fingerprint'
-    ? parts.durationS : parts.record.duration_s;
-  // Compact review lines (2.6.7): the row and panel already carry
-  // the label and the grades, so the review states only what the
-  // verification established — the three checks on one line, the
-  // recording and YouTube identity in small print, and the
-  // instruction. No verified fact is dropped: the recording line
-  // still names the file, the duration, the hash, the opening words
-  // and which signed checksum the audio matched.
-  // The review (2.6.18) states, in one place, what the student is
-  // confirming: this job (its course and assignment), this video
-  // (its title and address), and this graded transcript (its
-  // opening words). One warning can join it: the same link on
-  // another row in this browser. Confirming finalises the job
-  // and downloads the ZIP; no video is bound (2.6.19); see
-  // doDownloadZip.
-  const key = jobKey(entry.pkg, entry.retrieval_code);
-  const jobLabel = [entry.course, entry.asg].filter(Boolean).join(' · ')
-    || entry.pkg;
-  const extras = readyExtras.get(key);
-  let opening = '';
-  if (extras && typeof extras.transcript === 'string') {
-    opening = extras.transcript
-      .replace(/\[\d+:\d+\]\s*/g, ' ')
-      .split(/\s+/).filter(Boolean).slice(0, 30).join(' ');
-  }
-  const videoTitle = pending ? pending.title : (entry.youtube_title || '');
-  const lines = [
-    jobLabel + ' · Completeness ' + bundle.completeness +
-      '/5 · Accuracy ' + bundle.accuracy + '/5',
-    'Checks: recording ✓ · transcript ✓ · YouTube ✓',
-    'Recording: ' + recName + formatDuration(durationS) +
-      ' · hash ' + bundle.audio_sha256.slice(0, 12) + '…' +
-      (firstWords
-        ? ' · starts “' + scrubMetadata(firstWords, words) + '…”' : '') +
-      (parts.form === 'fingerprint'
-        ? ' · fingerprint matches the checksum signed with the grade'
-        : ' · matches the recording hash signed with the grade'),
-  ];
-  if (opening) {
-    lines.push('Transcript starts: “' +
-      scrubMetadata(opening, words) + '…”');
-  }
-  lines.push('YouTube: ' + (videoTitle ? '“' + videoTitle + '” · ' : '') +
-    canonicalWatchUrl(parts.videoId));
-  if (pending) {
-    const dup = duplicateLinkEntry(key, pending.videoId);
-    if (dup) {
-      const dupLabel = [dup.course, dup.asg].filter(Boolean).join(' · ')
-        || dup.pkg;
-      lines.push('This link is also on your ' + dupLabel + ' row.');
-    }
-  }
-  lines.push('Check the recording and the video title are yours, then download.');
-  zipReviews.set(key, {
-    receipt: bundle.receipt, parts, lines, pending: pending || null,
-  });
-  // The review renders inside the job's panel: open the panel so
-  // the student sees it at once.
-  expandedJobs.add(jobKey(entry.pkg, entry.retrieval_code));
-  renderJobs();
-}
-
-async function doDownloadZip(entry, bundle, review, anchor) {
-  zipBusy = true;
-  anchor.disabled = true;
-  const status = showZipStatus(anchor, 'Building the submission ZIP…');
+  const build = showZipStatus(anchor, 'Building the submission ZIP…');
   try {
-    const { parts } = review;
-    // Confirming finalises the job (2.6.19): /jobs/finalize is
-    // called with no YouTube fields — it marks the job final and
-    // the Worker enforces one final per recording; no video is
-    // bound. The call runs for every job, including one already
-    // final: finalizeJob treats an "already final" response for
-    // this job as success. The ZIP is then built against the
-    // grade record as it now stands, fetched back after the
-    // finalize. A failure packages nothing and is reported in
-    // the row's cell. Cancelling the review never reaches this
-    // function, so a shown-but-unconfirmed review finalises
-    // nothing.
-    let liveBundle = bundle;
-    if (review.pending) {
-      const key = jobKey(entry.pkg, entry.retrieval_code);
-      try {
-        await finalizeJob(cfg.worker, {
-          pkg: entry.pkg,
-          retrieval_code: entry.retrieval_code,
-        });
-        const st = await fetchJobStatus(cfg.worker, {
-          pkg: entry.pkg, retrieval_code: entry.retrieval_code,
-        });
-        if (st.status === 'ready' && st.data && st.data.result) {
-          liveBundle = st.data.result;
-          readyBundles.set(key, liveBundle);
-          if (typeof st.data.transcript === 'string' || st.data.chromaprint) {
-            readyExtras.set(key, {
-              transcript: typeof st.data.transcript === 'string'
-                ? st.data.transcript : null,
-              chromaprint: st.data.chromaprint || null,
-            });
-          }
-        }
-      } catch (err) {
-        rowZipErrors.set(key, 'The submission could not be made: ' + err.message);
-        zipReviews.delete(key);
-        renderJobs();
-        return;
-      }
-    }
     const html = assemblePackage({
       youtubeLink: canonicalWatchUrl(parts.videoId),
-      audioFileName: parts.form === 'fingerprint'
-        ? FINGERPRINT_FILE_NAME : AUDIO_FILE_NAME,
-      durationS: parts.form === 'fingerprint'
-        ? parts.durationS : parts.record.duration_s,
+      audioFileName: FINGERPRINT_FILE_NAME,
+      durationS: parts.durationS,
       chunks: parts.scrubbedChunks,
       bundle: liveBundle,
-      ...(parts.form === 'fingerprint'
-        ? { fingerprintSha256: liveBundle.chromaprint_sha256 } : {}),
+      fingerprintSha256: liveBundle.chromaprint_sha256,
     });
     const zip = await buildZipAsync([
       { name: ZIP_ENTRY_HTML, data: new TextEncoder().encode(html) },
-      parts.form === 'fingerprint'
-        ? { name: FINGERPRINT_FILE_NAME, data: parts.fingerprintBytes }
-        : { name: ZIP_ENTRY_AUDIO, data: parts.wav },
+      { name: FINGERPRINT_FILE_NAME, data: parts.fingerprintBytes },
     ], (done, total) => {
-      status.bar.max = total;
-      status.bar.value = done;
-      status.label.textContent = 'Building the submission ZIP… ' +
+      build.bar.max = total;
+      build.bar.value = done;
+      build.label.textContent = 'Building the submission ZIP… ' +
         (total ? Math.floor((done / total) * 100) : 100) + '%';
     });
     const zipName = submissionZipName({
@@ -1381,25 +1178,12 @@ async function doDownloadZip(entry, bundle, review, anchor) {
       ' has been downloaded. Upload that file to Canvas. ' +
       'The job stays in the list below, so you can download ' +
       'the ZIP again if you need to.';
-    zipReviews.delete(jobKey(entry.pkg, entry.retrieval_code));
-    try {
-      await markJobRetrieved(cfg.worker, {
-        pkg: entry.pkg, retrieval_code: entry.retrieval_code,
-      });
-    } catch { /* the ZIP is already in the student's hands */ }
-    // The job entry is kept (2.6.6): before this, a download removed
-    // the row, the list flipped to "No jobs sent from this browser
-    // yet" under the Done line, and a student whose Canvas upload
-    // failed had to retrieve the job by its recovery code before
-    // they could build the ZIP again. The Worker keeps a graded job
-    // for 180 days and the render drops the row when the Worker
-    // reports it expired, so a kept row costs nothing; "Remove from
+    // The job entry is kept (2.6.6): a download does not remove
+    // the row, so the ZIP can be downloaded again; "Remove from
     // this browser" remains the student's own way to clear it.
     renderJobs();
   } finally {
-    zipBusy = false;
-    anchor.disabled = false;
-    status.box.remove();
+    build.box.remove();
   }
 }
 
@@ -1515,6 +1299,7 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
       rowDrafts.set(key, input.value);
       clearBtn.hidden = !input.value;
       rowZipErrors.delete(key);
+      rowCheckedInfo.delete(key);
       // A link added or replaced in the row plays in the viewing
       // area at once (2.6.20). If this row's link loaded the
       // player and the edit unreadied it, the window clears with
@@ -1530,8 +1315,7 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
       // while it does not. No check runs on typing.
       const parsed = parseYouTubeVideoId(input.value);
       const zb = row.querySelector('[data-act="zipgen"]');
-      if (parsed && !zb && entry.pkg === cfg.pkg &&
-          !zipReviews.has(key)) {
+      if (parsed && !zb && entry.pkg === cfg.pkg) {
         const actions = row.querySelector('.jobactions');
         const forget = row.querySelector('[data-act="remove"]');
         if (actions) {
@@ -1552,6 +1336,7 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
       input.value = '';
       rowDrafts.set(key, '');
       rowZipErrors.delete(key);
+      rowCheckedInfo.delete(key);
       previewMaybeClear(key, null);
       persistRowLink(entry, '', '', '');
       renderJobs();
@@ -1589,8 +1374,6 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
   detailBtn.dataset.act = 'grades';
   detailBtn.textContent = expandedJobs.has(key) ? 'Hide details' : 'Show details';
   actions.append(detailBtn);
-  const review = bundle ? zipReviews.get(key) : null;
-  const reviewOpen = !!(review && bundle && review.receipt === bundle.receipt);
   if (bundle && entry.pkg !== cfg.pkg) {
     // Guard (2.6.2): the jobs list is browser-wide, but a submission
     // ZIP is built only from the link of the job's own assignment.
@@ -1605,10 +1388,10 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
     actions.append(other);
   } else if (bundle) {
     // The Generate ZIP button is present while the row's field
-    // holds a readable link (2.6.18), and exactly one ZIP control
-    // per job at any moment (2.5.3): once the review panel is
-    // open, the panel's confirm button replaces it.
-    if (!reviewOpen && parseYouTubeVideoId(rowLinkDraft(entry))) {
+    // holds a readable link (2.6.18): parseYouTubeVideoId gates
+    // the button's presence only — the one reachability check
+    // runs at the click.
+    if (parseYouTubeVideoId(rowLinkDraft(entry))) {
       actions.append(makeZipButton(entry, bundle));
     }
   }
@@ -1617,14 +1400,12 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
   forgetBtn.className = 'quiet';
   forgetBtn.textContent = 'Remove from this browser';
   forgetBtn.addEventListener('click', () => {
-    // A review open on this row is abandoned with the job: its
-    // zipReviews entry goes too, or the poll would stay paused on a
-    // review that no longer exists. The row's link state goes too,
-    // and a preview this row loaded clears with it.
-    zipReviews.delete(key);
+    // The row's link and check state go with the job, and a
+    // preview this row loaded clears with it.
     expandedJobs.delete(key);
     rowDrafts.delete(key);
     rowZipErrors.delete(key);
+    rowCheckedInfo.delete(key);
     previewMaybeClear(key, null);
     removeJobEntry(entry.pkg, entry.retrieval_code);
     renderJobs();
@@ -1634,7 +1415,7 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
   row.append(tdAct);
   tbody.append(row);
 
-  /* ---- the details row: critique and ZIP review ---- */
+  /* ---- the details row: critique ---- */
   const dtr = document.createElement('tr');
   dtr.className = 'jobdetailrow';
   dtr.dataset.jobKey = key;
@@ -1652,44 +1433,6 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
     crit.style.whiteSpace = 'pre-line';
     crit.textContent = bundle.critique || '';
     detail.append(crit);
-  }
-  if (bundle && reviewOpen) {
-    // The review section from a completed verification (see
-    // downloadSubmissionZip): the download button first, then the
-    // compact lines — the checks on one line, the recording and
-    // YouTube identity in small print, and the instruction.
-    const panel = document.createElement('div');
-    panel.className = 'box reviewbox';
-    const dlBtn = document.createElement('button');
-    dlBtn.dataset.act = 'zip-download';
-    dlBtn.className = 'primary';
-    // The confirm label says what confirming does (2.6.19):
-    // confirming finalises the job and downloads the ZIP; no
-    // video is bound, so the label is the same for every job.
-    dlBtn.textContent = 'Download submission ZIP';
-    dlBtn.addEventListener('click', () => doDownloadZip(entry, bundle, review, dlBtn));
-    const closeBtn = document.createElement('button');
-    closeBtn.dataset.act = 'zip-close';
-    closeBtn.className = 'quiet';
-    closeBtn.textContent = 'Close review';
-    closeBtn.addEventListener('click', () => {
-      // Closing the review restores the row's Generate ZIP button
-      // and lets the 5-second poll resume (it pauses while a review
-      // is open).
-      zipReviews.delete(key);
-      renderJobs();
-    });
-    const btnRow = document.createElement('div');
-    btnRow.className = 'houserow';
-    btnRow.append(dlBtn, closeBtn);
-    panel.append(btnRow);
-    review.lines.forEach((text, i) => {
-      const p = document.createElement('p');
-      if (i > 0 && i < review.lines.length - 1) p.className = 'small';
-      p.textContent = text;
-      panel.append(p);
-    });
-    detail.append(panel);
   }
   dtd.append(detail);
   dtr.append(dtd);
@@ -1725,7 +1468,10 @@ async function renderJobsOnce() {
   // (or the list is saved back with the corrected expiry, below).
   const entries = loadJobEntries();
   if (!entries.length) {
-    box.textContent = 'No jobs sent from this browser yet.';
+    if (lastJobsFingerprint !== '') {
+      box.textContent = 'No jobs sent from this browser yet.';
+      lastJobsFingerprint = '';
+    }
     return;
   }
   // Every status is fetched before the list is touched, and all of
@@ -1764,15 +1510,13 @@ async function renderJobsOnce() {
       return;
     }
     if (res && res.status === 'expired') {
-      // The Worker has deleted the job; drop the entry and its row,
-      // and any ZIP review open on it, so the poll is not left
-      // paused on a review that no longer exists.
+      // The Worker has deleted the job; drop the entry and its row.
       entriesDirty = true;
       readyBundles.delete(key);
       readyExtras.delete(key);
       jobStates.delete(key);
       statusFailures.delete(key);
-      zipReviews.delete(key);
+      rowCheckedInfo.delete(key);
       return;
     }
     if (!res) {
@@ -1796,24 +1540,13 @@ async function renderJobsOnce() {
         readyBundles.set(key, res.data.result);
         // The same response carries the stored transcript and
         // fingerprint (Worker 2.7.0) for the fingerprint-form ZIP
-        // path; an older Worker sends neither, and the WAV path
-        // then governs, exactly as before.
+        // path; an older Worker sends neither.
         if (typeof res.data.transcript === 'string' || res.data.chromaprint) {
           readyExtras.set(key, {
             transcript: typeof res.data.transcript === 'string'
               ? res.data.transcript : null,
             chromaprint: res.data.chromaprint || null,
           });
-        }
-        // The ready bundle is authoritative for the job's kind: an
-        // alias entry filed while the job was still queued carries
-        // the submitted kind, which may not be the existing job's
-        // kind. Correct it from the bundle so the ZIP button and
-        // the row's ZIP flow see the job as it is.
-        const trueKind = kindFromResultBundle(res.data.result);
-        if (entry.kind !== trueKind) {
-          entry.kind = trueKind;
-          entriesDirty = true;
         }
       }
       jobStates.set(key, {
@@ -1832,8 +1565,7 @@ async function renderJobsOnce() {
   // the ZIP. Collapse them to the single most usable entry, merge
   // its locally kept link fields from the others, and persist the
   // collapsed list so the duplicates do not return on the next
-  // visit. A ZIP review open on a collapsed-away entry moves to
-  // the surviving entry's key (same job, same receipt).
+  // visit.
   // collapseSameJobEntries fills in a missing job_id from the ready
   // bundle; note any such entry first, so the filled value is
   // persisted and later visits know the job's identity at once.
@@ -1845,18 +1577,9 @@ async function renderJobsOnce() {
     entriesDirty = true;
     const keptKeys = new Set(kept.map(({ entry }) =>
       jobKey(entry.pkg, entry.retrieval_code)));
-    for (const { entry, jobId } of live) {
+    for (const { entry } of live) {
       const key = jobKey(entry.pkg, entry.retrieval_code);
       if (keptKeys.has(key)) continue;
-      const review = zipReviews.get(key);
-      if (review) {
-        zipReviews.delete(key);
-        const target = kept.find((k) => k.jobId && k.jobId === jobId);
-        if (target) {
-          const tKey = jobKey(target.entry.pkg, target.entry.retrieval_code);
-          if (!zipReviews.has(tKey)) zipReviews.set(tKey, review);
-        }
-      }
       readyBundles.delete(key);
       readyExtras.delete(key);
       jobStates.delete(key);
@@ -1864,6 +1587,16 @@ async function renderJobsOnce() {
     }
   }
   const survivors = kept.map(({ entry }) => entry);
+  // Poll rebuild skip (2.7.0): when the fetched states match the
+  // rendered states — the per-entry status/grades fingerprint
+  // below — the table is not rebuilt at all, so a poll with
+  // nothing changed causes no focus churn. Entry bookkeeping
+  // (expiry, collapse) above has already run and is persisted.
+  const renderedFp = jobsRenderFingerprint(survivors);
+  if (renderedFp === lastJobsFingerprint) {
+    if (entriesDirty) saveJobEntries(survivors);
+    return;
+  }
   // The jobs list is a table (2.6.16): Job | Grades | YouTube link |
   // Actions, one row per job plus its details row.
   const table = document.createElement('table');
@@ -1911,15 +1644,39 @@ async function renderJobsOnce() {
       if (target) { target.focus({ preventScroll: true }); break; }
     }
   }
+  lastJobsFingerprint = renderedFp;
   if (entriesDirty) saveJobEntries(survivors);
+}
+
+// The fingerprint of what the jobs table renders for these
+// entries: per entry, its label fields, its kept link, its
+// finalised flag, its last-seen status and queue position, its
+// unreachable flag, and its ready bundle's grades, critique and
+// receipt. Draft text typed in a row is excluded: the input
+// handler paints those changes in place.
+let lastJobsFingerprint = null;
+function jobsRenderFingerprint(survivors) {
+  return survivors.map((entry) => {
+    const key = jobKey(entry.pkg, entry.retrieval_code);
+    const st = jobStates.get(key);
+    const b = readyBundles.get(key);
+    return [
+      key, entry.course || '', entry.asg || '',
+      entry.youtube_link || '', entry.finalised ? '1' : '0',
+      st ? st.status : '', st && st.queue_ahead != null ? st.queue_ahead : '',
+      (statusFailures.get(key) || 0) >= 3 ? 'unreachable' : '',
+      b ? [b.completeness, b.accuracy, b.critique || '', b.receipt || ''].join('/') : '',
+    ].join('|');
+  }).join('\n');
 }
 
 // The jobs list refreshes itself every 5 seconds while the page is
 // open, so a waiting student sees the queue move and the grade arrive
 // without reloading — no notification is needed. A poll is skipped
-// while the tab is hidden, while a ZIP verification or download is
-// running (zipBusy), or while a ZIP review panel is open
-// (zipReviews) — a rebuild would destroy the review being read.
+// while the tab is hidden or while a ZIP verification or download
+// is running (zipBusy). Since 2.7.0 there is no review panel to
+// protect, and a poll whose fetched states match the rendered
+// states skips the rebuild entirely (see jobsRenderFingerprint).
 // Focus inside the list no longer skips a poll (2.6.6): a clicked
 // button keeps the focus, so the old rule blocked every later update
 // for as long as the student left the focus there, and the row sat
@@ -1930,7 +1687,7 @@ async function renderJobsOnce() {
 let zipBusy = false;
 async function refreshJobs() {
   if (document.hidden) return;
-  if (zipBusy || zipReviews.size) return;
+  if (zipBusy) return;
   try { await renderJobs(); } catch { /* the next tick retries */ }
 }
 setInterval(refreshJobs, 5000);

@@ -42,9 +42,11 @@
 // recovers each chunk text exactly and the recomputed transcript
 // checksum matches the signed one.
 
+import { VERSION } from './config.js';
+
 export const FORMAT_VERSION = '2';
 export const VERSIONS = {
-  webapp: 'hw-signing-webapp 2.6.20',
+  webapp: 'hw-signing-webapp ' + VERSION,
   model: 'parakeet-tdt-0.6b-v2-int8',
   glossary: 'chemescribe-glossary-bundle ea2807d2',
 };

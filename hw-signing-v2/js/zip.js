@@ -2,7 +2,8 @@
 //
 // The submission is one ZIP file (downloaded under a per-job name
 // since 2.4.4 — see submissionZipName below), holding exactly
-// submission.html and submission-audio.wav. Entries are STORED (no
+// submission.html and the fingerprint file (since webapp 2.7.0
+// the fingerprint form is the only form; there is no audio form). Entries are STORED (no
 // compression), written in the caller's order, and every header field
 // that could vary between runs is fixed: DOS date/time is 1980-01-01
 // 00:00 (the earliest DOS timestamp), no extra fields, no comments, no
