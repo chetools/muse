@@ -394,7 +394,7 @@ stored per course and assignment in expected-packages.json.
 Where an expected package is set, a submission whose known
 package — the stored check's, or the package's own parsed
 value — differs is treated as misplaced, not gradable: the
-submissions table shows the mismatch in its Integrity cell
+submissions table shows the mismatch in its Flags column
 and no final-grade field; the final-grade endpoint refuses
 the save with the mismatch named; the zoom view shows no
 grade field; the wall tile, attempt tiles and student cards
@@ -515,6 +515,24 @@ The acoustic_threshold setting remains (settings validation
 and the check-input fingerprint still consume it) but
 decides no verdict; the cross-check's displayed similarity
 is the per-block median from audit.py.
+
+v63: display only; no check changes and the check schema
+stays 4. The app version is the single APP_VERSION constant
+below: every page header shows it small beside its title
+(Teacher Audit — HW Signing · v63, and likewise on the
+wall, Cleanup and Packages pages), and /api/status reports
+it as app_version. The dashboard, Cleanup and Packages
+pages widen to 96% of the window, capped at 1760px, with
+prose capped at 80ch. The dashboard's long explanations
+move into collapsed "How this works" details blocks
+(Sections 1–3; Section 4 keeps one line per tool), and the
+submissions table's single Integrity column splits into
+four: Package, Signature, YouTube and Flags — one short
+token per cell. The repeated per-row "acoustic check not
+available" sentence is gone: the YouTube cell shows
+"unavailable" and one notice above the table states the
+system-level fact once. A package mismatch now stands in
+the Flags column (it stood in the Integrity cell).
 """
 
 import argparse
@@ -547,6 +565,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
+APP_VERSION = "v63"
 CONFIG_PATH = Path(os.environ.get("TEACHER_AUDIT_CONFIG",
                                   HERE / "config.json"))
 
@@ -829,6 +848,7 @@ def public_status(cfg):
     root = audit.data_dir(cfg)
     n_downloaded = len(downloaded_packages(cfg))
     return {
+        "app_version": APP_VERSION,
         "canvas_base_url": cfg["canvas_base_url"],
         "token_set": bool(cfg.get("canvas_token")),
         "admin_token_set": bool(cfg.get("grading_admin_token")),
@@ -4076,8 +4096,13 @@ PAGE = r"""<!doctype html>
 body{font-family:system-ui,sans-serif;margin:0;background:#f6f6f4;color:#1c1c1a}
 header{background:#243b53;color:#fff;padding:14px 20px}
 header h1{font-size:19px;margin:0} header p{margin:4px 0 0;font-size:13px;opacity:.85}
-main{max-width:1180px;margin:0 auto;padding:16px 20px 60px}
+header .appver{font-size:12px;font-weight:400;opacity:.75}
+main{width:96%;max-width:1760px;margin:0 auto;padding:16px 20px 60px;box-sizing:border-box}
 section{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 18px;margin:14px 0}
+section p.mut,section details p,section>details{max-width:80ch}
+details.howitworks{margin:10px 0}
+details.howitworks summary{cursor:pointer;font-size:13px;color:#243b53;font-weight:600}
+.thsub{display:block;font-weight:400;font-size:11px;color:#666;white-space:normal}
 h2{font-size:16px;margin:0 0 10px} h3{font-size:14px;margin:14px 0 6px}
 label{display:block;font-size:13px;margin:8px 0 3px}
 input[type=text],input[type=password],input[type=number],input[type=date],select{width:100%;max-width:520px;padding:7px 9px;border:1px solid #bbb;border-radius:5px;font-size:14px;box-sizing:border-box}
@@ -4123,7 +4148,7 @@ html.privacy-on .priv *{color:transparent!important;background:transparent!impor
 html.privacy-on input.priv{pointer-events:none}
 html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
 </style></head><body>
-<header><h1>Teacher Audit — HW Signing</h1>
+<header><h1>Teacher Audit — HW Signing <span class="appver">· @@APP_VERSION@@</span></h1>
 <p>Runs on this computer only (127.0.0.1). Canvas is read-only here; grades go back as a Gradebook CSV you upload.</p>
 <button id="privbtn" aria-pressed="false">Hide names &amp; grades</button></header>
 <main>
@@ -4139,7 +4164,10 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <label>YouTube acoustic similarity threshold (0–1)</label><input type="number" id="acoustic_threshold" step="0.01" min="0" max="1">
 <h3>Activity</h3>
 <div id="activitylog" aria-live="off"></div>
+<p class="mut">Background work is logged here; automatic passes start once a Canvas token is saved, then repeat every 10 minutes.</p>
+<details class="howitworks"><summary>How this works</summary>
 <p class="mut">Package downloads, integrity checks and YouTube video downloads run in the background, in parallel, and are logged here as they happen. The automatic work starts as soon as a Canvas token is saved, then repeats every 10 minutes. Closing this page does not stop the work; if the app itself is closed, anything left incomplete is picked up again by the next pass after it restarts.</p>
+</details>
 </div></div>
 <p><button id="savecfg">Save settings</button>
 <button class="secondary" id="testconn">Test Canvas connection</button>
@@ -4177,10 +4205,7 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <p class="mut" id="rdestimate"></p>
 <p id="rdprogress" style="margin:4px 0"></p>
 <p class="mut" id="autoline"></p>
-<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. Submissions are not re-graded: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's grade.</p>
-<p class="mut"><strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity only (which survives YouTube transcoding; duration is not used), and shows "YouTube similarity …" or "YouTube FLAGGED · similarity …" under Integrity; a flagged submission's final grade stays blank until you enter one.</p>
-<p class="mut"><strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full.</p>
-<p class="mut"><strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. With the default sort, students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
+<p class="mut">Grade = completeness (0–5) + accuracy (0–5). Examined is ticked from the video wall, or here. Detail: “How this works”, below the table.</p>
 <p><a href="/wall" style="color:#243b53;font-weight:600">Open the video wall →</a> <span class="mut">watch a screenful of takes at once, scrub all of them together, zoom into one to listen, with grades, critique and transcript.</span></p>
 <div id="viewctl">
 <label>Course <select id="fcourse"><option value="">All courses</option></select></label>
@@ -4198,31 +4223,41 @@ html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!im
 <span class="mut" id="fcount"></span>
 </div>
 <p id="selbar2"><span class="mut" id="selcount">No students ticked</span> <button class="secondary" id="selview" disabled>View selected on wall</button> <button class="secondary" id="selclear" disabled>Clear ticks</button> <span class="mut">Tick students to open exactly those on the video wall; click a student's name to open the wall zoomed on that student.</span></p>
-<p class="mut">Select, sort, filter and group the submissions below — the same view applies on the video wall, and the choice is kept in this browser. “Graded” means a grade is present: the signed grade from the package, or a final grade you entered. Sorting by Examined lists the not-yet-examined first (ascending). Attempts set to “Include previous” adds a subordinate row for each earlier attempt already downloaded, under its submission; nothing is downloaded from here — use the Redownload tool above with “Include previous attempts” for the rest.</p>
 <p class="mut" id="subshint"></p>
+<p class="mut" id="ytnotice" style="display:none"></p>
 <table><thead><tr><th><input type="checkbox" id="selall" style="width:auto" title="Tick / untick all submissions shown"></th><th>Student</th><th>Submitted</th><th>Canvas state</th><th>Downloaded</th>
-<th>Integrity</th><th>Grade</th>
-<th>Final grade</th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
-<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade. Where an assignment's expected package is set (section 3) and a submission was graded under a different package, the cell shows no grade field: the mismatch stands in the Integrity cell instead.</p>
+<th>Package</th><th>Signature</th><th>YouTube</th><th>Flags</th><th>Grade</th>
+<th>Final grade<span class="thsub">auto-saves · amber = differs from signed grade</span></th><th>Examined</th></tr></thead><tbody id="subs"></tbody></table>
+<details class="howitworks"><summary>How this works</summary>
+<p class="mut"><strong>Grade</strong>: one composite score out of 10 — completeness (0–5, how much of the question the explanation covers) plus accuracy (0–5, how much of it is right); the split stays in the student's submission HTML and critique and is not shown here. Submissions are not re-graded: for any case you want to decide yourself — flagged, appealed, or simply one you choose to look at — open the video wall, watch the video and read the transcript, and enter your grade there or in the Final grade column; an entered grade overrides the student's grade.</p>
+<p class="mut"><strong>YouTube</strong>: the acoustic cross-check also runs as part of Run integrity checks, once the student's YouTube video has been downloaded for the wall: it compares the video's audio with the submitted recording by Chromaprint fingerprint similarity only (which survives YouTube transcoding; duration is not used), and shows "YouTube similarity …" or "YouTube FLAGGED · similarity …" in the YouTube column; a flagged submission's final grade stays blank until you enter one.</p>
+<p class="mut"><strong>Re-checks</strong>: the automatic passes skip a package whose files and video are unchanged since its stored check, and re-run only the acoustic part when a video arrives or changes, or when the acoustic tooling changes for a video that could not be measured before; a video that could not be measured is not retried on every pass. Run integrity checks re-checks every downloaded package in full.</p>
+<p class="mut"><strong>Examined</strong>: ticked once you have hovered the student's video on the wall (its audio plays) or opened it there; you can also tick or untick it here. With the default sort, students not yet examined are listed first — they are the queue; the tick is the only mark. (The submission itself is no longer viewed here: everything in it is on the video wall.)</p>
+<p class="mut">Select, sort, filter and group the submissions below — the same view applies on the video wall, and the choice is kept in this browser. “Graded” means a grade is present: the signed grade from the package, or a final grade you entered. Sorting by Examined lists the not-yet-examined first (ascending). Attempts set to “Include previous” adds a subordinate row for each earlier attempt already downloaded, under its submission; nothing is downloaded from here — use the Redownload tool above with “Include previous attempts” for the rest.</p>
+<p class="mut">Final grade: pre-filled from the student's grade when integrity is clean. It saves by itself when you change it and leave the field; a changed value is the teacher's. A cell shaded amber differs from the signed grade, which is shown beside it. A flagged submission stays blank until you enter a final grade. Where an assignment's expected package is set (section 3) and a submission was graded under a different package, the cell shows no grade field: the mismatch stands in the Flags column instead.</p>
+</details>
 </section>
 
 <section><h2>3. Grades back to Canvas</h2>
+<p>One CSV per assignment, Canvas Gradebook import format; in Canvas: Grades → Import → Upload Data → Save Changes.</p>
+<details class="howitworks"><summary>How this works</summary>
 <p>One CSV per assignment, in Canvas Gradebook import format (Student, ID, SIS User ID, SIS Login ID, Section, then the assignment column with its Canvas ID, and a Points Possible row). The preview table is grouped by course and, when a course has more than one section, by section. The button beside each course heading downloads all of that course's CSVs at once — as separate files inside one ZIP, since a browser cannot save several files from one click; unzip it and import each file in turn. In Canvas: Grades → Import → choose the file → Upload Data → review → Save Changes. The CSV import sets scores only — it cannot post comments or change posting policy. Beside each assignment, Expected package names the prompt package its submissions must have been graded under: it opens on the latest version of the package most of the assignment's submissions used, and grading accepts any version of that package — only a different package is a mismatch. A submission graded under a different package takes no final grade and exports no score; the mismatch is flagged in section 2, on the wall and in the preview warnings below.</p>
+</details>
 <div id="gbtargets"><p class="mut">The assignment list appears here once a Canvas token is saved.</p></div>
 <div id="gb"></div>
 </section>
 
 <section><h2>4. Tools</h2>
 <h3>Test examples</h3>
-<p class="mut">Eight fictional students with short generated videos, grades, critiques and transcripts, so the video wall and the zoom view can be tried before any real submission exists. They are not shipped with the app and nothing is stored anywhere else: generate them here and they are made on this computer (with ffmpeg, which takes under a minute) into the data folder. <span id="demostate"></span></p>
+<p class="mut">Eight fictional students with generated videos, grades and transcripts, to try the wall and zoom view. <span id="demostate"></span></p>
 <p><button class="secondary" id="gendemos">Generate test examples</button>
 <button class="secondary" id="rmdemos">Remove test examples</button>
 <span id="demoresult"></span></p>
 <h3>Cleanup</h3>
-<p class="mut">Working material is deleted from the separate Cleanup page, where it is grouped by course and assignment with filters, so you can remove exactly what you choose — one assignment's submissions and videos, the coded exports, or the download watermark — and see the size of everything before anything is deleted. There is no waiting period: you decide when material is deleted.</p>
+<p class="mut">Delete local working material, grouped by course and assignment, with sizes shown before anything is deleted.</p>
 <p><a href="/cleanup" style="color:#243b53;font-weight:600">Open the Cleanup page →</a></p>
 <h3>HW prompt packages</h3>
-<p class="mut">The grading prompt packages live on the grading Worker, not on this computer. The Packages page lists every version held there — status, trial, job counts and content hash — and manages the lifecycle: record a trial, open, close or retire a version, upload a new version as a draft, and build the verified student link for an open package. It needs the Worker's admin token, saved on that page in the local config file only.</p>
+<p class="mut">Prompt packages live on the grading Worker; the Packages page lists every version and manages its lifecycle.</p>
 <p><a href="/packages" style="color:#243b53;font-weight:600">Open the Packages page →</a></p>
 </section>
 </main>
@@ -4296,7 +4331,7 @@ function renderStatusMeta(){
   $("tokenstate").textContent=STATUS.token_set?"— a token is saved":"— no token saved yet";
   $("autoline").textContent="Automatic passes (at startup, as soon as a token is saved, then every 10 min): scan all your published teaching courses, download new submissions, then integrity checks and YouTube videos in parallel. Last: "+
     (STATUS.auto_last? new Date(STATUS.auto_last).toLocaleTimeString():"—")+" — "+STATUS.auto;
-  $("cfgmeta").textContent="Config: "+STATUS.config_file+" · Data: "+STATUS.data_dir+
+  $("cfgmeta").textContent="App "+(STATUS.app_version||"")+" · Config: "+STATUS.config_file+" · Data: "+STATUS.data_dir+
     " · Downloaded submissions: "+STATUS.downloaded_count+
     " · YouTube acoustic check: "+(STATUS.ffmpeg_available?"ffmpeg found (Chromaprint fingerprint)":"ffmpeg not found - the acoustic cross-check cannot run")+
     " · "+(STATUS.ytdlp||"");
@@ -4617,28 +4652,42 @@ function bindViewS(){
   $("selclear").onclick=()=>{ SEL=new Set(); SELACTIVE=false; saveSel(); renderSubs(); };
   $("selall").onchange=e=>toggleSelAll(e.target.checked);
 }
-// The Integrity cell of a submissions-table row (v35): one
-// construction shared by the canonical row and the previous-
-// attempt rows, so an attempt's stored check renders exactly
-// like a current attempt's.
-function integCell(c, downloaded){
+// The four check cells of a submissions-table row (v63; the
+// construction is shared by the canonical row and the
+// previous-attempt rows, as the single combined cell was
+// from v35): Package, Signature, YouTube and Flags, one
+// short token each. Returns an array of four cell HTML
+// strings. The mismatch text, when given, stands in the
+// Flags cell.
+function integCells(c, downloaded, mismatch){
   c=c||{};
-  const integ = !downloaded ? '<span class="badge">—</span>' :
+  const pkg = !downloaded ? '<span class="badge">—</span>' :
     (c.error ? '<span class="badge bad">check failed</span>' :
      c.internally_consistent===undefined ? '<span class="badge warn">not checked</span>' :
-     badge(c.internally_consistent,"fingerprints + critique OK","FAILED"));
-  const gsig = !downloaded || c.grade_receipt_ok===undefined ? "" :
-    "<br>"+badge(c.grade_receipt_ok===true,"grade signature OK","grade signature FAILED");
+     badge(c.internally_consistent,"OK","FAILED"));
+  const sig = !downloaded || c.grade_receipt_ok===undefined ? '<span class="mut">—</span>' :
+    badge(c.grade_receipt_ok===true,"OK","FAILED");
   const flags=[c.injection_suspected? "injection"+((c.injection_flags&&c.injection_flags.length)? " @ "+fmtT(c.injection_flags[0].at_s):"") : "", (c.youtube&&c.youtube.youtube_flag)?"youtube":"", c.error?esc(c.error):""].filter(Boolean).join(", ");
   const ytSim = c.youtube && c.youtube.similarity!=null ? Number(c.youtube.similarity).toFixed(4) : null;
-  const yt = !downloaded || !c.youtube ? "" :
-    c.youtube.error ? '<br><span class="mut">YouTube: error</span>' :
-    c.youtube.youtube_flag ? '<br><span class="badge bad">YouTube FLAGGED'+(ytSim!=null ? ' · similarity '+esc(ytSim) : "")+"</span>" :
-    (c.youtube.passed && ytSim!=null) ? '<br><span class="badge ok">YouTube similarity '+esc(ytSim)+"</span>" :
-    c.youtube.available ? '<br><span class="mut">YouTube: acoustic check not available (ffmpeg/chromaprint)</span>' :
-    '<br><span class="mut">YouTube: video not downloaded yet</span>';
-  const flg = flags ? '<br><span class="badge warn">'+esc(flags)+"</span>" : "";
-  return integ+gsig+yt+flg;
+  const yt = !downloaded || !c.youtube ? '<span class="mut">—</span>' :
+    c.youtube.error ? '<span class="badge bad">error</span>' :
+    c.youtube.youtube_flag ? '<span class="badge bad">FLAGGED'+(ytSim!=null ? ' '+esc(ytSim) : "")+"</span>" :
+    (c.youtube.passed && ytSim!=null) ? '<span class="badge ok">'+esc(ytSim)+"</span>" :
+    c.youtube.available ? '<span class="mut">unavailable</span>' :
+    '<span class="mut">—</span>';
+  const flg = flags ? '<span class="badge warn">'+esc(flags)+"</span>" : "";
+  const mis = mismatch ? '<span class="err">'+mismatch+"</span>" : "";
+  return [pkg, sig, yt, (flg&&mis ? flg+"<br>"+mis : flg+mis)];
+}
+// True when a stored check's YouTube state is the
+// tooling-unavailable one (v63): the fact is stated once
+// above the table, not repeated in every row.
+function ytUnavailable(c, downloaded){
+  c=c||{};
+  return !!(downloaded && c.youtube && !c.youtube.error
+    && !c.youtube.youtube_flag
+    && !(c.youtube.passed && c.youtube.similarity!=null)
+    && c.youtube.available);
 }
 // Final-grade auto-save and difference shading (v35). The
 // field's rendered value is kept in dataset.init: leaving a
@@ -4704,8 +4753,8 @@ function renderSubs(){
     let ghead="";
     if(VIEW.group!=="none"){ const g=groupLabelS(s);
       if(g!==lastGroup){ lastGroup=g;
-        ghead='<tr class="grouprow"><td colspan="9">'+esc(g)+' <span class="mut">· '+gcounts[g]+" shown</span></td></tr>"; } }
-    const integ = integCell(c,s.downloaded) + (s.pkg_mismatch? '<br><span class="err">Package mismatch — submitted under '+esc(s.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"")+"</span>":"");
+        ghead='<tr class="grouprow"><td colspan="12">'+esc(g)+' <span class="mut">· '+gcounts[g]+" shown</span></td></tr>"; } }
+    const ic = integCells(c,s.downloaded, s.pkg_mismatch? 'Package mismatch — submitted under '+esc(s.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"") : "");
     const fincell = s.pkg_mismatch
       ? '<td class="fincell"><span class="mut">no grade entry — package mismatch</span></td>'
       : '<td class="fincell"><input class="fin priv" type="number" min="0" max="10" id="fc_'+s.id+'" data-uid="'+esc(s.id)+'" data-signed="'+(s.student_score??"")+'" value="'+(fin??"")+'"> '+
@@ -4717,7 +4766,7 @@ function renderSubs(){
     "<td>"+fmtDateS(s.submitted_at)+"</td>"+
     "<td>"+esc(s.workflow_state||"")+"<br><span class='mut'>attempt "+esc(s.attempt??"")+"</span></td>"+
     "<td>"+(s.downloaded?badge(true,"yes",""):'<span class="badge">no</span>')+"</td>"+
-    "<td>"+integ+"</td>"+
+    "<td>"+ic[0]+"</td><td>"+ic[1]+"</td><td>"+ic[2]+"</td><td>"+ic[3]+"</td>"+
     "<td>"+(s.student_score==null?"—":'<span class="priv">'+s.student_score+" / 10</span>")+"</td>"+
     fincell+
     '<td><input type="checkbox" style="width:auto" '+(s.examined?"checked":"")+
@@ -4736,7 +4785,7 @@ function renderSubs(){
         "<td>"+fmtDateS(a.submitted_at)+"</td>"+
         '<td><span class="mut">attempt '+esc(a.attempt_no)+"</span></td>"+
         "<td>"+badge(true,"yes","")+"</td>"+
-        "<td>"+integCell(a.check,true)+(a.pkg_mismatch? '<br><span class="err">Package mismatch — submitted under '+esc(a.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"")+"</span>":"")+"</td>"+
+        (()=>{ const aic=integCells(a.check,true, a.pkg_mismatch? 'Package mismatch — submitted under '+esc(a.pkg||"")+" · this assignment expects "+esc(s.expected_pkg||"") : ""); return "<td>"+aic[0]+"</td><td>"+aic[1]+"</td><td>"+aic[2]+"</td><td>"+aic[3]+"</td>"; })()+
         "<td>"+(a.score==null?"—":'<span class="priv">'+a.score+" / 10</span>")+"</td>"+
         '<td><span class="mut">—</span></td>'+
         '<td><a href="/wall?focus='+encodeURIComponent(s.id)+'&attempt='+esc(a.attempt_no)+'">View →</a></td></tr>').join("");
@@ -4754,11 +4803,18 @@ function renderSubs(){
         noteparts.push(esc(s.attempts_rejected)+
           ' previous attempt(s) with a rejected package ZIP — see the Redownload tool');
       if(noteparts.length)
-        out+='<tr class="attnote"><td></td><td colspan="8">'+
+        out+='<tr class="attnote"><td></td><td colspan="11">'+
           noteparts.join("; ")+'.</td></tr>';
     }
     return out;
   }).join("");
+  const ytn=$("ytnotice");
+  if(ytn){
+    const unav=VIEWLIST.some(s=>ytUnavailable(s.check,s.downloaded)
+      || (ATTMODE==="previous" && (s.attempts||[]).some(a=>ytUnavailable(a.check,true))));
+    ytn.style.display=unav?"":"none";
+    ytn.textContent=unav? "YouTube acoustic check unavailable on this computer (ffmpeg/Chromaprint) — the YouTube column shows “unavailable” for those rows." : "";
+  }
   document.querySelectorAll(".selbox").forEach(b=>
     b.onchange=()=>toggleSel(b.dataset.key, b.checked));
   document.querySelectorAll("input.fin").forEach(inp=>{
@@ -4902,7 +4958,7 @@ async function refreshCounts(){
   // reload, which is what the teacher's v12 screenshot showed.)
   try{
     const r=await fetch("/api/status"); const st=await r.json(); STATUS=st;
-    $("cfgmeta").textContent="Config: "+st.config_file+" · Data: "+st.data_dir+
+    $("cfgmeta").textContent="App "+(st.app_version||"")+" · Config: "+st.config_file+" · Data: "+st.data_dir+
       " · Downloaded submissions: "+st.downloaded_count+
       " · YouTube acoustic check: "+(st.ffmpeg_available?"ffmpeg found (Chromaprint fingerprint)":"ffmpeg not found - the acoustic cross-check cannot run")+
       " · "+(st.ytdlp||"");
@@ -5045,6 +5101,7 @@ WALL_PAGE = r"""<!doctype html>
 body{font-family:system-ui,sans-serif;margin:0;background:#14181d;color:#eceff1}
 header{background:#243b53;color:#fff;padding:12px 18px;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
 header h1{font-size:18px;margin:0} header a{color:#bcd}
+header .appver{font-size:12px;font-weight:400;color:#9fb0bd}
 main{padding:14px 16px 120px;max-width:none;margin:0}
 .grid{display:grid;gap:12px}
 .tile{background:#1e242c;border:1px solid #39424e;border-radius:8px;padding:8px;cursor:pointer}
@@ -5108,7 +5165,7 @@ html.privacy-on .priv *{color:transparent!important;background:transparent!impor
 html.privacy-on input.priv{pointer-events:none}
 html.privacy-on input.priv::placeholder{color:transparent!important;opacity:0!important}
 </style></head><body>
-<header><h1>Video Wall</h1><a href="/">← back to audit</a>
+<header><h1>Video Wall</h1><span class="appver">Teacher Audit · @@APP_VERSION@@</span><a href="/">← back to audit</a>
 <button id="privbtn" aria-pressed="false">Hide names &amp; grades</button>
 <span class="mut">A screenful of students at a time. All showing videos scrub together; tiles are muted — hover a tile to hear it, zoom into one to listen and mark times. To scrub with the mouse: hold the <strong>right</strong> mouse button on a video and drag left/right — every showing video moves together and the hovered one keeps the sound (one tile width of travel = the whole take). The right-click menu is off on the wall for this.</span></header>
 <main>
@@ -6499,7 +6556,9 @@ body{font-family:system-ui,sans-serif;margin:0;background:#f6f6f4;color:#1c1c1a}
 header{background:#243b53;color:#fff;padding:14px 20px}
 header h1{font-size:19px;margin:0} header p{margin:4px 0 0;font-size:13px;opacity:.85}
 header a{color:#cfe0f0}
-main{max-width:1000px;margin:0 auto;padding:16px 20px 60px}
+header .appver{font-size:12px;font-weight:400;opacity:.75}
+main{width:96%;max-width:1760px;margin:0 auto;padding:16px 20px 60px;box-sizing:border-box}
+p.mut{max-width:80ch}
 section{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 18px;margin:14px 0}
 h2{font-size:16px;margin:0 0 10px} h3{font-size:14px;margin:16px 0 6px}
 label{font-size:13px;margin-right:10px}
@@ -6514,7 +6573,7 @@ th{background:#f0f0ec}
 td{overflow-wrap:anywhere}
 th{white-space:nowrap;font-size:12px}
 </style></head><body>
-<header><h1>Cleanup — Teacher Audit</h1>
+<header><h1>Cleanup — Teacher Audit <span class="appver">· @@APP_VERSION@@</span></h1>
 <p><a href="/">← Back to the dashboard</a> · Deleting here removes local working material only; nothing on Canvas is touched.</p></header>
 <main>
 <p id="globalerr" class="err"></p>
@@ -6651,7 +6710,9 @@ body{font-family:system-ui,sans-serif;margin:0;background:#f6f6f4;color:#1c1c1a}
 header{background:#243b53;color:#fff;padding:14px 20px}
 header h1{font-size:19px;margin:0} header p{margin:4px 0 0;font-size:13px;opacity:.85}
 header a{color:#cfe0f0}
-main{max-width:1180px;margin:0 auto;padding:16px 20px 60px}
+header .appver{font-size:12px;font-weight:400;opacity:.75}
+main{width:96%;max-width:1760px;margin:0 auto;padding:16px 20px 60px;box-sizing:border-box}
+section p.mut,section details p{max-width:80ch}
 section{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px 18px;margin:14px 0}
 h2{font-size:16px;margin:0 0 10px} h3{font-size:14px;margin:16px 0 6px}
 label{display:block;font-size:13px;margin:8px 0 3px}
@@ -6674,7 +6735,7 @@ th{white-space:nowrap;font-size:12px}
 #spinner{display:none;color:#243b53;font-weight:600}
 .panel{border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:10px 0;background:#fbfbf9}
 </style></head><body>
-<header><h1>HW Packages — Teacher Audit</h1>
+<header><h1>HW Packages — Teacher Audit <span class="appver">· @@APP_VERSION@@</span></h1>
 <p><a href="/">← Back to the dashboard</a> · The grading prompt packages held on the grading Worker: every version, its status, and its lifecycle.</p></header>
 <main>
 <p id="spinner">Working…</p><p id="globalerr" class="err"></p>
@@ -6905,6 +6966,15 @@ async function init(){
 init();
 </script></body></html>
 """
+
+# The page templates carry @@APP_VERSION@@ where the header
+# shows the version; it is substituted here, once, from the
+# single APP_VERSION constant (v63) — no page hard-codes a
+# copy of the version string.
+PAGE = PAGE.replace("@@APP_VERSION@@", APP_VERSION)
+WALL_PAGE = WALL_PAGE.replace("@@APP_VERSION@@", APP_VERSION)
+CLEANUP_PAGE = CLEANUP_PAGE.replace("@@APP_VERSION@@", APP_VERSION)
+PACKAGES_PAGE = PACKAGES_PAGE.replace("@@APP_VERSION@@", APP_VERSION)
 
 # ---------------------------------------------------------------- server
 

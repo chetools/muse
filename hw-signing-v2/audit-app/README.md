@@ -1,4 +1,22 @@
-# Teacher audit app — HW Signing v2 (audit app v62)
+# Teacher audit app — HW Signing v2 (audit app v63)
+
+**v63 (2026-11-27).** A display pass; no check changes
+and the check schema stays 4. The app version is the
+single `APP_VERSION` constant in `web.py`: every page
+header shows it small beside its title, and
+`/api/status` reports it as `app_version`. The
+dashboard, Cleanup and Packages pages widen to 96% of
+the window, capped at 1760px, with prose capped at
+80ch. The dashboard's long explanations move into
+collapsed “How this works” details blocks (Sections
+1–3; Section 4 keeps one line per tool), and the
+submissions table's single Integrity column splits
+into four — Package, Signature, YouTube and Flags —
+one short token per cell. The repeated per-row
+“acoustic check not available” sentence is gone: the
+YouTube cell shows “unavailable” and one notice above
+the table states the fact once. A package mismatch
+now stands in the Flags column.
 
 **v62 (2026-11-27).** A simplification pass; the check
 schema rises to 4, so stored checks are re-done. (1)

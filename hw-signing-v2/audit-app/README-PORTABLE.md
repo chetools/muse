@@ -113,10 +113,19 @@ folder's `web.py` — copy it again into this folder.
 
 ## Bundled components and versions
 
-- App: Teacher Audit v62 (`web.py`, `audit.py`), with the two
+- App: Teacher Audit v63 (`web.py`, `audit.py`), with the two
   portable changes described above (relative `data_dir`
   resolution; first-run `data_dir` correction in portable
-  installs). v62: the simplification pass described in
+  installs). v63: a display pass — the version shows
+  small in every page header (from the one `APP_VERSION`
+  constant in `web.py`), the dashboard, Cleanup and
+  Packages pages widen to 96% of the window capped at
+  1760px, the dashboard's long explanations move into
+  collapsed “How this works” blocks, and the submissions
+  table's Integrity column splits into Package,
+  Signature, YouTube and Flags columns, with the
+  YouTube-unavailable fact stated once above the table.
+  v62: the simplification pass described in
   `README.md` (fingerprint-form packages only, one receipt
   field, per-block YouTube verdict, current-attempt
   downloads, check schema 4). v61: the Activity panel starts blank on page

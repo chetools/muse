@@ -18,6 +18,42 @@ The server binds to 127.0.0.1 only. No other machine can reach it.
 Python 3 standard library only; on Windows, `run-web.bat` uses uv to
 provide Python if none is installed.
 
+## v63 (2026-11-27) — Version label, wider pages, collapsed explanations, four check columns
+
+Display only; no check changes and the check schema
+stays 4. The app version is the single `APP_VERSION`
+constant in `web.py`: each page header shows it small
+beside its title (dashboard, video wall, Cleanup,
+Packages), the templates carrying a placeholder the
+constant replaces, and `/api/status` reports it as
+`app_version`; the dashboard status line shows it too.
+The dashboard, Cleanup and Packages pages widen to
+96% of the window, capped at 1760px (the wall was
+already full-width), with explanatory prose capped at
+80ch. The dashboard's long explanations — Grade,
+YouTube, Re-checks, Examined, the view description and
+the Final grade note in Section 2, the Section 3
+introduction, and the Section 1 Activity note — move
+into collapsed “How this works” details blocks, closed
+by default and kept in full; Section 4 keeps one line
+per tool. The submissions table's single Integrity
+column splits into four: **Package** (OK / FAILED /
+not checked / check failed / —), **Signature** (OK /
+FAILED / —), **YouTube** (the similarity number alone,
+FLAGGED plus the number, “error”, “unavailable”, or —)
+and **Flags** (the flag badges, and the package
+mismatch note that stood in the Integrity cell before
+v63). The Final grade header carries the sub-label
+“auto-saves · amber = differs from signed grade”.
+When any shown row's YouTube state is the
+tooling-unavailable one, one notice above the table
+states it once — “YouTube acoustic check unavailable
+on this computer (ffmpeg/Chromaprint)” — instead of a
+sentence per row. Group rows span the new 12 columns
+and attempt-note rows 11 beside their empty cell;
+previous-attempt rows use the same four columns. The
+wall's one-line integrity text is unchanged.
+
 ## v62 (2026-11-27) — Simplification: fingerprint form only, one receipt field, one check-diff classification
 
 The audit changes are in `audit.py` and summarised in

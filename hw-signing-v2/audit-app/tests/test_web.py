@@ -492,10 +492,11 @@ def main():
           "check result records the v2 grade receipt and signed "
           "grades (v62: no youtube_id_ok, no grades_match)")
     status, main_page2 = call("GET", "/", raw=True)
-    check(b"grade signature OK" in main_page2
-          and b"grade signature FAILED" in main_page2,
-          "dashboard integrity cell carries the grade signature badge "
-          "(v22)")
+    check(b"<th>Signature</th>" in main_page2
+          and b"function integCells" in main_page2,
+          "dashboard carries the grade signature in its own "
+          "Signature column (v63; the v22 badge in the single "
+          "Integrity cell before it)")
     check("listen" not in chk and "youtube" in chk
           and chk["youtube"]["available"] is False
           and chk["youtube"]["passed"] is None,
@@ -1518,16 +1519,17 @@ def main():
           "dashboard renders the YouTube cross-check result in the row")
     (data_dir / "videos" / "111.mp4").unlink()
 
-    # 8l. v13: no Flags column (flag badges live in the Integrity
-    # cell), and the table refreshes itself when an automatic pass
+    # 8l. v13: no Flags column (flag badges lived in the
+    # Integrity cell; v63 gives Flags its own column, checked
+    # in section 28 below), and the table refreshes itself when an automatic pass
     # finishes (the v12 screenshot: the Activity log showed the
     # package downloaded and checked clean while the table still
     # showed "no" / "-").
     status, main_page = call("GET", "/", raw=True)
-    check(b"<th>Flags</th>" not in main_page
-          and b"integ+gsig+yt+flg" in main_page,
-          "dashboard has no Flags column; flags render in the "
-          "Integrity cell (v22 adds the grade signature badge)")
+    check(b"<th>Flags</th>" in main_page
+          and b"function integCells" in main_page,
+          "dashboard has a Flags column, one of the four check "
+          "columns the shared integCells construction fills (v63)")
     check(b"refreshCounts" in main_page
           and b'"pass finished"' in main_page
           and b"refreshSubs(); refreshCounts();" in main_page,
@@ -2896,11 +2898,11 @@ def main():
           and b"autoSaveFinal" in dash35
           and b"bindFin" in dash35
           and b"data-signed" in dash35
-          and b"function integCell" in dash35
+          and b"function integCells" in dash35
           and b"previous-attempt check(s)" in dash35,
           "dashboard: final grades auto-save in place with no "
           "Save button, and attempt rows use the shared "
-          "integrity cell (v35)")
+          "check-cells construction (v35; integCells in v63)")
     status, wall35p = call("GET", "/wall", raw=True)
     check(status == 200 and b"zgradesave" not in wall35p
           and b"Save grade" not in wall35p
@@ -4002,15 +4004,17 @@ def main():
           "v59: no superseded, binding-status or release text "
           "on any page")
     import re as _re59
-    _seg59 = _re59.search(r"function integCell.*?\n\}\n",
+    _seg59 = _re59.search(r"function integCells.*?\n\}\n",
                           web.PAGE, _re59.S).group(0)
     check("duration" not in _seg59.lower()
-          and "YouTube similarity" in _seg59
-          and "YouTube FLAGGED" in _seg59,
-          "v59: the integrity cell's YouTube chip carries the "
-          "similarity and no duration text")
-    # Rendered: run the page's own integCell under node (where
-    # available) for the pass, flag and pending fixtures.
+          and "FLAGGED" in _seg59
+          and "unavailable" in _seg59,
+          "v63: the YouTube cell construction carries the "
+          "similarity number or FLAGGED plus the number, the "
+          "short unavailable token, and no duration text")
+    # Rendered: run the page's own integCells under node (where
+    # available) for the pass, flag and pending fixtures; the
+    # harness reads the YouTube cell (index 2) of each.
     _node59 = shutil.which("node")
     if _node59:
         import subprocess as _sp59
@@ -4024,18 +4028,19 @@ def main():
             _badge59, _esc59, _fmt59, _seg59,
             "const base={internally_consistent:true,"
             "grade_receipt_ok:true};",
-            "const pass=integCell({...base,youtube:{available:true,"
+            "const pass=integCells({...base,youtube:{available:true,"
             "youtube_flag:false,passed:true,similarity:0.9851,"
-            "duration_diff_s:2.7,acoustic_configured:true}},true);",
-            "const flag=integCell({...base,youtube:{available:true,"
+            "duration_diff_s:2.7,acoustic_configured:true}},true,\"\");",
+            "const flag=integCells({...base,youtube:{available:true,"
             "youtube_flag:true,passed:false,similarity:0.5123,"
-            "duration_diff_s:2.7,acoustic_configured:true}},true);",
-            "const pendDl=integCell({...base,youtube:{available:false,"
-            "youtube_flag:false,passed:null}},true);",
-            "const pendCfg=integCell({...base,youtube:{available:true,"
+            "duration_diff_s:2.7,acoustic_configured:true}},true,\"\");",
+            "const pendDl=integCells({...base,youtube:{available:false,"
+            "youtube_flag:false,passed:null}},true,\"\");",
+            "const pendCfg=integCells({...base,youtube:{available:true,"
             "youtube_flag:false,passed:null,similarity:null,"
-            "acoustic_configured:false}},true);",
-            "console.log(JSON.stringify({pass,flag,pendDl,pendCfg}));",
+            "acoustic_configured:false}},true,\"\");",
+            "console.log(JSON.stringify({pass:pass[2],flag:flag[2],"
+            "pendDl:pendDl[2],pendCfg:pendCfg[2]}));",
         ])
         with tempfile.NamedTemporaryFile(
                 "w", suffix=".js", delete=False,
@@ -4043,28 +4048,77 @@ def main():
             _f59.write(_harness59)
         _out59 = _sp59.run([_node59, _f59.name],
                            capture_output=True, text=True)
-        check(_out59.returncode == 0, "v59: integCell harness runs")
+        check(_out59.returncode == 0, "v63: integCells harness runs")
         _cells59 = json.loads(_out59.stdout)
-        check('<span class="badge ok">YouTube similarity '
-              '0.9851</span>' in _cells59["pass"],
-              "v59: pass chip reads \"YouTube similarity 0.9851\" "
-              "in the badge-ok chip style")
-        _chip59 = _cells59["pass"][_cells59["pass"].find("YouTube"):]
-        check("duration" not in _chip59.lower()
+        check('<span class="badge ok">0.9851</span>'
+              in _cells59["pass"],
+              "v63: the passed YouTube cell is the similarity "
+              "number alone in the badge-ok chip style")
+        check("duration" not in _cells59["pass"].lower()
               and "FLAGGED" not in _cells59["pass"],
-              "v59: similarity 0.9851 with a 2.7 s duration "
+              "v63: similarity 0.9851 with a 2.7 s duration "
               "difference displays as a pass, with no duration "
-              "text in the chip")
-        check('<span class="badge bad">YouTube FLAGGED · '
-              'similarity 0.5123</span>' in _cells59["flag"],
-              "v59: flagged chip reads \"YouTube FLAGGED · "
-              "similarity 0.5123\" in the badge-bad chip style")
-        check("YouTube: video not downloaded yet"
-              in _cells59["pendDl"]
-              and "YouTube: acoustic check not available "
-              "(ffmpeg/chromaprint)" in _cells59["pendCfg"],
-              "v59: the pending states keep their existing "
-              "wording (not downloaded / not configured)")
+              "text in the cell")
+        check('<span class="badge bad">FLAGGED 0.5123</span>'
+              in _cells59["flag"],
+              "v63: the flagged YouTube cell reads \"FLAGGED "
+              "0.5123\" in the badge-bad chip style")
+        check(_cells59["pendDl"] == '<span class="mut">—</span>'
+              and _cells59["pendCfg"]
+              == '<span class="mut">unavailable</span>',
+              "v63: the pending YouTube states are short tokens "
+              "(— when the video is not downloaded yet, "
+              "unavailable when the tooling cannot measure it); "
+              "the long per-row sentence no longer appears")
+
+    # ---------------------------------------------------------
+    # 28. v63: version label on every page and in /api/status,
+    # the wider layout, the explanations collapsed into "How
+    # this works" details blocks, and the four check columns
+    # with the one-time YouTube-unavailable notice.
+    check(web.APP_VERSION == "v63", "v63: APP_VERSION is v63")
+    status, st63 = call("GET", "/api/status")
+    check(status == 200 and st63.get("app_version") == "v63",
+          "v63: /api/status reports app_version v63")
+    for _path63 in ("/", "/wall", "/cleanup", "/packages"):
+        status, _pg63 = call("GET", _path63, raw=True)
+        check(status == 200 and b"v63" in _pg63
+              and b"appver" in _pg63,
+              f"v63: {_path63} header shows the app version")
+    status, dash63 = call("GET", "/", raw=True)
+    check(all(b"<th>" + h + b"</th>" in dash63 for h in
+              (b"Package", b"Signature", b"YouTube", b"Flags"))
+          and b"<th>Integrity</th>" not in dash63
+          and b"<th>Final grade<span" in dash63
+          and b"auto-saves" in dash63,
+          "v63: the submissions table has Package, Signature, "
+          "YouTube and Flags columns, no Integrity column, and "
+          "the Final grade header carries its sub-label")
+    check(b"fingerprints + critique OK" not in dash63
+          and b"YouTube: acoustic check not available" not in dash63
+          and dash63.count(b"YouTube acoustic check unavailable "
+                           b"on this computer") == 1,
+          "v63: the long per-row YouTube sentence no longer "
+          "appears in row rendering; the unavailable notice "
+          "text appears once")
+    check(b"max-width:1760px" in dash63
+          and b"max-width:1760px" in web.CLEANUP_PAGE.encode()
+          and b"max-width:1760px" in web.PACKAGES_PAGE.encode(),
+          "v63: dashboard, Cleanup and Packages widen to "
+          "96% / 1760px")
+    check(b'colspan="12"' in dash63 and b'colspan="11"' in dash63,
+          "v63: group rows span all 12 columns and the "
+          "attempt-note rows span 11 beside their empty cell")
+    _gi = dash63.find(b"one composite score out of 10")
+    check(_gi != -1
+          and dash63.rfind(b"<details", 0, _gi) != -1
+          and dash63.find(b"</details>", _gi) != -1
+          and b"the mismatch stands in the Flags column" in dash63
+          and b"mismatch stands in the Integrity cell" not in dash63,
+          "v63: the Section 2 explanations are present inside "
+          "the collapsed How-this-works details (moved, not "
+          "deleted), and the package mismatch is named as "
+          "standing in the Flags column")
 
     server.shutdown()
     worker.shutdown()
