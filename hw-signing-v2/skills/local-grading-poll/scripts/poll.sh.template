@@ -11,7 +11,8 @@
 #   pending 0       -> silent (nothing to grade), unless the sweeper
 #                      condition below fires
 #   pending > 0     -> wake, payload {"pending": n, "room": r}
-#   own claim aged 5-15 min with no confirmed post (sweeper,
+#   own claim aged 5-15 min with no confirmed post and not already
+#   marked swept (sweeper,
 #   2026-11-27)     -> wake, payload {"pending": n, "room": r,
 #                      "sweep": [job_id, ...]}, even when pending is 0
 #   401             -> silent; the refusal is logged once per revocation
@@ -97,7 +98,7 @@ if [ -f "$LEDGER" ]; then
   # live claim instead of waiting out the lease. Entries at or past
   # 15 minutes are excluded: the worker has returned or is returning
   # those jobs to the pending list, where the ordinary path takes them.
-  SWEEP="$(jq -c --argjson lo "$((NOW - 900))" --argjson hi "$((NOW - 300))" '[.[] | select(.claimed_at > $lo and .claimed_at <= $hi) | .job_id]' "$LEDGER" 2>/dev/null || echo '[]')"
+  SWEEP="$(jq -c --argjson lo "$((NOW - 900))" --argjson hi "$((NOW - 300))" '[.[] | select(.claimed_at > $lo and .claimed_at <= $hi and (.swept // false) != true) | .job_id]' "$LEDGER" 2>/dev/null || echo '[]')"
   case "$SWEEP" in '['*']') : ;; *) SWEEP='[]' ;; esac
 fi
 ROOM=$((7 - ACTIVE))
