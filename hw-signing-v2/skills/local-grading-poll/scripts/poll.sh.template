@@ -8,13 +8,8 @@
 # The script asks the grading worker one cheap question — is a grading
 # job waiting? — with the grading token. It ends with exactly one
 # silent or wake call, as the hook protocol requires:
-#   pending 0       -> silent (nothing to grade), unless the sweeper
-#                      condition below fires
+#   pending 0       -> silent (nothing to grade)
 #   pending > 0     -> wake, payload {"pending": n, "room": r}
-#   own claim aged 5-15 min with no confirmed post and not already
-#   marked swept (sweeper,
-#   2026-11-27)     -> wake, payload {"pending": n, "room": r,
-#                      "sweep": [job_id, ...]}, even when pending is 0
 #   401             -> silent; the refusal is logged once per revocation
 #                      (a flag file under ~/hooks/state/), not every minute
 #   fetch failure   -> silent; the failure is logged
@@ -78,37 +73,26 @@ state_write rm -f "$FLAG_401"
 PENDING="$(jq -r 'length // 0' "$BODY")"
 case "$PENDING" in *[!0-9]*|'') PENDING=0 ;; esac
 
-# Ledger state, read once for both decisions below. The wake procedure
-# records each claim in ~/hooks/state/grading-active.json and removes
-# the entry when the result post is confirmed, so an entry still
-# present is a claim this account has not finished.
+# Ledger state. The wake procedure records each claim in
+# ~/hooks/state/grading-active.json and removes the entry when the
+# result post is confirmed. (The dropped-claim sweeper that used
+# to wake for stale own claims was deleted on 2026-11-28: a claim
+# left unfinished simply lapses at 15 minutes and its job returns
+# to the pending list, where the ordinary path grades it again
+# from scratch.)
 NOW="$(date +%s)"
 LEDGER="$HOME/hooks/state/grading-active.json"
 ACTIVE=0
-SWEEP='[]'
 if [ -f "$LEDGER" ]; then
   # In-flight cap (2026-11-20): entries older than 15 minutes (the
   # claim lease) are stale and do not count against the cap of 7.
   ACTIVE="$(jq --argjson cutoff "$((NOW - 900))" '[.[] | select(.claimed_at > $cutoff)] | length' "$LEDGER" 2>/dev/null || echo 0)"
   case "$ACTIVE" in *[!0-9]*|'') ACTIVE=0 ;; esac
-  # Sweeper (2026-11-27): an own claim aged between 5 and 15 minutes
-  # with no confirmed post is a claim a previous run dropped or left
-  # unfinished. Wake for it even when nothing is queued, so the wake
-  # procedure can post its result file or re-grade it under its still
-  # live claim instead of waiting out the lease. Entries at or past
-  # 15 minutes are excluded: the worker has returned or is returning
-  # those jobs to the pending list, where the ordinary path takes them.
-  SWEEP="$(jq -c --argjson lo "$((NOW - 900))" --argjson hi "$((NOW - 300))" '[.[] | select(.claimed_at > $lo and .claimed_at <= $hi and (.swept // false) != true) | .job_id]' "$LEDGER" 2>/dev/null || echo '[]')"
-  case "$SWEEP" in '['*']') : ;; *) SWEEP='[]' ;; esac
 fi
 ROOM=$((7 - ACTIVE))
 if [ "$ROOM" -lt 0 ]; then ROOM=0; fi
-SWEEP_N="$(printf '%s' "$SWEEP" | jq -r 'length' 2>/dev/null || echo 0)"
-case "$SWEEP_N" in *[!0-9]*|'') SWEEP_N=0 ;; esac
 
-if [ "$SWEEP_N" -gt 0 ]; then
-  wake "own stale claims to sweep" "{\"pending\": $PENDING, \"room\": $ROOM, \"sweep\": $SWEEP}"
-elif [ "$PENDING" -gt 0 ]; then
+if [ "$PENDING" -gt 0 ]; then
   if [ "$ROOM" -le 0 ]; then
     silent "grading job waiting; at grading capacity" "{\"pending\": $PENDING, \"active\": $ACTIVE}"
   else

@@ -105,7 +105,7 @@ All through `pkg_admin.mjs`, from this skill's folder:
 - **Show:** `node scripts/pkg_admin.mjs show "<name> v<version>"` — the full record, including the text, the trial record, and any override reason.
 - **Record a trial:** the `trial` command above; moves draft → trialled under the gate.
 - **Open:** `node scripts/pkg_admin.mjs open "<pkg>"` — trialled → open. The worker accepts jobs only against open packages. Open a package only after its trial is recorded.
-- **Close:** `node scripts/pkg_admin.mjs close "<pkg>"` — open → closed, when the assignment ends. Closing stops new jobs against that version; jobs already graded remain retrievable until they expire. Since worker 2.5.0 the worker runs a replacement check at job creation: a job sent under a link for any version of a package name is graded under the newest open version of that name, after the link's hash is verified against the version it names. A closed version's links therefore keep working while a newer version is open, and opening a newer version repoints every earlier link for that name — do not keep two versions of one name open for different courses.
+- **Close:** `node scripts/pkg_admin.mjs close "<pkg>"` — open → closed, when the assignment ends. Closing stops new jobs against that version; jobs already graded remain retrievable until they expire. Since worker 2.8.0 a job is created under the version its student link names: the link's content hash resolves to exactly that version, the job is graded under it, and no other version is substituted. A job sent under a link for a closed version is refused at creation (409, package closed) — links are never repointed to a newer version, so a correction that students must use means issuing the new version's link.
 - **Retire:** `node scripts/pkg_admin.mjs retire "<pkg>"` — closed → retired (a draft can also be retired directly). Retired packages are kept, not deleted: the audit may need the exact text for as long as a grade can be appealed.
 - **New version:** edit a copy of the record file into the new draft text, get the teacher's approval of the exact new text, and `create` it. The worker assigns the next version number. The new version starts as a draft and needs its own trial before it can open. A package that has jobs against it is never edited in place — there is no edit operation.
 
@@ -130,6 +130,10 @@ The link is a claim, not a credential: a student who alters it points their page
 - No package is opened without a recorded trial: 5/5 + 5/5, or a lower trial with the teacher's override reason recorded.
 - The trial's generating sub-agent never sees the grading basis, and the grading sub-agent works in a clean context. A trial run any other way does not count.
 - `config.json` holds a live credential and stays out of any repository; `config.example.json` is the shareable form.
+
+## Standing note — Worker version changes
+
+Whenever the grading Worker's version changes, diff this skill's statements about Worker behaviour (package resolution at job creation, lifecycle transitions, response fields) against the new worker.js before relying on them, and correct any statement the diff shows to be stale. The same rule stands in the grading-poll skill.
 
 ## Available connectors
 
