@@ -3,8 +3,11 @@
 // events.
 //
 // Privacy invariants held here:
-// - the scrub field's contents are read only to scrub, and never enter
-//   any export, storage, or network call;
+// - the scrub field's contents are read to scrub and — since
+//   2.8.2, at the teacher's direction — are kept in this browser's
+//   local storage so the list is still there on the next visit;
+//   they never enter any export or network call, and the local
+//   copy never leaves this machine;
 // - nothing leaves the machine before the step-4 confirmation: the
 //   job is the first network call carrying submission data, and it
 //   carries the scrubbed transcript, fingerprints and versions — no
@@ -16,7 +19,9 @@
 //   YouTube link and its title kept locally for ZIP creation, and
 //   — since 2.8.0 — the removal selections made at send time,
 //   stored as positions only: an entry index and appearance
-//   ordinals, never the removal field's contents). The
+//   ordinals), the removal list itself, and — since 2.8.2 — the
+//   picker selections, keyed by recording and entry and stored as
+//   appearance ordinals only (persist.js). The
 //   transcript and the grades are never written to localStorage.
 
 import { parseConfig, buildConfigLink } from './config.js';
@@ -51,6 +56,10 @@ import {
   requestYouTubeCheck, submitJob, fetchJobStatus, fetchWorkerInfo,
   finalizeJob,
 } from './jobs.js';
+import {
+  loadScrubList, saveScrubList,
+  loadPickerSelections, savePickerSelections, dropPickerSelections,
+} from './persist.js';
 import { computeFingerprint } from './fingerprint.js';
 import { decodeRawFingerprint } from './fingerprint.js';
 import { buildZipAsync, submissionZipName, ZIP_ENTRY_HTML } from './zip.js';
@@ -69,12 +78,33 @@ let windowsDoneBase = 0;    // windows already cached before this run (resume)
 let transcriptionComplete = false;
 let transcriptionRunId = null; // the cache record's run identifier (2.8.0)
 // A2 picker state (2.8.0): removal entry text -> the set of
-// appearance ordinals the student has chosen to remove. An entry
-// absent from the map is at its default: the first offered
-// appearance is chosen. Only ordinals are ever kept — never the
-// entry's text in any storage (the map is memory only).
+// appearance ordinals the student has chosen to remove, for the
+// recording currently loaded. An entry absent from the map is at
+// its default: the first offered appearance is chosen. Since
+// 2.8.2 the choices persist in this browser's local storage,
+// keyed by recording and entry, as ordinals only (persist.js);
+// the map below is the loaded recording's working copy.
 const pickerSelections = new Map();
 let pickerSignature = '';
+
+// Adopt the saved picker selections for the recording now
+// loaded (audioSha), replacing the working copy. Called whenever
+// a recording's chunks are adopted; entries with no saved choice
+// stay at the default.
+function adoptPickerSelections() {
+  pickerSelections.clear();
+  pickerSignature = '';
+  if (!audioSha) return;
+  for (const [entry, ords] of loadPickerSelections(undefined, audioSha)) {
+    pickerSelections.set(entry, ords);
+  }
+}
+
+// Persist the working copy for the loaded recording.
+function storePickerSelections() {
+  if (!audioSha) return;
+  savePickerSelections(undefined, audioSha, pickerSelections);
+}
 // Submission preparation state (2.8.0; see pow.js): solved tokens
 // by bucket, the in-flight search, the Worker's difficulty, and
 // the offset between the Worker's clock and this machine's (the
@@ -227,6 +257,7 @@ function renderPicker() {
         const set = new Set(pickerRemovedOrdinals(entry));
         if (cb.checked) set.add(ord); else set.delete(ord);
         pickerSelections.set(entry, set);
+        storePickerSelections();
         refreshDerived();
       });
       label.append(cb, document.createTextNode(' …' + apps[ord].phrase + '…'));
@@ -238,8 +269,10 @@ function renderPicker() {
 
 // The removal selections as they stand, for the job entry stored
 // at send time: entry index into the removal list, and the
-// appearance ordinals removed. Positions only — the removal
-// field's contents never enter storage.
+// appearance ordinals removed. Positions only — what the job
+// entry holds is never the removal field's contents. (The field's
+// text itself persists separately, in this browser's local
+// storage only, since 2.8.2; see persist.js.)
 function currentRemovalSelections() {
   const selective = pickerEntries();
   const out = [];
@@ -460,6 +493,7 @@ async function refreshFingerprint() {
 // from the stored blob, chunks from the store (pre-scrub; scrubbing
 // re-derives the view), no transcription needed.
 async function adoptCacheRecord(record, note) {
+  adoptPickerSelections();
   chunks = (record.chunks || []).map(fromCachedChunk);
   transcriptionRunId = record.transcription_run_id || null;
   windowsDoneBase = record.windows_done || 0;
@@ -487,6 +521,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
   // its file again — the one recovery copy — silently did
   // nothing until a page reload.
   ev.target.value = '';
+  pickerSelections.clear(); pickerSignature = '';
   pcm = null; wavBytes = null; audioSha = null; durationS = 0;
   chromaprint = null; chromaprintSha = null; chromaprintPending = null;
   chunks = []; windowsDoneBase = 0;
@@ -527,6 +562,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
       await adoptCacheRecord({ ...record, wavBlob: new Blob([wavBytes], { type: 'audio/wav' }) },
         'Transcript restored from this computer — no transcription needed.');
     } else if (record && record.chunks && record.chunks.length) {
+      adoptPickerSelections();
       chunks = record.chunks.map(fromCachedChunk);
       windowsDoneBase = record.windows_done || 0;
       $('mediaStatus').textContent =
@@ -628,10 +664,12 @@ function renderCacheRows(list) {
     delBtn.textContent = 'Delete';
     delBtn.addEventListener('click', async () => {
       await cacheDelete(entry.audio_sha256).catch(() => {});
+      dropPickerSelections(undefined, entry.audio_sha256);
       // A delete is a delete (2.6.14): when the deleted recording
       // is the one loaded in the page, it is unloaded too, instead
       // of living on in the page until a reload.
       if (audioSha && entry.audio_sha256 === audioSha) {
+        pickerSelections.clear(); pickerSignature = '';
         pcm = null; wavBytes = null; audioSha = null; durationS = 0;
         chromaprint = null; chromaprintSha = null; chromaprintPending = null;
         chunks = []; windowsDoneBase = 0;
@@ -654,6 +692,10 @@ function renderCacheRows(list) {
 // the recordings list re-renders from the in-memory list, with
 // no IndexedDB re-read.
 $('scrubField').addEventListener('input', () => {
+  // The list persists in this browser's local storage (2.8.2),
+  // saved as it is typed; a storage failure leaves the page
+  // working in-memory only, with no error shown.
+  saveScrubList(undefined, $('scrubField').value);
   setAudioMeta();
   refreshDerived();
   renderCacheRows(cacheListMemory);
@@ -743,9 +785,27 @@ function refreshDerived() {
 }
 
 // --- Job section ---
+// The line shown beside Send when the page was opened without a
+// homework link (2.8.2): a disabled button with no reason beside
+// it leaves the student guessing — the teacher's standing rule
+// is that a control's state is explained beside the control.
+const NO_LINK_NOTE = 'This page was opened without a homework link, so there is nowhere to send. ' +
+  'Open the link in your assignment, and your recording and transcript will be there.';
+
 function updateJobEnabled() {
-  const base = !!(cfg.worker && cfg.pkg && cfg.ph && transcriptionComplete);
+  const linked = !!(cfg.worker && cfg.pkg && cfg.ph);
+  const base = linked && transcriptionComplete;
   $('submitJobBtn').disabled = !base;
+  const note = $('noLinkNote');
+  if (note) {
+    // The note belongs to one state only: a recording or a
+    // finished transcript is on the page, but the link named no
+    // homework. An unfinished transcription needs no line here —
+    // the Transcription section already shows its state.
+    const show = !linked && (transcriptionComplete || chunks.length > 0 || !!audioSha);
+    note.hidden = !show;
+    if (show) note.textContent = NO_LINK_NOTE;
+  }
 }
 
 function loadYouTubeApi() {
@@ -1940,6 +2000,14 @@ if (cfg.worker) {
   }).catch(() => {});
 }
 setInterval(() => { void kickPow(); }, 60000);
+
+// The saved removal list is restored before anything derives
+// from it (2.8.2), so the picker, the transcript view and the
+// scrub status all reflect it exactly as if it had been typed.
+{
+  const savedList = loadScrubList();
+  if (savedList) $('scrubField').value = savedList;
+}
 
 renderConfig();
 refreshDerived();

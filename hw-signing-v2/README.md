@@ -165,6 +165,11 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   function, Node-tested.)*
 - `js/package.js` — HTML package format v2 assembly and a parse-back
   helper kept consistent with the audit app's parser. *(Pure.)*
+- `js/persist.js` — removal-list persistence (2.8.2): the scrub
+  list's text and the picker selections (keyed by recording and
+  entry, appearance ordinals only) in this browser's local
+  storage, restored on load; every function tolerates a missing
+  or throwing storage, leaving the page in-memory only. *(Pure.)*
 - `js/main.js` — page wiring and state.
 - `packages/` — legacy copies of the v1-era hosted prompt packages,
   retained in the source tree for reference. The v2 page does not
@@ -200,10 +205,12 @@ packaged.
 
 ## Privacy invariants
 
-- The scrub field is read only to scrub; it never enters any export,
-  storage, or network call. Its one other use is local: the retrieval
-  name is checked against it so a scrub word cannot reappear as a
-  stored identifier.
+- The scrub field is read to scrub, and since 2.8.2 its text is
+  kept in this browser's local storage so the list survives to the
+  next visit; it never enters any export or network call, and the
+  local copy never leaves this machine. Its one other use is local:
+  the retrieval name is checked against it so a scrub word cannot
+  reappear as a stored identifier.
 - The first network call carrying submission data is
   the job itself: scrubbed transcript, two fingerprints, package ID
   and content hash, component versions. No audio, no name, no
@@ -212,15 +219,17 @@ packaged.
   finalize call that marks a job final sends no YouTube fields —
   the link enters only the ZIP built on this machine).
 - Browser storage is the settled exception to v1's "stores nothing"
-  rule, and it holds recordings and job entries only — never the
-  scrub list, never the grades.
+  rule: it holds recordings and job entries, and — since 2.8.2 —
+  the removal list and the picker selections (keyed by recording
+  and entry, appearance ordinals only) in local storage on this
+  machine. Never the grades.
 - No duration statistics are sent: the page no longer compares
   the video's length with the recording's and reports nothing
   about either (removed in 2.6.18).
 
 ## Tests
 
-126 checks, all passing (`node tests/run-tests.mjs`): configuration
+132 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip including `ph`; scrub and canonical form;
 checksum against Node; WAV; cache-key rules
 (course/pkg excluded, model/glossary included) and stored-chunk
@@ -231,10 +240,14 @@ YouTube hash form; YouTube ID parsing for every accepted URL form;
 the retrieval code rule (at least 8 characters at creation);
 job payload build and validation, final-job
 token requirement; job API calls against a mock fetch; localStorage
-entry add/replace/remove/prune; VAPID base64url round-trip; and
+entry add/replace/remove/prune; removal-list and picker-selection
+persistence (2.8.2: save/restore round-trips, per-recording
+isolation, throwing-storage tolerance, and the guard that the
+job-creation payload carries no list text); VAPID base64url
+round-trip; and
 wiring guards over `main.js`, `index.html`, and `sw.js`, including
 the 2.4.1 guard that the status expiry is stored back into the job
-entry.
+entry and the 2.8.2 guard for the no-link note beside Send.
 
 - **Simplification (2.7.0)**: job kind is eliminated — the send
   payload carries no kind and no YouTube fields, local entries

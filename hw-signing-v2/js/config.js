@@ -14,11 +14,11 @@
 // the page never fetches it, so v1's pkgurl parameter is gone; ph
 // takes its place as the link's binding to the exact package text.
 
-// The one webapp version string (2.8.1). js/package.js derives
+// The one webapp version string (2.8.2). js/package.js derives
 // its package version from this constant; model and glossary
 // version strings live in package.js and are unchanged (they are
 // cache keys).
-export const VERSION = '2.8.1';
+export const VERSION = '2.8.2';
 
 export function parseConfig(search) {
   const q = new URLSearchParams(search || '');
