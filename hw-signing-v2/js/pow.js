@@ -1,76 +1,95 @@
-// Proof-of-work submission token (webapp 2.8.0; Worker 2.9.0).
+// Proof of work as a chain woven through the transcription
+// (webapp 2.9.0; Worker 2.10.0). This replaces the 2.8.0/2.9.0
+// single-shot token, whose seed bound the finished transcript:
+// every removal-list or picker edit changed that seed and
+// restarted the search, so a student who edited late met a wait
+// at Send. The token is eliminated entirely, not dual-accepted:
+// Worker 2.10.0 treats a submission carrying the old token
+// fields exactly like one carrying no proof (the teacher's
+// decision of 2026-11-28), so nothing of the token remains in
+// this module.
 //
-// Before a job is sent, the page searches for a nonce such that
-// the SHA-256 of "<seed>:<nonce>" has at least `bits` leading
-// zero bits, where the seed is
-// "<audio_sha256>:<transcript_sha256>:<run_id>:<bucket>" and the
-// bucket is the current 30-minute window number. The Worker
-// recomputes one hash to verify, accepts the current or previous
-// bucket, and records the token as spent. Nothing about this
-// mechanism is named or explained on the page (the student sees
-// only a short wait, if anything): the search runs in the
-// background while the student reviews the transcript.
+// The chain instead binds the transcription itself. As the
+// transcription produces each chunk (piece), the page hashes the
+// chunk's corrected (pre-scrub) text, and a solver finds one
+// small proof per chunk, chained: link i's seed is
 //
-// The bucket clock is the Worker's: the caller passes the server
-// time offset it got from the Worker's root response, and this
-// module never reads the page's clock for a bucket without it.
-// Pure — Node-tested. The search itself is chunked: it runs a
-// bounded number of hashes per call and yields between chunks,
-// so the page stays responsive; the caller drives it.
+//   "chain:<audio_sha256>:<run_id>:<i>:<chunk_text_sha256>:<prev>"
+//
+// where <prev> is link (i-1)'s resulting digest in hex, or the
+// genesis value below for link 0, and a link is a nonce whose
+// SHA-256 over "<seed>:<nonce>" has at least the per-chunk
+// difficulty in leading zero bits (the Worker serves the
+// difficulty in its root response, as it served the old one).
+//
+// Two properties follow from the seed basis. First, the seeds
+// use the pre-scrub chunk texts, so later removal-list and
+// picker edits do NOT invalidate the chain: nothing restarts
+// when the student edits, and there is no wait at Send beyond
+// finishing any last links (each link's expected work is well
+// under the time to transcribe one chunk). Second, there is no
+// time bucket in the seeds: the old design needed one because a
+// bare token could be stockpiled and replayed at leisure; a
+// chain is bound to one transcription run (the run identifier
+// is in every seed) and the Worker records the chain's final
+// digest in the same spent-token store, so a chain is
+// single-use — the run binding plus the spent record do the
+// bucket's work.
+//
+// The per-chunk difficulty is constant, so the total price
+// scales with the recording's length, like the transcription
+// itself. Calibration (2026-11-28): the synchronous SHA-256
+// below runs at 8.9e4 hashes/s in a worker on this project's
+// sandbox VM over the ~243-byte chain input; 16 bits is an
+// expected 2^16 hashes per link (~0.7 s at that rate), and a
+// typical 40-minute recording (~96 chunks) totals ~2^22.6
+// hashes — roughly the replaced token's 2^23.
+//
+// Nothing about this mechanism is named or explained on the
+// page. Pure functions — Node-tested; the worker driver and the
+// main-thread fallback live in chain.js.
 
 import { sha256Bytes, leadingZeroBits } from './sha256sync.js';
 
-export const POW_BUCKET_MS = 30 * 60 * 1000;
-// Fallback difficulty, used only when the Worker's root response
-// could not be read: the Worker's calibrated constant (Worker
-// 2.9.0). The Worker is the authority; its response wins.
-export const POW_FALLBACK_BITS = 23;
+// Fallback per-chunk difficulty, used only when the Worker's
+// root response could not be read: the Worker's calibrated
+// constant (Worker 2.10.0). The Worker is the authority; its
+// response wins.
+export const POW_CHAIN_FALLBACK_BITS = 16;
 
-export function powBucket(serverNowMs) {
-  return Math.floor(serverNowMs / POW_BUCKET_MS);
+// The chain head's <prev>: a fixed genesis value, so link 0's
+// seed has the same shape as every other link's.
+export const CHAIN_GENESIS = '0'.repeat(64);
+
+export function chainLinkSeed(audioSha256, runId, index, chunkTextSha256, prevDigestHex) {
+  return `chain:${audioSha256}:${runId || ''}:${index}:${chunkTextSha256}:${prevDigestHex}`;
 }
 
-export function powSeed(audioSha256, transcriptSha256, runId, bucket) {
-  return `${audioSha256}:${transcriptSha256}:${runId || ''}:${bucket}`;
+export function chainLinkDigest(audioSha256, runId, index, chunkTextSha256, prevDigestHex, nonce) {
+  return sha256Bytes(
+    `${chainLinkSeed(audioSha256, runId, index, chunkTextSha256, prevDigestHex)}:${nonce}`);
 }
 
-export function powDigest(audioSha256, transcriptSha256, runId, bucket, nonce) {
-  return sha256Bytes(`${powSeed(audioSha256, transcriptSha256, runId, bucket)}:${nonce}`);
+export function digestHex(digest) {
+  return [...digest].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function powMeets(digest, bits) {
+export function chainMeets(digest, bits) {
   return leadingZeroBits(digest) >= bits;
 }
 
-// One chunk of the search: try up to `budget` nonces starting at
-// `start`. Returns { nonce } when one meets the difficulty, else
-// { next } — the nonce to resume from.
-export function powSearchChunk(audioSha256, transcriptSha256, runId, bucket, bits, start, budget) {
+// One bounded slice of one link's search: try up to `budget`
+// nonces starting at `start`. Returns { nonce, digestHex } when
+// one meets the difficulty, else { next } — the nonce to resume
+// from. The caller (worker driver or fallback) drives the loop.
+export function chainSearchChunk(audioSha256, runId, index, chunkTextSha256, prevDigestHex, bits, start, budget) {
   for (let i = 0; i < budget; i++) {
     const nonce = start + i;
-    if (powMeets(powDigest(audioSha256, transcriptSha256, runId, bucket, nonce), bits)) {
-      return { nonce: String(nonce) };
+    const digest = chainLinkDigest(
+      audioSha256, runId, index, chunkTextSha256, prevDigestHex, nonce);
+    if (chainMeets(digest, bits)) {
+      return { nonce: String(nonce), digestHex: digestHex(digest) };
     }
   }
   return { next: start + budget };
-}
-
-// Solve in the background: chunked search with yields, reporting
-// progress as the fraction of the expected work done. `signal`
-// is an object the caller mutates ({ aborted: true }) to stop a
-// search whose seed has gone stale (the transcript changed, or
-// the bucket rolled over mid-search). Resolves to
-// { bucket, nonce } or null when aborted.
-export async function solvePow({ audioSha256, transcriptSha256, runId, bucket, bits, signal, onProgress }) {
-  const expected = Math.pow(2, bits);
-  let next = 0;
-  const budget = 4000;
-  while (!signal || !signal.aborted) {
-    const r = powSearchChunk(audioSha256, transcriptSha256, runId, bucket, bits, next, budget);
-    if (r.nonce !== undefined) return { bucket, nonce: r.nonce };
-    next = r.next;
-    if (onProgress) onProgress(Math.min(1, next / expected));
-    await new Promise((res) => setTimeout(res, 0));
-  }
-  return null;
 }

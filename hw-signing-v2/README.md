@@ -104,7 +104,9 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 - `js/cache.js` — IndexedDB (`hw-signing-v2`, store `recordings`,
   keyed by audio fingerprint): the WAV blob and the corrected
   **pre-scrub** chunks, cached per chunk as transcription runs, with
-  window progress for resume, and the source file name. The
+  window progress for resume, the source file name, and — since
+  2.9.0 — the proof-of-work chain's per-chunk nonces (`pow_chain`),
+  so a resumed transcription continues its chain. The
   recordings list UI shows the source file name, date, duration,
   size, state and the transcript's opening words per entry (name and
   words scrubbed with the current removal list), with Restore and
@@ -170,6 +172,25 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   entry, appearance ordinals only) in this browser's local
   storage, restored on load; every function tolerates a missing
   or throwing storage, leaving the page in-memory only. *(Pure.)*
+- `js/pow.js` — proof-of-work primitives *(pure)*: since 2.9.0 the
+  per-chunk chain — seed, digest and bounded search for one link
+  of the chain woven through the transcription (one small proof
+  per chunk, chained by the previous link's digest, over the
+  chunk's corrected pre-scrub text). The 2.8.x single-shot token
+  is eliminated on both sides (Worker 2.10.0 treats its fields
+  as no proof), and nothing of it remains here. The chain's
+  total price scales with the recording's length; the per-chunk
+  difficulty is the Worker's to serve.
+- `js/chain.js` — the chain driver (2.9.0): the chain state, the
+  one checked adoption path for solved links (worker results,
+  fallback results and cache-restored nonces all pass through
+  it), the main-thread fallback search in bounded yielded
+  slices, and the solver driver that runs a Web Worker when one
+  can be started. *(Pure apart from the worker it starts.)*
+- `js/chain-worker.js` — the chain solver as a module worker
+  (2.9.0): receives the recording's identity and each chunk's
+  text hash as chunks land, solves links strictly in order on
+  its own core, and posts each solved link back.
 - `js/main.js` — page wiring and state.
 - `packages/` — legacy copies of the v1-era hosted prompt packages,
   retained in the source tree for reference. The v2 page does not
@@ -229,7 +250,7 @@ packaged.
 
 ## Tests
 
-132 checks, all passing (`node tests/run-tests.mjs`): configuration
+139 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip including `ph`; scrub and canonical form;
 checksum against Node; WAV; cache-key rules
 (course/pkg excluded, model/glossary included) and stored-chunk
@@ -243,7 +264,11 @@ token requirement; job API calls against a mock fetch; localStorage
 entry add/replace/remove/prune; removal-list and picker-selection
 persistence (2.8.2: save/restore round-trips, per-recording
 isolation, throwing-storage tolerance, and the guard that the
-job-creation payload carries no list text); VAPID base64url
+job-creation payload carries no list text); the proof-of-work
+chain (2.9.0: construction over synthetic chunks verified against
+an independent recomputation, the pre-scrub seed basis, resume
+from a stored partial chain, the worker protocol and the
+worker-unavailable fallback, and the send-flow wait); VAPID base64url
 round-trip; and
 wiring guards over `main.js`, `index.html`, and `sw.js`, including
 the 2.4.1 guard that the status expiry is stored back into the job

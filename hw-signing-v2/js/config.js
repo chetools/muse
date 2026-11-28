@@ -18,7 +18,7 @@
 // its package version from this constant; model and glossary
 // version strings live in package.js and are unchanged (they are
 // cache keys).
-export const VERSION = '2.8.2';
+export const VERSION = '2.9.0';
 
 export function parseConfig(search) {
   const q = new URLSearchParams(search || '');

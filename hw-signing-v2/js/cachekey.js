@@ -80,6 +80,10 @@ export function resetStaleRecord(existing, { model, glossary, wavBlob, duration_
     // sends under this recording, and each expires on its own
     // recorded horizon.
     transcription_run_id: mintRunId(),
+    // The chain (2.9.0) is bound to the run and to the chunks,
+    // both of which the reset replaces: it restarts with the
+    // new run, so the stored partial chain is dropped.
+    pow_chain: null,
     wavBlob: wavBlob || existing.wavBlob || null,
     duration_s: duration_s || existing.duration_s || 0,
     source_name: source_name || existing.source_name || '',

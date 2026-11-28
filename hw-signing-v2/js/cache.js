@@ -18,7 +18,12 @@
 // sent with the job — see cachekey.js) and sent_sketches (the
 // irreversible per-package sketches of transcripts sent from this
 // recording, for the page-side near-duplicate check — see
-// sketch.js). Nothing else is stored in IndexedDB.
+// sketch.js). One more joins in 2.9.0: pow_chain, the partial
+// proof-of-work chain ({ bits, nonces } — one nonce per chunk, in
+// chunk order; see pow.js and chain.js), so an interrupted
+// transcription resumes its chain where it stopped and a restored
+// recording carries its completed chain. Deleting the record drops
+// the chain with it. Nothing else is stored in IndexedDB.
 //
 // All database access is lazy (inside the functions), so importing
 // this module outside a browser is harmless.
@@ -122,6 +127,7 @@ export async function cacheInit(audioSha256, { model, glossary, wavBlob, duratio
       complete: false,
       transcription_run_id: mintRunId(),
       sent_sketches: [],
+      pow_chain: null,
     });
   });
 }
@@ -148,6 +154,28 @@ export async function cacheWindowDone(audioSha256, windowsDone) {
       record.windows_done = windowsDone;
       store.put(record);
     }
+  });
+}
+
+// Record one solved chain link (2.9.0): the nonce for chunk
+// `index`, under the difficulty the chain is being solved at.
+// Links arrive in order; the stored form is { bits, nonces }
+// with nonces aligned by chunk index. A link stored under a
+// different difficulty than the record's is not expected (the
+// record's chain restarts when its run does); if it happens,
+// the chain restarts from this link rather than mixing
+// difficulties in one stored chain.
+export async function cachePutChainLink(audioSha256, index, nonce, bits) {
+  await withStore('readwrite', async (store) => {
+    const record = await requestToPromise(store.get(audioSha256));
+    if (!record) return;
+    let chain = record.pow_chain;
+    if (!chain || chain.bits !== bits || !Array.isArray(chain.nonces)) {
+      chain = { bits, nonces: [] };
+      record.pow_chain = chain;
+    }
+    chain.nonces[index] = String(nonce);
+    store.put(record);
   });
 }
 

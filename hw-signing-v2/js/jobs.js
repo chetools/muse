@@ -165,11 +165,15 @@ export function validateJobPayload(body) {
 // was computed, so in practice it is always present.
 // 2.8.0 (Worker 2.9.0): run_id — the per-transcription-run
 // identifier from the recording's cache record — is sent when
-// known, and the proof-of-work fields (pow_bucket, pow_nonce)
-// when a token has been solved for this exact submission. Both
-// are optional in the body: the Worker treats a missing run_id
-// as the empty identifier and, in its permissive phase, a missing
-// token as no token presented.
+// known. 2.9.0 (Worker 2.10.0): the proof of work rides as
+// pow_chain — { count, chunk_hashes, nonces }, the per-chunk
+// proof the page built during the transcription (see pow.js) —
+// when a completed chain is presented. Both are optional in the
+// body: the Worker treats a missing run_id as the empty
+// identifier and, in its permissive phase, a missing proof as
+// no proof presented. (The 2.8.x single-shot token fields are
+// no longer sent, and Worker 2.10.0 no longer accepts them
+// either — the old proof is eliminated on both sides.)
 export function buildJobPayload(state) {
   const body = {
     pkg: state.pkg,
@@ -182,10 +186,14 @@ export function buildJobPayload(state) {
   };
   if (state.chromaprint) body.chromaprint = state.chromaprint;
   if (state.runId) body.run_id = state.runId;
-  if (state.pow && Number.isInteger(state.pow.bucket) &&
-      typeof state.pow.nonce === 'string') {
-    body.pow_bucket = state.pow.bucket;
-    body.pow_nonce = state.pow.nonce;
+  if (state.powChain && Number.isInteger(state.powChain.count) &&
+      Array.isArray(state.powChain.chunk_hashes) &&
+      Array.isArray(state.powChain.nonces)) {
+    body.pow_chain = {
+      count: state.powChain.count,
+      chunk_hashes: [...state.powChain.chunk_hashes],
+      nonces: [...state.powChain.nonces],
+    };
   }
   return body;
 }

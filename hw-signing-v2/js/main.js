@@ -14,7 +14,9 @@
 //   audio, no name, and no YouTube link;
 // - browser storage holds only what the design settles: IndexedDB
 //   caches the student's own recordings and corrected transcripts
-//   (pre-scrub) on this machine, and localStorage holds the job
+//   (pre-scrub) on this machine — and, since 2.9.0, the
+//   proof-of-work chain's nonces in the same recording record —
+//   and localStorage holds the job
 //   entries (retrieval code, labels, expiry, the
 //   YouTube link and its title kept locally for ZIP creation, and
 //   — since 2.8.0 — the removal selections made at send time,
@@ -34,7 +36,12 @@ import {
 import {
   buildSketch, buildWordCounts, addedWords, ADDED_WORDS_THRESHOLD,
 } from './sketch.js';
-import { solvePow, powBucket, POW_FALLBACK_BITS } from './pow.js';
+import { POW_CHAIN_FALLBACK_BITS, digestHex } from './pow.js';
+import { sha256Bytes } from './sha256sync.js';
+import {
+  createChainState, chainAddChunk, chainTryAdoptNonce,
+  chainSolvedCount, chainProof, chainWhenComplete, startChainSolver,
+} from './chain.js';
 import {
   VERSIONS, AUDIO_FILE_NAME, FINGERPRINT_FILE_NAME, assemblePackage,
   chunksFromCanonical, formatTranscriptTimestamp,
@@ -43,7 +50,7 @@ import { encodeWavPcm16, pcmFromWavBytes, decodeFileTo16kMono, SAMPLE_RATE } fro
 import { loadModel, transcribePcm, FILE_WINDOW_S } from './transcribe.js';
 import {
   cacheGet, cacheInit, cachePutChunk, cacheWindowDone, cacheComplete,
-  cacheList, cacheDelete,
+  cacheList, cacheDelete, cachePutChainLink,
   cacheAddSentSketch, cacheSentSketches, cacheExtendSketchExpiry,
 } from './cache.js';
 import { fromCachedChunk } from './cachekey.js';
@@ -105,15 +112,16 @@ function storePickerSelections() {
   if (!audioSha) return;
   savePickerSelections(undefined, audioSha, pickerSelections);
 }
-// Submission preparation state (2.8.0; see pow.js): solved tokens
-// by bucket, the in-flight search, the Worker's difficulty, and
-// the offset between the Worker's clock and this machine's (the
-// bucket is reckoned on the Worker's time, from its root
-// response). None of this is named or explained on the page.
-const powTokens = new Map(); // bucket -> { key, nonce }
-let powSolving = null;       // { key, bucket, signal }
-let powBits = POW_FALLBACK_BITS;
-let serverOffsetMs = 0;
+// Proof-of-work chain state (2.9.0; see pow.js and chain.js):
+// the chain being built for the loaded recording's
+// transcription run, its solver driver, and the per-chunk
+// difficulty (the Worker's served value once its root response
+// is read; the calibrated fallback until then). The chain is
+// built while the transcription runs, so nothing about it is
+// named or explained on the page.
+let chainState = null;
+let chainSolver = null;
+let chainBits = POW_CHAIN_FALLBACK_BITS;
 let chromaprint = null;     // raw Chromaprint as base64 (2.6.0), or null when none computed
 let chromaprintSha = null;  // audioSha the stored fingerprint was computed from
 let chromaprintPending = null; // in-flight computeFingerprint promise, if any
@@ -288,73 +296,78 @@ function currentRemovalSelections() {
 }
 
 // ------------------------------------------------------------
-// Background submission preparation (2.8.0; pow.js). The search
-// runs while the student reviews the transcript, keyed to the
-// exact transcript, recording and run; a change to any of them
-// abandons the search and starts another. Nothing about the
-// mechanism is named on the page.
+// The proof-of-work chain (2.9.0; pow.js, chain.js). The chain
+// is woven through the transcription: as each chunk lands, its
+// corrected (pre-scrub) text is hashed and the solver — on its
+// own core, or in yielded slices of this thread when no worker
+// can be started — finds that chunk's link. Solved nonces are
+// stored in the recording's cache record, so an interrupted
+// transcription resumes its chain and a restored recording
+// carries its completed chain. Removal-list and picker edits
+// never touch the chain (its seeds are the pre-scrub texts), so
+// nothing restarts when the student edits, and Send waits only
+// for any last links still landing. Nothing about the mechanism
+// is named on the page.
 
-function powKey(tSha) {
-  return audioSha + '|' + tSha + '|' + (transcriptionRunId || '');
+// A chunk's text hash: the SHA-256 of its corrected text, the
+// seed material of its chain link. Synchronous — chunk texts
+// are small, and a synchronous hash keeps the feed order exact.
+function chunkTextSha(corrected) {
+  return digestHex(sha256Bytes(String(corrected || '')));
 }
 
-async function kickPow() {
-  if (!cfg.worker || !audioSha || !transcriptionComplete || !chunks.length) return;
-  const transcript = canonical();
-  if (!transcript) return;
-  const tSha = await sha256Hex(transcript);
-  const key = powKey(tSha);
-  const bucket = powBucket(Date.now() + serverOffsetMs);
-  const have = powTokens.get(bucket);
-  if (have && have.key === key) return;
-  if (powSolving && powSolving.key === key && powSolving.bucket === bucket) return;
-  if (powSolving) powSolving.signal.aborted = true;
-  const signal = { aborted: false };
-  powSolving = { key, bucket, signal };
-  const res = await solvePow({
-    audioSha256: audioSha, transcriptSha256: tSha,
-    runId: transcriptionRunId || '', bucket, bits: powBits, signal,
+// Stop the current chain's solver, if any.
+function stopChain() {
+  if (chainSolver) { chainSolver.stop(); chainSolver = null; }
+}
+
+// Begin (or rebuild) the chain for the recording now loaded,
+// from its stored partial chain (the record's pow_chain, or
+// null). The stored nonces are adopted into a fresh state
+// first, in order, each through the checked path: adoption
+// stops at the first nonce that no longer verifies (the
+// difficulty was raised, or the chunks changed under it), and
+// that link and everything after it are solved afresh. The
+// solver then stands synced to the adopted prefix, and every
+// chunk not yet solved is fed to it.
+function startChain(storedChain) {
+  stopChain();
+  chainState = null;
+  if (!audioSha || !transcriptionRunId) return;
+  const sha = audioSha;
+  const state = createChainState(sha, transcriptionRunId, chainBits);
+  const stored = storedChain && Array.isArray(storedChain.nonces)
+    ? storedChain.nonces : [];
+  let adopting = true;
+  chunks.forEach((item, i) => {
+    chainAddChunk(state, i, chunkTextSha(item.corrected));
+    if (adopting && stored[i] != null) {
+      adopting = chainTryAdoptNonce(state, i, stored[i]);
+    } else if (stored[i] == null) {
+      adopting = false;
+    }
   });
-  if (powSolving && powSolving.signal === signal) powSolving = null;
-  if (res && !signal.aborted) {
-    powTokens.set(bucket, { key, nonce: res.nonce });
-    const nowBucket = powBucket(Date.now() + serverOffsetMs);
-    for (const b of powTokens.keys()) {
-      if (b < nowBucket - 1) powTokens.delete(b);
-    }
+  chainState = state;
+  chainSolver = startChainSolver(state, {
+    onLink: (index, nonce) => {
+      if (chainState !== state) return;
+      cachePutChainLink(sha, index, nonce, state.bits).catch(() => {});
+    },
+  });
+  const solved = chainSolvedCount(state);
+  for (let i = 0; i < solved; i++) {
+    chainSolver.adoptStored(i, state.nonces[i]);
   }
+  chunks.forEach((item, i) => {
+    if (i >= solved) chainSolver.feed(i, chunkTextSha(item.corrected));
+  });
 }
 
-// The solved token for this exact submission: the current
-// bucket's, or the previous bucket's when the search finished
-// just before the bucket turned (the Worker accepts both, so a
-// completed token is submitted, never discarded). Waits — with
-// the plain status line beside the Send button — for a search
-// already running; returns null when none arrives in time, and
-// the send then proceeds without one.
-async function awaitPowToken(tSha) {
-  const key = powKey(tSha);
-  const pick = () => {
-    const bucket = powBucket(Date.now() + serverOffsetMs);
-    for (const b of [bucket, bucket - 1]) {
-      const t = powTokens.get(b);
-      if (t && t.key === key) return { bucket: b, nonce: t.nonce };
-    }
-    return null;
-  };
-  let token = pick();
-  if (token) return token;
-  void kickPow();
-  const deadline = Date.now() + 120000;
-  while (Date.now() < deadline) {
-    $('jobStatus').textContent =
-      'Preparing your submission — this takes a short while…';
-    await new Promise((r) => setTimeout(r, 300));
-    token = pick();
-    if (token) return token;
-    if (!powSolving) void kickPow();
-  }
-  return null;
+// Offer the chunk that just landed (its index in the page's
+// chunk order) to the chain's solver.
+function feedChainChunk(index, item) {
+  if (!chainSolver || !chainState) return;
+  chainSolver.feed(index, chunkTextSha(item.corrected));
 }
 function canonical() { return canonicalTranscript(scrubbed()); }
 // There is no Practice/Final choice anywhere in the page, and
@@ -507,6 +520,7 @@ async function adoptCacheRecord(record, note) {
   }
   durationS = record.duration_s || (wavBytes ? (wavBytes.length - 44) / 2 / SAMPLE_RATE : 0);
   transcriptionComplete = !!record.complete;
+  startChain(record.pow_chain || null);
   $('mediaStatus').textContent = note;
   setAudioMeta();
   refreshDerived();
@@ -527,6 +541,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
   chunks = []; windowsDoneBase = 0;
   transcriptionComplete = false;
   transcriptionRunId = null;
+  stopChain(); chainState = null;
   updateRunEnabled();
   if (!file) { $('mediaStatus').textContent = 'No file chosen.'; return; }
   sourceName = file.name;
@@ -565,12 +580,16 @@ $('mediaFile').addEventListener('change', async (ev) => {
       adoptPickerSelections();
       chunks = record.chunks.map(fromCachedChunk);
       windowsDoneBase = record.windows_done || 0;
+      startChain(record.pow_chain || null);
       $('mediaStatus').textContent =
         'Audio extracted on this device. An earlier run of this recording stopped partway; ' +
         'transcription will resume from ' + Math.round(100 * Math.min(1, (windowsDoneBase * FILE_WINDOW_S) / durationS)) + ' %.';
       updateRunEnabled();
       refreshDerived();
     } else {
+      // A fresh recording: the chain stands ready, empty, and
+      // its links land as the transcription produces chunks.
+      startChain(null);
       $('mediaStatus').textContent = 'Audio extracted on this device.';
       updateRunEnabled();
       refreshDerived();
@@ -675,6 +694,7 @@ function renderCacheRows(list) {
         chunks = []; windowsDoneBase = 0;
         transcriptionComplete = false;
         transcriptionRunId = null;
+        stopChain(); chainState = null;
               $('mediaStatus').textContent = 'Recording deleted from this computer.';
         setAudioMeta();
         updateRunEnabled();
@@ -734,6 +754,7 @@ $('runBtn').addEventListener('click', async () => {
       onChunk: (item, progress) => {
         chunks.push(item);
         if (audioSha) cachePutChunk(audioSha, item).catch(() => {});
+        feedChainChunk(chunks.length - 1, item);
         const s = scrubChunks([item], scrubWords())[0];
         $('liveRaw').textContent = s.raw;
         $('liveCorrected').textContent = s.text;
@@ -768,7 +789,6 @@ $('runBtn').addEventListener('click', async () => {
 // --- Derived views: transcript, review list, job gating ---
 function refreshDerived() {
   renderPicker();
-  void kickPow();
   const sc = scrubbed();
   if (sc.length) {
     $('transcriptBox').textContent = sc
@@ -1199,11 +1219,20 @@ $('submitJobBtn').addEventListener('click', async () => {
         'so it cannot be sent. Choose the recording file again, ' +
         'then send once it has been read.');
     }
-    // The background preparation (pow.js) has normally finished
-    // while the student reviewed the transcript; wait for it if
-    // it has not. The wait is the plain status line beside the
-    // button; nothing about the mechanism is named.
-    const pow = await awaitPowToken(transcriptSha);
+    // The chain (pow.js) was built while the transcription
+    // ran, so it is normally complete before the student has
+    // finished reviewing; if its last links are still landing,
+    // wait for them here. The wait is the plain status line
+    // beside the button; nothing about the mechanism is named,
+    // and there is no deadline — the remaining links are
+    // seconds of work, and a send without the chain is not
+    // substituted after a wait, as the old design allowed.
+    let powChain = chainState ? chainProof(chainState) : null;
+    if (!powChain && chainState && chunks.length) {
+      $('jobStatus').textContent =
+        'Preparing your submission — this takes a short while…';
+      powChain = await chainWhenComplete(chainState, chunks.length);
+    }
     const payload = buildJobPayload({
       pkg: cfg.pkg,
       pkgContentSha256: cfg.ph,
@@ -1214,7 +1243,7 @@ $('submitJobBtn').addEventListener('click', async () => {
       versions: VERSIONS,
       retrievalCode: generateRetrievalToken(),
       runId: transcriptionRunId,
-      pow,
+      powChain,
     });
     const check = validateJobPayload(payload);
     if (!check.ok) throw new Error(check.reason);
@@ -1982,24 +2011,18 @@ async function refreshJobs() {
 }
 setInterval(refreshJobs, 5000);
 
-// Background preparation upkeep (2.8.0): read the Worker's clock
-// and difficulty once at load (the bucket is reckoned on the
-// Worker's time), and re-check the preparation every minute so
-// a bucket that turns while the page sits open starts the next
-// search without waiting for an edit. A failed read leaves the
-// fallback difficulty and this machine's clock, and the send
-// path still waits for a search at the click.
+// The chain's difficulty (2.9.0): read the Worker's served
+// per-chunk value once at load. A failed read leaves the
+// calibrated fallback, which is the Worker's own constant; a
+// chain already building keeps the difficulty it started at,
+// and a chain built later takes the served value.
 if (cfg.worker) {
   fetchWorkerInfo(cfg.worker).then((info) => {
-    if (info && info.pow && Number.isInteger(info.pow.difficulty_bits)) {
-      powBits = info.pow.difficulty_bits;
+    if (info && info.pow && Number.isInteger(info.pow.chain_difficulty_bits)) {
+      chainBits = info.pow.chain_difficulty_bits;
     }
-    const t = info && Date.parse(info.server_time || '');
-    if (!Number.isNaN(t)) serverOffsetMs = t - Date.now();
-    void kickPow();
   }).catch(() => {});
 }
-setInterval(() => { void kickPow(); }, 60000);
 
 // The saved removal list is restored before anything derives
 // from it (2.8.2), so the picker, the transcript view and the
