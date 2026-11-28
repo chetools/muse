@@ -5,7 +5,7 @@
 // Privacy invariants held here:
 // - the scrub field's contents are read only to scrub, and never enter
 //   any export, storage, or network call;
-// - nothing leaves the machine before the step-5 confirmation: the
+// - nothing leaves the machine before the step-4 confirmation: the
 //   job is the first network call carrying submission data, and it
 //   carries the scrubbed transcript, fingerprints and versions — no
 //   audio, no name, and no YouTube link;
@@ -23,7 +23,7 @@ import { parseConfig, buildConfigLink } from './config.js';
 import { sha256Hex } from './hash.js';
 import {
   parseScrubWords, scrubChunks, scrubChunksSelective, scrubMetadata,
-  canonicalTranscript, findSuspects, formatDuration,
+  canonicalTranscript, formatDuration,
   entryAppearances, PICKER_THRESHOLD,
 } from './transcript.js';
 import {
@@ -36,7 +36,6 @@ import {
 } from './package.js';
 import { encodeWavPcm16, pcmFromWavBytes, decodeFileTo16kMono, SAMPLE_RATE } from './media.js';
 import { loadModel, transcribePcm, FILE_WINDOW_S } from './transcribe.js';
-import { buildVocabulary } from './vocab.js';
 import {
   cacheGet, cacheInit, cachePutChunk, cacheWindowDone, cacheComplete,
   cacheList, cacheDelete,
@@ -85,7 +84,6 @@ const powTokens = new Map(); // bucket -> { key, nonce }
 let powSolving = null;       // { key, bucket, signal }
 let powBits = POW_FALLBACK_BITS;
 let serverOffsetMs = 0;
-let vocabulary = null;
 let chromaprint = null;     // raw Chromaprint as base64 (2.6.0), or null when none computed
 let chromaprintSha = null;  // audioSha the stored fingerprint was computed from
 let chromaprintPending = null; // in-flight computeFingerprint promise, if any
@@ -158,10 +156,11 @@ function clearError() {
 
 function scrubWords() { return parseScrubWords($('scrubField').value); }
 
-// A2 (2.8.0): a removal entry that appears more than
-// PICKER_THRESHOLD times in the corrected transcript is applied
-// selectively — only the appearances the student picked are
-// removed (see renderPicker). Returns entry -> appearances.
+// A2 (2.8.0; threshold 1 since 2.8.1): a removal entry that
+// appears more than PICKER_THRESHOLD times in the corrected
+// transcript is applied selectively — only the appearances the
+// student picked are removed (see renderPicker). Returns
+// entry -> appearances.
 function pickerEntries() {
   const out = new Map();
   if (!chunks.length) return out;
@@ -196,7 +195,7 @@ function scrubbed() {
 }
 
 // The picker itself, under the removal list: one block per
-// frequently-appearing entry, offering the first three and last
+// repeated entry, offering the first three and last
 // two appearances with their surrounding words. Rebuilt only
 // when the offered set changes, so toggling a choice never
 // rebuilds the block being clicked.
@@ -228,7 +227,7 @@ function renderPicker() {
         const set = new Set(pickerRemovedOrdinals(entry));
         if (cb.checked) set.add(ord); else set.delete(ord);
         pickerSelections.set(entry, set);
-        refreshDerived({ keepSuspects: true });
+        refreshDerived();
       });
       label.append(cb, document.createTextNode(' …' + apps[ord].phrase + '…'));
       wrap.append(label);
@@ -651,14 +650,12 @@ function renderCacheRows(list) {
 }
 
 // --- Scrub field: re-derive the scrubbed views when it changes ---
-// Per keystroke (2.7.0) only the scrubbed views re-derive: the
-// suspected-identifier scan does NOT run here — it runs at send
-// time and on demand through refreshDerived's other callers —
-// and the recordings list re-renders from the in-memory list,
-// with no IndexedDB re-read.
+// Per keystroke (2.7.0) only the scrubbed views re-derive, and
+// the recordings list re-renders from the in-memory list, with
+// no IndexedDB re-read.
 $('scrubField').addEventListener('input', () => {
   setAudioMeta();
-  refreshDerived({ keepSuspects: true });
+  refreshDerived();
   renderCacheRows(cacheListMemory);
 });
 
@@ -727,7 +724,7 @@ $('runBtn').addEventListener('click', async () => {
 });
 
 // --- Derived views: transcript, review list, job gating ---
-function refreshDerived(opts) {
+function refreshDerived() {
   renderPicker();
   void kickPow();
   const sc = scrubbed();
@@ -742,22 +739,7 @@ function refreshDerived(opts) {
   } else {
     $('transcriptBox').textContent = 'Your transcript will appear here.';
   }
-  if (!opts || !opts.keepSuspects) renderSuspects(sc);
   updateJobEnabled();
-}
-
-function renderSuspects(sc) {
-  const box = $('suspectsBox');
-  if (!sc.length) { box.textContent = 'No transcript yet.'; return; }
-  if (!vocabulary) vocabulary = buildVocabulary();
-  const suspects = findSuspects(sc, vocabulary.vocab, vocabulary.wordlist);
-  if (!suspects.length) {
-    box.textContent = 'No suspected identifiers found.';
-    return;
-  }
-  box.textContent = suspects
-    .map((s) => '“' + s.word + '” ×' + s.count + ' — ' + s.reason)
-    .join('\n');
 }
 
 // --- Job section ---
@@ -1119,9 +1101,6 @@ $('submitJobBtn').addEventListener('click', async () => {
   $('submitJobBtn').disabled = true;
   $('jobStatus').textContent = 'Preparing…';
   try {
-    // The suspected-identifier scan runs at send time (2.7.0),
-    // not per scrub-field keystroke.
-    renderSuspects(scrubbed());
     const transcript = canonical();
     const transcriptSha = await sha256Hex(transcript);
     // Component A (2.8.0): refuse a send that adds fewer than

@@ -19,10 +19,8 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 2. The fingerprint is checked against the IndexedDB recordings cache.
    A complete hit restores the transcript with no transcription; a
    partial hit resumes transcription from the last completed window.
-3. The student scrubs identifying words and reviews the suspected
-   identifiers (the scan runs at send time and on demand, not per
-   scrub-field keystroke). Nothing leaves the machine before the
-   send.
+3. The student scrubs identifying words and reviews the scrubbed
+   transcript. Nothing leaves the machine before the send.
 4. The student sends a grading job; the page generates the job's
    retrieval code itself and keeps it in the job's entry. Sending
    takes no YouTube link, sends no job kind, and there is no
@@ -97,9 +95,8 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
   (Web Audio decode + resample).
 - `js/transcribe.js` — browser adapter around the base pipeline, as
   v1, plus a `startWindow` option used by cache resume.
-- `js/transcript.js` — scrub words, canonical transcript, suspected
-  identifiers, formatting. Unchanged from v1. *(Pure.)*
-- `js/vocab.js` — vocabulary sets for identifier detection. Unchanged.
+- `js/transcript.js` — scrub words, canonical transcript,
+  formatting. Unchanged from v1. *(Pure.)*
 - `js/cachekey.js` — the cache key rules as pure functions: the key is
   (audio fingerprint, model version, glossary version); course,
   assignment and package are not in the key. Also the stored-chunk
@@ -207,8 +204,7 @@ packaged.
   storage, or network call. Its one other use is local: the retrieval
   name is checked against it so a scrub word cannot reappear as a
   stored identifier.
-- The identifier confirmation gates the job section, as it gated
-  export in v1. The first network call carrying submission data is
+- The first network call carrying submission data is
   the job itself: scrubbed transcript, two fingerprints, package ID
   and content hash, component versions. No audio, no name, no
   YouTube link (the link check is a separate Worker call that stores
@@ -224,9 +220,9 @@ packaged.
 
 ## Tests
 
-116 checks, all passing (`node tests/run-tests.mjs`): configuration
+126 checks, all passing (`node tests/run-tests.mjs`): configuration
 parse/build round-trip including `ph`; scrub and canonical form;
-checksum against Node; suspected identifiers; WAV; cache-key rules
+checksum against Node; WAV; cache-key rules
 (course/pkg excluded, model/glossary included) and stored-chunk
 round-trip; ZIP byte determinism, fixed timestamp, and an unzip
 round-trip with CRC verification; HTML v2 build/parse round-trip of

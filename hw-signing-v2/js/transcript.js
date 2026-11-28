@@ -1,4 +1,4 @@
-// Scrubbing, canonical transcript, and suspected-identifier detection.
+// Scrubbing and the canonical transcript.
 // Pure functions. A chunk is { start: seconds, raw: string, corrected: string }
 // where corrected is the glossary-corrected text before scrubbing.
 
@@ -57,7 +57,7 @@ export function scrubText(text, words) {
     // or commas — so "Ann-Marie Lee" removes "Ann Marie Lee" and
     // "Ann, Marie Lee" as well as the exact form. (A name spoken as
     // one joined word, e.g. "CarlosCo", still cannot be matched
-    // safely and is left to the identifier review in section 4.)
+    // safely and is left as it stands.)
     const re = entryRegex(w);
     if (!re) continue;
     out = out.replace(re, () => { removed += 1; return ''; });
@@ -67,14 +67,18 @@ export function scrubText(text, words) {
 }
 
 // ------------------------------------------------- A2 (2.8.0)
-// Selective removal for a frequently-appearing entry. When an
-// entry appears more than PICKER_THRESHOLD times in the corrected
-// transcript, the student picks which appearances to remove (the
-// picker in main.js); only those are removed. Appearances are
+// Selective removal for an entry that appears more than once.
+// When an entry appears more than PICKER_THRESHOLD times in the
+// corrected transcript, the student picks which appearances to
+// remove (the picker in main.js); only those are removed. An
+// entry that appears exactly once is removed in full — there is
+// only the one. (Threshold lowered from 5 to 1 in 2.8.1: a name
+// is rarely said more than once, and a second appearance is
+// already a choice the student should make.) Appearances are
 // counted with the same matching the removal uses, per chunk,
 // in chunk order — the ordinal of an appearance is its position
 // in that sequence across the whole transcript.
-export const PICKER_THRESHOLD = 5;
+export const PICKER_THRESHOLD = 1;
 
 // The appearances of one entry across the chunks' corrected
 // texts: [{ ordinal, phrase }] in order, where phrase is a short
@@ -122,6 +126,11 @@ export function scrubTextSelective(text, word, removeOrdinals) {
 // appearances are removed at the same local positions — the raw
 // and corrected texts of a chunk carry the same words in the
 // same order, the glossary pass having changed spellings only.
+// The output chunk carries the selectively-scrubbed corrected
+// text in its `corrected` field as well as in `text` (2.8.1), so
+// a following scrubChunks pass — which builds its text from
+// `corrected` — works on this pass's output; before 2.8.1 the
+// field was absent and the composed result came out blank.
 export function scrubChunksSelective(chunks, word, removeOrdinals) {
   let base = 0;
   return (chunks || []).map((c) => {
@@ -132,10 +141,12 @@ export function scrubChunksSelective(chunks, word, removeOrdinals) {
       if (removeOrdinals && removeOrdinals.has(base + i)) local.add(i);
     }
     base += count;
+    const corrected = scrubTextSelective(c.corrected, word, local).text;
     return {
       start: c.start,
       raw: scrubTextSelective(c.raw, word, local).text,
-      text: scrubTextSelective(c.corrected, word, local).text,
+      corrected,
+      text: corrected,
     };
   });
 }
@@ -190,40 +201,6 @@ export function legacyCanonicalTranscript(scrubbedChunks) {
     .map((c) => String(c.text || '').replace(/\s+/g, ' ').trim())
     .filter((line) => line.length > 0)
     .join('\n');
-}
-
-const EMAIL_RE = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
-const WORD_RE = /[A-Za-z][A-Za-z'’-]*[A-Za-z]|[A-Za-z]/g;
-
-// Suspected identifiers in scrubbed text, for the student review screen:
-// email-like patterns, and capitalised words that are not sentence-initial
-// and appear in neither the glossary vocabulary nor the English wordlist.
-// Returns [{ word, count, reason }] sorted by count, then alphabetically.
-export function findSuspects(scrubbedChunks, vocabSet, wordlistSet) {
-  const found = new Map();
-  const add = (word, reason) => {
-    const key = word.toLowerCase() + '|' + reason;
-    const prev = found.get(key);
-    if (prev) prev.count += 1;
-    else found.set(key, { word, count: 1, reason });
-  };
-  for (const chunk of scrubbedChunks || []) {
-    const text = String(chunk.text || '');
-    for (const m of text.matchAll(EMAIL_RE)) add(m[0], 'email-like pattern');
-    for (const m of text.matchAll(WORD_RE)) {
-      const word = m[0];
-      if (!/^[A-Z]/.test(word)) continue;
-      const before = text.slice(0, m.index).replace(/\s+$/, '');
-      const sentenceInitial = before === '' || /[.!?…]["'”’)\]]*$/.test(before);
-      if (sentenceInitial) continue;
-      const lower = word.toLowerCase().replace(/['’]s$/, '');
-      if (vocabSet && vocabSet.has(lower)) continue;
-      if (wordlistSet && wordlistSet.has(lower)) continue;
-      add(word, 'capitalised word not in the glossary');
-    }
-  }
-  return [...found.values()]
-    .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
 }
 
 // [mm:ss] or [h:mm:ss] plain-text timestamp, as on the base page.
