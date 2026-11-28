@@ -25,6 +25,37 @@ export function cacheHit(record, model, glossary) {
     record.glossary === glossary;
 }
 
+// A transcription run identifier (2.8.0): minted when a record's
+// transcription state is created or reset, and kept across
+// resumes of the same run (a resumed run is the same run). It is
+// sent with the job (Worker 2.9.0) so a byte-identical
+// resubmission of the same run is recognised as a replay, while
+// a genuine re-transcription — a new record, or a record reset
+// by a model or glossary change — carries a new identifier and
+// is a new submission. 16 random bytes as hex (32 characters).
+export function mintRunId(randomBytes) {
+  const draw = randomBytes || ((n) => {
+    const buf = new Uint8Array(n);
+    globalThis.crypto.getRandomValues(buf);
+    return buf;
+  });
+  return [...draw(16)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// The live sketches of a record (2.8.0): sent-transcript sketches
+// whose stored expiry is still ahead — the Worker's horizons
+// (7 days ungraded, 180 days graded) as recorded at send time or
+// last extended when the job was seen graded. An unparseable
+// expiry keeps the sketch, matching pruneExpiredEntries'
+// convention in jobs.js. Pure.
+export function liveSketches(sketches, nowMs) {
+  const now = typeof nowMs === 'number' ? nowMs : Date.now();
+  return (sketches || []).filter((s) => {
+    const t = Date.parse((s && s.expires_at) || '');
+    return Number.isNaN(t) || t > now;
+  });
+}
+
 // The reset for a record made by a different model or glossary
 // version (2.6.15): its chunks can never be served (cacheHit
 // refuses them), and a fresh transcription run must not append to
@@ -44,6 +75,11 @@ export function resetStaleRecord(existing, { model, glossary, wavBlob, duration_
     chunks: [],
     windows_done: 0,
     complete: false,
+    // The reset starts a new transcription run (2.8.0). The
+    // sent_sketches are kept (the spread above): they belong to
+    // sends under this recording, and each expires on its own
+    // recorded horizon.
+    transcription_run_id: mintRunId(),
     wavBlob: wavBlob || existing.wavBlob || null,
     duration_s: duration_s || existing.duration_s || 0,
     source_name: source_name || existing.source_name || '',

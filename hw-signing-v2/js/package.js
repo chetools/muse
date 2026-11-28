@@ -107,7 +107,14 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 // { youtubeLink, audioFileName, durationS, chunks: [{start, text}]
 //   (scrubbed chunk texts), bundle: <Worker result bundle>,
 //   fingerprintSha256?: the bundle's signed chromaprint_sha256 —
-//   fingerprint form only (see the markup contract above) }
+//   fingerprint form only (see the markup contract above),
+//   injectionFlags?: the grader's injection flags for the job, as
+//   returned at the top level of the status response (Worker
+//   2.9.0) — written as one more verification line, "Injection
+//   flags", holding the flags as JSON. The audit app reads the
+//   flags from this line; it does not scan the transcript itself.
+//   The line is omitted entirely when no flags are supplied, so
+//   packages for jobs graded before Worker 2.9.0 are unchanged. }
 // Audio is never embedded.
 export function assemblePackage(input) {
   const bundle = input.bundle || {};
@@ -175,6 +182,10 @@ export function assemblePackage(input) {
     '<dt>YouTube video SHA-256</dt><dd>' + escapeHtml(ytVideoSha) + '</dd>\n' +
     '<dt>Graded at</dt><dd>' + escapeHtml(bundle.t || '') + '</dd>\n' +
     '<dt>Grade receipt</dt><dd>' + escapeHtml(bundle.receipt || '') + '</dd>\n' +
+    (Array.isArray(input.injectionFlags)
+      ? '<dt>Injection flags</dt><dd>' +
+        escapeHtml(JSON.stringify(input.injectionFlags)) + '</dd>\n'
+      : '') +
     '</dl>\n</section>\n</body>\n</html>\n';
 }
 

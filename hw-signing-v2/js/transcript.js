@@ -19,6 +19,30 @@ function escapeRegExp(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// The match pattern for one removal entry (see scrubText for the
+// separator-variant rule), or null for an empty entry.
+function entryPattern(w) {
+  const pattern = String(w).split(/[\s-]+/).filter(Boolean)
+    .map(escapeRegExp).join('(?:[,\\s-]+)');
+  return pattern || null;
+}
+
+function entryRegex(w) {
+  const pattern = entryPattern(w);
+  return pattern
+    ? new RegExp('(?<![A-Za-z0-9])' + pattern + '(?![A-Za-z0-9])', 'gi')
+    : null;
+}
+
+// The spacing repair applied after any removal.
+function repairSpacing(out) {
+  return out
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([(\[])\s+/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Remove every occurrence of each scrub word (longest first, case-insensitive,
 // at letter/digit boundaries like the correction pass), then repair the
 // spacing the removal leaves behind. Returns { text, removed }.
@@ -34,21 +58,86 @@ export function scrubText(text, words) {
     // "Ann, Marie Lee" as well as the exact form. (A name spoken as
     // one joined word, e.g. "CarlosCo", still cannot be matched
     // safely and is left to the identifier review in section 4.)
-    const pattern = String(w).split(/[\s-]+/).filter(Boolean)
-      .map(escapeRegExp).join('(?:[,\\s-]+)');
-    if (!pattern) continue;
-    const re = new RegExp(
-      '(?<![A-Za-z0-9])' + pattern + '(?![A-Za-z0-9])', 'gi');
+    const re = entryRegex(w);
+    if (!re) continue;
     out = out.replace(re, () => { removed += 1; return ''; });
   }
-  if (removed) {
-    out = out
-      .replace(/\s+([,.;:!?])/g, '$1')
-      .replace(/([(\[])\s+/g, '$1')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
+  if (removed) out = repairSpacing(out);
   return { text: out, removed };
+}
+
+// ------------------------------------------------- A2 (2.8.0)
+// Selective removal for a frequently-appearing entry. When an
+// entry appears more than PICKER_THRESHOLD times in the corrected
+// transcript, the student picks which appearances to remove (the
+// picker in main.js); only those are removed. Appearances are
+// counted with the same matching the removal uses, per chunk,
+// in chunk order — the ordinal of an appearance is its position
+// in that sequence across the whole transcript.
+export const PICKER_THRESHOLD = 5;
+
+// The appearances of one entry across the chunks' corrected
+// texts: [{ ordinal, phrase }] in order, where phrase is a short
+// window of surrounding text from the appearance's own chunk.
+export function entryAppearances(chunks, word) {
+  const out = [];
+  for (const c of chunks || []) {
+    const re = entryRegex(word);
+    if (!re) break;
+    const text = String(c.corrected || '');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const start = m.index;
+      const end = start + m[0].length;
+      const phrase = text
+        .slice(Math.max(0, start - 28), Math.min(text.length, end + 28))
+        .replace(/\s+/g, ' ')
+        .trim();
+      out.push({ ordinal: out.length, phrase });
+      if (m[0].length === 0) re.lastIndex += 1;
+    }
+  }
+  return out;
+}
+
+// Remove only the selected appearances of one entry from one
+// text; ordinals are local to this text. Returns { text, removed }.
+export function scrubTextSelective(text, word, removeOrdinals) {
+  const re = entryRegex(word);
+  if (!re || !removeOrdinals || removeOrdinals.size === 0) {
+    return { text: String(text || ''), removed: 0 };
+  }
+  let ord = 0;
+  let removed = 0;
+  const out = String(text || '').replace(re, (m) => {
+    if (removeOrdinals.has(ord++)) { removed += 1; return ''; }
+    return m;
+  });
+  return { text: removed ? repairSpacing(out) : out, removed };
+}
+
+// scrubChunks with one entry applied selectively. The ordinals
+// are global across the chunks' corrected texts (the sequence
+// entryAppearances returns); within a chunk, the raw text's
+// appearances are removed at the same local positions — the raw
+// and corrected texts of a chunk carry the same words in the
+// same order, the glossary pass having changed spellings only.
+export function scrubChunksSelective(chunks, word, removeOrdinals) {
+  let base = 0;
+  return (chunks || []).map((c) => {
+    const re = entryRegex(word);
+    const count = re ? (String(c.corrected || '').match(re) || []).length : 0;
+    const local = new Set();
+    for (let i = 0; i < count; i++) {
+      if (removeOrdinals && removeOrdinals.has(base + i)) local.add(i);
+    }
+    base += count;
+    return {
+      start: c.start,
+      raw: scrubTextSelective(c.raw, word, local).text,
+      text: scrubTextSelective(c.corrected, word, local).text,
+    };
+  });
 }
 
 // Scrub one string that will be shown or exported as metadata (for example

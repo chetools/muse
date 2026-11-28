@@ -12,16 +12,24 @@
 // - browser storage holds only what the design settles: IndexedDB
 //   caches the student's own recordings and corrected transcripts
 //   (pre-scrub) on this machine, and localStorage holds the job
-//   entries (retrieval code, labels, expiry, and the
-//   YouTube link and its title kept locally for ZIP creation). The
+//   entries (retrieval code, labels, expiry, the
+//   YouTube link and its title kept locally for ZIP creation, and
+//   — since 2.8.0 — the removal selections made at send time,
+//   stored as positions only: an entry index and appearance
+//   ordinals, never the removal field's contents). The
 //   transcript and the grades are never written to localStorage.
 
 import { parseConfig, buildConfigLink } from './config.js';
 import { sha256Hex } from './hash.js';
 import {
-  parseScrubWords, scrubChunks, scrubMetadata, canonicalTranscript,
-  findSuspects, formatDuration,
+  parseScrubWords, scrubChunks, scrubChunksSelective, scrubMetadata,
+  canonicalTranscript, findSuspects, formatDuration,
+  entryAppearances, PICKER_THRESHOLD,
 } from './transcript.js';
+import {
+  buildSketch, buildWordCounts, addedWords, ADDED_WORDS_THRESHOLD,
+} from './sketch.js';
+import { solvePow, powBucket, POW_FALLBACK_BITS } from './pow.js';
 import {
   VERSIONS, AUDIO_FILE_NAME, FINGERPRINT_FILE_NAME, assemblePackage,
   chunksFromCanonical, formatTranscriptTimestamp,
@@ -32,6 +40,7 @@ import { buildVocabulary } from './vocab.js';
 import {
   cacheGet, cacheInit, cachePutChunk, cacheWindowDone, cacheComplete,
   cacheList, cacheDelete,
+  cacheAddSentSketch, cacheSentSketches, cacheExtendSketchExpiry,
 } from './cache.js';
 import { fromCachedChunk } from './cachekey.js';
 import {
@@ -39,8 +48,8 @@ import {
   bundleChromaprintSha, verifyFingerprintContents,
   validateJobPayload, buildJobPayload, generateRetrievalToken, loadJobEntries, addJobEntry, entryPollable,
   removeJobEntry, saveJobEntries,
-  duplicateJobEntry, collapseSameJobEntries,
-  requestYouTubeCheck, submitJob, fetchJobStatus,
+  collapseSameJobEntries,
+  requestYouTubeCheck, submitJob, fetchJobStatus, fetchWorkerInfo,
   finalizeJob,
 } from './jobs.js';
 import { computeFingerprint } from './fingerprint.js';
@@ -59,6 +68,23 @@ let sourceName = '';
 let chunks = [];            // pipeline chunks: {start, end, raw, corrected, ...}
 let windowsDoneBase = 0;    // windows already cached before this run (resume)
 let transcriptionComplete = false;
+let transcriptionRunId = null; // the cache record's run identifier (2.8.0)
+// A2 picker state (2.8.0): removal entry text -> the set of
+// appearance ordinals the student has chosen to remove. An entry
+// absent from the map is at its default: the first offered
+// appearance is chosen. Only ordinals are ever kept — never the
+// entry's text in any storage (the map is memory only).
+const pickerSelections = new Map();
+let pickerSignature = '';
+// Submission preparation state (2.8.0; see pow.js): solved tokens
+// by bucket, the in-flight search, the Worker's difficulty, and
+// the offset between the Worker's clock and this machine's (the
+// bucket is reckoned on the Worker's time, from its root
+// response). None of this is named or explained on the page.
+const powTokens = new Map(); // bucket -> { key, nonce }
+let powSolving = null;       // { key, bucket, signal }
+let powBits = POW_FALLBACK_BITS;
+let serverOffsetMs = 0;
 let vocabulary = null;
 let chromaprint = null;     // raw Chromaprint as base64 (2.6.0), or null when none computed
 let chromaprintSha = null;  // audioSha the stored fingerprint was computed from
@@ -80,9 +106,11 @@ const rowCheckedInfo = new Map(); // jobKey -> {videoId, title, opening} from
 // row — and the canonical watch address is built from the video
 // ID the Worker returned, not from the page's own parse.
 const readyBundles = new Map(); // "pkg|code" -> result bundle from /jobs/status
-const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint} from
-// the same status response (Worker 2.7.0): the stored transcript text and the
-// raw fingerprint as base64, kept in memory only, for the fingerprint-form ZIP
+const readyExtras = new Map();  // "pkg|code" -> {transcript, chromaprint,
+// injection_flags} from the same status response (Worker 2.7.0; the
+// flags since Worker 2.9.0): the stored transcript text, the raw
+// fingerprint as base64, and the grader's injection flags, kept in
+// memory only, for the fingerprint-form ZIP
 const jobStates = new Map();    // "pkg|code" -> {status, queue_ahead} last seen
 const statusFailures = new Map(); // "pkg|code" -> consecutive failed status fetches
 const expandedJobs = new Set(); // "pkg|code" with the detail panel open (kept across refreshes)
@@ -129,7 +157,173 @@ function clearError() {
 }
 
 function scrubWords() { return parseScrubWords($('scrubField').value); }
-function scrubbed() { return scrubChunks(chunks, scrubWords()); }
+
+// A2 (2.8.0): a removal entry that appears more than
+// PICKER_THRESHOLD times in the corrected transcript is applied
+// selectively — only the appearances the student picked are
+// removed (see renderPicker). Returns entry -> appearances.
+function pickerEntries() {
+  const out = new Map();
+  if (!chunks.length) return out;
+  for (const w of scrubWords()) {
+    const apps = entryAppearances(chunks, w);
+    if (apps.length > PICKER_THRESHOLD) out.set(w, apps);
+  }
+  return out;
+}
+
+// The appearances the picker offers: the first three and the
+// last two.
+function offeredOrdinals(apps) {
+  const ords = apps.map((a) => a.ordinal);
+  return ords.length <= 5 ? ords : [...ords.slice(0, 3), ...ords.slice(-2)];
+}
+
+// The ordinals chosen for removal: the student's stored choice,
+// or the default — the first offered appearance.
+function pickerRemovedOrdinals(entry) {
+  return pickerSelections.get(entry) || new Set([0]);
+}
+
+function scrubbed() {
+  const selective = pickerEntries();
+  const ordinary = scrubWords().filter((w) => !selective.has(w));
+  let stage = chunks;
+  for (const [w] of selective) {
+    stage = scrubChunksSelective(stage, w, pickerRemovedOrdinals(w));
+  }
+  return scrubChunks(stage, ordinary);
+}
+
+// The picker itself, under the removal list: one block per
+// frequently-appearing entry, offering the first three and last
+// two appearances with their surrounding words. Rebuilt only
+// when the offered set changes, so toggling a choice never
+// rebuilds the block being clicked.
+function renderPicker() {
+  const box = $('scrubPicker');
+  if (!box) return;
+  const selective = pickerEntries();
+  const sig = [...selective.entries()]
+    .map(([w, apps]) => w + ':' + apps.length).join('|');
+  if (sig === pickerSignature) return;
+  pickerSignature = sig;
+  box.textContent = '';
+  for (const [entry, apps] of selective) {
+    const wrap = document.createElement('div');
+    wrap.className = 'box';
+    const head = document.createElement('p');
+    head.className = 'note';
+    head.textContent = '“' + entry + '” appears ' + apps.length +
+      ' times in the transcript. Choose which appearances to remove — only the chosen ones are removed:';
+    wrap.append(head);
+    const removed = pickerRemovedOrdinals(entry);
+    for (const ord of offeredOrdinals(apps)) {
+      const label = document.createElement('label');
+      label.style.display = 'block';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = removed.has(ord);
+      cb.addEventListener('change', () => {
+        const set = new Set(pickerRemovedOrdinals(entry));
+        if (cb.checked) set.add(ord); else set.delete(ord);
+        pickerSelections.set(entry, set);
+        refreshDerived({ keepSuspects: true });
+      });
+      label.append(cb, document.createTextNode(' …' + apps[ord].phrase + '…'));
+      wrap.append(label);
+    }
+    box.append(wrap);
+  }
+}
+
+// The removal selections as they stand, for the job entry stored
+// at send time: entry index into the removal list, and the
+// appearance ordinals removed. Positions only — the removal
+// field's contents never enter storage.
+function currentRemovalSelections() {
+  const selective = pickerEntries();
+  const out = [];
+  scrubWords().forEach((entry, idx) => {
+    if (selective.has(entry)) {
+      out.push({
+        entry_index: idx,
+        appearances_removed: [...pickerRemovedOrdinals(entry)].sort((a, b) => a - b),
+      });
+    }
+  });
+  return out;
+}
+
+// ------------------------------------------------------------
+// Background submission preparation (2.8.0; pow.js). The search
+// runs while the student reviews the transcript, keyed to the
+// exact transcript, recording and run; a change to any of them
+// abandons the search and starts another. Nothing about the
+// mechanism is named on the page.
+
+function powKey(tSha) {
+  return audioSha + '|' + tSha + '|' + (transcriptionRunId || '');
+}
+
+async function kickPow() {
+  if (!cfg.worker || !audioSha || !transcriptionComplete || !chunks.length) return;
+  const transcript = canonical();
+  if (!transcript) return;
+  const tSha = await sha256Hex(transcript);
+  const key = powKey(tSha);
+  const bucket = powBucket(Date.now() + serverOffsetMs);
+  const have = powTokens.get(bucket);
+  if (have && have.key === key) return;
+  if (powSolving && powSolving.key === key && powSolving.bucket === bucket) return;
+  if (powSolving) powSolving.signal.aborted = true;
+  const signal = { aborted: false };
+  powSolving = { key, bucket, signal };
+  const res = await solvePow({
+    audioSha256: audioSha, transcriptSha256: tSha,
+    runId: transcriptionRunId || '', bucket, bits: powBits, signal,
+  });
+  if (powSolving && powSolving.signal === signal) powSolving = null;
+  if (res && !signal.aborted) {
+    powTokens.set(bucket, { key, nonce: res.nonce });
+    const nowBucket = powBucket(Date.now() + serverOffsetMs);
+    for (const b of powTokens.keys()) {
+      if (b < nowBucket - 1) powTokens.delete(b);
+    }
+  }
+}
+
+// The solved token for this exact submission: the current
+// bucket's, or the previous bucket's when the search finished
+// just before the bucket turned (the Worker accepts both, so a
+// completed token is submitted, never discarded). Waits — with
+// the plain status line beside the Send button — for a search
+// already running; returns null when none arrives in time, and
+// the send then proceeds without one.
+async function awaitPowToken(tSha) {
+  const key = powKey(tSha);
+  const pick = () => {
+    const bucket = powBucket(Date.now() + serverOffsetMs);
+    for (const b of [bucket, bucket - 1]) {
+      const t = powTokens.get(b);
+      if (t && t.key === key) return { bucket: b, nonce: t.nonce };
+    }
+    return null;
+  };
+  let token = pick();
+  if (token) return token;
+  void kickPow();
+  const deadline = Date.now() + 120000;
+  while (Date.now() < deadline) {
+    $('jobStatus').textContent =
+      'Preparing your submission — this takes a short while…';
+    await new Promise((r) => setTimeout(r, 300));
+    token = pick();
+    if (token) return token;
+    if (!powSolving) void kickPow();
+  }
+  return null;
+}
 function canonical() { return canonicalTranscript(scrubbed()); }
 // There is no Practice/Final choice anywhere in the page, and
 // no job kind is sent (2.7.0): a job is sent with no YouTube
@@ -268,6 +462,7 @@ async function refreshFingerprint() {
 // re-derives the view), no transcription needed.
 async function adoptCacheRecord(record, note) {
   chunks = (record.chunks || []).map(fromCachedChunk);
+  transcriptionRunId = record.transcription_run_id || null;
   windowsDoneBase = record.windows_done || 0;
   if (record.wavBlob) {
     wavBytes = new Uint8Array(await record.wavBlob.arrayBuffer());
@@ -297,6 +492,7 @@ $('mediaFile').addEventListener('change', async (ev) => {
   chromaprint = null; chromaprintSha = null; chromaprintPending = null;
   chunks = []; windowsDoneBase = 0;
   transcriptionComplete = false;
+  transcriptionRunId = null;
   updateRunEnabled();
   if (!file) { $('mediaStatus').textContent = 'No file chosen.'; return; }
   sourceName = file.name;
@@ -318,6 +514,15 @@ $('mediaFile').addEventListener('change', async (ev) => {
       wavBlob: new Blob([wavBytes], { type: 'audio/wav' }), duration_s: durationS,
       source_name: sourceName,
     }).catch(() => {});
+    // The record after init holds the run identifier (minted on
+    // creation or reset, kept on resume); adopt it for the send.
+    if (!record) {
+      const fresh = await cacheGet(audioSha, VERSIONS.model, VERSIONS.glossary)
+        .catch(() => null);
+      transcriptionRunId = fresh ? (fresh.transcription_run_id || null) : null;
+    } else {
+      transcriptionRunId = record.transcription_run_id || null;
+    }
     renderCacheList();
     if (record && record.complete && record.chunks && record.chunks.length) {
       await adoptCacheRecord({ ...record, wavBlob: new Blob([wavBytes], { type: 'audio/wav' }) },
@@ -432,6 +637,7 @@ function renderCacheRows(list) {
         chromaprint = null; chromaprintSha = null; chromaprintPending = null;
         chunks = []; windowsDoneBase = 0;
         transcriptionComplete = false;
+        transcriptionRunId = null;
               $('mediaStatus').textContent = 'Recording deleted from this computer.';
         setAudioMeta();
         updateRunEnabled();
@@ -522,6 +728,8 @@ $('runBtn').addEventListener('click', async () => {
 
 // --- Derived views: transcript, review list, job gating ---
 function refreshDerived(opts) {
+  renderPicker();
+  void kickPow();
   const sc = scrubbed();
   if (sc.length) {
     $('transcriptBox').textContent = sc
@@ -820,9 +1028,9 @@ async function generateZipForRow(entry, bundle, btn) {
     previewOnLinkCommit(key, checkedId);
     if (rowDrafts.get(key) !== canonical) rowDrafts.set(key, canonical);
     paintRowCell(key);
-    // Finalise the job in this browser: finalizeJob treats an
-    // "already final" response for this job as success. On
-    // success the entry's finalised flag is set and kept.
+    // Finalise the job in this browser: the call is idempotent
+    // (a job that already stands final returns the same success).
+    // On success the entry's finalised flag is set and kept.
     let liveBundle = bundle;
     try {
       await finalizeJob(cfg.worker, {
@@ -841,6 +1049,8 @@ async function generateZipForRow(entry, bundle, btn) {
             transcript: typeof st.data.transcript === 'string'
               ? st.data.transcript : null,
             chromaprint: st.data.chromaprint || null,
+            injection_flags: Array.isArray(st.data.injection_flags)
+              ? st.data.injection_flags : null,
           });
         }
       }
@@ -914,6 +1124,29 @@ $('submitJobBtn').addEventListener('click', async () => {
     renderSuspects(scrubbed());
     const transcript = canonical();
     const transcriptSha = await sha256Hex(transcript);
+    // Component A (2.8.0): refuse a send that adds fewer than
+    // ADDED_WORDS_THRESHOLD words to a version already sent for
+    // this package from this recording on this machine. The
+    // comparison is against the stored sketches (sketch.js); the
+    // refusal is plain language, beside the Send button, and
+    // nothing is sent.
+    {
+      const sketches = await cacheSentSketches(audioSha, cfg.pkg).catch(() => []);
+      if (sketches.length) {
+        const counts = await buildWordCounts(transcript);
+        const nearDuplicate = sketches.some(
+          (sk) => addedWords(counts, sk) < ADDED_WORDS_THRESHOLD);
+        if (nearDuplicate) {
+          const msg = 'This version is almost the same as one you ' +
+            'already sent for this homework, so it was not sent. ' +
+            'To send again, change more of the explanation — or ' +
+            'record it again and transcribe the new recording.';
+          showError(msg, null, $('submitJobBtn'));
+          $('jobStatus').textContent = msg;
+          return;
+        }
+      }
+    }
     // The fingerprint is computed in the background after
     // normalisation; wait for it here. Since 2.7.0 a fingerprint
     // failure BLOCKS the send: without a fingerprint no
@@ -927,6 +1160,11 @@ $('submitJobBtn').addEventListener('click', async () => {
         'so it cannot be sent. Choose the recording file again, ' +
         'then send once it has been read.');
     }
+    // The background preparation (pow.js) has normally finished
+    // while the student reviewed the transcript; wait for it if
+    // it has not. The wait is the plain status line beside the
+    // button; nothing about the mechanism is named.
+    const pow = await awaitPowToken(transcriptSha);
     const payload = buildJobPayload({
       pkg: cfg.pkg,
       pkgContentSha256: cfg.ph,
@@ -936,6 +1174,8 @@ $('submitJobBtn').addEventListener('click', async () => {
       chromaprint,
       versions: VERSIONS,
       retrievalCode: generateRetrievalToken(),
+      runId: transcriptionRunId,
+      pow,
     });
     const check = validateJobPayload(payload);
     if (!check.ok) throw new Error(check.reason);
@@ -944,37 +1184,28 @@ $('submitJobBtn').addEventListener('click', async () => {
     const sentText =
       'Sent — when the grade is back, add the YouTube link in the ' +
       'job’s row below to make your Canvas submission.';
+    // The send happened (a job was created, or the Worker
+    // answered that this exact submission already stands):
+    // snapshot the as-sent transcript's sketch for the
+    // near-duplicate check on later sends (Component A). The
+    // sketch is stored in the recording's cache record with the
+    // job's expiry; failures here never block the send's outcome.
+    cacheAddSentSketch(audioSha, {
+      pkg: cfg.pkg,
+      sketch: await buildSketch(transcript).catch(() => null),
+      expires_at: res.expires_at,
+    }).catch(() => {});
     if (res.duplicate) {
-      // The recording already has a live job under this prompt
-      // package version: no new job was created. The entry is filed
-      // under the submitted code (the alias), so the existing job
-      // renders through the normal jobs-list path below — queue
-      // state while queued or claimed, grades and critique when
-      // ready — and finalize and ZIP work from it exactly as from
-      // the original entry. When no alias was created the code does
-      // not retrieve this job, so no entry is stored under it and
-      // the grade or queue state from the response is shown in the
-      // status line instead.
-      const aliasEntry = duplicateJobEntry(res, {
-        worker: cfg.worker,
-        pkg: cfg.pkg,
-        course: cfg.course,
-        asg: cfg.asg,
-        retrieval_code: payload.retrieval_code,
-        finalised: false,
-        youtube_link: '',
-        youtube_title: '',
-        youtube_checked_at: '',
-      });
-      if (aliasEntry) {
-        addJobEntry(aliasEntry);
-        const key = jobKey(cfg.pkg, payload.retrieval_code);
-        jobStates.set(key, { status: res.status, queue_ahead: res.queue_ahead });
-        if (res.result) readyBundles.set(key, res.result);
-        $('jobStatus').textContent = duplicateStatusText(res);
-      } else {
-        $('jobStatus').textContent = duplicateStatusText(res);
-      }
+      // This exact submission (same recording, same transcript,
+      // same transcription run) already stands as a live job: no
+      // new job was created, and the submitted code does not
+      // retrieve the existing job — no entry is stored for it.
+      // The queue state or grades from the response are shown in
+      // the status line beside the button; the existing job's own
+      // row in the list below is where it is followed.
+      $('jobStatus').textContent =
+        'Already sent — this exact version is already in for ' +
+        'grading. ' + duplicateStatusText(res);
       renderJobs();
       return;
     }
@@ -991,6 +1222,9 @@ $('submitJobBtn').addEventListener('click', async () => {
       youtube_checked_at: '',
       created_at: res.created_at,
       expires_at: res.expires_at,
+      // The A2 removal selections made at this send (positions
+      // only; see currentRemovalSelections).
+      removal_selections: currentRemovalSelections(),
     });
     $('jobStatus').textContent = sentText;
     renderJobs();
@@ -1056,12 +1290,17 @@ function keepReenteredLink(entry, bundle, link) {
 // (2.7.0): the fingerprint bytes held locally (decoded from the
 // status response) against the signed chromaprint_sha256. The
 // critique is not re-hashed, and Worker-supplied parts are not
-// re-hashed: the packaged transcript is the graded text the
-// status response returned, parsed back into chunks, or — when
-// the Worker sent none — this recording's own cached chunks
-// scrubbed with the current removal list. There is no audio ZIP
-// form: a job whose bundle carries no signed fingerprint hash
-// cannot be packaged. The YouTube link is not verified against
+// re-hashed: the packaged transcript is the as-sent text the
+// Worker returns with the grade — never a re-scrub of this
+// computer's cached chunks under the current removal list
+// (2.8.0: the removal list may have changed since the send, and
+// a re-scrub would package a transcript that was never graded).
+// The packaged transcript is the graded text the
+// status response returned, parsed back into chunks; when the
+// Worker sent none, packaging fails with the message below —
+// there is no fallback to this computer's cached chunks. There
+// is no audio ZIP form: a job whose bundle carries no signed
+// fingerprint hash cannot be packaged. The YouTube link is not verified against
 // the bundle: no video is bound to the job.
 // Returns the verified parts, or null with the error shown in
 // the row's cell through onError.
@@ -1097,13 +1336,11 @@ async function verifyFingerprintParts(entry, bundle, anchor, onError, pending) {
   }
   const record = await cacheGet(bundle.audio_sha256, VERSIONS.model, VERSIONS.glossary)
     .catch(() => null);
-  let scrubbedChunks = null;
-  if (extras && typeof extras.transcript === 'string') {
-    scrubbedChunks = chunksFromCanonical(extras.transcript);
-  } else if (record && record.chunks && record.chunks.length) {
-    scrubbedChunks = scrubChunks(
-      record.chunks.map(fromCachedChunk), scrubWords());
-  }
+  // The packaged transcript is the as-sent text the Worker
+  // returned (2.8.0): there is no fallback to the cached chunks.
+  const scrubbedChunks = extras && typeof extras.transcript === 'string'
+    ? chunksFromCanonical(extras.transcript)
+    : null;
   if (!scrubbedChunks) {
     fail('The grading record for this job did not include its ' +
       'transcript, so the submission cannot be built. Reload the ' +
@@ -1151,6 +1388,7 @@ async function packageSubmissionZip(entry, liveBundle, anchor, onError, pending)
   if (!parts) return;
   const build = showZipStatus(anchor, 'Building the submission ZIP…');
   try {
+    const zipExtras = readyExtras.get(jobKey(entry.pkg, entry.retrieval_code));
     const html = assemblePackage({
       youtubeLink: canonicalWatchUrl(parts.videoId),
       audioFileName: FINGERPRINT_FILE_NAME,
@@ -1158,6 +1396,11 @@ async function packageSubmissionZip(entry, liveBundle, anchor, onError, pending)
       chunks: parts.scrubbedChunks,
       bundle: liveBundle,
       fingerprintSha256: liveBundle.chromaprint_sha256,
+      // The grader's injection flags, copied from the status
+      // response into the package (2.8.0): the audit app reads
+      // them from the package; it does not scan itself.
+      injectionFlags: zipExtras && Array.isArray(zipExtras.injection_flags)
+        ? zipExtras.injection_flags : undefined,
     });
     const zip = await buildZipAsync([
       { name: ZIP_ENTRY_HTML, data: new TextEncoder().encode(html) },
@@ -1546,7 +1789,15 @@ async function renderJobsOnce() {
             transcript: typeof res.data.transcript === 'string'
               ? res.data.transcript : null,
             chromaprint: res.data.chromaprint || null,
+            injection_flags: Array.isArray(res.data.injection_flags)
+              ? res.data.injection_flags : null,
           });
+        }
+        // The job stands graded: its sketches' horizon becomes
+        // the graded one (180 days) in the recording's record.
+        if (res.data.result && res.data.result.audio_sha256) {
+          cacheExtendSketchExpiry(res.data.result.audio_sha256,
+            entry.pkg, res.data.expires_at).catch(() => {});
         }
       }
       jobStates.set(key, {
@@ -1691,6 +1942,25 @@ async function refreshJobs() {
   try { await renderJobs(); } catch { /* the next tick retries */ }
 }
 setInterval(refreshJobs, 5000);
+
+// Background preparation upkeep (2.8.0): read the Worker's clock
+// and difficulty once at load (the bucket is reckoned on the
+// Worker's time), and re-check the preparation every minute so
+// a bucket that turns while the page sits open starts the next
+// search without waiting for an edit. A failed read leaves the
+// fallback difficulty and this machine's clock, and the send
+// path still waits for a search at the click.
+if (cfg.worker) {
+  fetchWorkerInfo(cfg.worker).then((info) => {
+    if (info && info.pow && Number.isInteger(info.pow.difficulty_bits)) {
+      powBits = info.pow.difficulty_bits;
+    }
+    const t = info && Date.parse(info.server_time || '');
+    if (!Number.isNaN(t)) serverOffsetMs = t - Date.now();
+    void kickPow();
+  }).catch(() => {});
+}
+setInterval(() => { void kickPow(); }, 60000);
 
 renderConfig();
 refreshDerived();

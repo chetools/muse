@@ -13,12 +13,17 @@
 // Chunks are the pipeline's corrected (glossary-applied) text BEFORE
 // scrubbing. Nothing identifying is added by the cache: the record
 // holds the recording the student already has on this machine, under
-// its fingerprint. Nothing else is stored in IndexedDB.
+// its fingerprint. Two fields join the record in 2.8.0:
+// transcription_run_id (the current transcription run's identifier,
+// sent with the job — see cachekey.js) and sent_sketches (the
+// irreversible per-package sketches of transcripts sent from this
+// recording, for the page-side near-duplicate check — see
+// sketch.js). Nothing else is stored in IndexedDB.
 //
 // All database access is lazy (inside the functions), so importing
 // this module outside a browser is harmless.
 
-import { cacheHit, resetStaleRecord, toCachedChunk, recordingFirstWords } from './cachekey.js';
+import { cacheHit, resetStaleRecord, toCachedChunk, recordingFirstWords, mintRunId, liveSketches } from './cachekey.js';
 
 export const CACHE_DB_NAME = 'hw-signing-v2';
 export const CACHE_STORE = 'recordings';
@@ -90,6 +95,12 @@ export async function cacheInit(audioSha256, { model, glossary, wavBlob, duratio
       // Refresh the WAV blob — the bytes are identical by fingerprint,
       // but a partial record may predate the blob being kept.
       let dirty = false;
+      // A record from before 2.8.0 has no run identifier: mint
+      // one for the run its chunks belong to.
+      if (!existing.transcription_run_id) {
+        existing.transcription_run_id = mintRunId();
+        dirty = true;
+      }
       if (!existing.wavBlob && wavBlob) { existing.wavBlob = wavBlob; dirty = true; }
       if (!existing.source_name && source_name) {
         existing.source_name = source_name;
@@ -109,6 +120,8 @@ export async function cacheInit(audioSha256, { model, glossary, wavBlob, duratio
       created_at: new Date().toISOString(),
       windows_done: 0,
       complete: false,
+      transcription_run_id: mintRunId(),
+      sent_sketches: [],
     });
   });
 }
@@ -170,6 +183,57 @@ export async function cacheList() {
       first_words: recordingFirstWords(r.chunks),
     }))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+// ------------------------------------------------------------
+// Sent-transcript sketches (Component A, 2.8.0). A sketch is
+// { pkg, count, words: { wordHash: occurrences }, expires_at } —
+// the irreversible sketch of one as-sent transcript (see
+// sketch.js), stored in the recording's record, never in
+// localStorage. The expiry is the sending job's Worker expiry
+// (7 days ungraded, 180 days once graded), extended when the job
+// is later seen graded (cacheExtendSketchExpiry).
+
+// Store the sketch of a transcript just sent for `pkg`.
+export async function cacheAddSentSketch(audioSha256, { pkg, sketch, expires_at }) {
+  if (!audioSha256 || !sketch) return;
+  await withStore('readwrite', async (store) => {
+    const record = await requestToPromise(store.get(audioSha256));
+    if (!record) return;
+    const live = liveSketches(record.sent_sketches);
+    live.push({ pkg, count: sketch.count, words: sketch.words, expires_at: expires_at || '' });
+    record.sent_sketches = live;
+    store.put(record);
+  });
+}
+
+// The live sketches stored for `pkg` on this recording.
+export async function cacheSentSketches(audioSha256, pkg) {
+  if (!audioSha256) return [];
+  const record = await withStore('readonly', (store) =>
+    requestToPromise(store.get(audioSha256)));
+  if (!record) return [];
+  return liveSketches(record.sent_sketches).filter((s) => s.pkg === pkg);
+}
+
+// Extend the expiry of this recording's sketches for `pkg` to
+// `expiresAt` where that is later than what is stored — called
+// when a job for the recording is seen graded, whose horizon
+// (180 days) replaces the ungraded one (7 days).
+export async function cacheExtendSketchExpiry(audioSha256, pkg, expiresAt) {
+  if (!audioSha256 || !expiresAt) return;
+  await withStore('readwrite', async (store) => {
+    const record = await requestToPromise(store.get(audioSha256));
+    if (!record || !Array.isArray(record.sent_sketches)) return;
+    let dirty = false;
+    for (const s of record.sent_sketches) {
+      if (s.pkg === pkg && String(expiresAt) > String(s.expires_at || '')) {
+        s.expires_at = expiresAt;
+        dirty = true;
+      }
+    }
+    if (dirty) store.put(record);
+  });
 }
 
 export async function cacheDelete(audioSha256) {

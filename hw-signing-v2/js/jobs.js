@@ -163,6 +163,13 @@ export function validateJobPayload(body) {
 // and no YouTube fields are sent. chromaprint is the raw
 // Chromaprint as base64; the send flow blocks when no fingerprint
 // was computed, so in practice it is always present.
+// 2.8.0 (Worker 2.9.0): run_id — the per-transcription-run
+// identifier from the recording's cache record — is sent when
+// known, and the proof-of-work fields (pow_bucket, pow_nonce)
+// when a token has been solved for this exact submission. Both
+// are optional in the body: the Worker treats a missing run_id
+// as the empty identifier and, in its permissive phase, a missing
+// token as no token presented.
 export function buildJobPayload(state) {
   const body = {
     pkg: state.pkg,
@@ -174,6 +181,12 @@ export function buildJobPayload(state) {
     retrieval_code: state.retrievalCode,
   };
   if (state.chromaprint) body.chromaprint = state.chromaprint;
+  if (state.runId) body.run_id = state.runId;
+  if (state.pow && Number.isInteger(state.pow.bucket) &&
+      typeof state.pow.nonce === 'string') {
+    body.pow_bucket = state.pow.bucket;
+    body.pow_nonce = state.pow.nonce;
+  }
   return body;
 }
 
@@ -182,7 +195,8 @@ export function buildJobPayload(state) {
  * youtube_link, youtube_title, youtube_checked_at, created_at,
  * expires_at }.
  * finalised (2.7.0) is a boolean set when finalizeJob succeeds in
- * this browser (the already-final 409-as-success path included).
+ * this browser (finalize is idempotent, so a repeat success sets
+ * it the same way).
  * Entries stored by older versions carry kind instead: on load,
  * kind 'final' is read as finalised true (see loadJobEntries).
  * youtube_title is the title the Worker returned at the link check,
@@ -385,46 +399,23 @@ export async function submitJob(workerBase, payload, fetchFn) {
   return data;
 }
 
-/* ---------------- duplicate responses (2.6.0) ----------------
- * When the submitted recording already has a live job under the
- * resolved prompt package version, POST /jobs returns the existing
- * job instead of creating one:
+/* ---------------- duplicate responses ----------------
+ * When the submitted transcript is a byte-identical resubmission
+ * of a live job (Worker 2.9.0: same package, recording,
+ * transcript and transcription run), POST /jobs returns the
+ * existing job instead of creating one:
  *   {duplicate:true, job_id, created_at, expires_at, pkg, status,
- *    queue_ahead?, result?, alias_created}
+ *    queue_ahead?, result?}
  * `result` is the existing result bundle when the job is ready;
- * `queue_ahead` is present while it is queued or claimed.
+ * `queue_ahead` is present while it is queued or claimed. The
+ * submitted code does NOT retrieve the existing job (no alias is
+ * created — the Worker has never created one since 2.8.0), so the
+ * page stores no entry for a duplicate: the send handler shows
+ * the queue state or grades from the response in the status line
+ * beside the Send button. (The pre-2.8.0 alias entry builder was
+ * removed in webapp 2.8.0; it expected an alias_created field the
+ * Worker no longer sends, so every duplicate took its null path.)
  */
-
-// Build the localStorage entry for a duplicate response, or null
-// when nothing is to be stored. The entry is filed under the
-// submitted code (the alias) so the existing job renders through
-// the normal jobs-list path — queue state while queued or claimed,
-// grades and critique when ready — and finalize and ZIP work from
-// it exactly as from the original entry. When alias_created is
-// false the submitted code is already used by a different job for
-// the pkg, so it does not retrieve this job and nothing is stored
-// under it. The entry's finalised flag and its locally kept
-// YouTube fields are the submitted ones: a job is finalised only
-// by a finalizeJob call from a browser, and the flag records that
-// this browser made one succeed.
-export function duplicateJobEntry(response, submitted) {
-  if (!response || !response.duplicate || !response.alias_created) return null;
-  const isFinalised = submitted.finalised === true;
-  return {
-    worker: submitted.worker || '',
-    pkg: submitted.pkg,
-    course: submitted.course,
-    asg: submitted.asg,
-    retrieval_code: submitted.retrieval_code,
-    job_id: response.job_id || '',
-    finalised: isFinalised,
-    youtube_link: isFinalised ? (submitted.youtube_link || '') : '',
-    youtube_title: isFinalised ? (submitted.youtube_title || '') : '',
-    youtube_checked_at: isFinalised ? (submitted.youtube_checked_at || '') : '',
-    created_at: response.created_at,
-    expires_at: response.expires_at,
-  };
-}
 
 // POST /jobs/status → {status, data} where data is the status body
 // (the result bundle when ready; queue_ahead — how many jobs are
@@ -434,7 +425,11 @@ export function duplicateJobEntry(response, submitted) {
 // also carries the Worker's stored transcript text and chromaprint
 // (Worker 2.7.0) as top-level fields beside the result bundle; they
 // reach the caller through data unchanged and feed the
-// fingerprint-form ZIP path.
+// fingerprint-form ZIP path. Since Worker 2.9.0 the body also
+// carries the grader's injection_flags at the top level for a
+// ready job; the page copies them into the submission package
+// (see package.js), which is how the teacher's audit app receives
+// them — the audit app does not scan for them itself.
 export async function fetchJobStatus(workerBase, creds, fetchFn) {
   const { status, ok, data } = await postJson(workerBase, '/jobs/status', {
     pkg: creds.pkg,
@@ -448,23 +443,17 @@ export async function fetchJobStatus(workerBase, creds, fetchFn) {
 // POST /jobs/finalize → marks an existing job final (the Canvas
 // submission job). Since 2.6.19 the call carries no YouTube fields:
 // no video is bound to the job, and any youtube fields a caller
-// still passes are dropped here rather than sent. The Worker
-// enforces one final per recording. Throws with the Worker's error
-// message — except an "already final" 409 for this job, which is
-// success: the job already stands final, and the caller proceeds
-// to fetch its status and package. That response is recognised by
-// its 409 status and an error text naming the job already final;
-// any other 409 (for example a different job already final for the
-// same recording) still throws.
+// still passes are dropped here rather than sent. The call is
+// idempotent: finalising a job that already stands final returns
+// the same success (Worker 2.9.0 removed the one-final rule
+// entirely — there is no "already final" conflict response; the
+// pre-2.8.0 page branch that recognised one was removed in webapp
+// 2.8.0). Throws with the Worker's error message on failure.
 export async function finalizeJob(workerBase, payload, fetchFn) {
   const { status, ok, data } = await postJson(workerBase, '/jobs/finalize', {
     pkg: payload.pkg,
     retrieval_code: payload.retrieval_code,
   }, fetchFn);
-  if (status === 409 && data &&
-      /already final/i.test(String(data.error || data.code || ''))) {
-    return { ...data, ok: true, already_final: true };
-  }
   if (!ok || !data || !data.ok) {
     throw new Error((data && data.error) || ('finalize failed (HTTP ' + status + ')'));
   }
