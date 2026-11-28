@@ -62,6 +62,7 @@
     .jobstable tbody tr:first-child { border-top: none; }
     .jobactions { flex-direction: row; flex-wrap: wrap; }
   }
+  .rmhl { background: #f8d7da; border-radius: 2px; }
   .note { color: #555; font-size: 0.88rem; }
   .fine { font-size: 0.78rem; color: #666; }
   label.check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; }
@@ -130,9 +131,9 @@
   <div class="box" id="cacheBox">No recordings saved yet.</div>
 
   <h2>2. Names and words to remove</h2>
-  <p class="note">One per line, or separated by commas; removed from the
-  transcript and from everything this page shows or exports. What you type
-  here never leaves this page.</p>
+  <p class="note">One per line, or separated by commas; what they match is
+  highlighted in the transcript below and removed from everything this page
+  sends or exports. What you type here never leaves this page.</p>
   <textarea id="scrubField" rows="3" placeholder="e.g. your name, your lab partner's name, your school"></textarea>
   <p class="status" id="scrubStatus"></p>
   <div id="scrubPicker"></div>
@@ -147,7 +148,7 @@
     <div><span class="lbl">Latest piece, as transcribed:</span> <span id="liveRaw"></span></div>
     <div style="margin-top:6px"><span class="lbl">Latest piece, after glossary correction and removal:</span> <span id="liveCorrected"></span></div>
   </div>
-  <h3>Transcript (corrected, with removals applied)</h3>
+  <h3>Transcript (corrected — highlighted words will be removed)</h3>
   <div class="box" id="transcriptBox">Your transcript will appear here.</div>
 
   <h2>4. Sending for grading</h2>

@@ -31,7 +31,7 @@ import { sha256Hex } from './hash.js';
 import {
   parseScrubWords, scrubChunks, scrubChunksSelective, scrubMetadata,
   canonicalTranscript, formatDuration,
-  entryAppearances, PICKER_THRESHOLD,
+  entryAppearances, removalSegments, PICKER_THRESHOLD,
 } from './transcript.js';
 import {
   buildSketch, buildWordCounts, addedWords, ADDED_WORDS_THRESHOLD,
@@ -268,7 +268,19 @@ function renderPicker() {
         storePickerSelections();
         refreshDerived();
       });
-      label.append(cb, document.createTextNode(' …' + apps[ord].phrase + '…'));
+      // The appearance itself carries the highlight (2.9.1):
+      // the student sees exactly which words this checkbox
+      // would remove, on the same background the transcript
+      // view uses for what will be removed.
+      const app = apps[ord];
+      label.append(cb, document.createTextNode(' …' +
+        app.phrase.slice(0, app.phraseMatchStart)));
+      const hl = document.createElement('span');
+      hl.className = 'rmhl';
+      hl.textContent = app.phrase.slice(app.phraseMatchStart,
+        app.phraseMatchStart + app.phraseMatchLength);
+      label.append(hl, document.createTextNode(
+        app.phrase.slice(app.phraseMatchStart + app.phraseMatchLength) + '…'));
       wrap.append(label);
     }
     box.append(wrap);
@@ -789,11 +801,8 @@ $('runBtn').addEventListener('click', async () => {
 // --- Derived views: transcript, review list, job gating ---
 function refreshDerived() {
   renderPicker();
-  const sc = scrubbed();
-  if (sc.length) {
-    $('transcriptBox').textContent = sc
-      .map((c) => '[' + formatTranscriptTimestamp(c.start) + '] ' + c.text)
-      .join('\n');
+  if (chunks.length) {
+    renderTranscriptBox();
     const words = scrubWords();
     $('scrubStatus').textContent = words.length
       ? 'Removal list active: ' + words.length + ' entr' + (words.length === 1 ? 'y' : 'ies') + '.'
@@ -802,6 +811,41 @@ function refreshDerived() {
     $('transcriptBox').textContent = 'Your transcript will appear here.';
   }
   updateJobEnabled();
+}
+
+// The transcript view (2.9.1): each chunk's corrected text, with
+// the text the current removal list and picker selections will
+// remove shown on the highlight background — the same background
+// as the picker's appearances. The view is a rendering layer
+// only: it is built from removalSegments (transcript.js), which
+// finds its spans with the scrub's own matching, and the
+// scrubbed transcript that is sent is derived by scrubbed()
+// exactly as before. The box keeps its pre-wrap whitespace, and
+// the highlight spans are inline, so line breaks and layout are
+// undisturbed.
+function renderTranscriptBox() {
+  const box = $('transcriptBox');
+  const selective = pickerEntries();
+  const selections = new Map();
+  for (const [w] of selective) selections.set(w, pickerRemovedOrdinals(w));
+  const ordinary = scrubWords().filter((w) => !selective.has(w));
+  const per = removalSegments(chunks, selections, ordinary);
+  box.textContent = '';
+  per.forEach((c, i) => {
+    if (i) box.append(document.createTextNode('\n'));
+    box.append(document.createTextNode(
+      '[' + formatTranscriptTimestamp(c.start) + '] '));
+    for (const seg of c.segments) {
+      if (!seg.removed) {
+        box.append(document.createTextNode(seg.text));
+      } else {
+        const s = document.createElement('span');
+        s.className = 'rmhl';
+        s.textContent = seg.text;
+        box.append(s);
+      }
+    }
+  });
 }
 
 // --- Job section ---
@@ -951,6 +995,10 @@ $('ytPreviewOverlay').addEventListener('click', () => {
  * to the job: the click finalises the job (marking it final)
  * and downloads the ZIP carrying the row's link (see
  * generateZipForRow).
+ * Since 2.9.1 a waiting job's row carries the same field, with
+ * the early-entry behaviour described at earlyLinkBits: the
+ * parse runs as the student types, a readable link is kept with
+ * the entry at once, and the ready row above inherits it.
  */
 
 function rowInputEl(key) {
@@ -969,6 +1017,41 @@ function rowInputEl(key) {
 function rowLinkDraft(entry) {
   const key = jobKey(entry.pkg, entry.retrieval_code);
   return rowDrafts.has(key) ? rowDrafts.get(key) : (entry.youtube_link || '');
+}
+
+// The link field's elements, built the same way for a waiting
+// row (2.9.1) and a ready row: the field and its × clear control
+// in a wrap, the open-address line, and the message line. The
+// field starts from the row's draft, else from the link kept
+// with the entry, and a kept link becomes the draft, so a
+// rebuild shows the same text. The two row states attach
+// different behaviour to the same parts.
+function buildLinkField(entry, key) {
+  const wrap = document.createElement('div');
+  wrap.className = 'ytlinkwrap';
+  const input = document.createElement('input');
+  input.type = 'url';
+  input.dataset.act = 'ytlink';
+  input.placeholder = 'https://www.youtube.com/watch?v=…';
+  input.value = rowDrafts.has(key) ? rowDrafts.get(key)
+    : (entry.youtube_link || '');
+  if (input.value && !rowDrafts.has(key)) rowDrafts.set(key, input.value);
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.dataset.act = 'ytclear';
+  clearBtn.className = 'quiet ytclear';
+  clearBtn.textContent = '×';
+  clearBtn.title = 'Clear the YouTube link';
+  clearBtn.setAttribute('aria-label', 'Clear the YouTube link');
+  clearBtn.hidden = !input.value;
+  wrap.append(input, clearBtn);
+  const open = document.createElement('a');
+  open.className = 'ytopen';
+  open.target = '_blank';
+  open.rel = 'noopener';
+  open.hidden = true;
+  const msg = document.createElement('div');
+  return { wrap, input, clearBtn, open, msg };
 }
 
 // What the row's cell says, from its standing state: a ZIP
@@ -1010,6 +1093,75 @@ function paintRowCell(key) {
     const msg = r.querySelector('.ytmsg');
     if (!msg) continue;
     const bits = rowCellBits(key);
+    msg.textContent = bits.text;
+    msg.className = 'ytmsg ' + bits.cls;
+    const open = r.querySelector('.ytopen');
+    if (open) {
+      if (bits.openId) {
+        open.hidden = false;
+        open.textContent = canonicalWatchUrl(bits.openId);
+        open.href = canonicalWatchUrl(bits.openId);
+      } else open.hidden = true;
+    }
+    return;
+  }
+}
+
+/* ---------------- early link entry (2.9.1) ----------------
+ * A waiting job's row carries the link field from the moment
+ * the job is sent, not only once the grade is back (the
+ * teacher's direction, 2026-11-28: the student puts the link in
+ * and has it checked while the grading takes place). The check
+ * while typing is the page's own reading of the address — the
+ * same parseYouTubeVideoId the Generate ZIP flow starts from;
+ * the Worker's reachability check still runs at that click, and
+ * neither the finalize call nor the ZIP changes. A readable
+ * link is kept with the job's entry at once (the canonical
+ * watch form, in the same store the jobs table already uses),
+ * so it survives a reload and stands filled in when the grade
+ * arrives; an address that does not read as a YouTube link
+ * keeps nothing and says so in the cell, beside the field.
+ */
+
+// What a waiting row's link cell says, from the field's standing
+// text: the starting line while the field is empty, the kept
+// line once a readable link stands with the job, and the
+// in-place error while what the field holds is not a YouTube
+// address this page can read.
+function earlyLinkBits(entry) {
+  const draft = rowLinkDraft(entry);
+  if (!draft.trim()) {
+    return {
+      text: 'You can add the link now — it is checked as you ' +
+        'type and kept with this job.',
+      cls: 'ytneed', openId: null,
+    };
+  }
+  const id = parseYouTubeVideoId(draft);
+  if (!id) {
+    return {
+      text: 'That does not look like a YouTube address, so ' +
+        'nothing has been kept.',
+      cls: 'ytreason', openId: null,
+    };
+  }
+  return {
+    text: 'Kept with this job — it will be filled in for your ' +
+      'submission when the grade is back.',
+    cls: 'ytok', openId: id,
+  };
+}
+
+// Repaint one waiting row's cell message and link text in place,
+// as paintRowCell does for a ready row.
+function paintEarlyCell(key, entry) {
+  const box = $('jobsBox');
+  if (!box) return;
+  for (const r of box.querySelectorAll('[data-job-key]')) {
+    if (r.dataset.jobKey !== key) continue;
+    const msg = r.querySelector('.ytmsg');
+    if (!msg) continue;
+    const bits = earlyLinkBits(entry);
     msg.textContent = bits.text;
     msg.className = 'ytmsg ' + bits.cls;
     const open = r.querySelector('.ytopen');
@@ -1250,8 +1402,9 @@ $('submitJobBtn').addEventListener('click', async () => {
     $('jobStatus').textContent = 'Sending for grading…';
     const res = await submitJob(cfg.worker, payload);
     const sentText =
-      'Sent — when the grade is back, add the YouTube link in the ' +
-      'job’s row below to make your Canvas submission.';
+      'Sent — the job’s row below takes your YouTube link for ' +
+      'your Canvas submission; you can add it now, while the ' +
+      'grade is on its way.';
     // The send happened (a job was created, or the Worker
     // answered that this exact submission already stands):
     // snapshot the as-sent transcript's sketch for the
@@ -1561,38 +1714,54 @@ function renderJobRow(tbody, entry, statusInfo, unreachable) {
   /* ---- the YouTube link cell ---- */
   const tdYt = document.createElement('td');
   tdYt.className = 'ytcell';
-  if (!bundle) {
+  const ytStatus = statusInfo && statusInfo.status;
+  if (!bundle && ytStatus === 'foreign') {
     const note = document.createElement('div');
     note.className = 'ytneed';
-    note.textContent = statusInfo && statusInfo.status === 'foreign'
-      ? 'Sent to a different grading service.'
-      : 'The YouTube link goes here once the grade is back.';
+    note.textContent = 'Sent to a different grading service.';
     tdYt.append(note);
+  } else if (!bundle && ytStatus === 'forbidden') {
+    // The Worker holds no such job, so there is nothing to
+    // attach a link to; the Job cell already says the job was
+    // not found.
+  } else if (!bundle) {
+    // A waiting job (2.9.1): the link field stands in the row
+    // from the moment the job is sent, while the grade is on
+    // its way — the student puts the link in and has it read
+    // as they type, instead of waiting for the grade to return
+    // before the field appears.
+    const { wrap, input, clearBtn, open, msg } = buildLinkField(entry, key);
+    tdYt.append(wrap, open, msg);
+    const bits = earlyLinkBits(entry);
+    msg.textContent = bits.text;
+    msg.className = 'ytmsg ' + bits.cls;
+    if (bits.openId) {
+      open.hidden = false;
+      open.textContent = canonicalWatchUrl(bits.openId);
+      open.href = canonicalWatchUrl(bits.openId);
+    }
+    input.addEventListener('input', () => {
+      rowDrafts.set(key, input.value);
+      clearBtn.hidden = !input.value;
+      // The field is authoritative while the job waits: a
+      // readable link is kept with the entry at once, in the
+      // canonical watch form the Generate ZIP flow keeps, and
+      // anything else keeps nothing — an address that does not
+      // read as a YouTube link is never stored as the job's link.
+      const id = parseYouTubeVideoId(input.value);
+      persistRowLink(entry, id ? canonicalWatchUrl(id) : '', '', '');
+      paintEarlyCell(key, entry);
+    });
+    clearBtn.addEventListener('click', () => {
+      // × clears the field and the link kept with this job,
+      // as on a ready row.
+      input.value = '';
+      rowDrafts.set(key, '');
+      persistRowLink(entry, '', '', '');
+      renderJobs();
+    });
   } else {
-    const wrap = document.createElement('div');
-    wrap.className = 'ytlinkwrap';
-    const input = document.createElement('input');
-    input.type = 'url';
-    input.dataset.act = 'ytlink';
-    input.placeholder = 'https://www.youtube.com/watch?v=…';
-    input.value = rowDrafts.has(key) ? rowDrafts.get(key)
-      : (entry.youtube_link || '');
-    if (input.value && !rowDrafts.has(key)) rowDrafts.set(key, input.value);
-    const clearBtn = document.createElement('button');
-    clearBtn.type = 'button';
-    clearBtn.dataset.act = 'ytclear';
-    clearBtn.className = 'quiet ytclear';
-    clearBtn.textContent = '×';
-    clearBtn.title = 'Clear the YouTube link';
-    clearBtn.setAttribute('aria-label', 'Clear the YouTube link');
-    clearBtn.hidden = !input.value;
-    wrap.append(input, clearBtn);
-    const open = document.createElement('a');
-    open.className = 'ytopen';
-    open.target = '_blank';
-    open.rel = 'noopener';
-    open.hidden = true;
-    const msg = document.createElement('div');
+    const { wrap, input, clearBtn, open, msg } = buildLinkField(entry, key);
     tdYt.append(wrap, open, msg);
     // The row is not in the document yet, so paintRowCell cannot
     // reach it: set the cell's message and link text from the

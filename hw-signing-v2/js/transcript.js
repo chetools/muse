@@ -81,8 +81,17 @@ export function scrubText(text, words) {
 export const PICKER_THRESHOLD = 1;
 
 // The appearances of one entry across the chunks' corrected
-// texts: [{ ordinal, phrase }] in order, where phrase is a short
-// window of surrounding text from the appearance's own chunk.
+// texts: [{ ordinal, phrase, phraseMatchStart, phraseMatchLength }]
+// in order, where phrase is a short window of surrounding text
+// from the appearance's own chunk, and the phraseMatch fields
+// locate the appearance itself inside the phrase (2.9.1: the
+// picker highlights exactly those characters, so the student
+// sees which words a checkbox would remove). The phrase is
+// assembled from its three parts — before, match, after — each
+// whitespace-collapsed as the whole window used to be; the two
+// constructions agree because a match never begins or ends with
+// whitespace (the entry pattern starts and ends with an entry
+// part), so no whitespace run spans a part boundary.
 export function entryAppearances(chunks, word) {
   const out = [];
   for (const c of chunks || []) {
@@ -93,11 +102,23 @@ export function entryAppearances(chunks, word) {
     while ((m = re.exec(text)) !== null) {
       const start = m.index;
       const end = start + m[0].length;
-      const phrase = text
-        .slice(Math.max(0, start - 28), Math.min(text.length, end + 28))
-        .replace(/\s+/g, ' ')
-        .trim();
-      out.push({ ordinal: out.length, phrase });
+      const before = text.slice(Math.max(0, start - 28), start)
+        .replace(/\s+/g, ' ');
+      const match = text.slice(start, end).replace(/\s+/g, ' ');
+      const after = text.slice(end, Math.min(text.length, end + 28))
+        .replace(/\s+/g, ' ');
+      const joined = before + match + after;
+      const phrase = joined.trim();
+      // Any leading trim comes out of the "before" part: it is
+      // at most the one collapsed space a leading whitespace run
+      // leaves, and the match itself is never trimmed away.
+      const lead = joined.length - joined.trimStart().length;
+      out.push({
+        ordinal: out.length,
+        phrase,
+        phraseMatchStart: Math.max(0, before.length - lead),
+        phraseMatchLength: match.length,
+      });
       if (m[0].length === 0) re.lastIndex += 1;
     }
   }
@@ -164,6 +185,182 @@ export function scrubChunks(chunks, words) {
     raw: scrubText(c.raw, words).text,
     text: scrubText(c.corrected, words).text,
   }));
+}
+
+// ------------------------------------------------- Highlight (2.9.1)
+// removalSegments: what the transcript view and the picker show
+// on a coloured background — the substrings the removal state
+// will remove. The view is a rendering layer only; the scrubbed
+// text that is sent is still produced by the functions above,
+// untouched. To keep highlight and removal from ever disagreeing,
+// the spans are found by replaying the scrub's own passes — the
+// selective passes in list order, then the full pass, longest
+// first — with the same entryRegex matching and the same spacing
+// repair, over a tracked text: every character carries the index
+// it holds in the chunk's corrected text, so a removal found in
+// the evolving (already partly scrubbed, spacing-repaired) text
+// is recorded in the original text's coordinates.
+
+// One chunk's corrected text under tracking: chars (UTF-16 code
+// units, so indices agree with the regex matches), the original
+// index of each char, and the removed spans found so far, as
+// [start, end) in original coordinates.
+function trackText(text) {
+  const s = String(text || '');
+  const chars = new Array(s.length);
+  const origin = new Array(s.length);
+  for (let i = 0; i < s.length; i++) { chars[i] = s[i]; origin[i] = i; }
+  return { chars, origin, spans: [] };
+}
+
+function trackString(st) { return st.chars.join(''); }
+
+// Every match of the entry regex in the string, as [start, end).
+function findMatches(re, s) {
+  const out = [];
+  if (!re) return out;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    out.push([m.index, m.index + m[0].length]);
+    if (m[0].length === 0) re.lastIndex += 1;
+  }
+  return out;
+}
+
+// Record the given matches (ascending, non-overlapping, in
+// current-string coordinates) as removed spans and delete them.
+function trackRemoveMatches(st, matches) {
+  for (let k = matches.length - 1; k >= 0; k--) {
+    const [s, e] = matches[k];
+    if (e <= s) continue;
+    st.spans.push([st.origin[s], st.origin[e - 1] + 1]);
+    st.chars.splice(s, e - s);
+    st.origin.splice(s, e - s);
+  }
+}
+
+// Delete the given ranges (ascending, non-overlapping, in
+// current-string coordinates) without recording them: the
+// spacing repair's deletions, which remove no words.
+function trackDeleteRanges(st, ranges) {
+  for (let k = ranges.length - 1; k >= 0; k--) {
+    const [s, e] = ranges[k];
+    if (e <= s) continue;
+    st.chars.splice(s, e - s);
+    st.origin.splice(s, e - s);
+  }
+}
+
+// repairSpacing over the tracked text: the same four steps, in
+// the same order, expressed as deletions and collapses so the
+// origin of every surviving character is preserved.
+function trackRepairSpacing(st) {
+  let ranges = [];
+  for (const m of trackString(st).matchAll(/\s+(?=[,.;:!?])/g)) {
+    ranges.push([m.index, m.index + m[0].length]);
+  }
+  trackDeleteRanges(st, ranges);
+  ranges = [];
+  for (const m of trackString(st).matchAll(/(?<=[(\[])\s+/g)) {
+    ranges.push([m.index, m.index + m[0].length]);
+  }
+  trackDeleteRanges(st, ranges);
+  const cur = trackString(st);
+  ranges = [];
+  for (const m of cur.matchAll(/\s+/g)) {
+    st.chars[m.index] = ' ';
+    if (m[0].length > 1) ranges.push([m.index + 1, m.index + m[0].length]);
+  }
+  trackDeleteRanges(st, ranges);
+  const s = trackString(st);
+  const lead = s.match(/^\s*/)[0].length;
+  if (lead === s.length) {
+    if (lead) trackDeleteRanges(st, [[0, lead]]);
+    return;
+  }
+  const trail = s.match(/\s*$/)[0].length;
+  ranges = [];
+  if (lead) ranges.push([0, lead]);
+  if (trail) ranges.push([s.length - trail, s.length]);
+  trackDeleteRanges(st, ranges);
+}
+
+// One selective pass over one chunk, mirroring scrubTextSelective
+// as scrubChunksSelective drives it: the matches are counted in
+// the chunk's current text, the ones whose global ordinal (base
+// + local position) is in removedSet are removed, and the
+// spacing is repaired when anything went. Returns the number of
+// appearances counted, so the caller can advance the base.
+function trackSelectivePass(st, word, removedSet, base) {
+  const re = entryRegex(word);
+  if (!re) return 0;
+  const matches = findMatches(re, trackString(st));
+  const chosen = matches.filter((_, i) => removedSet && removedSet.has(base + i));
+  if (chosen.length) {
+    trackRemoveMatches(st, chosen);
+    trackRepairSpacing(st);
+  }
+  return matches.length;
+}
+
+// The full pass over one chunk, mirroring scrubText: every entry,
+// longest first, all its matches removed from the evolving text,
+// then one spacing repair if anything was removed.
+function trackFullPass(st, words) {
+  const ordered = [...(words || [])].filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+  let removed = 0;
+  for (const w of ordered) {
+    const matches = findMatches(entryRegex(w), trackString(st));
+    if (matches.length) {
+      trackRemoveMatches(st, matches);
+      removed += matches.length;
+    }
+  }
+  if (removed) trackRepairSpacing(st);
+}
+
+// The segments of each chunk's corrected text under a removal
+// state: [{ start, segments: [{ text, removed }] }], where the
+// segments concatenate to the chunk's corrected text exactly and
+// the removed segments are the substrings the composed scrub
+// (selective passes for the entries in `selective` — a Map of
+// entry -> Set of removed appearance ordinals, in list order —
+// then the full pass for the `ordinary` entries) removes from
+// it. Overlapping spans (a later match spanning an earlier
+// removal, joined by the spacing repair) are merged for display.
+export function removalSegments(chunks, selective, ordinary) {
+  const list = chunks || [];
+  const states = list.map((c) => trackText(c.corrected));
+  for (const [word, removedSet] of selective || []) {
+    let base = 0;
+    for (const st of states) {
+      base += trackSelectivePass(st, word, removedSet, base);
+    }
+  }
+  for (const st of states) trackFullPass(st, ordinary);
+  return list.map((c, i) => {
+    const src = String(c.corrected || '');
+    const spans = states[i].spans.slice()
+      .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const merged = [];
+    for (const [s, e] of spans) {
+      const last = merged[merged.length - 1];
+      if (last && s <= last[1]) { if (e > last[1]) last[1] = e; }
+      else merged.push([s, e]);
+    }
+    const segments = [];
+    let pos = 0;
+    for (const [s, e] of merged) {
+      if (s > pos) segments.push({ text: src.slice(pos, s), removed: false });
+      if (e > s) segments.push({ text: src.slice(s, e), removed: true });
+      pos = Math.max(pos, e);
+    }
+    if (pos < src.length) {
+      segments.push({ text: src.slice(pos), removed: false });
+    }
+    return { start: c.start, segments };
+  });
 }
 
 // [mm:ss] with total minutes, zero-padded to two digits (can exceed 59) —

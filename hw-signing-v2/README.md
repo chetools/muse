@@ -19,8 +19,12 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
 2. The fingerprint is checked against the IndexedDB recordings cache.
    A complete hit restores the transcript with no transcription; a
    partial hit resumes transcription from the last completed window.
-3. The student scrubs identifying words and reviews the scrubbed
-   transcript. Nothing leaves the machine before the send.
+3. The student scrubs identifying words and reviews the
+   transcript: the view shows the corrected text with what the
+   removal list will remove highlighted (2.9.1) — in the picker,
+   the exact appearance each checkbox would remove carries the
+   same highlight — and the scrubbed transcript is what is sent.
+   Nothing leaves the machine before the send.
 4. The student sends a grading job; the page generates the job's
    retrieval code itself and keeps it in the job's entry. Sending
    takes no YouTube link, sends no job kind, and there is no
@@ -37,7 +41,12 @@ ZIP — is new in v2. Nothing in v1 is modified by this folder.
    link field: no check runs while the student types or pastes
    (a Studio address is converted to the watch form), and the
    row's Generate ZIP button is present while the field holds a
-   readable link. Generate ZIP is one click (2.7.0): it runs the
+   readable link. A waiting row carries the same field from the
+   moment the job is sent (2.9.1): the address is read as the
+   student types, a readable link is kept with the job's entry
+   at once (an unreadable one is refused in the cell and keeps
+   nothing), and the ready row inherits the kept link, so
+   Generate ZIP proceeds without asking again. Generate ZIP is one click (2.7.0): it runs the
    Worker's reachability check; on a pass the row's link cell
    shows the video's title and the graded transcript's opening
    words, the click finalises the job — `/jobs/finalize` marks
@@ -268,7 +277,13 @@ job-creation payload carries no list text); the proof-of-work
 chain (2.9.0: construction over synthetic chunks verified against
 an independent recomputation, the pre-scrub seed basis, resume
 from a stored partial chain, the worker protocol and the
-worker-unavailable fallback, and the send-flow wait); VAPID base64url
+worker-unavailable fallback, and the send-flow wait); the removal
+highlight (2.9.1: the picker's phrase locates the appearance
+exactly, and the segment spans agree with the composed scrub on
+fixtures, with the scrubbed output unchanged); the early YouTube
+link (2.9.1: a link kept while a job waits survives a store
+round-trip and is the link the ZIP flow reads, and an unreadable
+address is never storable as one); VAPID base64url
 round-trip; and
 wiring guards over `main.js`, `index.html`, and `sw.js`, including
 the 2.4.1 guard that the status expiry is stored back into the job
